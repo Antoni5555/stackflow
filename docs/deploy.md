@@ -58,7 +58,7 @@ ssh-keygen -t ed25519 -f deploy_key -C "github-actions" -N ""
 Под пользователем `deploy`:
 
 ```bash
-mkdir ~/develop_lab && cd ~/develop_lab
+mkdir ~/stackflow && cd ~/stackflow
 nano .env       # содержимое — из .env.prod.example, заполнить всё
 ```
 
@@ -67,8 +67,8 @@ nano .env       # содержимое — из .env.prod.example, заполн�
 Скопировать с компьютера `docker-compose.prod.yml` (как `docker-compose.yml`) и `deploy/deploy.sh`. При следующих деплоях это делает CI:
 
 ```bash
-scp docker-compose.prod.yml deploy@<IP>:develop_lab/docker-compose.yml
-scp deploy/deploy.sh deploy@<IP>:develop_lab/deploy.sh
+scp docker-compose.prod.yml deploy@<IP>:stackflow/docker-compose.yml
+scp deploy/deploy.sh deploy@<IP>:stackflow/deploy.sh
 ```
 
 ### 4. Первый сертификат HTTPS
@@ -117,7 +117,7 @@ Job `deploy` использует environment `production`: в Settings → Envi
 
 ## Повседневное
 
-Все команды — на сервере в `~/develop_lab`:
+Все команды — на сервере в `~/stackflow`:
 
 ```bash
 docker compose ps                         # что запущено, healthy ли web
@@ -140,18 +140,18 @@ sh deploy.sh <sha-прошлой-версии>         # откат (образ�
 Включить на сервере (один раз, cron работает в UTC: 12:00 UTC = 15:00 МСК):
 
 ```bash
-(crontab -l 2>/dev/null; echo '0 12 * * * cd ~/develop_lab && sh backup.sh >> ~/backups/backup.log 2>&1') | crontab -
+(crontab -l 2>/dev/null; echo '0 12 * * * cd ~/stackflow && sh backup.sh >> ~/backups/backup.log 2>&1') | crontab -
 ```
 
 Копия — формат `pg_dump -Fc`, в ней персональные данные (email, имена, хеши паролей): хранить только у себя, в git не класть.
 
 ### Восстановление
 
-На сервере, из `~/develop_lab`, сайт на время останавливаем:
+На сервере, из `~/stackflow`, сайт на время останавливаем:
 
 ```bash
 docker compose stop web nginx
-docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < ~/backups/develop_lab-<дата>.dump
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' < ~/backups/stackflow-<дата>.dump
 docker compose start web nginx
 ```
 

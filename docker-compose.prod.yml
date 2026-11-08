@@ -33,7 +33,7 @@ services:
 
   web:
     <<: *restart
-    image: ${IMAGE_PREFIX:?}/develop-lab-web:${IMAGE_TAG:?}
+    image: ${IMAGE_PREFIX:?}/stackflow-web:${IMAGE_TAG:?}
     env_file: .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
@@ -62,7 +62,7 @@ services:
 
   nginx:
     <<: *restart
-    image: ${IMAGE_PREFIX:?}/develop-lab-nginx:${IMAGE_TAG:?}
+    image: ${IMAGE_PREFIX:?}/stackflow-nginx:${IMAGE_TAG:?}
     environment:
       DOMAIN: ${DOMAIN:?}
     ports:

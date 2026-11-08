@@ -12,7 +12,7 @@ KEEP=7
 
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
-file="$BACKUP_DIR/develop_lab-$(date -u +%Y-%m-%d_%H%M).dump"
+file="$BACKUP_DIR/stackflow-$(date -u +%Y-%m-%d_%H%M).dump"
 
 # Сначала во временный файл: оборванная копия не выдаст себя за готовую
 # -Fc — сжатый формат pg_restore: можно восстановить всё или отдельные таблицы
@@ -22,6 +22,6 @@ mv "$file.part" "$file"
 chmod 600 "$file"
 
 # Старые копии — прочь (имена сортируются по дате)
-ls -1 "$BACKUP_DIR"/develop_lab-*.dump | head -n -"$KEEP" | xargs -r rm --
+ls -1 "$BACKUP_DIR"/stackflow-*.dump | head -n -"$KEEP" | xargs -r rm --
 
 echo "==> Копия: $file ($(du -h "$file" | cut -f1))"

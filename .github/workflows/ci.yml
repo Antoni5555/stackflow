@@ -75,7 +75,7 @@ jobs:
           label="org.opencontainers.image.source=https://github.com/${{ github.repository }}"
           for target in web nginx; do
             docker build --target "$target" --label "$label" \
-              -t "$IMAGE_PREFIX/develop-lab-$target:${{ github.sha }}" .
+              -t "$IMAGE_PREFIX/stackflow-$target:${{ github.sha }}" .
           done
       - name: Отправка в GHCR
         if: env.PUSH == 'true'
@@ -83,7 +83,7 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" \
             | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           for target in web nginx; do
-            docker push "$IMAGE_PREFIX/develop-lab-$target:${{ github.sha }}"
+            docker push "$IMAGE_PREFIX/stackflow-$target:${{ github.sha }}"
           done
 
   # Деплой на сервер по SSH. Включается переменной репозитория
@@ -101,7 +101,7 @@ jobs:
       packages: read
     env:
       SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
-      DEPLOY_DIR: develop_lab
+      DEPLOY_DIR: stackflow
     steps:
       - uses: actions/checkout@v7
       - name: SSH-ключ
