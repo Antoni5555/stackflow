@@ -40,7 +40,7 @@
   --gl-color-gray-text: #6e6e6a;
   --gl-color-snow: #f1f1ee;
   --gl-color-mist: #e4e4df;            /* мягкий белый: текст и логотип в тёмной теме */
-  --gl-color-stone: #c9c9c3;           /* приглушённый белый: «светлые» блоки в тёмной теме */
+  --gl-color-stone: #eff1ed;           /* приглушённый белый: «светлые» блоки в тёмной теме */
   --gl-color-accent: #dcf25c;          /* лайм */
   --gl-color-accent-deep: #b9d13a;     /* лайм для светлого фона: верхний слой логотипа */
   --gl-color-green: #1f9d55;
