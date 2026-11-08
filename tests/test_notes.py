@@ -133,7 +133,7 @@ def test_note_panel_for_logged_in(logged_in):
     html = logged_in.get(LESSON_URL).content.decode()
 
     assert 'data-source="python/basics/hello"' in html
-    assert 'попадёт в «Шпаргалки → Python → Привет»' in html
+    assert 'запиши главное своими словами' in html
     assert 'уже <span data-note-count>1</span>' in html
     assert 'js/note-editor.js' in html
 
@@ -142,7 +142,6 @@ def test_playground_note_goes_to_trainer_group(logged_in):
     html = logged_in.get(reverse('trainers:playground')).content.decode()
 
     assert 'data-source="python"' in html
-    assert '«Шпаргалки → Python → Из тренажёра»' in html
 
 
 # --- шпаргалки ---

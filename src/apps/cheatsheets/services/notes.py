@@ -205,10 +205,8 @@ def cheatsheet(user, course_slug):
 # --- плашка «Заметка» в правой панели ---
 
 def note_panel(user, course, topic, source_key):
-    """Данные для плашки «Заметка»: куда попадёт заметка и сколько их уже там."""
-    target = f'Шпаргалки → {course.title} → {topic.title if topic else "Из тренажёра"}'
+    """Данные для плашки «Заметка»: откуда она и сколько заметок уже в этой группе шпаргалки."""
     return {
         'source': source_key,
-        'target': target,
         'count': count_in_group(user, course, topic) if user.is_authenticated else 0,
     }

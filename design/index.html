@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SITE_NAME</title>
+  <title>STACKFLOW</title>
+  <link rel="icon" href="logo/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
@@ -27,8 +28,9 @@
   <header class="header">
     <div class="container header__inner">
       <a href="#home" class="logo">
-        <span class="logo__mark" aria-hidden="true"></span>
-        SITE_NAME
+        <!-- [templates/base/components/_logo_mark.html] -->
+        <svg class="logo__mark" viewBox="6 9 88 88" aria-hidden="true"><path class="logo__top" d="M50 14L88 34L50 54L12 34Z" stroke-width="8" stroke-linejoin="round"/><path d="M12 52L50 72L88 52M12 70L50 90L88 70" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        STACKFLOW
       </a>
 
       <nav class="header__nav" aria-label="Основная навигация">
@@ -778,7 +780,7 @@
                    Две плашки-аккордеон: открыта одна — вторая свёрнута (details name=...). -->
               <aside class="side-panel">
             <details class="side-card" name="lesson-side">
-              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">попадёт в «Шпаргалки → SQL → Виды JOIN»</span></summary>
+              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">запиши главное своими словами</span></summary>
               <div class="side-card__body">
                 <!-- [templates/common/_note_editor.html] — заметка → попадает в Шпаргалки (курс → тема) -->
                 <div class="note-editor">
@@ -1146,7 +1148,7 @@
                    Две плашки-аккордеон: открыта одна — вторая свёрнута (details name=...). -->
               <aside class="side-panel">
             <details class="side-card" name="task-side">
-              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">попадёт в «Шпаргалки → SQL → Виды JOIN»</span></summary>
+              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">запиши главное своими словами</span></summary>
               <div class="side-card__body">
                 <!-- [templates/common/_note_editor.html] — заметка → попадает в Шпаргалки (курс → тема) -->
                 <div class="note-editor">
@@ -1757,7 +1759,7 @@
                    Две плашки-аккордеон: открыта одна — вторая свёрнута (details name=...). -->
               <aside class="side-panel">
             <details class="side-card" name="pg-sql-side" open>
-              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">попадёт в «Шпаргалки → SQL → Из тренажёра»</span></summary>
+              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">запиши главное своими словами</span></summary>
               <div class="side-card__body">
                 <!-- [templates/common/_note_editor.html] — заметка → попадает в Шпаргалки (курс → тема) -->
                 <div class="note-editor">
@@ -2044,7 +2046,7 @@ paid = Order.objects.<span class="fn">filter</span>(status=<span class="str">"pa
                    Две плашки-аккордеон: открыта одна — вторая свёрнута (details name=...). -->
               <aside class="side-panel">
             <details class="side-card" name="pg-orm-side" open>
-              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">попадёт в «Шпаргалки → Django ORM → Из тренажёра»</span></summary>
+              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">запиши главное своими словами</span></summary>
               <div class="side-card__body">
                 <!-- [templates/common/_note_editor.html] — заметка → попадает в Шпаргалки (курс → тема) -->
                 <div class="note-editor">
@@ -2185,7 +2187,7 @@ paid = Order.objects.<span class="fn">filter</span>(status=<span class="str">"pa
                    Две плашки-аккордеон: открыта одна — вторая свёрнута (details name=...). -->
               <aside class="side-panel">
             <details class="side-card" name="pg-py-side" open>
-              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">попадёт в «Шпаргалки → Python → Из тренажёра»</span></summary>
+              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">запиши главное своими словами</span></summary>
               <div class="side-card__body">
                 <!-- [templates/common/_note_editor.html] — заметка → попадает в Шпаргалки (курс → тема) -->
                 <div class="note-editor">
@@ -2359,7 +2361,7 @@ paid = Order.objects.<span class="fn">filter</span>(status=<span class="str">"pa
                    Две плашки-аккордеон: открыта одна — вторая свёрнута (details name=...). -->
               <aside class="side-panel">
             <details class="side-card" name="pg-linux-side" open>
-              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">попадёт в «Шпаргалки → Linux → Из тренажёра»</span></summary>
+              <summary class="side-card__head"><span class="side-card__title">Заметка</span><span class="side-card__meta">запиши главное своими словами</span></summary>
               <div class="side-card__body">
                 <!-- [templates/common/_note_editor.html] — заметка → попадает в Шпаргалки (курс → тема) -->
                 <div class="note-editor">
@@ -2567,7 +2569,7 @@ paid = Order.objects.<span class="fn">filter</span>(status=<span class="str">"pa
               <ul class="stack-chips">
                 <li>Django</li><li>PostgreSQL</li><li>Redis</li><li>DRF</li><li>Pyodide</li><li>PGlite</li><li>Docker</li><li>Nginx</li><li>GitHub Actions</li>
               </ul>
-              <a href="https://github.com/Antoni5555/develop_lab" class="link-arrow">Исходный код на GitHub <span aria-hidden="true">→</span></a>
+              <a href="https://github.com/Antoni5555/stackflow" class="link-arrow">Исходный код на GitHub <span aria-hidden="true">→</span></a>
             </div>
             <div class="showcase__art" aria-hidden="true">
               <svg viewBox="0 0 400 280">
@@ -2838,7 +2840,7 @@ paid = Order.objects.<span class="fn">filter</span>(status=<span class="str">"pa
   <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__col">
-        <a href="#home" class="logo logo--sm"><span class="logo__mark" aria-hidden="true"></span>SITE_NAME</a>
+        <a href="#home" class="logo logo--sm"><svg class="logo__mark" viewBox="6 9 88 88" aria-hidden="true"><path class="logo__top" d="M50 14L88 34L50 54L12 34Z" stroke-width="8" stroke-linejoin="round"/><path d="M12 52L50 72L88 52M12 70L50 90L88 70" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></svg>STACKFLOW</a>
         <span class="muted">Бесплатная практика для разработчиков</span>
       </div>
       <nav class="footer__col">
@@ -2864,7 +2866,7 @@ paid = Order.objects.<span class="fn">filter</span>(status=<span class="str">"pa
       </nav>
     </div>
     <div class="container footer__bottom">
-      <span class="muted">© 2026 SITE_NAME · открытый код</span>
+      <span class="muted">© 2026 STACKFLOW · открытый код</span>
       <div class="footer__links">
         <a href="#about" class="pill">GitHub</a>
         <a href="#about" class="pill">Telegram</a>

@@ -117,6 +117,8 @@
   --gl-color-gray-line: #e0e0dc;
   --gl-color-gray-text: #6e6e6a;
   --gl-color-snow: #f1f1ee;
+  --gl-color-mist: #e4e4df;            /* мягкий белый: текст и логотип в тёмной теме */
+  --gl-color-stone: #c9c9c3;           /* приглушённый белый: «светлые» блоки в тёмной теме */
   --gl-color-accent: #dcf25c;          /* лайм */
   --gl-color-accent-deep: #b9d13a;     /* лайм для светлого фона: верхний слой логотипа */
   --gl-color-green: #1f9d55;
@@ -132,13 +134,13 @@
   --surface:    light-dark(var(--gl-color-white), var(--gl-color-black-soft));
   --surface-2:  light-dark(var(--gl-color-gray), var(--gl-color-black-muted));
   --border:     light-dark(var(--gl-color-gray-line), var(--gl-color-black-line));
-  --text:       light-dark(var(--gl-color-black), var(--gl-color-snow));
+  --text:       light-dark(var(--gl-color-black), var(--gl-color-mist));
   --muted:      light-dark(var(--gl-color-gray-text), #8e8e8a);
   --accent:     var(--gl-color-accent);
   --on-accent:  var(--gl-color-black);
-  --ink:        light-dark(var(--gl-color-black), var(--gl-color-snow));   /* «чёрные» блоки */
+  --ink:        light-dark(var(--gl-color-black), var(--gl-color-stone));   /* «чёрные» блоки */
   --on-ink:     light-dark(var(--gl-color-white), var(--gl-color-black));
-  --logo-top:   light-dark(var(--gl-color-accent-deep), var(--gl-color-white));
+  --logo-top:   light-dark(var(--gl-color-accent-deep), var(--gl-color-mist));
 
   /* ----- СТАТУСЫ ----- */
   --success:    light-dark(var(--gl-color-green), #4ade80);
