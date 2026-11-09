@@ -7,7 +7,7 @@ from .models import User
 
 
 class SignupForm(AllauthSignupForm):
-    """Регистрация: имя, фамилия, email, пароль и согласие на обработку данных.
+    """Регистрация: имя, фамилия, email, пароль, возраст 14+ и согласие на обработку.
 
     Имя и фамилию allauth сам записывает в пользователя (adapter.save_user
     берёт first_name и last_name из cleaned_data).
@@ -21,13 +21,24 @@ class SignupForm(AllauthSignupForm):
         label='Фамилия', max_length=150,
         widget=forms.TextInput(attrs={'autocomplete': 'family-name'}),
     )
+    # С 14 лет согласие на обработку данных можно дать самому; младше — только родитель.
+    # Дату рождения не спрашиваем: лишние данные, а проверить её всё равно нечем.
+    age_confirmed = forms.BooleanField(
+        label='Мне исполнилось 14 лет',
+        error_messages={
+            'required': 'Регистрация — с 14 лет. Уроки и задачи доступны без аккаунта.',
+        },
+    )
     # Подпись со ссылками на документы — в шаблоне account/_consent_label.html
     privacy_consent = forms.BooleanField(
         label='Согласие на обработку персональных данных',
         error_messages={'required': 'Без согласия зарегистрироваться нельзя.'},
     )
 
-    field_order = ['first_name', 'last_name', 'email', 'password1', 'privacy_consent']
+    field_order = [
+        'first_name', 'last_name', 'email', 'password1',
+        'age_confirmed', 'privacy_consent',
+    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -37,9 +48,9 @@ class SignupForm(AllauthSignupForm):
         self.fields['password1'].widget.attrs.pop('placeholder', None)
 
     def custom_signup(self, request, user):
-        """Запоминаем, когда дано согласие (вызывается после создания пользователя)."""
-        user.privacy_consent_at = timezone.now()
-        user.save(update_fields=['privacy_consent_at'])
+        """Запоминаем, когда подтверждён возраст и дано согласие (после создания)."""
+        user.age_confirmed_at = user.privacy_consent_at = timezone.now()
+        user.save(update_fields=['age_confirmed_at', 'privacy_consent_at'])
 
 
 class ProfileForm(forms.ModelForm):

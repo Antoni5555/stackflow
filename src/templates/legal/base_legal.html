@@ -12,7 +12,7 @@
   <header class="legal__head">
     <span class="eyebrow">Документ</span>
     <h1 class="page-title">{% block doc_title %}{% endblock %}</h1>
-    <p class="muted small">Действует с 21 октября 2026 г.</p>
+    <p class="muted small">Действует с 9 ноября 2026 г.</p>
     <nav class="chips" aria-label="Документы">
       {% url 'pages:privacy' as privacy_url %}{% url 'pages:consent' as consent_url %}
       <a href="{{ privacy_url }}" class="chip{% if request.path == privacy_url %} chip--active{% endif %}"{% if request.path == privacy_url %} aria-current="page"{% endif %}>Политика конфиденциальности</a>

@@ -36,12 +36,16 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     ]
     list_filter = ['is_staff', 'is_active', 'date_joined']
     search_fields = ['email', 'first_name', 'last_name']
-    readonly_fields = ['last_login', 'date_joined', 'privacy_consent_at']
+    readonly_fields = [
+        'last_login', 'date_joined', 'age_confirmed_at', 'privacy_consent_at',
+    ]
     fieldsets = [
         (None, {'fields': ['email', 'password']}),
         ('Имя', {'fields': ['first_name', 'last_name']}),
         ('Права', {'fields': ['is_active', 'is_staff', 'is_superuser']}),
-        ('Даты', {'fields': ['date_joined', 'last_login', 'privacy_consent_at']}),
+        ('Даты', {'fields': [
+            'date_joined', 'last_login', 'age_confirmed_at', 'privacy_consent_at',
+        ]}),
     ]
     add_fieldsets = [
         (None, {'classes': ['wide'], 'fields': ['email', 'password1', 'password2']}),

@@ -39,7 +39,7 @@ def test_create_superuser():
 
 SIGNUP = {
     'first_name': 'Анна', 'last_name': 'Смирнова', 'email': 'new@example.com',
-    'password1': 'Long-enough-pass-1', 'privacy_consent': 'on',
+    'password1': 'Long-enough-pass-1', 'age_confirmed': 'on', 'privacy_consent': 'on',
 }
 
 
@@ -55,6 +55,7 @@ def test_signup_sends_confirmation_and_waits_for_it(client, settings):
     user = User.objects.get(email='new@example.com')
     assert (user.first_name, user.last_name) == ('Анна', 'Смирнова')
     assert user.privacy_consent_at is not None
+    assert user.age_confirmed_at is not None
 
     letter = mail.outbox[0]
     assert letter.to == ['new@example.com']
@@ -105,6 +106,17 @@ def test_signup_requires_name_and_consent(client):
     html = response.content.decode()
     assert html.count('field__error') == 3
     assert 'Без согласия зарегистрироваться нельзя.' in html
+    assert not User.objects.filter(email='new@example.com').exists()
+
+
+def test_signup_requires_age_14(client):
+    data = {**SIGNUP}
+    del data['age_confirmed']
+
+    response = client.post(reverse('account_signup'), data)
+
+    html = response.content.decode()
+    assert 'Регистрация — с 14 лет.' in html
     assert not User.objects.filter(email='new@example.com').exists()
 
 

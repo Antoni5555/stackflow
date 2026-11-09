@@ -37,6 +37,12 @@ class User(AbstractUser):
     privacy_consent_at = models.DateTimeField(
         'согласие на обработку данных', null=True, blank=True,
     )
+    # Когда пользователь подтвердил, что ему исполнилось 14 лет: с 14 лет согласие
+    # на обработку данных можно дать самому. Дату рождения не собираем — только отметку.
+    # NULL — зарегистрирован до этой отметки или создан не через регистрацию.
+    age_confirmed_at = models.DateTimeField(
+        'подтвердил возраст 14+', null=True, blank=True,
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
