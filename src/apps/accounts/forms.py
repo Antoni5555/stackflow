@@ -24,7 +24,7 @@ class SignupForm(AllauthSignupForm):
     # С 14 лет согласие на обработку данных можно дать самому; младше — только родитель.
     # Дату рождения не спрашиваем: лишние данные, а проверить её всё равно нечем.
     age_confirmed = forms.BooleanField(
-        label='Мне исполнилось 14 лет',
+        label='Подтверждаю, что мне есть 14 лет',
         error_messages={
             'required': 'Регистрация — с 14 лет. Уроки и задачи доступны без аккаунта.',
         },
@@ -37,7 +37,7 @@ class SignupForm(AllauthSignupForm):
 
     field_order = [
         'first_name', 'last_name', 'email', 'password1',
-        'age_confirmed', 'privacy_consent',
+        'privacy_consent', 'age_confirmed',
     ]
 
     def __init__(self, *args, **kwargs):
