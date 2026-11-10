@@ -373,3 +373,84 @@ def test_unknown_setup_key_is_reported(content_dir):
 
     with pytest.raises(ContentError, match="неизвестные ключи \\['owner'\\]"):
         ContentLoader(content_dir).load()
+
+
+SQL_TOPIC = 'backend/sql/01-select/01-join'
+SQL_TASK = """title: Покупатели без заказов
+type: exercise
+difficulty: 2
+pitfall: P
+statement: S
+explanation: E
+solution: |
+  SELECT id FROM users;
+%s
+hints: ['Нужен **LEFT JOIN**']
+"""
+
+
+def sql_course(content_dir, check):
+    """Курс SQL с одной задачей и учебной базой направления."""
+    topic = content_dir / SQL_TOPIC
+    topic.mkdir(parents=True)
+    (content_dir / 'backend/sql/_course.yaml').write_text(
+        'title: SQL\nengine: sql\norder: 30\n', encoding='utf-8')
+    (content_dir / 'backend/sql/01-select/_section.yaml').write_text(
+        'title: Выборка\n', encoding='utf-8')
+    (topic / '_topic.yaml').write_text('title: JOIN\n', encoding='utf-8')
+    (topic / '01-no-orders.yaml').write_text(SQL_TASK % check, encoding='utf-8')
+    shared = content_dir / 'backend/_shared'
+    shared.mkdir()
+    (shared / 'schema.sql').write_text('CREATE TABLE users (id int);', encoding='utf-8')
+    (shared / 'seed.sql').write_text('INSERT INTO users VALUES (1);', encoding='utf-8')
+
+
+def test_sql_dataset_is_loaded(content_dir):
+    sql_course(content_dir, 'check:\n  type: result\n')
+    ContentLoader(content_dir).load()
+
+    dataset = Track.objects.get(slug='backend').sql_dataset
+    assert dataset == 'CREATE TABLE users (id int);\nINSERT INTO users VALUES (1);'
+    spec = Exercise.objects.get(slug='no-orders').spec
+    assert spec['check'] == {'type': 'result', 'order_matters': True}
+    assert spec['hints'] == ['Нужен <strong>LEFT JOIN</strong>']
+
+
+@pytest.mark.parametrize('check, expected', [
+    ('check:\n  type: state\n  tables: [orders, order_items]',
+     [{'name': 'orders', 'columns': None}, {'name': 'order_items', 'columns': None}]),
+    ('check:\n  type: state\n  tables:\n    products: [id, price]\n    tags: [name]',
+     [{'name': 'products', 'columns': ['id', 'price']},
+      {'name': 'tags', 'columns': ['name']}]),
+    ('setup: |\n  CREATE TABLE wishlist (user_id int);\n'
+     'check:\n  type: schema\n  tables: [wishlist]',
+     [{'name': 'wishlist', 'columns': None}]),
+])
+def test_sql_state_and_schema_tables(content_dir, check, expected):
+    sql_course(content_dir, check)
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='no-orders').spec
+    assert spec['check']['tables'] == expected
+
+
+@pytest.mark.parametrize('check, message', [
+    ('check:\n  type: tests', 'result, state или schema'),
+    ('check:\n  type: result\n  order_matters: maybe', 'order_matters — true или'),
+    ('check:\n  type: result\n  tables: [users]', "лишние поля \\['tables'\\]"),
+    ('check:\n  type: state', 'нет обязательных полей: tables'),
+    ('check:\n  type: state\n  tables: []', 'нет обязательных полей: tables'),
+    ('check:\n  type: state\n  tables: [1]', 'tables — список таблиц'),
+    ('check:\n  type: state\n  tables: {products: []}', 'tables — список таблиц'),
+    ('check:\n  type: schema\n  tables: {wishlist: [id]}', 'schema: tables — список'),
+    ('setup: {a: 1}\ncheck:\n  type: result', 'setup — текст SQL'),
+])
+def test_invalid_sql_exercise_is_reported(content_dir, check, message):
+    sql_course(content_dir, check)
+
+    with pytest.raises(ContentError, match=message):
+        ContentLoader(content_dir).load()
+
+
+def test_track_without_shared_has_empty_dataset(loaded_content):
+    assert Track.objects.get(slug='backend').sql_dataset == ''

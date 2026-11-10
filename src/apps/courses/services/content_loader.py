@@ -3,6 +3,7 @@
 Структура и поля — docs/content-format.md:
 
     content/<направление>/_track.yaml
+    content/<направление>/_shared/schema.sql, seed.sql     — учебная база SQL
     content/<направление>/<курс>/_course.yaml
     content/<направление>/<курс>/NN-<раздел>/_section.yaml
     content/<направление>/<курс>/NN-<раздел>/NN-<тема>/_topic.yaml
@@ -140,6 +141,7 @@ class ContentLoader:
             'title': data['title'],
             'description': data.get('description') or '',
             'order': data.get('order') or 0,
+            'sql_dataset': load_sql_dataset(track_dir),
             'is_published': True,
         })
         for course_dir in child_dirs(track_dir, '_course.yaml'):
@@ -242,7 +244,7 @@ class ContentLoader:
             'pitfall': data['pitfall'],
             'statement_html': render_markdown(data['statement']),
             'explanation_html': render_markdown(data['explanation']),
-            'spec': exercise_spec(data, path),
+            'spec': exercise_spec(data, path, engine=topic.section.course.engine),
             'order': order,
             'is_published': True,
         })
@@ -328,6 +330,70 @@ def validate_state(spec, path):
             )
 
 
+# SQL (курс с движком sql): setup — SQL после учебных данных, проверка — по результату
+# последнего запроса, по таблицам после решения или по их структуре
+SQL_FIELDS = (['solution', 'check'], ['setup', 'starter_code'])
+SQL_CHECKS = {'result': {'order_matters'}, 'state': {'tables'}, 'schema': {'tables'}}
+SQL_DATASET_FILES = ('schema.sql', 'seed.sql')
+
+
+def load_sql_dataset(track_dir):
+    """Учебная база направления: _shared/schema.sql, затем seed.sql (если есть)."""
+    parts = []
+    for name in SQL_DATASET_FILES:
+        path = track_dir / '_shared' / name
+        if path.exists():
+            parts.append(path.read_text(encoding='utf-8'))
+    return '\n'.join(parts)
+
+
+def sql_tables(value, path):
+    """tables: [orders] — все колонки; {products: [id, name]} — только эти.
+
+    Храним списком [{name, columns}]: JSONB в Postgres переставил бы ключи словаря.
+    """
+    if isinstance(value, list) and value and all(isinstance(t, str) for t in value):
+        return [{'name': name, 'columns': None} for name in value]
+    if isinstance(value, dict) and value and all(
+        isinstance(columns, list) and columns
+        and all(isinstance(column, str) for column in columns)
+        for columns in value.values()
+    ):
+        return [{'name': name, 'columns': columns} for name, columns in value.items()]
+    raise ContentError(
+        path, 'tables — список таблиц или словарь {таблица: [колонки]}',
+    )
+
+
+def sql_spec(data, path):
+    """Задача SQL: решение, setup и проверка. Решения ученика и эталона выполняет
+    браузер (js/engines/sql/), эталоны прогоняет Node-тест сайта."""
+    required, optional = SQL_FIELDS
+    require(data, path, *required)
+    spec = {key: data[key] for key in required + optional if key in data}
+    for key in ('solution', 'setup', 'starter_code'):
+        if key in spec and not isinstance(spec[key], str):
+            raise ContentError(path, f'{key} — текст SQL')
+    check = spec['check']
+    kind = check.get('type') if isinstance(check, dict) else None
+    if kind not in SQL_CHECKS:
+        raise ContentError(path, 'check.type — result, state или schema')
+    if extra := set(check) - {'type'} - SQL_CHECKS[kind]:
+        raise ContentError(path, f'check ({kind}): лишние поля {sorted(extra)}')
+    if kind == 'result':
+        order_matters = check.get('order_matters', True)
+        if not isinstance(order_matters, bool):
+            raise ContentError(path, 'order_matters — true или false')
+        spec['check'] = {'type': kind, 'order_matters': order_matters}
+    else:
+        require(check, path, 'tables')
+        spec['check'] = {'type': kind, 'tables': sql_tables(check['tables'], path)}
+    if kind == 'schema' and any(table['columns'] for table in spec['check']['tables']):
+        raise ContentError(path, 'schema: tables — список таблиц, без колонок')
+    spec['hints'] = [render_inline(str(hint)) for hint in data.get('hints') or []]
+    return spec
+
+
 PRACTICE_FIELDS = {'title', 'text', 'hint', 'answer'}
 
 
@@ -360,12 +426,15 @@ def load_practice(topic_dir):
     return practice
 
 
-def exercise_spec(data, path):
+def exercise_spec(data, path, engine=''):
     """Поля задачи, зависящие от её типа, — для JSON-поля Exercise.spec.
 
     Код, тесты и правила сохраняются как есть; текст для показа
-    (подсказки, варианты ответа) — сразу в HTML.
+    (подсказки, варианты ответа) — сразу в HTML. engine — движок курса:
+    exercise в SQL-курсе устроена по-своему (check.type state там — таблицы, не файлы).
     """
+    if engine == Course.Engine.SQL and data['type'] == 'exercise':
+        return sql_spec(data, path)
     check = data.get('check')
     check_type = check.get('type') if isinstance(check, dict) else None
     is_dom = data['type'] == 'exercise' and check_type == 'dom'

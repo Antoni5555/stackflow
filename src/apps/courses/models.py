@@ -38,6 +38,8 @@ class Track(ContentItem):
     """Направление: Backend, позже Frontend, DevOps."""
 
     description = models.TextField('описание', blank=True)
+    # _shared/schema.sql + seed.sql направления: с них начинается база SQL-тренажёра
+    sql_dataset = models.TextField('учебная база SQL', blank=True)
 
     class Meta(ContentItem.Meta):
         verbose_name = 'направление'
