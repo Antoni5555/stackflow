@@ -151,10 +151,12 @@ export class Shell {
   /** Приглашение: shop@server:~/shop$ (у root — #). */
   prompt() {
     const home = this.user === 'root' ? '/root' : HOME;
+    // (venv) — активное виртуальное окружение Python (source venv/bin/activate)
+    const venv = this.env.VIRTUAL_ENV ? `(${this.env.VIRTUAL_ENV.split('/').pop()}) ` : '';
     let where = this.cwd;
     if (where === home) where = '~';
     else if (where.startsWith(`${home}/`)) where = `~${where.slice(home.length)}`;
-    return `${this.user}@server:${where}${this.user === 'root' ? '#' : '$'} `;
+    return `${venv}${this.user}@server:${where}${this.user === 'root' ? '#' : '$'} `;
   }
 
   /**
@@ -427,6 +429,13 @@ export class Shell {
     if (node.type === 'dir') return { out: '', err: `bash: ${path}: Is a directory\n`, code: 126 };
     if (requireExec && !this.fs.can(node, 'x')) {
       return { out: '', err: `bash: ${path}: Permission denied\n`, code: 126 };
+    }
+    // Программа симулятора в файле (venv/bin/pip, venv/bin/python) — запуск этой команды
+    if (node.program && COMMANDS[node.program]) {
+      const result = COMMANDS[node.program].run({
+        sh: this, fs: this.fs, args, stdin: '', tty: true, name: path.split('/').pop(), venv: node.venv,
+      }) ?? {};
+      return { out: result.out ?? '', err: result.err ?? '', code: result.code ?? 0 };
     }
     let text;
     try {

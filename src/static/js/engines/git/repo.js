@@ -213,19 +213,18 @@ export function moveHead(repo, id, reason) {
   repo.reflog.push({ id, message: reason });
 }
 
-/** Подписи ссылок для log: (HEAD -> main, origin/main, tag: v1). */
+/** Подписи ссылок для log, как у git: (HEAD -> main, tag: v1, origin/main, feature). */
 export function decorations(repo, id) {
-  const labels = [];
   const current = repo.head.branch;
-  if (repo.head.detached === id) labels.push('HEAD');
-  for (const [name, target] of Object.entries(repo.heads)) {
-    if (target !== id) continue;
-    labels.push(name === current ? `HEAD -> ${name}` : name);
-  }
-  labels.sort((a, b) => (b.startsWith('HEAD') ? 1 : 0) - (a.startsWith('HEAD') ? 1 : 0));
-  for (const [name, target] of Object.entries(repo.remoteHeads)) if (target === id) labels.push(name);
-  for (const [name, target] of Object.entries(repo.tags)) if (target === id) labels.push(`tag: ${name}`);
-  return labels;
+  const head = repo.head.detached === id ? ['HEAD']
+    : current && repo.heads[current] === id ? [`HEAD -> ${current}`] : [];
+  const pick = (refs) => Object.entries(refs).filter(([, target]) => target === id).map(([name]) => name).sort();
+  return [
+    ...head,
+    ...pick(repo.tags).map((name) => `tag: ${name}`),
+    ...pick(repo.remoteHeads),
+    ...pick(repo.heads).filter((name) => name !== current || repo.head.detached),
+  ];
 }
 
 // --- настройки: ~/.gitconfig (--global) и config репозитория ---

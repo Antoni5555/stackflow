@@ -1150,7 +1150,7 @@ const which = {
         }
       });
       if (found) out += `${found}\n`;
-      else if (COMMANDS[name] && !BUILTINS.has(name)) out += `/usr/bin/${name}\n`;
+      else if (COMMANDS[name] && !BUILTINS.has(name) && !COMMANDS[name].noWhich) out += `/usr/bin/${name}\n`;
       else code = 1;
     }
     return { out, err: '', code };
@@ -1244,8 +1244,8 @@ export const COMMANDS = {
   tar, gzip, gunzip: gzip,
   which, export: exportCommand, bash, sh: bash, source, '.': source, history, clear, nano,
   true: trueCommand, false: falseCommand, man, help,
-  python3: notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'),
-  python: notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'),
+  python3: { ...notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'), noWhich: true },
+  python: { ...notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'), noWhich: true },
   git: notHere('Git появится в тренажёре Git'),
   pip: notHere('pip появится вместе с тренажёром Git (venv и pip)'),
   apt: notHere('apt появится вместе с тренажёром Git'),
