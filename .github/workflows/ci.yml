@@ -53,7 +53,9 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: pytest
-      # Симуляторы тренажёров (чистый JS) — тесты в Node, он уже есть в образе runner
+      # Симуляторы тренажёров (чистый JS) — тесты в Node, он уже есть в образе runner;
+      # из npm — только PGlite для тестов SQL-тренажёра
+      - run: npm ci
       - run: node --test tests/js/*.test.js
 
   # Образы web и nginx с тегом = SHA коммита. Собираются всегда (сломанный

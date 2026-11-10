@@ -1,0 +1,186 @@
+// Движок SQL-тренажёра (src/static/js/engines/sql/): разбор запросов, выполнение,
+// снимки таблиц и схема. База — PGlite из npm той же версии, что грузится с CDN
+// в браузере, данные — учебный магазин из content/backend/_shared/.
+
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { after, before, describe, it } from 'node:test';
+
+import { PGlite } from '@electric-sql/pglite';
+
+import { mask, splitStatements, statementKind } from '../../src/static/js/engines/sql/split.js';
+import {
+  describeSchema, diffSnapshots, hasTables, resetDatabase, runScript, snapshotTables, textParsers,
+} from '../../src/static/js/engines/sql/session.js';
+
+const SHARED = new URL('../../content/backend/_shared/', import.meta.url);
+const BASE = ['schema.sql', 'seed.sql'].map((name) => readFileSync(new URL(name, SHARED), 'utf8')).join('\n');
+
+describe('разбор SQL на запросы', () => {
+  it('точка с запятой в строках, именах, $$ и комментариях запрос не заканчивает', () => {
+    const text = [
+      "SELECT 'a;b', \"x;y\" FROM t; -- конец; не здесь",
+      "/* один; /* вложенный; */ ещё; */ SELECT E'\\';'; SELECT 'it''s;';",
+      'CREATE FUNCTION f() RETURNS int AS $body$ SELECT 1; $body$ LANGUAGE sql;',
+      '',
+      'SELECT $$;$$',
+    ].join('\n');
+    const parts = splitStatements(text);
+    assert.deepEqual(parts.map((part) => part.sql), [
+      "SELECT 'a;b', \"x;y\" FROM t",
+      "SELECT E'\\';'",
+      "SELECT 'it''s;'",
+      'CREATE FUNCTION f() RETURNS int AS $body$ SELECT 1; $body$ LANGUAGE sql',
+      'SELECT $$;$$',
+    ]);
+    assert.deepEqual(parts.map((part) => part.line), [1, 2, 2, 3, 5]);
+    assert.equal(mask(text).length, text.length);
+  });
+
+  it('пустые запросы и одни комментарии пропускаются', () => {
+    assert.deepEqual(splitStatements(';;  -- только комментарий\n;'), []);
+    assert.deepEqual(splitStatements('-- что выбрать\nSELECT 1').map((part) => [part.sql, part.line]), [['SELECT 1', 2]]);
+  });
+
+  it('вид запроса', () => {
+    const kinds = {
+      'select * from users': 'query',
+      '  -- комментарий\n  SELECT 1': 'query',
+      'WITH t AS (SELECT 1) SELECT * FROM t': 'query',
+      'WITH old AS (DELETE FROM orders RETURNING *) SELECT count(*) FROM old': 'query',
+      'WITH n AS (SELECT 1) INSERT INTO tags (name) VALUES (\'x\')': 'dml',
+      'update products set price = 1': 'dml',
+      'SELECT * INTO archive FROM orders': 'ddl',
+      "SELECT 'insert into' AS text": 'query',
+      'alter table users add column age int': 'ddl',
+      'BEGIN': 'tx',
+      'rollback': 'tx',
+      'SET search_path TO public': 'set',
+      'VACUUM': 'other',
+    };
+    for (const [sql, kind] of Object.entries(kinds)) assert.equal(statementKind(sql), kind, sql);
+  });
+});
+
+describe('выполнение в PGlite', () => {
+  let db;
+  let parsers;
+
+  before(async () => {
+    db = new PGlite();
+    parsers = await textParsers(db);
+    assert.equal(await hasTables(db), false);
+    await resetDatabase(db, BASE);
+  });
+
+  after(() => db.close());
+
+  const run = (sql) => runScript(db, parsers, sql);
+
+  it('учебные данные загружены; версия — PostgreSQL 16', async () => {
+    assert.equal(await hasTables(db), true);
+    const [result] = await run('SELECT version()');
+    assert.match(result.rows[0][0], /^PostgreSQL 16\./);
+  });
+
+  it('значения — текстом, как выводит PostgreSQL; время — московское', async () => {
+    const [result] = await run(`
+      SELECT 1499::numeric(10,2) AS price, true AS ok, NULL AS empty, '{"a": 1}'::jsonb AS j,
+             ARRAY[1, 2] AS ids, '2026-03-31 23:30+03'::timestamptz AS at,
+             date_trunc('month', '2026-03-31 23:30+03'::timestamptz)::date AS month`);
+    assert.deepEqual(result.columns, ['price', 'ok', 'empty', 'j', 'ids', 'at', 'month']);
+    assert.deepEqual(result.rows, [['1499.00', 't', null, '{"a": 1}', '{1,2}', '2026-03-31 23:30:00+03', '2026-03-01']]);
+  });
+
+  it('колонки с одинаковым именем не теряются', async () => {
+    const [result] = await run('SELECT 1 AS id, 2 AS id, count(*) FROM users');
+    assert.deepEqual(result.columns, ['id', 'id', 'count']);
+    assert.deepEqual(result.rows, [['1', '2', '13']]);
+  });
+
+  it('ошибка: текст, подсказка, строка и колонка; дальше не выполняется', async () => {
+    const results = await run('SELECT 1;\n\nSELECT emial\nFROM users;\nSELECT 2;');
+    assert.equal(results.length, 2);
+    const { error } = results[1];
+    assert.equal(error.message, 'column "emial" does not exist');
+    assert.match(error.hint, /users\.email/);
+    assert.deepEqual([error.line, error.column], [3, 8]);
+  });
+
+  it('UPDATE, INSERT, DELETE — изменённые, новые и удалённые строки', async () => {
+    const results = await run(`
+      BEGIN;
+      UPDATE products SET price = price + 1 WHERE id = 1;
+      INSERT INTO tags (name) VALUES ('проверка-метки');
+      DELETE FROM product_tags WHERE product_id = 1;
+      ROLLBACK;`);
+    const [, update, insert, remove, rollback] = results;
+    assert.equal(update.affected, 1);
+    assert.deepEqual(update.changes.map((change) => [change.table, change.status]), [['products', 'rows']]);
+    const changed = update.changes[0].rows.filter((row) => row.mark);
+    assert.deepEqual(changed.map((row) => [row.values[0], row.mark, row.changed]), [['1', 'changed', ['price']]]);
+
+    const added = insert.changes[0].rows.filter((row) => row.mark);
+    assert.deepEqual(added.map((row) => [row.mark, row.values[1]]), [['added', 'проверка-метки']]);
+
+    const removed = remove.changes[0].rows.filter((row) => row.mark);
+    assert.ok(removed.length > 0);
+    assert.ok(removed.every((row) => row.mark === 'removed' && row.values[0] === '1'));
+
+    // ROLLBACK вернул всё: изменения — обратные
+    assert.deepEqual(rollback.changes.map((change) => change.table).sort(), ['product_tags', 'products', 'tags']);
+    const [check] = await run(`SELECT count(*) FROM tags WHERE name = 'проверка-метки'`);
+    assert.deepEqual(check.rows, [['0']]);
+  });
+
+  it('DDL — созданная, изменённая и удалённая таблица; схема', async () => {
+    const [create, alter, drop] = await run(`
+      CREATE TABLE wishlist (
+          user_id    integer NOT NULL REFERENCES users (id),
+          product_id integer NOT NULL REFERENCES products (id),
+          PRIMARY KEY (user_id, product_id)
+      );
+      ALTER TABLE wishlist ADD COLUMN added_at timestamptz NOT NULL DEFAULT now();
+      DROP TABLE wishlist;`);
+    assert.deepEqual(create.changes.map((change) => [change.table, change.status]), [['wishlist', 'created']]);
+    assert.deepEqual(alter.changes.map((change) => [change.status, change.newColumns]), [['altered', ['added_at']]]);
+    assert.deepEqual(drop.changes.map((change) => [change.table, change.status]), [['wishlist', 'dropped']]);
+
+    const schema = await describeSchema(db);
+    const products = schema.find((table) => table.name === 'products');
+    assert.deepEqual(products.columns.find((col) => col.name === 'price'),
+      { name: 'price', type: 'numeric(10,2)', notNull: true, default: null, identity: null });
+    assert.equal(products.columns.find((col) => col.name === 'id').identity, 'always');
+    assert.equal(products.columns.find((col) => col.name === 'stock').default, '0');
+    const definitions = products.constraints.map((con) => `${con.type}: ${con.definition}`);
+    assert.ok(definitions.includes('check: CHECK ((price >= (0)::numeric))'), definitions.join('\n'));
+    assert.ok(definitions.includes('foreign key: FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT'));
+    assert.ok(!schema.some((table) => table.name === 'wishlist'));
+  });
+
+  it('снимок таблиц: строки по первичному ключу, без ключа — по тексту строки', async () => {
+    await run('CREATE TABLE log (msg text); INSERT INTO log VALUES (\'b\'), (\'a\');');
+    const tables = await snapshotTables(db, parsers, ['log', 'product_tags']);
+    assert.deepEqual(Object.keys(tables), ['log', 'product_tags']);
+    assert.deepEqual(tables.log, { columns: ['msg'], key: [], rows: [['a'], ['b']] });
+    assert.deepEqual(tables.product_tags.key, [0, 1]);
+    // строка без ключа «изменилась» = удалена старая + добавлена новая
+    const [update] = await run(`UPDATE log SET msg = 'c' WHERE msg = 'a'`);
+    assert.deepEqual(update.changes[0].rows.map((row) => [row.values[0], row.mark]),
+      [['b', null], ['c', 'added'], ['a', 'removed']]);
+    assert.deepEqual(diffSnapshots(tables, tables), []);
+  });
+
+  it('сброс возвращает учебные данные и счётчики id', async () => {
+    await run('DELETE FROM reviews; CREATE SCHEMA extra; CREATE TABLE extra.t (x int);');
+    await resetDatabase(db, BASE);
+    const [reviews, schemas, insert] = await run(`
+      SELECT count(*) > 0 FROM reviews;
+      SELECT count(*) FROM pg_namespace WHERE nspname = 'extra';
+      INSERT INTO tags (name) VALUES ('после сброса') RETURNING id;`);
+    assert.deepEqual(reviews.rows, [['t']]);
+    assert.deepEqual(schemas.rows, [['0']]);
+    const [maxId] = (await run('SELECT max(id) - 1 FROM tags'))[0].rows;
+    assert.deepEqual(insert.rows, [[maxId[0] === null ? null : String(Number(maxId[0]) + 1)]]);
+  });
+});

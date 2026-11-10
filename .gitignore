@@ -27,3 +27,6 @@ media/
 docs/roles/
 docs/handoff/
 docs/START.md
+
+# Node (тесты JS)
+node_modules/

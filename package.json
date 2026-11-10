@@ -1,8 +1,11 @@
 {
   "private": true,
   "type": "module",
-  "description": "Только для тестов JS в Node (npm test); на сайте сборки нет.",
+  "description": "Только для тестов JS в Node (npm test); на сайте сборки нет. PGlite — та же версия, что грузится с CDN в тренажёре SQL.",
   "scripts": {
     "test": "node --test tests/js/*.test.js"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.2.17"
   }
 }
