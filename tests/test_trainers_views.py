@@ -254,3 +254,27 @@ def test_linux_playground(client, loaded_content):
     ).group(1))
     assert setup['cwd'] == '/srv/shop' and '/srv/shop/.env' in setup['files']
     assert 'aria-current="page">Linux</a>' in html
+
+
+def test_linux_exercise_page(client, loaded_content):
+    """Задача в терминале: терминал и дерево, правила — для JS, эталон — в разборе."""
+    ExerciseFactory(
+        topic=Exercise.objects.get(slug='greeting').topic, slug='copy', type='exercise',
+        order=6,
+        spec={
+            'setup': {'cwd': '/srv/shop', 'files': {'/srv/shop/config/a.ini': 'x'}},
+            'check': {'type': 'state', 'expect': [
+                {'path': '/srv/shop/backup/config/a.ini', 'exists': True, 'fail': 'F'},
+            ]},
+            'solution': 'cp -r config backup/\n',
+            'hints': [],
+        },
+    )
+
+    html = client.get(exercise_url('copy')).content.decode()
+    data = exercise_data(html)
+
+    assert data['setup']['cwd'] == '/srv/shop' and 'solution' not in data
+    assert 'data-terminal-input' in html and 'data-file-tree' in html
+    assert 'js/pages/linux-exercise.js' in html and 'js/pages/exercise.js' not in html
+    assert 'Эталонное решение' in html and 'config' in html

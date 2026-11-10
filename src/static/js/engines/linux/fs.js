@@ -125,8 +125,11 @@ export class VirtualFS {
       if (spec.mtime !== undefined) result.mtime = Date.now() - Number(spec.mtime) * DAY;
       return result;
     };
-    for (const item of setup.dirs ?? []) {
-      const [path, spec] = typeof item === 'string' ? [item, {}] : Object.entries(item)[0];
+    // dirs — список (путь или {путь: настройки}) или словарь {путь: настройки}
+    const dirs = Array.isArray(setup.dirs)
+      ? setup.dirs.map((item) => (typeof item === 'string' ? [item, {}] : Object.entries(item)[0]))
+      : Object.entries(setup.dirs ?? {});
+    for (const [path, spec] of dirs) {
       const own = props(spec ?? {});
       // сама папка из setup — по умолчанию shop, промежуточные — как у родителя
       fs.mkdirAs(dirname(path));

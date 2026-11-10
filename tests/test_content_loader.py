@@ -254,3 +254,54 @@ def test_invalid_dom_rules_are_reported(content_dir, rules, message):
 
     with pytest.raises(ContentError, match=message):
         ContentLoader(content_dir).load()
+
+
+STATE_TASK = """title: Копия конфига
+type: exercise
+difficulty: 1
+pitfall: P
+statement: S
+explanation: E
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/config/a.ini: x
+  dirs: [/srv/shop/backup]
+check:
+  type: state
+  expect:
+%s
+solution: |
+  cp -r config backup/
+"""
+
+
+def test_state_exercise_is_loaded(content_dir):
+    """exercise с check.type: state — задача в терминале: setup, правила."""
+    rules = (
+        "    - path: /srv/shop/backup/config/a.ini\n      exists: true\n      fail: F\n"
+    )
+    task = content_dir / HELLO / '06-copy.yaml'
+    task.write_text(STATE_TASK % rules, encoding='utf-8')
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='copy').spec
+    assert spec['setup']['cwd'] == '/srv/shop'
+    assert spec['check']['expect'][0]['exists'] is True
+    assert spec['solution'] == 'cp -r config backup/\n'
+
+
+@pytest.mark.parametrize('rules, message', [
+    ('    - path: /a\n      exists: true\n      mode: "644"\n      fail: F\n',
+     'path \\+ одно из'),
+    ('    - path: /a\n      size: 1\n      fail: F\n', 'path \\+ одно из'),
+    ('    - output_matches: x\n      path: /a\n      fail: F\n',
+     'output_matches — только с fail'),
+    ('    - path: /a\n      exists: true\n', 'нужен словарь с fail'),
+])
+def test_invalid_state_rules_are_reported(content_dir, rules, message):
+    task = content_dir / HELLO / '06-copy.yaml'
+    task.write_text(STATE_TASK % rules, encoding='utf-8')
+
+    with pytest.raises(ContentError, match=message):
+        ContentLoader(content_dir).load()

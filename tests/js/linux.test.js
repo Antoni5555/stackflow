@@ -333,3 +333,45 @@ describe('терминал: Tab и сохранение', () => {
     assert.equal(run(copy, 'cat o').out, run(sh, 'cat orders.csv').out);
   });
 });
+
+describe('задачи: правила состояния', async () => {
+  const { firstFailedRule, verifyTask } = await import('../../src/static/js/engines/linux/checker.js');
+  const task = {
+    setup: {
+      cwd: '/srv/shop',
+      files: { '/srv/shop/config/settings.ini': 'DEBUG=False\n' },
+      dirs: { '/srv/shop/backup': {} },
+    },
+    rules: [
+      { path: '/srv/shop/backup/config/settings.ini', exists: true, fail: 'Нужен cp -r.' },
+      { path: '/srv/shop/config/settings.ini', exists: true, fail: 'Нужен cp, а не mv.' },
+    ],
+    solution: 'cp -r config backup/\n',
+  };
+
+  it('эталон проходит, setup — нет', () => {
+    assert.deepEqual(verifyTask(task), []);
+  });
+
+  it('ошибки эталона видны', () => {
+    assert.match(verifyTask({ ...task, solution: 'mv config backup/' }).join('\n'), /Нужен cp, а не mv/);
+    assert.match(verifyTask({ ...task, solution: 'cp config backup/' }).join('\n'), /кодом 1/);
+    assert.match(verifyTask({ ...task, rules: [task.rules[1]] }).join('\n'), /нечего решать/);
+  });
+
+  it('contains, mode, owner, link_to, output_matches', () => {
+    const sh = shell(SHOP);
+    run(sh, 'chmod 600 .env && echo "PORT=8000" >> .env && sudo chown www-data orders.csv');
+    run(sh, 'ln -s config/settings.ini current.ini && grep -c ERROR logs/app.log');
+    const ok = (rule) => firstFailedRule([{ fail: 'x', ...rule }], sh) === null;
+    assert.ok(ok({ path: '/srv/shop/.env', contains: '^PORT=8000$' }));
+    assert.ok(ok({ path: '/srv/shop/.env', mode: '600' }));
+    assert.ok(!ok({ path: '/srv/shop/.env', mode: '644' }));
+    assert.ok(ok({ path: '/srv/shop/orders.csv', owner: 'www-data' }));
+    assert.ok(ok({ path: '/srv/shop/current.ini', link_to: '/srv/shop/config/settings.ini' }));
+    assert.ok(!ok({ path: '/srv/shop/orders.csv', link_to: '/srv/shop/config/settings.ini' }));
+    assert.ok(ok({ output_matches: '^2$' }));
+    assert.ok(ok({ path: '/srv/shop/nope', exists: false }));
+    assert.ok(!ok({ path: '/srv/shop/nope', contains: 'x' }));
+  });
+});

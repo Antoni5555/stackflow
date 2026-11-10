@@ -1,0 +1,11 @@
+{% comment %} Задача в терминале (exercise, check.type: state): терминал над файлами из setup задачи,
+   дерево файлов, «Проверить» и «Сбросить» (js/pages/linux-exercise.js). Состояние не сохраняется:
+   после перезагрузки — снова setup. {% endcomment %}
+<div class="linux-task">
+  {% include 'trainers/components/_terminal.html' %}
+  <div class="toolbar toolbar--plain">
+    <button type="button" class="btn btn--ink" data-action="check">Проверить</button>
+    <button type="button" class="btn btn--ghost" data-action="reset">Сбросить</button>
+  </div>
+  {% include 'trainers/components/_file_tree.html' %}
+</div>

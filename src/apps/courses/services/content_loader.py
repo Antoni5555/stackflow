@@ -251,6 +251,10 @@ class ContentLoader:
 # Что нужно странице задачи каждого типа (кроме общих полей)
 # Задача на вёрстку — exercise с check.type: dom: файлы и правила по готовой странице
 DOM_FIELDS = (['files', 'check', 'solution'], [])
+# Задача в терминале — exercise с check.type: state: setup (файлы до начала), правила
+# по итоговому состоянию и solution — команды эталона по одной на строку
+STATE_FIELDS = (['setup', 'check', 'solution'], [])
+STATE_PATH_CHECKS = {'exists', 'contains', 'mode', 'owner', 'link_to'}
 DOM_CHECKS = {'count', 'min', 'exists', 'attr', 'text', 'style'}
 SPEC_FIELDS = {
     'exercise': (['starter_code', 'solution', 'check'], ['inputs']),
@@ -258,10 +262,6 @@ SPEC_FIELDS = {
     'quiz': (['kind', 'options', 'answer'], []),
     'fix': (['files', 'check', 'solution'], []),
 }
-
-
-def is_dom_check(check):
-    return isinstance(check, dict) and check.get('type') == 'dom'
 
 
 def validate_dom_rules(rules, path):
@@ -280,6 +280,31 @@ def validate_dom_rules(rules, path):
                 )
         elif not {'must_match', 'must_not_match'} & set(rule):
             raise ContentError(path, f'правило {number}: нужен selector или must_match')
+
+
+def validate_state(spec, path):
+    """Задача в терминале: форма setup и правил. Сами правила проверяет браузер
+    (js/engines/linux/checker.js), эталон прогоняет тест сайта через Node."""
+    setup = spec['setup']
+    if not isinstance(setup, dict) or set(setup) - {'cwd', 'files', 'dirs'}:
+        raise ContentError(path, 'setup — словарь с cwd, files, dirs (Git — позже)')
+    if not isinstance(setup.get('files', {}), dict):
+        raise ContentError(path, 'setup.files — словарь {путь: текст или настройки}')
+    if not isinstance(spec['solution'], str):
+        raise ContentError(path, 'solution — команды по одной на строку (текст)')
+    for number, rule in enumerate(spec['check']['expect'], start=1):
+        if not isinstance(rule, dict) or not rule.get('fail'):
+            raise ContentError(path, f'правило {number}: нужен словарь с fail')
+        checks = set(rule) - {'path', 'fail'}
+        if 'output_matches' in rule:
+            if checks != {'output_matches'} or 'path' in rule:
+                raise ContentError(
+                    path, f'правило {number}: output_matches — только с fail',
+                )
+        elif 'path' not in rule or len(checks) != 1 or not checks <= STATE_PATH_CHECKS:
+            raise ContentError(
+                path, f'правило {number}: path + одно из {sorted(STATE_PATH_CHECKS)}',
+            )
 
 
 PRACTICE_FIELDS = {'title', 'text', 'hint', 'answer'}
@@ -320,22 +345,33 @@ def exercise_spec(data, path):
     Код, тесты и правила сохраняются как есть; текст для показа
     (подсказки, варианты ответа) — сразу в HTML.
     """
-    is_dom = data['type'] == 'exercise' and is_dom_check(data.get('check'))
-    required, optional = DOM_FIELDS if is_dom else SPEC_FIELDS[data['type']]
+    check = data.get('check')
+    check_type = check.get('type') if isinstance(check, dict) else None
+    is_dom = data['type'] == 'exercise' and check_type == 'dom'
+    is_state = data['type'] == 'exercise' and check_type == 'state'
+    if is_dom:
+        required, optional = DOM_FIELDS
+    elif is_state:
+        required, optional = STATE_FIELDS
+    else:
+        required, optional = SPEC_FIELDS[data['type']]
     require(data, path, *required)
     spec = {key: data[key] for key in required + optional if key in data}
 
     check = spec.get('check')
     if check is not None:
         expected = {'exercise': 'tests', 'fix': 'rules'}[data['type']]
-        if is_dom:
-            expected = 'dom'
+        if is_dom or is_state:
+            expected = check_type
         if not isinstance(check, dict) or check.get('type') != expected:
             raise ContentError(path, f'check.type должен быть {expected}')
-        # у dom правила лежат в rules, как у fix
-        require(check, path, 'rules' if is_dom else expected)
+        # у dom правила лежат в rules, как у fix; у state — в expect
+        key = {'dom': 'rules', 'state': 'expect'}.get(expected, expected)
+        require(check, path, key)
     if is_dom:
         validate_dom_rules(check['rules'], path)
+    if is_state:
+        validate_state(spec, path)
 
     if data['type'] == 'quiz':
         if data['kind'] not in ('single', 'multiple', 'order'):

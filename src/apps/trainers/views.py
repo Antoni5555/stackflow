@@ -56,9 +56,12 @@ class ExerciseView(EngineMixin, TemplateView):
             context['inputs_html'] = highlight(spec['inputs'].rstrip('\n'), 'python')
         # dom — задача на вёрстку: файлы и правила по готовой странице, как у fix
         context['check_type'] = check_type = spec.get('check', {}).get('type')
-        if check_type == 'tests':
+        if check_type in ('tests', 'state'):
+            # state — задача в терминале: эталон — команды, подсветка как у bash
             solution = spec['solution'].rstrip('\n')
-            context['solution_html'] = highlight(solution, 'python')
+            context['solution_html'] = highlight(
+                solution, 'bash' if check_type == 'state' else 'python',
+            )
         if exercise.type == exercise.Type.FIX or check_type == 'dom':
             # исправленные файлы — в разборе; язык подсветки — по имени файла
             context['solution_files'] = [
@@ -69,7 +72,7 @@ class ExerciseView(EngineMixin, TemplateView):
         # Данные для JS: тип и всё, что нужно проверке. Подсказки и варианты quiz уже
         # в HTML страницы, эталон fix — в разборе
         hidden = {'hints', 'options'}
-        if exercise.type == exercise.Type.FIX or check_type == 'dom':
+        if exercise.type == exercise.Type.FIX or check_type in ('dom', 'state'):
             hidden.add('solution')
         context['exercise_data'] = {
             'type': exercise.type,
