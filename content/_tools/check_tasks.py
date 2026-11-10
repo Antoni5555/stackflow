@@ -433,6 +433,36 @@ def course_engine(path):
     return None
 
 
+def select_columns(sql):
+    """Элементы списка SELECT основного запроса (последней инструкции): первый SELECT вне скобок."""
+    sql = re.sub(r"--[^\n]*", "", sql)
+    sql = re.sub(r"'(?:[^']|'')*'", "''", sql)              # строки не мешают разбору
+    statement = [part for part in sql.split(";") if part.strip()][-1]
+    depth, start, items, current = 0, None, [], ""
+    for match in re.finditer(r"\(|\)|,|\bselect\b|\bfrom\b|\b(?:union|intersect|except)\b|[^(),\w]+|\w+", statement, re.I):
+        token = match.group()
+        if token == "(":
+            depth += 1
+        elif token == ")":
+            depth -= 1
+        if depth == 0 and start is None:
+            if token.lower() == "select":
+                start = True
+            continue
+        if start is None:
+            continue
+        if depth == 0 and re.fullmatch(r"from|union|intersect|except", token, re.I):
+            break
+        if depth == 0 and token == ",":
+            items.append(current.strip())
+            current = ""
+        else:
+            current += token
+    items.append(current.strip())
+    items[0] = re.sub(r"^distinct(\s+on\s*\(.*?\))?\s*", "", items[0], flags=re.I)
+    return [i for i in items if i]
+
+
 def check_sql(task):
     """Форма SQL-задачи. Сам эталон в PGlite прогоняет тест сайта."""
     problems = []
@@ -445,6 +475,17 @@ def check_sql(task):
         problems.append("в solution now()/current_date — ответ зависит от дня запуска; даты — строкой")
     if "setup" in task and not isinstance(task["setup"], str):
         problems.append("setup — SQL строкой (setup: |)")
+    if "starter_code" in task and not isinstance(task["starter_code"], str):
+        problems.append("starter_code — SQL строкой (starter_code: |)")
+    if check["type"] == "result" and (task.get("solution") or "").strip():
+        for item in select_columns(task["solution"]):
+            if re.fullmatch(r"(\w+\.)?(\w+|\*)", item):
+                continue                       # простая колонка: имя — её собственное
+            alias = re.search(r"\bas\s+(\w+|\"[^\"]+\")$", item, re.I)
+            if not alias:
+                problems.append(f"выражению в SELECT нужно имя через AS — иначе ученик не угадает колонку: {item!r}")
+            elif alias.group(1).strip('"') not in task.get("statement", ""):
+                problems.append(f"имя колонки {alias.group(1)!r} не названо в условии")
     if check["type"] == "result":
         if not isinstance(check.get("order_matters"), bool):
             problems.append("у result нужен order_matters: true/false")
