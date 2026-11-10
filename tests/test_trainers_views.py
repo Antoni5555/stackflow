@@ -239,3 +239,18 @@ def test_html_check_page_lists_dom_exercises(rf, loaded_content):
     layout = Exercise.objects.get(slug='layout')
     assert [item['title'] for item in data] == [layout.title]
     assert data[0]['solution'] == {'style.css': 'header { display: flex; }'}
+
+
+def test_linux_playground(client, loaded_content):
+    """Тренажёр Linux: терминал, дерево файлов и сервер по умолчанию для JS."""
+    url = reverse('trainers:playground') + '?engine=linux'
+    html = client.get(url).content.decode()
+
+    assert 'data-playground="linux"' in html and 'js/pages/playground-linux.js' in html
+    for part in ('data-terminal-input', 'data-file-tree', 'data-nano'):
+        assert part in html
+    setup = json.loads(re.search(
+        r'<script id="linux-setup" type="application/json">(.*?)</script>', html, re.S,
+    ).group(1))
+    assert setup['cwd'] == '/srv/shop' and '/srv/shop/.env' in setup['files']
+    assert 'aria-current="page">Linux</a>' in html

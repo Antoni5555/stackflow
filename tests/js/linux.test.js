@@ -313,3 +313,23 @@ describe('разбор строки', () => {
     assert.match(run(sh, 'history').out, /^\s+1  wc -l orders\.csv\n/);
   });
 });
+
+describe('терминал: Tab и сохранение', () => {
+  it('дополнение команд и путей', () => {
+    const sh = shell(SHOP);
+    assert.deepEqual(sh.complete('mkd'), { line: 'mkdir ', options: [] });
+    assert.deepEqual(sh.complete('cat con'), { line: 'cat config/', options: [] });
+    assert.deepEqual(sh.complete('cat config/se'), { line: 'cat config/settings.ini ', options: [] });
+    assert.deepEqual(sh.complete('ls '), { line: 'ls ', options: ['backup/', 'config/', 'logs/', 'orders.csv'] });
+    assert.deepEqual(sh.complete('ls .e'), { line: 'ls .env ', options: [] });
+    assert.deepEqual(sh.complete('c'), { line: 'c', options: ['cat', 'cd', 'chgrp', 'chmod', 'chown', 'clear', 'cp', 'cut'] });
+  });
+
+  it('ФС → JSON → ФС без потерь', () => {
+    const sh = shell(SHOP);
+    run(sh, 'chmod 600 .env && mkdir x && ln -s orders.csv o');
+    const copy = new Shell(VirtualFS.fromJSON(JSON.parse(JSON.stringify(sh.fs))), { cwd: '/srv/shop' });
+    assert.equal(run(copy, 'ls -la').out.replace(/\d\d:\d\d/g, ''), run(sh, 'ls -la').out.replace(/\d\d:\d\d/g, ''));
+    assert.equal(run(copy, 'cat o').out, run(sh, 'cat orders.csv').out);
+  });
+});

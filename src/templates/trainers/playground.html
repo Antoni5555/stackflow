@@ -3,7 +3,7 @@
 
 {% block title %}Тренажёр — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
-{% block scripts %}<script type="module" src="{% if engine == 'html' %}{% static 'js/pages/playground-html.js' %}{% else %}{% static 'js/pages/playground.js' %}{% endif %}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{% if engine == 'html' %}{% static 'js/pages/playground-html.js' %}{% elif engine == 'linux' %}{% static 'js/pages/playground-linux.js' %}{% else %}{% static 'js/pages/playground.js' %}{% endif %}"></script>{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -26,11 +26,13 @@
     <a href="?engine=html" class="tab{% if engine == 'html' %} tab--active{% endif %}"{% if engine == 'html' %} aria-current="page"{% endif %}>HTML и CSS</a>
     <span class="tab" aria-disabled="true">SQL <small class="muted">скоро</small></span>
     <span class="tab" aria-disabled="true">Django <small class="muted">скоро</small></span>
-    <span class="tab" aria-disabled="true">Linux <small class="muted">скоро</small></span>
+    <a href="?engine=linux" class="tab{% if engine == 'linux' %} tab--active{% endif %}"{% if engine == 'linux' %} aria-current="page"{% endif %}>Linux</a>
   </div>
 
   {% if engine == 'html' %}
     {% include 'trainers/components/_playground_html.html' %}
+  {% elif engine == 'linux' %}
+    {% include 'trainers/components/_playground_linux.html' %}
   {% else %}
     {% include 'trainers/components/_playground_python.html' %}
   {% endif %}

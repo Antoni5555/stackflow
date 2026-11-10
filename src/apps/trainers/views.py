@@ -116,12 +116,43 @@ PLAYGROUND_HTML = {
 }
 
 
+# Тренажёр Linux по умолчанию: сервер магазина (формат — как setup задач state)
+PLAYGROUND_LINUX = {
+    'cwd': '/srv/shop',
+    'files': {
+        '/srv/shop/manage.py': {'content': '#!/usr/bin/env python3\n', 'mode': '755'},
+        '/srv/shop/requirements.txt': 'Django==5.2\npsycopg==3.2\n',
+        '/srv/shop/.env': {
+            'content': 'DEBUG=False\nSECRET_KEY=change-me\n', 'mode': '600',
+        },
+        '/srv/shop/config/settings.ini': 'DEBUG=False\nALLOWED_HOSTS=stack-flow.ru\n',
+        '/srv/shop/logs/app.log': (
+            'INFO  start server\nINFO  GET /catalog/ 200\n'
+            'ERROR db connection lost\nINFO  GET /cart/ 200\n'
+            'ERROR timeout /api/orders/\n'
+        ),
+        '/srv/shop/data/orders.csv': (
+            'id,city,total\n1,Moscow,500\n2,Kazan,1200\n3,Moscow,90\n4,Omsk,750\n'
+        ),
+        '/srv/shop/media/photo.jpg': {'size': '3M'},
+        '/srv/shop/deploy.sh': '#!/bin/bash\necho "Деплой магазина: $1"\n',
+        '/etc/nginx/sites-available/shop.conf': {
+            'content': 'server {\n    listen 80;\n    server_name stack-flow.ru;\n}\n',
+            'owner': 'root',
+        },
+        '/var/log/nginx/access.log': {'size': '12M', 'owner': 'www-data', 'mtime': 9},
+        '/var/log/nginx/error.log': {'content': '', 'owner': 'www-data', 'mtime': 2},
+    },
+    'dirs': ['/srv/shop/backup', {'/etc/nginx/sites-enabled': {'owner': 'root'}}],
+}
+
+
 class PlaygroundView(EngineMixin, TemplateView):
-    """Тренажёр-песочница: свободный код без задач. Движок — ?engine= (python, html)."""
+    """Тренажёр-песочница без задач. Движок — ?engine=python, html или linux."""
 
     template_name = 'trainers/playground.html'
     extra_context = {'active_nav': 'playground'}
-    engines = ('python', 'html')
+    engines = ('python', 'html', 'linux')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -132,6 +163,8 @@ class PlaygroundView(EngineMixin, TemplateView):
         if engine == 'html':
             context['html_files'] = PLAYGROUND_HTML
             context['html_file_names'] = list(PLAYGROUND_HTML)
+        if engine == 'linux':
+            context['linux_setup'] = PLAYGROUND_LINUX
         course = context['course']
         if course:
             context['note'] = note_panel(self.request.user, course, None, course.slug)

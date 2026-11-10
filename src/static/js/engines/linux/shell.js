@@ -157,6 +157,61 @@ export class Shell {
     return `${this.user}@server:${where}${this.user === 'root' ? '#' : '$'} `;
   }
 
+  /**
+   * Дополнение по Tab: последнее слово строки — команда (если первое) или путь.
+   * Возвращает {line, options}: line — дополненная строка, options — варианты, если их несколько.
+   */
+  complete(line) {
+    const start = Math.max(line.lastIndexOf(' '), line.lastIndexOf('|'), line.lastIndexOf(';')) + 1;
+    const head = line.slice(0, start);
+    const word = line.slice(start);
+    const isCommand = !head.trim() || /(\||&&|;|sudo)\s*$/.test(head.trim());
+    let candidates;
+    let prefix = '';
+    if (isCommand && !word.includes('/')) {
+      candidates = Object.keys(COMMANDS).filter((name) => name.startsWith(word) && name !== '.')
+        .map((name) => [name, ' ']);
+    } else {
+      const slash = word.lastIndexOf('/');
+      prefix = word.slice(0, slash + 1);
+      const partial = word.slice(slash + 1);
+      const dir = prefix.replace(/^~(?=\/|$)/, this.env.HOME) || '.';
+      try {
+        candidates = this.fs.list(this.resolve(dir))
+          .filter(([name]) => name.startsWith(partial) && (partial.startsWith('.') || !name.startsWith('.')))
+          .map(([name, node]) => {
+            let isDir = node.type === 'dir';
+            if (node.type === 'link') {
+              try {
+                isDir = this.fs.lookup(this.resolve(`${dir}/${name}`)).type === 'dir';
+              } catch (e) {
+                isDir = false;
+              }
+            }
+            return [name, isDir ? '/' : ' '];
+          });
+      } catch (e) {
+        candidates = [];
+      }
+    }
+    candidates.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    if (candidates.length === 1) {
+      const [name, suffix] = candidates[0];
+      return { line: head + prefix + name + suffix, options: [] };
+    }
+    if (!candidates.length) return { line, options: [] };
+    // общее начало всех вариантов
+    let common = candidates[0][0];
+    for (const [name] of candidates) {
+      while (!name.startsWith(common)) common = common.slice(0, -1);
+    }
+    const typed = word.slice(prefix.length);
+    return {
+      line: head + prefix + (common.length > typed.length ? common : typed),
+      options: common.length > typed.length ? [] : candidates.map(([name, suffix]) => name + (suffix === '/' ? '/' : '')),
+    };
+  }
+
   /** Абсолютный путь от текущей папки. */
   resolve(path) {
     return normalize(path, this.cwd);

@@ -1,0 +1,15 @@
+{% comment %} Дерево файлов под терминалом — обновляется после каждой команды (js/engines/linux/file-tree.js).
+   Подсветка: создано / изменено / удалено последней командой. {% endcomment %}
+<div class="fs-card" data-file-tree>
+  <div class="db-table__name">Файловая система <span class="db-table__alias" data-tree-path></span></div>
+  <div class="fs-card__body">
+    <ul class="file-tree" data-tree></ul>
+    <ul class="file-tree file-tree--outside" data-tree-outside hidden></ul>
+    <div class="legend">
+      <span><i class="legend__swatch legend__swatch--added"></i>создано</span>
+      <span><i class="legend__swatch legend__swatch--changed"></i>изменено</span>
+      <span><i class="legend__swatch legend__swatch--removed"></i>удалено</span>
+    </div>
+    <p class="muted small">Справа от имени — владелец и права, если они не обычные (у файла 644, у папки 755).</p>
+  </div>
+</div>

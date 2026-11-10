@@ -415,6 +415,31 @@ export class VirtualFS {
     return { added, changed, removed };
   }
 
+  // --- сохранение в браузере (тренажёр): дерево ↔ JSON ---
+
+  /** ФС → обычный объект для JSON. Жёсткие ссылки после загрузки станут копиями. */
+  toJSON() {
+    const pack = (node) => {
+      const { children, ...rest } = node;
+      if (node.type !== 'dir') return rest;
+      return { ...rest, children: Object.fromEntries([...children].map(([name, child]) => [name, pack(child)])) };
+    };
+    return { root: pack(this.root) };
+  }
+
+  static fromJSON(data) {
+    const fs = new VirtualFS();
+    const unpack = (raw) => {
+      const node = { ...raw, nlink: 1 };
+      if (raw.type === 'dir') {
+        node.children = new Map(Object.entries(raw.children).map(([name, child]) => [name, unpack(child)]));
+      }
+      return node;
+    };
+    fs.root = unpack(data.root);
+    return fs;
+  }
+
   /** Выполнить fn от имени другого пользователя (sudo). */
   as(user, fn) {
     const previous = this.user;

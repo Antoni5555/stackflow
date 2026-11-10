@@ -1,0 +1,29 @@
+{% comment %} Терминал Linux-симулятора: вывод, строка ввода и nano на её месте (js/engines/linux/terminal.js).
+   Тёмный в обеих темах, как настоящий терминал. {% endcomment %}
+<div class="terminal" data-terminal>
+  <div class="terminal__bar"><span></span><span></span><span></span><em data-terminal-title>shop@server: ~</em></div>
+  <div class="terminal__body" data-terminal-body>
+    <div class="terminal__output" data-terminal-output aria-live="polite"></div>
+    <label class="terminal__line" data-terminal-line>
+      <span class="terminal__prompt" data-terminal-prompt>shop@server:~$</span>
+      <input class="terminal__input" data-terminal-input type="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Команда терминала">
+    </label>
+    <div class="nano" data-nano hidden>
+      <div class="nano__head"><span>GNU nano 7.2</span><span data-nano-name></span><span></span></div>
+      <div class="editor">
+        <div class="editor__gutter" aria-hidden="true"></div>
+        <textarea class="editor__code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Текст файла"></textarea>
+      </div>
+      <div class="nano__status" data-nano-status></div>
+      <div class="nano__keys" data-nano-keys>
+        <button type="button" data-nano-save><kbd>^O</kbd> Сохранить</button>
+        <button type="button" data-nano-exit><kbd>^X</kbd> Выйти</button>
+      </div>
+      <div class="nano__keys" data-nano-question hidden>
+        <button type="button" data-nano-answer="y"><kbd>Y</kbd> Да</button>
+        <button type="button" data-nano-answer="n"><kbd>N</kbd> Нет</button>
+        <button type="button" data-nano-answer="cancel"><kbd>Esc</kbd> Отмена</button>
+      </div>
+    </div>
+  </div>
+</div>

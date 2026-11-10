@@ -1,0 +1,12 @@
+{% comment %} Тренажёр Linux: терминал + дерево файлов сервера магазина. Состояние — в localStorage,
+   «Начать заново» возвращает сервер по умолчанию (PLAYGROUND_LINUX во views.py). {% endcomment %}
+<div class="playground">
+  <div class="course-main" data-playground="linux">
+    {% include 'trainers/components/_terminal.html' %}
+    {% include 'trainers/components/_file_tree.html' %}
+  </div>
+  {% if course %}
+    {% include 'common/_side_panel.html' with flat=True note_open=True %}
+  {% endif %}
+</div>
+{{ linux_setup|json_script:'linux-setup' }}
