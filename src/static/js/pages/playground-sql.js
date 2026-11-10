@@ -10,13 +10,6 @@ import { SchemaStrip, mentionedTables, runStep } from '../engines/sql/view.js';
 import { highlightSql } from '../highlight.js';
 import { drafts, showAlert, hideAlert, showEngineStatus } from '../trainer-ui.js';
 
-const STATUS = {
-  loading: '<span class="spinner spinner--sm" aria-hidden="true"></span>Загружаем PostgreSQL… первый раз ~3 МБ, дальше из кэша',
-  ready: '<span class="dot dot--ok" aria-hidden="true"></span>PostgreSQL 16 · база «магазин»',
-  busy: '<span class="spinner spinner--sm" aria-hidden="true"></span>Выполняется…',
-  failed: 'Не удалось загрузить PostgreSQL — проверьте интернет и обновите страницу',
-};
-
 const DRAFT_KEY = 'playground:sql';
 const DATA_DIR = 'idb://stackflow-playground-sql';
 
@@ -40,7 +33,7 @@ const engine = new SqlEngine(
     base: JSON.parse(document.getElementById('sql-dataset').textContent),
     dataDir: DATA_DIR,
   },
-  (state) => showEngineStatus(root.querySelector('[data-engine-status]'), Object.values(buttons), state, STATUS),
+  (state) => showEngineStatus(root.querySelector('[data-engine-status]'), Object.values(buttons), state, 'sql'),
 );
 
 let stepping = null;      // { statements, index, text } — пошаговый режим

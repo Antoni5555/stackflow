@@ -1,16 +1,33 @@
 // Общие куски интерфейса тренажёров: статус движка, консоль вывода, сообщения, черновики.
 
-const STATUS = {
-  loading: '<span class="spinner spinner--sm" aria-hidden="true"></span>Загружаем Python… первый раз ~13 МБ, дальше из кэша',
-  ready: '<span class="dot dot--ok" aria-hidden="true"></span>Python готов',
-  busy: '<span class="spinner spinner--sm" aria-hidden="true"></span>Выполняется…',
-  failed: 'Не удалось загрузить Python — проверьте интернет и обновите страницу',
-};
+const SPINNER = '<span class="spinner spinner--sm" aria-hidden="true"></span>';
 
-/** Показать состояние движка и (раз)блокировать кнопки, которым нужен движок.
- * texts — свои подписи состояний (у SQL — про PostgreSQL), по умолчанию про Python. */
-export function showEngineStatus(badge, buttons, state, texts = STATUS) {
-  badge.innerHTML = texts[state];
+// Подписи состояния движка. starting — когда файлы движка уже в кэше браузера:
+// при каждом открытии страницы движок запускается заново, но ничего не скачивается
+const STATUS = {
+  python: {
+    loading: `${SPINNER}Загружаем Python… первый раз ~13 МБ, дальше из кэша`,
+    starting: `${SPINNER}Запускаем Python…`,
+    ready: '<span class="dot dot--ok" aria-hidden="true"></span>Python готов',
+    failed: 'Не удалось загрузить Python — проверьте интернет и обновите страницу',
+  },
+  sql: {
+    loading: `${SPINNER}Загружаем PostgreSQL… первый раз ~3 МБ, дальше из кэша`,
+    starting: `${SPINNER}Запускаем PostgreSQL…`,
+    ready: '<span class="dot dot--ok" aria-hidden="true"></span>PostgreSQL 16 · база «магазин»',
+    failed: 'Не удалось загрузить PostgreSQL — проверьте интернет и обновите страницу',
+  },
+};
+const BUSY = `${SPINNER}Выполняется…`;
+
+/** Показать состояние движка (python | sql) и (раз)блокировать кнопки, которым он нужен.
+ * После первой удачной загрузки браузер это запоминает: дальше — «Запускаем…». */
+export function showEngineStatus(badge, buttons, state, engine = 'python') {
+  const loadedKey = `engine-loaded:${engine}`;
+  const texts = STATUS[engine];
+  if (state === 'ready') drafts.set(loadedKey, '1');
+  const loading = drafts.get(loadedKey) ? texts.starting : texts.loading;
+  badge.innerHTML = state === 'busy' ? BUSY : state === 'loading' ? loading : texts[state];
   for (const button of buttons) button.disabled = state !== 'ready';
 }
 

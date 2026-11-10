@@ -9,13 +9,6 @@ import { highlightSql } from '../highlight.js';
 import { solved } from '../task-ui.js';
 import { drafts, escapeHtml, hideAlert, showAlert, showEngineStatus } from '../trainer-ui.js';
 
-const STATUS = {
-  loading: '<span class="spinner spinner--sm" aria-hidden="true"></span>Загружаем PostgreSQL… первый раз ~3 МБ, дальше из кэша',
-  ready: '<span class="dot dot--ok" aria-hidden="true"></span>PostgreSQL 16 · база «магазин»',
-  busy: '<span class="spinner spinner--sm" aria-hidden="true"></span>Выполняется…',
-  failed: 'Не удалось загрузить PostgreSQL — проверьте интернет и обновите страницу',
-};
-
 const root = document.querySelector('[data-exercise]');
 const exercise = JSON.parse(document.getElementById('exercise-data').textContent);
 const alertEl = root.querySelector('[data-alert]');
@@ -33,7 +26,7 @@ const engine = new SqlEngine(
     pglite: root.dataset.pglite,
     base: JSON.parse(document.getElementById('sql-dataset').textContent),
   },
-  (state) => showEngineStatus(root.querySelector('[data-engine-status]'), [runButton, checkButton], state, STATUS),
+  (state) => showEngineStatus(root.querySelector('[data-engine-status]'), [runButton, checkButton], state, 'sql'),
 );
 
 const draftKey = `draft:${root.dataset.exercise}`;
