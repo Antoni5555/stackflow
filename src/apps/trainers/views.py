@@ -9,7 +9,7 @@ from django.views.generic import TemplateView
 from apps.courses.services import selectors
 from apps.cheatsheets.services.notes import note_panel
 from apps.progress.services import progress
-from apps.courses.services.rendering import highlight
+from apps.courses.services.rendering import highlight, highlight_file
 
 
 class EngineMixin:
@@ -57,11 +57,21 @@ class ExerciseView(EngineMixin, TemplateView):
         if exercise.type == exercise.Type.EXERCISE:
             solution = spec['solution'].rstrip('\n')
             context['solution_html'] = highlight(solution, 'python')
+        if exercise.type == exercise.Type.FIX:
+            # исправленные файлы — в разборе; язык подсветки — по имени файла
+            context['solution_files'] = [
+                (name, highlight_file(spec['solution'][name].rstrip('\n'), name))
+                for name in spec['file_names'] if name in spec['solution']
+            ]
 
-        # Данные для JS: тип и всё, что нужно проверке (подсказки уже в HTML страницы)
+        # Данные для JS: тип и всё, что нужно проверке. Подсказки и варианты quiz уже
+        # в HTML страницы, эталон fix — в разборе
+        hidden = {'hints', 'options'}
+        if exercise.type == exercise.Type.FIX:
+            hidden.add('solution')
         context['exercise_data'] = {
             'type': exercise.type,
-            **{key: value for key, value in exercise.spec.items() if key != 'hints'},
+            **{key: value for key, value in spec.items() if key not in hidden},
         }
         return context
 

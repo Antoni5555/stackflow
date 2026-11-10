@@ -189,3 +189,16 @@ def test_invalid_practice_is_reported(content_dir, text, message):
 
     with pytest.raises(ContentError, match=message):
         ContentLoader(content_dir).load()
+
+
+def test_fix_keeps_file_order(content_dir):
+    """Порядок файлов fix — как в YAML (JSONB в Postgres сортирует ключи)."""
+    path = content_dir / HELLO / '05-fix-conf.yaml'
+    text = path.read_text(encoding='utf-8').replace(
+        'files:\n', 'files:\n  zz.conf: |\n    a\n', 1,
+    )
+    path.write_text(text, encoding='utf-8')
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='fix-conf').spec
+    assert spec['file_names'] == ['zz.conf', 'nginx.conf']

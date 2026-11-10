@@ -8,4 +8,10 @@
     <pre>{{ solution_html|safe }}</pre>
   </div>
   {% endif %}
+  {% for name, code_html in solution_files %}
+  <div class="code-block">
+    <div class="code-block__head"><span>Исправленный {{ name }}</span></div>
+    <pre>{{ code_html|safe }}</pre>
+  </div>
+  {% endfor %}
 </details>

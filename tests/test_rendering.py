@@ -2,7 +2,7 @@
 import pytest
 
 from apps.courses.services.rendering import (
-    highlight, inline_svg, render_inline, render_markdown,
+    highlight, highlight_file, inline_svg, render_inline, render_markdown,
 )
 
 
@@ -91,3 +91,9 @@ def test_inline_svg_keeps_other_ids_apart(tmp_path):
 
 def test_render_inline_has_no_paragraph():
     assert render_inline('Используйте `print`.') == 'Используйте <code>print</code>.'
+
+
+def test_highlight_file_by_name():
+    """Язык подсветки — по имени файла; неизвестный — просто экранированный текст."""
+    assert '<span class=' in highlight_file('server { listen 80; }', 'nginx.conf')
+    assert highlight_file('A=<b>', '.env') == 'A=&lt;b&gt;'

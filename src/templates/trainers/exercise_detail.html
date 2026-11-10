@@ -3,7 +3,10 @@
 
 {% block title %}{{ exercise.title }} — {{ course.title }} — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/courses.css' %}"><link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
-{% block scripts %}<script type="module" src="{% static 'js/pages/exercise.js' %}"></script>{% endblock %}
+{# Python (exercise, predict) грузится только там, где он нужен; quiz и fix проверяются без движка #}
+{% block scripts %}{% if exercise.type == 'quiz' %}<script type="module" src="{% static 'js/pages/quiz.js' %}"></script>
+{% elif exercise.type == 'fix' %}<script type="module" src="{% static 'js/pages/fix.js' %}"></script>
+{% else %}<script type="module" src="{% static 'js/pages/exercise.js' %}"></script>{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -19,8 +22,10 @@
         {% include 'trainers/components/_workspace.html' %}
       {% elif exercise.type == 'predict' %}
         {% include 'trainers/components/_predict.html' %}
+      {% elif exercise.type == 'quiz' %}
+        {% include 'trainers/components/_quiz.html' %}
       {% else %}
-        {% include 'common/_coming_soon.html' with text='Задачи этого типа появятся вместе с курсами без тренажёра.' %}
+        {% include 'trainers/components/_fix.html' %}
       {% endif %}
       <div class="alert" data-alert hidden></div>
       {% include 'trainers/components/_result_panel.html' %}

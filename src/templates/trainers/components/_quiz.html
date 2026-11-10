@@ -1,0 +1,35 @@
+{% comment %} Задача quiz: single — один ответ (radio), multiple — несколько (checkbox),
+   order — расставить по порядку кнопками ↑ ↓ (варианты перемешивает js/pages/quiz.js).
+   Проверка — в браузере по exercise-data. {% endcomment %}
+{% with kind=exercise.spec.kind options=exercise.spec.options %}
+<div class="workspace quiz" data-quiz="{{ kind }}">
+  <p class="small muted">{% if kind == 'single' %}Выберите один ответ.{% elif kind == 'multiple' %}Отметьте все верные ответы.{% else %}Расставьте по порядку кнопками ↑ ↓.{% endif %}</p>
+  {% if kind == 'order' %}
+  <ol class="quiz__list" data-quiz-list>
+    {% for option in options %}
+    <li class="quiz__option" data-index="{{ forloop.counter0 }}">
+      <span class="quiz__num" aria-hidden="true"></span>
+      <span class="quiz__text">{{ option|safe }}</span>
+      <span class="quiz__move">
+        <button type="button" class="round-btn round-btn--sm" data-move="-1" aria-label="Выше"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 12V2M3 6l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" class="round-btn round-btn--sm" data-move="1" aria-label="Ниже"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2v10M3 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <fieldset class="quiz__list">
+    <legend class="visually-hidden">Варианты ответа</legend>
+    {% for option in options %}
+    <label class="quiz__option">
+      <input type="{% if kind == 'single' %}radio{% else %}checkbox{% endif %}" name="quiz" value="{{ forloop.counter0 }}">
+      <span class="quiz__text">{{ option|safe }}</span>
+    </label>
+    {% endfor %}
+  </fieldset>
+  {% endif %}
+  <div class="toolbar">
+    <button type="button" class="btn btn--ink" data-action="check">Проверить</button>
+  </div>
+</div>
+{% endwith %}

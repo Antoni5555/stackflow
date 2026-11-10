@@ -77,10 +77,45 @@ def test_predict_page(client, loaded_content):
     }
 
 
-def test_quiz_page_is_placeholder_for_now(client, loaded_content):
+def test_quiz_page(client, loaded_content):
+    """quiz: варианты — в HTML, ответ — в данных для JS; Python не грузится."""
     html = client.get(exercise_url('pick')).content.decode()
 
-    assert 'Задачи этого типа появятся' in html
+    assert 'data-quiz="single"' in html
+    assert html.count('type="radio" name="quiz"') == 2
+    assert '<code>409</code> Conflict' in html          # вариант — Markdown в HTML
+    assert exercise_data(html) == {'type': 'quiz', 'kind': 'single', 'answer': [1]}
+    assert 'js/pages/quiz.js' in html and 'js/pages/exercise.js' not in html
+
+
+@pytest.mark.parametrize('kind, control', [
+    ('multiple', 'type="checkbox" name="quiz"'),
+    ('order', 'data-move="-1"'),
+])
+def test_quiz_kinds(client, loaded_content, kind, control):
+    exercise = Exercise.objects.get(slug='pick')
+    exercise.spec = {**exercise.spec, 'kind': kind, 'answer': [1, 0]}
+    exercise.save()
+
+    html = client.get(exercise_url('pick')).content.decode()
+
+    assert f'data-quiz="{kind}"' in html and html.count(control) == 2
+
+
+def test_fix_page(client, loaded_content):
+    """fix: файлы и правила — в данных для JS, эталон — только в разборе."""
+    html = client.get(exercise_url('fix-conf')).content.decode()
+    data = exercise_data(html)
+
+    assert data['type'] == 'fix'
+    assert data['files'] == {'nginx.conf': 'server {}\n'}
+    assert data['file_names'] == ['nginx.conf']
+    assert data['check']['rules'][0]['fail'] == 'Нужна директива client_max_body_size.'
+    assert 'solution' not in data
+    assert 'Исправленный nginx.conf' in html and 'client_max_body_size' in html
+    # один файл — без вкладок
+    assert '<span class="tab tab--static">nginx.conf</span>' in html
+    assert 'js/pages/fix.js' in html and 'js/pages/exercise.js' not in html
 
 
 def test_unknown_or_hidden_exercise_404(client, loaded_content):

@@ -311,5 +311,9 @@ def exercise_spec(data, path):
             raise ContentError(path, 'kind — single, multiple или order')
         spec['options'] = [render_inline(str(option)) for option in data['options']]
 
+    if data['type'] == 'fix':
+        # JSONB в Postgres переставляет ключи — порядок файлов из YAML храним отдельно
+        spec['file_names'] = list(data['files'])
+
     spec['hints'] = [render_inline(str(hint)) for hint in data.get('hints') or []]
     return spec

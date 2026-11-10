@@ -368,3 +368,27 @@ textarea.editor__code {
 .practice__reveal[open] { border-color: var(--text); }
 .practice__reveal summary { font-size: var(--fs-sm); font-weight: var(--fw-bold); cursor: pointer; }
 .practice__reveal > .practice__text { margin-top: var(--space-2); }
+
+/* --- Задача quiz (trainers/components/_quiz.html) --- */
+.quiz { display: grid; gap: var(--space-3); padding: var(--space-5); }
+.quiz .toolbar { padding: 0; border: 0; }
+.quiz__list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; border: 0; counter-reset: quiz; }
+.quiz__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.quiz__option:hover,
+.quiz__option:has(input:checked) { border-color: var(--text); }
+.quiz__option input { flex-shrink: 0; width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.quiz__text { flex: 1; }
+li.quiz__option { cursor: default; counter-increment: quiz; }
+.quiz__num::before { content: counter(quiz); font-family: var(--font-code); font-size: var(--fs-sm); color: var(--muted); }
+.quiz__move { display: flex; gap: var(--space-1); }
+.quiz__move .round-btn { color: inherit; background: transparent; }
+.quiz__move .round-btn:disabled { opacity: 0.35; cursor: default; }

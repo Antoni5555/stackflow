@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 from markdown_it import MarkdownIt
-from pygments.lexers import get_lexer_by_name
+from pygments.lexers import get_lexer_by_name, get_lexer_for_filename
 from pygments.token import Comment, Keyword, Name, Number, Operator, String
 from pygments.util import ClassNotFound
 
@@ -44,7 +44,19 @@ def highlight(code, lang):
         lexer = get_lexer_by_name(lang, stripnl=False, ensurenl=False)
     except ClassNotFound:
         return html.escape(code)
+    return highlight_tokens(code, lexer)
 
+
+def highlight_file(code, filename):
+    """Как highlight, но язык — по имени файла (nginx.conf, Dockerfile, app.py)."""
+    try:
+        lexer = get_lexer_for_filename(filename, stripnl=False, ensurenl=False)
+    except ClassNotFound:
+        return html.escape(code)
+    return highlight_tokens(code, lexer)
+
+
+def highlight_tokens(code, lexer):
     # Соседние токены одного класса склеиваем: строка "M" — один <span>, а не три
     groups = []
     for token_type, value in lexer.get_tokens(code):

@@ -1,0 +1,18 @@
+{% comment %} Задача fix: исправить файлы. Несколько файлов — вкладки; текст файлов, черновики
+   и проверку правилами (регулярные выражения) ведёт js/pages/fix.js. {% endcomment %}
+<div class="workspace">
+  <div class="tabs" role="tablist">
+    {% for name in exercise.spec.file_names %}
+      {% if exercise.spec.file_names|length == 1 %}<span class="tab tab--static">{{ name }}</span>
+      {% else %}<button type="button" class="tab tab--static{% if forloop.first %} tab--active{% endif %}" role="tab" data-file="{{ name }}">{{ name }}</button>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="editor">
+    <div class="editor__gutter" aria-hidden="true"></div>
+    <textarea class="editor__code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Текст файла"></textarea>
+  </div>
+  <div class="toolbar">
+    <button type="button" class="btn btn--ink" data-action="check">Проверить <kbd>Ctrl ↵</kbd></button>
+    <button type="button" class="btn btn--ghost" data-action="reset">Сбросить</button>
+  </div>
+</div>
