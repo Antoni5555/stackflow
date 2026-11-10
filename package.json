@@ -1,8 +1,8 @@
 {
   "private": true,
   "type": "module",
-  "description": "Только для тестов JS в Node (node --test tests/js/); на сайте сборки нет.",
+  "description": "Только для тестов JS в Node (npm test); на сайте сборки нет.",
   "scripts": {
-    "test": "node --test tests/js/"
+    "test": "node --test tests/js/*.test.js"
   }
 }

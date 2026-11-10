@@ -1,5 +1,5 @@
 // Linux-симулятор (src/static/js/engines/linux/): команды, права, конвейеры, скрипты.
-// Запуск: node --test tests/js/
+// Запуск: node --test tests/js/*.test.js
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
