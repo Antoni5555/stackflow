@@ -237,15 +237,23 @@ LINUX_COMMANDS = {
     "gzip": None, "gunzip": None,
 }
 GIT_COMMANDS = {
-    "init": None, "status": None, "add": None, "commit": {"-m"}, "log": {"--oneline", "--graph"},
-    "branch": None, "switch": {"-c"}, "merge": None, "rebase": None, "reset": {"--soft", "--hard"},
-    "restore": {"--staged"}, "stash": None, "diff": None, "cherry-pick": None, "revert": None, "tag": None,
+    "init": None, "config": {"--global", "--list"}, "status": None, "add": {"-A"}, "rm": {"--cached", "-r"},
+    "commit": {"-m", "--amend", "--no-edit"}, "log": {"--oneline", "--graph", "--all", "-n", "-S", "--grep"},
+    "diff": {"--staged"}, "restore": {"--staged"}, "branch": {"-d", "-D", "-a"}, "switch": {"-c"},
+    "checkout": None, "merge": {"--abort", "--no-ff"}, "reset": {"--soft", "--mixed", "--hard"}, "revert": None,
+    "cherry-pick": None, "tag": None, "stash": None, "reflog": None, "blame": None,
+    "rebase": {"--continue", "--abort"}, "remote": {"-v"}, "push": {"-u"}, "clone": None, "fetch": None,
+    "pull": {"--no-rebase", "--rebase"},
 }
+GIT_SUBCOMMANDS = {"stash": {"push", "list", "pop", "apply", "drop"}, "remote": {"add"}}
+PIP_COMMANDS = {"install": {"-r"}, "freeze": None, "uninstall": {"-y"}, "list": None}
 STATE_RULES = {  # ключ, по которому узнаём правило → какие ещё ключи обязательны
     "exists": {"path"}, "contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "link_to": {"path"},
     "output_matches": set(),
-    "head": set(), "commit_in": set(), "clean": set(), "merged": set(),
+    "head": set(), "commit_in": set(), "commit_count": set(), "clean": set(), "merged": set(),
+    "pushed": set(), "config": set(), "stash_count": set(), "pip_package": set(),
 }
+GIT_SUBJECTS = ("branch", "tag", "tracked", "staged")  # «есть», с exists: false — «нет»
 
 
 def check_command(line):
@@ -269,28 +277,50 @@ def check_command(line):
                 problems.append(f"команды git {tokens[1] if len(tokens) > 1 else ''!s} нет в симуляторе: {line!r}")
                 continue
             allowed, flags = GIT_COMMANDS[tokens[1]], tokens[2:]
-            if tokens[1] == "stash" and flags[:1] == ["pop"]:
-                flags = flags[1:]
+            sub = next((t for t in flags if not t.startswith("-")), None)
+            if tokens[1] in GIT_SUBCOMMANDS and sub and sub not in GIT_SUBCOMMANDS[tokens[1]]:
+                problems.append(f"git {tokens[1]} {sub} нет в симуляторе: {line!r}")
+            if tokens[1] == "commit" and "-m" not in flags and "--no-edit" not in flags:
+                problems.append(f"редактора в симуляторе нет — commit с -m или --amend --no-edit: {line!r}")
+            if tokens[1] == "rebase" and "-i" in flags:
+                problems.append(f"rebase -i симулятор не поддерживает: {line!r}")
+                continue
+        elif tokens[0] == "pip":
+            if len(tokens) < 2 or tokens[1] not in PIP_COMMANDS:
+                problems.append(f"команды pip {tokens[1] if len(tokens) > 1 else ''!s} нет в симуляторе: {line!r}")
+                continue
+            allowed, flags = PIP_COMMANDS[tokens[1]], tokens[2:]
+        elif tokens[0] == "python3":
+            if tokens[1:3] != ["-m", "venv"] or len(tokens) != 4:
+                problems.append(f"Python в симуляторе не выполняется — только python3 -m venv <папка>: {line!r}")
+            continue
+        elif tokens[0] in ("source", "deactivate"):
+            continue
+        elif tokens[0] == "apt":
+            if tokens[1:2] != ["install"]:
+                problems.append(f"из apt в симуляторе только sudo apt install: {line!r}")
+            continue
         elif tokens[0] in LINUX_COMMANDS:
             allowed, flags = LINUX_COMMANDS[tokens[0]], tokens[1:]
         else:
             problems.append(f"команды {tokens[0]!r} нет в симуляторе: {line!r}")
             continue
         for flag in (t for t in flags if t.startswith("-") and not re.fullmatch(r"[-+]?\d+[KMG]?", t)):
+            flag = flag.split("=")[0]           # --grep=текст
             letters = [flag] if flag.startswith("--") or len(flag) == 2 else [f"-{c}" for c in flag[1:]]
             if flag in (allowed or set()):
                 continue
-            if any(flag.startswith(v) and v in (allowed or set()) for v in ("-n", "-d", "-f")):
-                continue                        # значение слитно с флагом: -n20, -d, -f1
+            if any(flag.startswith(v) and v in (allowed or set()) for v in ("-n", "-d", "-f", "-S", "-m")):
+                continue                        # значение слитно с флагом: -n20, -d, -f1, -Sdiscount
             if any(f not in (allowed or set()) for f in letters):
-                problems.append(f"флаг {flag} у {tokens[0] if tokens[0] != 'git' else 'git ' + tokens[1]} не поддерживается симулятором: {line!r}")
+                problems.append(f"флаг {flag} у {' '.join(tokens[:2]) if tokens[0] in ('git', 'pip') else tokens[0]} не поддерживается симулятором: {line!r}")
     return problems
 
 
 def check_state(task):
     problems = []
     setup, rules = task.get("setup") or {}, (task.get("check") or {}).get("expect") or []
-    unknown = set(setup) - {"cwd", "files", "dirs", "commits", "branch", "head"}
+    unknown = set(setup) - {"cwd", "files", "dirs", "repo", "commits", "head", "remote", "venv", "gitconfig"}
     if unknown:
         problems.append(f"неизвестные ключи setup: {sorted(unknown)}")
     if "cwd" in setup and not str(setup["cwd"]).startswith("/"):
@@ -327,23 +357,50 @@ def check_state(task):
                 problems.append(f"mode файла {path} — три цифры строкой")
         elif not isinstance(value, str):
             problems.append(f"файл {path}: текст или словарь content/size, owner, mode")
-    for commit in setup.get("commits") or []:
+    remote = setup.get("remote")
+    if remote is not None and (not isinstance(remote, dict) or set(remote) - {"url", "commits", "pushed"}):
+        problems.append("setup.remote — словарь с url, commits, pushed")
+    for commit in (setup.get("commits") or []) + ((remote or {}).get("commits") or [] if isinstance(remote, dict) else []):
         if not isinstance(commit, dict) or "message" not in commit:
             problems.append(f"у коммита в setup нужен message: {commit!r}")
+        elif set(commit) - {"message", "branch", "from", "files"}:
+            problems.append(f"у коммита неизвестные ключи: {sorted(set(commit) - {'message', 'branch', 'from', 'files'})}")
+        else:
+            for path, text in (commit.get("files") or {}).items():
+                if str(path).startswith("/"):
+                    problems.append(f"путь в коммите — от корня репозитория, не абсолютный: {path!r}")
+                if text is not None and not isinstance(text, str):
+                    problems.append(f"файл {path} в коммите: текст или null (удалён)")
+    gitconfig = setup.get("gitconfig", {})
+    if gitconfig is not None and not isinstance(gitconfig, dict):
+        problems.append("setup.gitconfig — словарь {user.name: …, user.email: …} или null")
+    venv = setup.get("venv")
+    if venv is not None and (not isinstance(venv, dict) or set(venv) - {"path", "packages"}):
+        problems.append("setup.venv — словарь с path и packages")
     if not rules:
         problems.append("нет правил check.expect")
     for rule in rules:
-        kinds = [k for k in STATE_RULES if k in rule]
-        if "branch" in rule and "exists" in rule and "path" not in rule:
-            kinds = ["exists"]
+        kinds = [k for k in STATE_RULES if k in rule] + [k for k in GIT_SUBJECTS if k in rule]
+        if "exists" in kinds and set(kinds) & set(GIT_SUBJECTS):
+            kinds.remove("exists")
+            if not isinstance(rule["exists"], bool):
+                problems.append(f"exists — true или false: {rule}")
         if len(kinds) != 1:
             problems.append(f"в правиле должен быть ровно один вид проверки: {rule}")
             continue
         kind = kinds[0]
         if "fail" not in rule:
             problems.append(f"у правила нет fail: {rule}")
-        if kind == "exists" and "path" not in rule and "branch" not in rule:
-            problems.append(f"exists проверяет path или branch: {rule}")
+        if kind == "exists" and "path" not in rule:
+            problems.append(f"exists проверяет path, branch, tag, tracked или staged: {rule}")
+        if kind in ("tracked", "staged") and str(rule[kind]).startswith("/"):
+            problems.append(f"{kind} — путь от корня репозитория: {rule}")
+        if kind == "commit_count" and not {"branch", "count"} <= set(rule["commit_count"] or {}):
+            problems.append(f"commit_count требует branch и count: {rule}")
+        if kind == "config" and not {"key", "value"} <= set(rule["config"] or {}):
+            problems.append(f"config требует key и value: {rule}")
+        if kind == "pip_package" and "name" not in (rule["pip_package"] or {}):
+            problems.append(f"pip_package требует name: {rule}")
         if kind in ("contains", "mode") and "path" not in rule:
             problems.append(f"{kind} требует path: {rule}")
         if kind == "mode" and not (isinstance(rule["mode"], str) and re.fullmatch(r"[0-7]{3}", rule["mode"])):
@@ -352,7 +409,8 @@ def check_state(task):
             problems.append(f"commit_in требует branch и message: {rule}")
         if kind == "merged" and not {"from", "into"} <= set(rule["merged"] or {}):
             problems.append(f"merged требует from и into: {rule}")
-        for pattern in (rule.get("contains"), rule.get("output_matches"), (rule.get("commit_in") or {}).get("message")):
+        for pattern in (rule.get("contains"), rule.get("output_matches"), (rule.get("commit_in") or {}).get("message"),
+                        (rule.get("config") or {}).get("value")):
             if pattern is None:
                 continue
             try:

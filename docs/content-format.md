@@ -58,7 +58,7 @@ content/
 ```
 `NN` задаёт порядок. Slug — латиница, kebab-case; после публикации не меняется (от него зависят URL и прогресс).
 
-`_course.yaml` → `engine`: `python`, `sql`, `django`, `linux`, `html` или `null` (курс без тренажёра — только задачи `quiz`/`fix`).
+`_course.yaml` → `engine`: `python`, `sql`, `django`, `linux`, `git` (терминал Linux + Git, `venv`, `pip`), `html` или `null` (курс без тренажёра — только задачи `quiz`/`fix`).
 
 `_course.yaml` → `kind`: `main` (по умолчанию, если поля нет) — курс основного пути, на карточке «Шаг N»; `module` — дополнительный модуль («Python под капотом», «Git в команде»): без «Шаг N», в каталоге — отдельным блоком «Дополнительные модули», на главной — строкой под картой пути. `order` у модуля задаёт порядок внутри блока модулей.
 
@@ -361,7 +361,7 @@ explanation: |
 **Проверка эталона.** `check_tasks.py` проверяет форму правил, значения `style` (подсказывает, если цвет или размер записан не так, как отдаёт браузер) и правила по тексту для `solution`. Селекторы и стили считает только браузер, поэтому каждую задачу дополнительно прогоняем на `http://localhost:8000/dev/html-check/` (запущенный compose + `load_content`, только при `DEBUG`): **эталон проходит все правила, заготовка (`files`) хотя бы одно не проходит.**
 
 ### exercise с проверкой состояния (Linux, Git)
-> Linux — утверждено (2026-11-10, симулятор готов: тренажёр `/playground/?engine=linux`). Git — черновик, утверждаем вместе с Git-симулятором.
+> Linux — утверждено (2026-11-10, симулятор готов: тренажёр `/playground/?engine=linux`). Git, `venv` и `pip` — утверждено (2026-11-10, симулятор готов: тренажёр `/playground/?engine=git`).
 
 Эталон проверяет тест сайта в симуляторе: `solution` выполняется без ошибок и проходит все правила, нетронутый `setup` хотя бы одно правило не проходит.
 
@@ -404,13 +404,47 @@ explanation: |
 
 **Правила Linux:** `path` + `exists: true|false`; `path` + `contains: <regex>` (содержимое файла, флаг `m`); `path` + `mode: '644'`; `path` + `owner: <пользователь>`; `path` + `link_to: <путь>` (символическая ссылка — для `ln -s`); `output_matches: <regex>` (вывод последней команды — для задач «найди и выведи»).
 
-**Git** — то же, плюс история в `setup`: `commits: [{message, branch, files}]`, `branch`, `head`. Правила: `branch: <имя>` + `exists`; `head: <ветка>`; `commit_in: {branch, message: <regex>}`; `clean: true` (нет незакоммиченных изменений); `merged: {from, into}`.
+**Git** (движок `git` — терминал Linux + Git; все Linux-ключи `setup` и правила работают и здесь). Пути в `commits`, `tracked`, `staged` — от корня репозитория; остальные пути — абсолютные, как в Linux. Без `commits` репозитория нет (задача на `git init`), `commits: []` — репозиторий без коммитов. Правила Git смотрят в репозиторий задачи (`repo`, иначе `cwd`).
+
+```yaml
+setup:
+  repo: /home/shop/shop        # где репозиторий; по умолчанию — cwd
+  cwd: /home/shop/shop
+  commits:                     # история, от старых к новым
+    - message: Каркас магазина
+      files:                   # что изменил коммит: путь → текст; null — файл удалён
+        shop/settings.py: |
+          DEBUG = True
+    - message: Промокоды — модель
+      branch: promo            # новая ветка ответвляется от from (по умолчанию main)
+      from: main
+      files:
+        promo/models.py: |
+          class Promo: ...
+  head: promo                  # текущая ветка; по умолчанию main
+  gitconfig:                   # ~/.gitconfig; по умолчанию Shop Developer / dev@shop.example
+    user.name: Анна            # null — Git не настроен (тема про git config)
+    user.email: anna@shop.example
+  remote:                      # «GitHub»; без ключа — удалённого нет
+    url: git@github.com:shop/shop.git
+    commits: [...]             # коммиты, которых нет локально (для pull / fetch), формат тот же
+    pushed: [main]             # ветки, уже отправленные на GitHub
+  files:                       # незакоммиченные правки — обычные files поверх истории
+    /home/shop/shop/shop/settings.py: |
+      DEBUG = False
+  venv:                        # готовое окружение (для freeze, uninstall)
+    path: venv                 # от cwd
+    packages: {django: 5.1.4}
+```
+
+**Правила Git:** `branch: <имя>` / `tag: <имя>` / `tracked: <путь>` (файл в последнем коммите текущей ветки) / `staged: <путь>` (изменение в индексе) — по умолчанию «есть», с `exists: false` — «нет»; `head: <ветка>`; `commit_in: {branch, message: <regex>}`; `commit_count: {branch, count}` (сколько коммитов в ветке — для `--amend`, `reset`, «не создал лишний коммит»); `clean: true` (нет незакоммиченных изменений; конфликт решён — `contains`/`exists` по файлу + `clean: true`); `merged: {from, into}`; `pushed: <ветка>` (на «GitHub» то же, что локально); `config: {key: user.email, value: <regex>}`; `stash_count: N`; `pip_package: {name, version}` + `venv: <путь>` (по умолчанию `venv`; без `version` — любая).
 
 **Команды симулятора** — в `solution` и в задачах только они; нужна другая — согласовать с «Разработкой»:
 - Linux: `pwd`, `cd`, `ls [-l -a]`, `cat`, `echo`, `mkdir [-p]`, `touch`, `rm [-r]`, `cp [-r]`, `mv`, `ln [-s]`, `head [-n N]`, `tail [-n N]`, `wc [-l]`, `grep [-i -n -r -c -v]`, `sort [-n -r]`, `uniq [-c]`, `cut [-d -f]`, `find [-name -type -size -mtime]`, `tar [-czf -xzf]`, `gzip`, `gunzip`, `chmod` (числом и буквами: `u+x`), `chown [-R]`, `chgrp [-R]`, `whoami`, `id`, `which`, `df [-h]`, `du [-sh]`; `--help` у всех команд; флаги можно писать вместе (`ls -la`); код выхода — `echo $?`; свой скрипт — `./script.sh` (shebang + `chmod +x`; переменные `NAME=x`, `$NAME`, аргументы `$1` — да, `if`/`for` — нет); `nano <файл>` — редактор на месте строки ввода (Ctrl+O — сохранить, Ctrl+X — выйти), в `solution` не пишется: там файлы меняем через `echo >` / `>>`; конвейер `|`, перенаправления `>`, `>>`, `2>`, `2>&1`, `/dev/null`, цепочка `&&`, `sudo`. Права проверяются: пользователь `shop` не пишет в `/etc` и чужие файлы без `sudo`. Сообщения об ошибках — на английском, как в настоящем Linux (`Permission denied`, `No such file or directory`) — в уроках и `fail` цитируем их дословно;
-- Git (в шаге Git-симулятора; итоговый список «Разработка» пришлёт на утверждение): `init`, `status`, `add`, `commit -m`, `log [--oneline --graph]`, `branch`, `switch [-c]`, `merge`, `rebase`, `reset [--soft --hard]`, `restore [--staged]`, `stash [pop]`, `diff`, `cherry-pick`, `revert`, `tag`.
+- Git: `init`, `config [--global] [--list]` (`user.name`, `user.email`), `status`, `add` (`.`, `-A`, пути), `rm --cached [-r]`, `commit -m [--amend] [--no-edit]`, `log [--oneline --graph --all -n N -S<текст> --grep=<текст>]`, `diff [--staged]`, `restore [--staged]`, `branch [-d -D -a]`, `switch [-c]`, `checkout <ветка>`, `merge [--abort --no-ff]`, `reset [--soft --mixed --hard] [HEAD~N]`, `revert`, `cherry-pick`, `tag`, `stash [push list pop apply drop]`, `reflog`, `blame`, `rebase [--continue --abort]` (без `-i`), `remote add`, `remote -v`, `push [-u]`, `clone`, `fetch`, `pull [--no-rebase --rebase]`. Редактора нет: `commit` без `-m` — ошибка, `merge` и `revert` берут сообщение по умолчанию. Конфликт — маркеры `<<<<<<<`, `=======`, `>>>>>>>` как в настоящем Git; в `solution` файл после конфликта пишем через `echo >`. Сообщения — на английском, как в настоящем Git. `bisect`, `rebase -i`, `ssh-keygen` — нет (теория и `quiz`);
+- окружение Python (тоже движок `git`): `python3 -m venv <папка>`, `source <папка>/bin/activate`, `deactivate`, `pip install [-r файл] <пакет>[==версия]`, `pip freeze` (с `>` — в `requirements.txt`), `pip uninstall -y`, `pip list`, `sudo apt install`; `which python` после активации показывает окружение. Пакеты — из учебного списка «Разработки»; сам Python в симуляторе не выполняется (`python3 script.py` — нет).
 
-`check_tasks.py` проверяет у таких задач структуру, шаблоны и то, что `solution` использует только команды и флаги из списка. Сам эталон в симуляторе прогоняет тест сайта (Linux — уже, Git — когда появится симулятор).
+`check_tasks.py` проверяет у таких задач структуру, шаблоны и то, что `solution` использует только команды и флаги из списка. Сам эталон в симуляторе прогоняет тест сайта: каждая строка `solution` должна завершиться с кодом 0 — `git commit` при пустом индексе или `git pull` при разошедшихся ветках без `--no-rebase` упадут.
 
 ### Задачник (`_practice.yaml`)
 **Задачник — тренировка, а не подводные камни.** Задачи темы ловят ошибки и проверяются тестами; задачник даёт ученику типовые упражнения, чтобы набить руку в песочнице. Показывается в тренажёре третьей плашкой правой панели — рядом с «Заметкой» и «Программой курса»: краткое условие, ученик решает в редакторе песочницы сам, ответ скрыт до нажатия. Автопроверки и прогресса нет.
