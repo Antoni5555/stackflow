@@ -231,8 +231,10 @@ LINUX_COMMANDS = {
     "pwd": None, "cd": None, "ls": {"-l", "-a"}, "cat": None, "echo": None, "mkdir": {"-p"},
     "touch": None, "rm": {"-r"}, "cp": {"-r"}, "mv": None, "ln": {"-s"}, "head": {"-n"}, "tail": {"-n"},
     "wc": {"-l"}, "grep": {"-i", "-n", "-r", "-c", "-v"}, "sort": {"-n", "-r"}, "uniq": {"-c"},
-    "cut": {"-d", "-f"}, "find": {"-name", "-type", "-size"}, "tar": {"-c", "-x", "-z", "-f"},
+    "cut": {"-d", "-f"}, "find": {"-name", "-type", "-size", "-mtime"}, "tar": {"-c", "-x", "-z", "-f"},
     "chmod": None, "chown": {"-R"},
+    "whoami": None, "id": None, "chgrp": {"-R"}, "which": None, "df": {"-h"}, "du": {"-s", "-h"},
+    "gzip": None, "gunzip": None,
 }
 GIT_COMMANDS = {
     "init": None, "status": None, "add": None, "commit": {"-m"}, "log": {"--oneline", "--graph"},
@@ -250,11 +252,18 @@ def check_command(line):
     """Проблемы одной строки solution: неизвестные команды и флаги."""
     problems = []
     line_wo_strings = re.sub(r"\"[^\"]*\"|'[^']*'", "STR", line)   # текст в кавычках — не флаги
-    for part in line_wo_strings.split("|"):
+    for part in re.split(r"\|\|?|&&", line_wo_strings):
         part = re.split(r"\d?>>?", part)[0]       # перенаправление (>, >>, 2>, 2>&1): дальше — цель
         tokens = part.split()
-        if not tokens:
+        while tokens and (tokens[0] == "sudo" or re.fullmatch(r"[A-Za-z_]\w*=\S*", tokens[0])):
+            tokens = tokens[1:]                  # sudo и присваивание NAME=x перед командой
+        if not tokens or tokens[0].startswith("./"):
+            continue                             # ./script.sh — свой скрипт
+        if tokens[0] == "nano":
+            problems.append(f"nano в solution не выполнить — пишем файл через echo > / >>: {line!r}")
             continue
+        if "--help" in tokens:
+            continue                             # --help есть у всех команд
         if tokens[0] == "git":
             if len(tokens) < 2 or tokens[1] not in GIT_COMMANDS:
                 problems.append(f"команды git {tokens[1] if len(tokens) > 1 else ''!s} нет в симуляторе: {line!r}")

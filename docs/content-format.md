@@ -397,6 +397,7 @@ explanation: |
 - `files: {путь: {size: 6M}}` — «тяжёлый» файл: вместо содержимого только размер (`K`, `M`, `G`) — для `find -size`, фото и бэкапов;
 - у файла можно задать владельца и права: `{content: "...", owner: www-data, mode: '640'}` или `{size: 6M, owner: root}` — запись файла: текст или словарь `{content | size, owner, mode}`;
 - `dirs` — пустые папки: в списке каждый элемент — путь (`/srv/shop/backup`) или путь со словарём (`/etc/nginx/sites-enabled: {owner: root, mode: '755'}`);
+- у файла можно задать возраст `mtime: 10` (дней назад) — для `find -mtime`;
 - по умолчанию: владелец `shop`, права файла `644`, папки `755`; общего `setup.owner` нет — владелец задаётся у конкретного файла или папки.
 
 **Правила Linux:** `path` + `exists: true|false`; `path` + `contains: <regex>` (содержимое файла, флаг `m`); `path` + `mode: '644'`; `path` + `owner: <пользователь>`; `path` + `link_to: <путь>` (символическая ссылка — для `ln -s`); `output_matches: <regex>` (вывод последней команды — для задач «найди и выведи»).
@@ -404,8 +405,8 @@ explanation: |
 **Git** — то же, плюс история в `setup`: `commits: [{message, branch, files}]`, `branch`, `head`. Правила: `branch: <имя>` + `exists`; `head: <ветка>`; `commit_in: {branch, message: <regex>}`; `clean: true` (нет незакоммиченных изменений); `merged: {from, into}`.
 
 **Команды симулятора** — в `solution` и в задачах только они; нужна другая — согласовать с «Разработкой»:
-- Linux: `pwd`, `cd`, `ls [-l -a]`, `cat`, `echo`, `mkdir [-p]`, `touch`, `rm [-r]`, `cp [-r]`, `mv`, `ln -s`, `head [-n N]`, `tail [-n N]`, `wc [-l]`, `grep [-i -n -r -c -v]`, `sort [-n -r]`, `uniq [-c]`, `cut [-d -f]`, `find [-name -type -size]`, `tar [-czf -xzf]`, `chmod` (числом и буквами: `u+x`), `chown [-R]`; конвейер `|`, перенаправления `>`, `>>`, `2>`, `2>&1`, `/dev/null` (команды из этого пункта, кроме исходного списка, «Разработка» добавляет на этапе 5);
-- Git: `init`, `status`, `add`, `commit -m`, `log [--oneline --graph]`, `branch`, `switch [-c]`, `merge`, `rebase`, `reset [--soft --hard]`, `restore [--staged]`, `stash [pop]`, `diff`, `cherry-pick`, `revert`, `tag`.
+- Linux: `pwd`, `cd`, `ls [-l -a]`, `cat`, `echo`, `mkdir [-p]`, `touch`, `rm [-r]`, `cp [-r]`, `mv`, `ln [-s]`, `head [-n N]`, `tail [-n N]`, `wc [-l]`, `grep [-i -n -r -c -v]`, `sort [-n -r]`, `uniq [-c]`, `cut [-d -f]`, `find [-name -type -size -mtime]`, `tar [-czf -xzf]`, `gzip`, `gunzip`, `chmod` (числом и буквами: `u+x`), `chown [-R]`, `chgrp [-R]`, `whoami`, `id`, `which`, `df [-h]`, `du [-sh]`; `--help` у всех команд; флаги можно писать вместе (`ls -la`); код выхода — `echo $?`; свой скрипт — `./script.sh` (shebang + `chmod +x`; переменные `NAME=x`, `$NAME`, аргументы `$1` — да, `if`/`for` — нет); `nano <файл>` — редактор на месте строки ввода (Ctrl+O — сохранить, Ctrl+X — выйти), в `solution` не пишется: там файлы меняем через `echo >` / `>>`; конвейер `|`, перенаправления `>`, `>>`, `2>`, `2>&1`, `/dev/null`, цепочка `&&`, `sudo`. Права проверяются: пользователь `shop` не пишет в `/etc` и чужие файлы без `sudo`. Сообщения об ошибках — на английском, как в настоящем Linux (`Permission denied`, `No such file or directory`) — в уроках и `fail` цитируем их дословно;
+- Git (в шаге Git-симулятора; итоговый список «Разработка» пришлёт на утверждение): `init`, `status`, `add`, `commit -m`, `log [--oneline --graph]`, `branch`, `switch [-c]`, `merge`, `rebase`, `reset [--soft --hard]`, `restore [--staged]`, `stash [pop]`, `diff`, `cherry-pick`, `revert`, `tag`.
 
 `check_tasks.py` проверяет у таких задач структуру, шаблоны и то, что `solution` использует только команды и флаги из списка. Сам эталон прогоняет тест сайта через симулятор, когда тот появится.
 
