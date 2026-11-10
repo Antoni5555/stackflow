@@ -16,7 +16,6 @@
       {% if user.is_authenticated %}
         <script type="module" src="{% static 'js/note-editor.js' %}"></script>
         {% include 'common/_note_editor.html' %}
-        <a href="{% url 'cheatsheets:detail' course.slug %}" class="side-card__link" data-note-link{% if not note.count %} hidden{% endif %}>В шпаргалке по этой теме уже <span data-note-count>{{ note.count }}</span> →</a>
       {% else %}
         <p class="muted small">Заметки собираются в шпаргалку курса по темам — их видно с любого устройства.</p>
         <a href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}" class="btn btn--accent btn--block">Войти, чтобы писать заметки</a>

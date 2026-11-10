@@ -84,11 +84,6 @@ def update_note(note, title, body_html):
     return note
 
 
-def count_in_group(user, course, topic):
-    """Сколько заметок в той же группе шпаргалки (тема или «Из тренажёра»)."""
-    return Note.objects.filter(user=user, course=course, topic=topic).count()
-
-
 def recent_notes(user, limit=3):
     """Последние заметки для профиля."""
     return list(
@@ -205,8 +200,5 @@ def cheatsheet(user, course_slug):
 # --- плашка «Заметка» в правой панели ---
 
 def note_panel(user, course, topic, source_key):
-    """Данные для плашки «Заметка»: откуда она и сколько заметок уже в группе."""
-    return {
-        'source': source_key,
-        'count': count_in_group(user, course, topic) if user.is_authenticated else 0,
-    }
+    """Данные для плашки «Заметка»: откуда она (урок, задача или тренажёр)."""
+    return {'source': source_key}

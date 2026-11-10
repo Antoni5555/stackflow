@@ -24,11 +24,8 @@ class CreateNoteSerializer(NoteSerializer):
     source = serializers.RegexField(r'^[a-z0-9-]+(/[a-z0-9-]+){0,3}$', max_length=400)
 
 
-def note_json(note, count=None):
-    data = {'id': note.pk, 'title': note.title, 'body_html': note.body_html}
-    if count is not None:
-        data['count'] = count      # сколько заметок теперь в этой группе шпаргалки
-    return data
+def note_json(note):
+    return {'id': note.pk, 'title': note.title, 'body_html': note.body_html}
 
 
 class NoteListView(APIView):
@@ -43,8 +40,7 @@ class NoteListView(APIView):
             return Response({'detail': 'Не найдено, к чему относится заметка'},
                             status=status.HTTP_404_NOT_FOUND)
         note = notes.create_note(request.user, source, data['title'], data['body'])
-        count = notes.count_in_group(request.user, source.course, source.topic)
-        return Response(note_json(note, count), status=status.HTTP_201_CREATED)
+        return Response(note_json(note), status=status.HTTP_201_CREATED)
 
 
 class NoteDetailView(APIView):

@@ -71,7 +71,6 @@ def test_create_note_from_source(logged_in, user, source, topic, exercise):
     response = create(logged_in, source)
 
     assert response.status_code == 201
-    assert response.json()['count'] == 1
     note = Note.objects.get(user=user)
     assert note.course.slug == 'python'
     assert (note.topic.slug if note.topic else None) == topic
@@ -134,7 +133,6 @@ def test_note_panel_for_logged_in(logged_in):
 
     assert 'data-source="python/basics/hello"' in html
     assert 'запиши главное своими словами' in html
-    assert 'уже <span data-note-count>1</span>' in html
     assert 'js/note-editor.js' in html
 
 

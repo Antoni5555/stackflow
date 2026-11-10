@@ -108,11 +108,6 @@ for (const root of document.querySelectorAll('[data-note-editor][data-source]'))
       editor.clear();
       editor.showStatus('Сохранено ✓ — заметка уже в шпаргалке');
       setTimeout(() => editor.showStatus(''), 3000);
-      const link = root.parentElement.querySelector('[data-note-link]');
-      if (link) {
-        link.querySelector('[data-note-count]').textContent = note.count;
-        link.hidden = false;
-      }
     },
   });
 }
