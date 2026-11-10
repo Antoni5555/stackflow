@@ -1,4 +1,4 @@
 title: Nginx и деплой
 description: Nginx перед Django, HTTPS, кэш и полный деплой магазина — от пустого сервера до CI/CD.
 engine: null  # без тренажёра — задачи quiz/fix
-order: 80
+order: 90

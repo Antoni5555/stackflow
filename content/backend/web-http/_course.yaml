@@ -1,4 +1,4 @@
-title: Веб и HTTP
-description: Как устроены клиент и сервер, HTTP, cookies, REST и безопасность — на запросах к API магазина.
+title: Веб и API
+description: HTTP глубже, токены, CORS, REST и HTTP-клиенты на Python — API магазина для приложения и партнёров.
 engine: python
-order: 35
+order: 60
