@@ -474,6 +474,35 @@ def _check_lesson(path):
     return problems
 
 
+def check_practice(path):
+    with sandbox():
+        return _check_practice(path)
+
+
+def _check_practice(path):
+    """Задачник темы: список {title, text, answer, hint?}. Код условия и ответа
+    выполняется как одна программа: ответ может опираться на данные из условия."""
+    try:
+        items = yaml.safe_load(path.read_text())
+    except yaml.YAMLError as e:
+        return [f"YAML не читается: {e}"]
+    if not isinstance(items, list) or not items:
+        return ["задачник — непустой список задач"]
+    problems = []
+    for n, item in enumerate(items, 1):
+        if not isinstance(item, dict):
+            problems.append(f"задача {n}: нужен словарь title/text/answer")
+            continue
+        if missing := [k for k in ("title", "text", "answer") if not item.get(k)]:
+            problems.append(f"задача {n}: нет полей {missing}")
+            continue
+        if extra := set(item) - {"title", "text", "answer", "hint"}:
+            problems.append(f"задача {n}: лишние поля {sorted(extra)}")
+        for problem in check_lesson_code(item["text"] + "\n\n" + item["answer"]):
+            problems.append(f"задача {n} «{item['title']}»: {problem}")
+    return problems
+
+
 SEEDS = 16
 
 
@@ -481,6 +510,9 @@ def collect(base):
     """{файл: [проблемы]} для одного запуска интерпретатора."""
     results = {}
     for path in sorted(base.rglob("*")):
+        if path.name == "_practice.yaml":
+            results[str(path.relative_to(base) if path.is_relative_to(base) else path)] = check_practice(path)
+            continue
         if path.name.startswith("_") or path.parent.name == "img":
             continue
         if path.suffix == ".yaml":
