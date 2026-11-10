@@ -5,7 +5,7 @@
 """
 from dataclasses import dataclass
 
-from django.db.models import Count, Prefetch, Q, Sum
+from django.db.models import Count, F, Func, IntegerField, Prefetch, Q, Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
@@ -91,6 +91,11 @@ def course_outline(course):
         Topic.objects.published()
         .select_related('lesson')
         .prefetch_related(Prefetch('exercises', queryset=exercises))
+        # сам задачник программе не нужен — только число задач (для тренажёра)
+        .defer('practice')
+        .annotate(practice_count=Func(
+            F('practice'), function='jsonb_array_length', output_field=IntegerField(),
+        ))
     )
     sections = list(
         Section.objects.published()
@@ -269,6 +274,29 @@ def playground(engine):
         'course': course,
         'sections': course_outline(course) if course else [],
     }
+
+
+def practice_topic(course_slug, section_slug, topic_slug):
+    """Тема с задачником для плашки «Задачник» в тренажёре; 404, если задач нет."""
+    topic = get_object_or_404(
+        Topic.objects.published().select_related('section__course'),
+        section__course__slug=course_slug, section__course__is_published=True,
+        section__slug=section_slug, section__is_published=True,
+        slug=topic_slug,
+    )
+    if not topic.practice:
+        raise Http404('У темы нет задачника')
+    return topic
+
+
+def practice_topics(sections):
+    """Темы программы с задачником — по разделам (для выпадающего списка)."""
+    groups = []
+    for section in sections:
+        topics = [topic for topic in section.topics.all() if topic.practice_count]
+        if topics:
+            groups.append((section, topics))
+    return groups
 
 
 def first_open_card(cards):

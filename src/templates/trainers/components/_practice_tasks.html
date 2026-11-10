@@ -1,0 +1,23 @@
+{% comment %} Задачи задачника одной темы (ответ trainers:practice). Видна одна задача,
+   «← / →» листают (js/practice.js). Тексты — HTML из load_content. {% endcomment %}
+{% for task in topic.practice %}
+<article class="practice" data-practice-task{% if not forloop.first %} hidden{% endif %}>
+  <div class="practice__nav">
+    <button type="button" class="round-btn round-btn--sm" data-practice-step="-1" aria-label="Предыдущая задача"{% if forloop.first %} disabled{% endif %}><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M12 7H2M6 3L2 7l4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <span class="small muted">Задача {{ forloop.counter }} из {{ topic.practice|length }}</span>
+    <button type="button" class="round-btn round-btn--sm" data-practice-step="1" aria-label="Следующая задача"{% if forloop.last %} disabled{% endif %}><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7h10M8 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <h3 class="practice__title">{{ task.title }}</h3>
+  <div class="practice__text">{{ task.text|safe }}</div>
+  {% if task.hint %}
+  <details class="practice__reveal">
+    <summary>Намёк</summary>
+    <div class="practice__text">{{ task.hint|safe }}</div>
+  </details>
+  {% endif %}
+  <details class="practice__reveal">
+    <summary>Ответ</summary>
+    <div class="practice__text">{{ task.answer|safe }}</div>
+  </details>
+</article>
+{% endfor %}

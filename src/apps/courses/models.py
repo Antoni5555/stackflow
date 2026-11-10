@@ -123,6 +123,9 @@ class Topic(ContentItem):
         Section, on_delete=models.CASCADE, related_name='topics',
         verbose_name='раздел',
     )
+    # Задачник темы (_practice.yaml): [{title, text, hint, answer}], тексты — HTML.
+    # Без id и прогресса, поэтому хранится списком, а не отдельной моделью
+    practice = models.JSONField('задачник', default=list, blank=True)
 
     class Meta(ContentItem.Meta):
         verbose_name = 'тема'

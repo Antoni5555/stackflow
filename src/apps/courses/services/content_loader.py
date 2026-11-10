@@ -46,14 +46,16 @@ NUMBERED = re.compile(r'^(\d+)-([a-z0-9]+(?:-[a-z0-9]+)*)$')
 FRONT_MATTER = re.compile(r'\A---\n(.*?)\n---\n', flags=re.S)
 
 
-def read_yaml(path):
-    """YAML-файл → словарь. Битый YAML — понятная ошибка с именем файла."""
+def read_yaml(path, expect=dict):
+    """YAML-файл → словарь (или список). Битый YAML — понятная ошибка с именем файла."""
     try:
         data = yaml.safe_load(path.read_text(encoding='utf-8'))
     except yaml.YAMLError as error:
         raise ContentError(path, f'YAML не читается: {error}') from error
-    if not isinstance(data, dict):
-        raise ContentError(path, 'ожидался словарь полей')
+    if not isinstance(data, expect):
+        raise ContentError(
+            path, 'ожидался словарь полей' if expect is dict else 'ожидался список',
+        )
     return data
 
 
@@ -190,6 +192,7 @@ class ContentLoader:
         topic = self.save(Topic, {'section': section, 'slug': slug}, {
             'title': data['title'],
             'order': order,
+            'practice': load_practice(topic_dir),
             'is_published': True,
         })
 
@@ -252,6 +255,38 @@ SPEC_FIELDS = {
     'quiz': (['kind', 'options', 'answer'], []),
     'fix': (['files', 'check', 'solution'], []),
 }
+
+
+PRACTICE_FIELDS = {'title', 'text', 'hint', 'answer'}
+
+
+def load_practice(topic_dir):
+    """Задачник темы из _practice.yaml (необязательный): тексты — сразу в HTML."""
+    path = topic_dir / '_practice.yaml'
+    if not path.exists():
+        return []
+    items = read_yaml(path, expect=list)
+    if not items:
+        raise ContentError(path, 'задачник — непустой список задач')
+    practice = []
+    for number, item in enumerate(items, start=1):
+        if not isinstance(item, dict):
+            raise ContentError(path, f'задача {number}: нужен словарь полей')
+        missing = [key for key in ('title', 'text', 'answer') if not item.get(key)]
+        if missing:
+            raise ContentError(path, f'задача {number}: нет полей {", ".join(missing)}')
+        if extra := set(item) - PRACTICE_FIELDS:
+            raise ContentError(path, f'задача {number}: лишние поля {sorted(extra)}')
+        practice.append({
+            'title': item['title'],
+            'text': render_markdown(item['text'], base_dir=topic_dir),
+            'hint': (
+                render_markdown(item['hint'], base_dir=topic_dir)
+                if item.get('hint') else ''
+            ),
+            'answer': render_markdown(item['answer'], base_dir=topic_dir),
+        })
+    return practice
 
 
 def exercise_spec(data, path):

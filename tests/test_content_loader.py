@@ -164,3 +164,28 @@ def test_unknown_course_kind_is_reported(content_dir):
 
     with pytest.raises(ContentError, match='kind — main или module'):
         ContentLoader(content_dir).load()
+
+
+def test_practice_is_loaded_as_html(loaded_content):
+    """_practice.yaml темы → Topic.practice: тексты уже в HTML, hint необязателен."""
+    hello = Topic.objects.get(slug='hello')
+
+    assert [task['title'] for task in hello.practice] == [
+        'Сумма корзины', 'Самый дорогой товар',
+    ]
+    first, second = hello.practice
+    assert 'class="code-block"' in first['text'] and '<code>sum</code>' in first['hint']
+    assert second['hint'] == ''
+    assert Topic.objects.get(slug='second').practice == []      # файла нет — пусто
+
+
+@pytest.mark.parametrize('text, message', [
+    ('title: X\n', 'ожидался список'),
+    ('- title: X\n  text: T\n', 'задача 1: нет полей answer'),
+    ('- title: X\n  text: T\n  answer: A\n  id: 1\n', "лишние поля \\['id'\\]"),
+])
+def test_invalid_practice_is_reported(content_dir, text, message):
+    (content_dir / HELLO / '_practice.yaml').write_text(text, encoding='utf-8')
+
+    with pytest.raises(ContentError, match=message):
+        ContentLoader(content_dir).load()

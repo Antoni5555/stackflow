@@ -1,0 +1,25 @@
+{% load static %}
+{% comment %} Плашка «Задачник» в тренажёре: тема из списка → её задачи (подгружает js/practice.js
+   с адреса trainers:practice). Ученик решает в редакторе сам; намёк и ответ скрыты в <details>.
+   Параметры: practice — [(раздел, [темы с задачником])]. {% endcomment %}
+<details class="side-card" name="side-panel" open data-practice>
+  <summary class="side-card__head">
+    <span class="side-card__title">Задачник</span>
+    <span class="side-card__meta">реши в редакторе, ответ — под задачей</span>
+  </summary>
+  <div class="side-card__body">
+    <label class="select practice__topic">
+      <span class="visually-hidden">Тема</span>
+      <select data-practice-topic>
+        {% for section, topics in practice %}
+        <optgroup label="{{ section.title }}">
+          {% for topic in topics %}<option value="{% url 'trainers:practice' course.slug section.slug topic.slug %}">{{ topic.title }}</option>{% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </label>
+    <div data-practice-tasks aria-live="polite"><p class="muted small">Загружаем задачи…</p></div>
+  </div>
+</details>
+<script type="module" src="{% static 'js/practice.js' %}"></script>
+<script type="module" src="{% static 'js/code-copy.js' %}"></script>

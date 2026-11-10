@@ -110,3 +110,36 @@ def test_playground_without_python_course(client, db):
 
     assert response.status_code == 200
     assert 'Программа курса' not in response.content.decode()
+
+
+PRACTICE_URL = reverse('trainers:practice', args=['python', 'basics', 'hello'])
+
+
+def test_playground_has_practice_card(client, loaded_content):
+    """«Задачник» открыт; в списке — только темы с задачником, по разделам."""
+    html = client.get(reverse('trainers:playground')).content.decode()
+
+    card = re.search(
+        r'<details class="side-card"[^>]*data-practice>(.*?)</details>', html, re.S,
+    )
+    assert card and ' open ' in card.group(0)
+    assert f'<option value="{PRACTICE_URL}">' in card.group(1)
+    assert '<optgroup label="Основы">' in card.group(1)
+    assert 'second' not in card.group(1)                  # у второй темы задачника нет
+    assert 'js/practice.js' in html
+
+
+def test_practice_tasks(client, loaded_content):
+    html = client.get(PRACTICE_URL).content.decode()
+
+    assert html.count('data-practice-task') == 2
+    assert 'Задача 1 из 2' in html and 'Сумма корзины' in html
+    assert html.count('<summary>Намёк</summary>') == 1      # у второй задачи намёка нет
+    assert html.count('<summary>Ответ</summary>') == 2
+    assert '<html' not in html                              # кусок, не страница
+
+
+def test_practice_404_without_tasks(client, loaded_content):
+    url = reverse('trainers:practice', args=['python', 'basics', 'second'])
+
+    assert client.get(url).status_code == 404

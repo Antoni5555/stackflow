@@ -353,3 +353,18 @@ textarea.editor__code {
 /* Вывод программы: переносы строк как в терминале, ошибка — красным */
 .console__line { white-space: pre-wrap; overflow-wrap: anywhere; }
 .console__line--error { color: var(--error); }
+
+/* --- Задачник в правой панели тренажёра (trainers/components/_practice*.html) --- */
+.practice__topic select { width: 100%; }
+.practice { display: grid; gap: var(--space-3); }
+.practice__nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.practice__nav .round-btn { color: inherit; background: transparent; }
+.practice__nav .round-btn:disabled { opacity: 0.35; cursor: default; }
+.practice__title { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.practice__text { display: grid; gap: var(--space-2); font-size: var(--fs-sm); }
+.practice__text p { margin: 0; }
+.practice__text .code-block pre { font-size: var(--fs-xs); }
+.practice__reveal { padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.practice__reveal[open] { border-color: var(--text); }
+.practice__reveal summary { font-size: var(--fs-sm); font-weight: var(--fw-bold); cursor: pointer; }
+.practice__reveal > .practice__text { margin-top: var(--space-2); }

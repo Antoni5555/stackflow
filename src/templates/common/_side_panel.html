@@ -1,12 +1,13 @@
 {% load plural static %}
 {% comment %} Правая панель урока, задачи и тренажёра: две плашки-аккордеон (<details name> — открыта одна).
    1) «Заметка» — сохраняется в шпаргалку курса (тема или «Из тренажёра»); 2) «Программа курса».
+   В тренажёре между ними — «Задачник» (practice — selectors.practice_topics), он и открыт.
    Параметры: course, sections, current_topic, current_exercise, flat, note (notes.note_panel),
-   note_open — открыть «Заметку», а не программу (так в тренажёре).
+   note_open — открыть «Заметку», а не программу, practice.
 {% endcomment %}
 <aside class="side-panel">
   {% if note %}
-  <details class="side-card" name="side-panel"{% if note_open %} open{% endif %}>
+  <details class="side-card" name="side-panel"{% if note_open and not practice %} open{% endif %}>
     <summary class="side-card__head">
       <span class="side-card__title">Заметка</span>
       <span class="side-card__meta">запиши главное своими словами</span>
@@ -23,7 +24,8 @@
     </div>
   </details>
   {% endif %}
-  <details class="side-card" name="side-panel"{% if not note_open %} open{% endif %}>
+  {% if practice %}{% include 'trainers/components/_practice.html' %}{% endif %}
+  <details class="side-card" name="side-panel"{% if not note_open and not practice %} open{% endif %}>
     <summary class="side-card__head">
       <span class="side-card__title">Программа курса</span>
       <span class="side-card__meta">{{ course.title }} · {{ sections|length|plural:"раздел,раздела,разделов" }}</span>

@@ -78,4 +78,18 @@ class PlaygroundView(EngineMixin, TemplateView):
         course = context['course']
         if course:
             context['note'] = note_panel(self.request.user, course, None, course.slug)
+            context['practice'] = selectors.practice_topics(context['sections'])
+        return context
+
+
+class PracticeView(TemplateView):
+    """Задачи задачника одной темы — кусок HTML для плашки «Задачник»."""
+
+    template_name = 'trainers/components/_practice_tasks.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['topic'] = selectors.practice_topic(
+            kwargs['course'], kwargs['section'], kwargs['topic'],
+        )
         return context

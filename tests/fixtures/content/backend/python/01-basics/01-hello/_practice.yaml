@@ -1,0 +1,23 @@
+- title: Сумма корзины
+  text: |
+    Дан список цен:
+    ```python
+    prices = [499, 1250, 99]
+    ```
+    Напечатай сумму.
+  hint: |
+    Есть встроенная функция `sum`.
+  answer: |
+    ```python
+    print(sum(prices))
+    ```
+    Результат:
+    ```
+    1848
+    ```
+- title: Самый дорогой товар
+  text: Напечатай самую большую цену из `prices`.
+  answer: |
+    ```python
+    print(max(prices))
+    ```
