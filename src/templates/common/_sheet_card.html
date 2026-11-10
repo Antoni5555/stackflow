@@ -2,14 +2,14 @@
 {# Карточка шпаргалки курса. Параметр: card (notes.SheetCard) #}
 {% if card.count %}
 <a href="{% url 'cheatsheets:detail' card.course.slug %}" class="sheet-card">
-  <div class="sheet-card__top"><span class="course-card__step">Шаг {{ card.step }}</span><span class="badge">{{ card.count|plural:"заметка,заметки,заметок" }}</span></div>
+  <div class="sheet-card__top"><span class="course-card__step">{% if card.step %}Шаг {{ card.step }}{% else %}Модуль{% endif %}</span><span class="badge">{{ card.count|plural:"заметка,заметки,заметок" }}</span></div>
   <h3 class="sheet-card__title">{{ card.course.title }}</h3>
   <div class="sheet-card__topics">{% for topic in card.shown_topics %}<span>{{ topic }}</span>{% endfor %}{% if card.more_topics %}<span>+{{ card.more_topics }}</span>{% endif %}</div>
   <span class="sheet-card__meta">{{ card.topics|length|plural:"тема,темы,тем" }} · обновлено {{ card.updated|ago }}</span>
 </a>
 {% else %}
 <div class="sheet-card sheet-card--empty">
-  <div class="sheet-card__top"><span class="course-card__step">Шаг {{ card.step }}</span><span class="badge">0</span></div>
+  <div class="sheet-card__top"><span class="course-card__step">{% if card.step %}Шаг {{ card.step }}{% else %}Модуль{% endif %}</span><span class="badge">0</span></div>
   <h3 class="sheet-card__title">{{ card.course.title }}</h3>
   <p class="muted small">Пока пусто. Заметки появятся, когда вы напишете их в курсе или тренажёре.</p>
 </div>

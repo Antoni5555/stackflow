@@ -56,6 +56,10 @@ class Course(ContentItem):
         DJANGO = 'django', 'Django в браузере'
         LINUX = 'linux', 'Терминал Linux в браузере'
 
+    class Kind(models.TextChoices):
+        MAIN = 'main', 'Основной путь'
+        MODULE = 'module', 'Дополнительный модуль'
+
     track = models.ForeignKey(
         Track, on_delete=models.CASCADE, related_name='courses',
         verbose_name='направление',
@@ -64,6 +68,10 @@ class Course(ContentItem):
     # Пусто — курс без тренажёра: только задачи quiz и fix
     engine = models.CharField(
         'тренажёр', max_length=20, choices=Engine.choices, blank=True,
+    )
+    # Модуль — вне основного пути: без «Шаг N», в каталоге и на главной отдельно
+    kind = models.CharField(
+        'вид', max_length=10, choices=Kind.choices, default=Kind.MAIN,
     )
 
     class Meta(ContentItem.Meta):
@@ -76,6 +84,10 @@ class Course(ContentItem):
 
     def get_absolute_url(self):
         return reverse('courses:detail', args=[self.slug])
+
+    @property
+    def is_module(self):
+        return self.kind == self.Kind.MODULE
 
 
 class Section(ContentItem):

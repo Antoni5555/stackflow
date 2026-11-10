@@ -1,6 +1,7 @@
 {% load plural %}
 {% comment %}
-  Карта пути: все курсы направления по Course.order, как схема метро.
+  Карта пути: курсы основного пути по Course.order, как схема метро;
+  дополнительные модули — строкой под ней (module_cards).
   Статус станции — card.path_status (progress.apply_to_path): done — пройден,
   current — проходит сейчас (или «начни здесь»), open — не начат, soon — скоро (без ссылки).
 {% endcomment %}
@@ -23,6 +24,12 @@
     </li>
     {% endfor %}
   </ol>
+  {% if module_cards %}
+  <p class="metro-modules">
+    <span class="muted">Дополнительные модули — в любой момент после базы:</span>
+    {% for card in module_cards %}{% if card.is_soon %}<span class="pill pill--soon">{{ card.course.title }} · скоро</span>{% else %}<a href="{{ card.course.get_absolute_url }}" class="pill">{{ card.course.title }}</a>{% endif %}{% endfor %}
+  </p>
+  {% endif %}
   <div class="metro-legend">
     <span><i class="metro-legend__dot metro-legend__dot--done"></i>пройден</span>
     <span><i class="metro-legend__dot metro-legend__dot--current"></i>вы здесь</span>

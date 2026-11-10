@@ -2,7 +2,7 @@
 <div class="course-hero">
   <div class="course-hero__text">
     <div class="tags">
-      <span class="tag">{{ course.track.title }} · шаг {{ step }}</span>
+      <span class="tag">{{ course.track.title }} · {% if step %}шаг {{ step }}{% else %}дополнительный модуль{% endif %}</span>
       <span class="tag">{% if course.engine %}{{ course.get_engine_display }}{% else %}Без тренажёра{% endif %}</span>
       <span class="tag">{{ sections|length|plural:"раздел,раздела,разделов" }} · {{ course.exercise_count|plural:"задача,задачи,задач" }}</span>
     </div>

@@ -7,7 +7,7 @@
 {% if card.is_soon %}
 <div class="course-card course-card--soon">
   <div class="course-card__top">
-    <span class="course-card__step">Шаг {{ card.step }}</span>
+    <span class="course-card__step">{% if card.step %}Шаг {{ card.step }}{% else %}Модуль{% endif %}</span>
     <span class="badge">Скоро</span>
   </div>
   <h3 class="course-card__title">{{ course.title }}</h3>
@@ -16,7 +16,7 @@
 {% else %}
 <a href="{{ course.get_absolute_url }}" class="course-card{% if accent or card.status == 'current' %} course-card--accent{% elif card.status == 'done' %} course-card--done{% endif %}">
   <div class="course-card__top">
-    <span class="course-card__step">Шаг {{ card.step }}</span>
+    <span class="course-card__step">{% if card.step %}Шаг {{ card.step }}{% else %}Модуль{% endif %}</span>
     {% if card.status == 'done' %}<span class="badge badge--done">✓ Пройден</span>
     {% elif card.status == 'current' %}<span class="badge badge--on-accent">Продолжить</span>
     {% elif accent %}<span class="badge badge--on-accent">Начни здесь</span>

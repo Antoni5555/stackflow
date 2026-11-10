@@ -1,4 +1,5 @@
-{# Курсы направления по программе (Course.order). Номер шага — позиция в программе. #}
+{% comment %} Курсы направления по программе (Course.order). Номер шага — позиция в основном пути;
+   дополнительные модули (Course.kind = module) — отдельным блоком, без номера. {% endcomment %}
 <div class="course-grid">
   {% for card in cards %}
     {% include 'common/_course_card.html' %}
@@ -6,3 +7,19 @@
     <p class="muted">Курсов пока нет.</p>
   {% endfor %}
 </div>
+{% if module_cards %}
+<section class="course-modules">
+  <div class="section-head">
+    <div class="section-head__titles">
+      <span class="kicker">Вне основного пути</span>
+      <h2 class="section-title">Дополнительные модули</h2>
+    </div>
+  </div>
+  <p class="muted">Проходите в любой момент после курса, на который модуль опирается.</p>
+  <div class="course-grid">
+    {% for card in module_cards %}
+      {% include 'common/_course_card.html' %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}

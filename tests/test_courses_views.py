@@ -103,3 +103,32 @@ def test_lesson_page_query_count_does_not_grow(
 
     with django_assert_max_num_queries(4):
         assert client.get(topic.get_absolute_url()).status_code == 200
+
+
+def test_catalog_shows_modules_apart_without_step(client):
+    """Модуль — отдельным блоком после основного пути, без «Шаг N»."""
+    module = CourseFactory(title='Под капотом', order=10, kind='module')
+    main = CourseFactory(track=module.track, title='Основы', order=20)
+    for course in (module, main):
+        topic_with_lesson(SectionFactory(course=course))
+
+    html = client.get(reverse('courses:list')).content.decode()
+
+    assert 'Шаг 1' in html and 'Шаг 2' not in html     # номер — только у основного
+    head, modules = html.split('Дополнительные модули')
+    assert 'Основы' in head and 'Под капотом' in modules
+    assert 'Модуль' in modules
+
+
+def test_module_page_has_no_step_and_module_neighbours(client):
+    first = CourseFactory(title='Основы', order=10)
+    track = first.track
+    module = CourseFactory(track=track, title='Под капотом', order=20, kind='module')
+    other = CourseFactory(track=track, title='Git в команде', order=30, kind='module')
+    topic_with_lesson(SectionFactory(course=module))
+
+    html = client.get(module.get_absolute_url()).content.decode()
+
+    assert 'дополнительный модуль' in html and '· шаг' not in html
+    assert f'href="{other.get_absolute_url()}"' in html     # «После курса» — модуль
+    assert f'href="{first.get_absolute_url()}"' not in html

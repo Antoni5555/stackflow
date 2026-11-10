@@ -38,10 +38,13 @@ def published_courses():
 
 @dataclass
 class CourseCard:
-    """Курс в каталоге: номер шага в программе направления и «скоро»."""
+    """Курс в каталоге: номер шага в программе направления и «скоро».
+
+    У дополнительного модуля шага нет (step=None).
+    """
 
     course: Course
-    step: int
+    step: int | None
 
     @property
     def is_soon(self):
@@ -59,8 +62,26 @@ def catalog(track_slug=None):
         return [], None, []
     current = next((t for t in tracks if t.slug == track_slug), tracks[0])
     courses = published_courses().filter(track=current)
-    cards = [CourseCard(course, step) for step, course in enumerate(courses, start=1)]
-    return tracks, current, cards
+    return tracks, current, course_cards(courses)
+
+
+def course_cards(courses):
+    """Карточки: сначала основной путь с номерами шагов, затем модули без номера."""
+    courses = list(courses)
+    main = [course for course in courses if not course.is_module]
+    modules = [course for course in courses if course.is_module]
+    return (
+        [CourseCard(course, step) for step, course in enumerate(main, start=1)]
+        + [CourseCard(course, None) for course in modules]
+    )
+
+
+def split_cards(cards):
+    """(основной путь, модули) — для каталога и карты пути на главной."""
+    return (
+        [card for card in cards if card.step],
+        [card for card in cards if not card.step],
+    )
 
 
 def course_outline(course):
@@ -102,7 +123,10 @@ def course_detail(slug):
         published_courses().filter(slug=slug)
     )
     sections = course_outline(course)
-    siblings = list(published_courses().filter(track=course.track))
+    # соседи — того же вида: у модуля «перед/после» — другие модули
+    siblings = list(
+        published_courses().filter(track=course.track, kind=course.kind)
+    )
     index = next(i for i, c in enumerate(siblings) if c.pk == course.pk)
     reading_time = (
         Topic.objects.published()
@@ -112,7 +136,7 @@ def course_detail(slug):
     ) or 0
     return {
         'course': course,
-        'step': index + 1,
+        'step': None if course.is_module else index + 1,
         'sections': sections,
         'first_topic': next(
             (topic for section in sections for topic in section.topics.all()), None,
@@ -248,8 +272,8 @@ def playground(engine):
 
 
 def first_open_card(cards):
-    """Первый курс направления, где уже есть темы, — кнопка «Начать с …»."""
-    return next((card for card in cards if not card.is_soon), None)
+    """Первый курс основного пути, где уже есть темы, — кнопка «Начать с …»."""
+    return next((card for card in cards if card.step and not card.is_soon), None)
 
 
 def start_card():
@@ -261,13 +285,15 @@ def start_card():
 def home_summary():
     """Для главной: курсы направления (карта пути) и числа под кнопками первого экрана.
 
-    Курсов — все, включая «скоро»: это программа направления. Уроков (= тем) и задач —
-    опубликованные.
+    Курсов — все, включая «скоро»: это программа направления. На карте пути — только
+    основной путь, модули — отдельным списком. Уроков (= тем) и задач — опубликованные.
     """
     _, track, cards = catalog()
+    path_cards, module_cards = split_cards(cards)
     return {
         'track': track,
-        'cards': cards,
+        'cards': path_cards,
+        'module_cards': module_cards,
         'first_card': first_open_card(cards),
         'numbers': {
             'courses': len(cards),

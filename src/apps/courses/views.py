@@ -18,7 +18,10 @@ class CourseListView(TemplateView):
         context = super().get_context_data(**kwargs)
         tracks, track, cards = selectors.catalog(self.request.GET.get('track'))
         progress.apply_to_cards(cards, self.request.user)
-        context.update(tracks=tracks, track=track, cards=cards)
+        path_cards, module_cards = selectors.split_cards(cards)
+        context.update(
+            tracks=tracks, track=track, cards=path_cards, module_cards=module_cards,
+        )
         return context
 
 

@@ -91,3 +91,15 @@ def test_about_page(client, courses):
     assert '<details class="faq__item" open' not in html
     assert 'href="https://github.com/Antoni5555"' in html
     assert 'img/author' in html
+
+
+def test_modules_are_not_on_path(client, courses):
+    first, _, _ = courses
+    module = CourseFactory(track=first.track, title='Под капотом', kind='module')
+    topic_with_lesson(SectionFactory(course=module))
+
+    html = client.get(reverse('pages:home')).content.decode()
+
+    assert len(stops(html)) == 3                       # станции — только основной путь
+    assert 'Под капотом' not in ''.join(body for _, body in stops(html))
+    assert 'class="pill">Под капотом</a>' in html

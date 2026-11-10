@@ -150,11 +150,15 @@ class ContentLoader:
         engine = data.get('engine') or ''
         if engine not in Course.Engine.values + ['']:
             raise ContentError(path, f'неизвестный engine: {engine}')
+        kind = data.get('kind') or Course.Kind.MAIN
+        if kind not in Course.Kind.values:
+            raise ContentError(path, 'kind — main или module')
         course = self.save(Course, {'slug': course_dir.name}, {
             'track': track,
             'title': data['title'],
             'description': data.get('description') or '',
             'engine': engine,
+            'kind': kind,
             'order': data['order'],
             'is_published': True,
         })

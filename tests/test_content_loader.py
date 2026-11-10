@@ -141,3 +141,26 @@ def test_command_prints_report(content_dir, capsys):
 def test_command_fails_on_missing_dir(tmp_path):
     with pytest.raises(CommandError, match='Нет папки'):
         call_command('load_content', str(tmp_path / 'nope'))
+
+
+def test_course_kind_is_loaded(content_dir):
+    """kind: module — дополнительный модуль; без поля — основной путь."""
+    course_yaml = content_dir / 'backend/soon/_course.yaml'
+    course_yaml.write_text(
+        course_yaml.read_text(encoding='utf-8') + 'kind: module\n', encoding='utf-8',
+    )
+    ContentLoader(content_dir).load()
+
+    assert dict(Course.objects.values_list('slug', 'kind')) == {
+        'python': 'main', 'soon': 'module',
+    }
+
+
+def test_unknown_course_kind_is_reported(content_dir):
+    course_yaml = content_dir / 'backend/soon/_course.yaml'
+    course_yaml.write_text(
+        course_yaml.read_text(encoding='utf-8') + 'kind: extra\n', encoding='utf-8',
+    )
+
+    with pytest.raises(ContentError, match='kind — main или module'):
+        ContentLoader(content_dir).load()
