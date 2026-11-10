@@ -173,6 +173,58 @@ def check_fix(task):
     return problems
 
 
+DOM_CHECKS = {"count", "min", "exists", "attr", "text", "style"}
+
+
+def check_dom(task):
+    """Вёрстка (exercise с check.type: dom). Стили и селекторы считает только браузер —
+    здесь форма правил и правила по тексту файлов; эталон целиком — на /dev/html-check/."""
+    problems = []
+    files, solution = task.get("files") or {}, task.get("solution") or {}
+    rules = task["check"].get("rules") or []
+    if "index.html" not in files or not rules:
+        return ["нужны files с index.html и check.rules"]
+    if set(solution) != set(files):
+        problems.append("в solution должны быть те же файлы, что в files")
+    source_rules = []
+    for n, rule in enumerate(rules, 1):
+        if not rule.get("fail"):
+            problems.append(f"правило {n}: нет fail")
+        if "selector" in rule:
+            if unknown := set(rule) - DOM_CHECKS - {"selector", "fail", "width"}:
+                problems.append(f"правило {n}: неизвестные поля {sorted(unknown)}")
+            if not set(rule) & DOM_CHECKS:
+                problems.append(f"правило {n}: нечего проверять — нужен count, min, exists, attr, text или style")
+            if rule.get("count") == 0:
+                problems.append(f"правило {n}: «элементов нет» — exists: false, а не count: 0")
+            if "exists" in rule and rule["exists"] is not False:
+                problems.append(f"правило {n}: exists бывает только false (наличие проверяется и так)")
+            for prop, value in (rule.get("style") or {}).items():
+                value = str(value)
+                if value.startswith("#") or value in ("bold", "normal", "bolder") or re.fullmatch(r"\d+(\.\d+)?(rem|em|%)", value):
+                    problems.append(f"правило {n}: {prop}: {value!r} — браузер отдаёт rgb(…), px и 700/400")
+            patterns = list((rule.get("attr") or {}).values()) + ([rule["text"]] if "text" in rule else [])
+        else:
+            kinds = [k for k in ("must_match", "must_not_match") if k in rule]
+            if len(kinds) != 1:
+                problems.append(f"правило {n}: нужен selector или ровно одно из must_match / must_not_match")
+                continue
+            if rule.get("file", "index.html") not in files:
+                problems.append(f"правило {n}: файла {rule['file']!r} нет в files")
+            patterns = [rule[kinds[0]]]
+            source_rules.append({**rule, "file": rule.get("file", "index.html")})
+        for pattern in patterns:
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                problems.append(f"правило {n}: шаблон не компилируется: {pattern!r}: {e}")
+            if "(?P<" in pattern or re.search(r"\\[AZ]|\(\?[aiLmsux]+\)", pattern):
+                problems.append(f"правило {n}: шаблон несовместим с JavaScript: {pattern!r}")
+    if not problems and (fails := failed_rules(solution, source_rules)):
+        problems.append(f"эталон не проходит правила по тексту: {fails}")
+    return problems
+
+
 # Команды симулятора Linux/Git и их флаги (docs/content-format.md, «exercise с проверкой состояния»).
 # None — флаги не поддерживаются; набор — разрешённые флаги.
 LINUX_COMMANDS = {
@@ -336,6 +388,8 @@ def _check_task(path):
             problems.append(f"нет поля {key}")
     if task["type"] == "exercise" and (task.get("check") or {}).get("type") == "state":
         problems += check_state(task)
+    elif task["type"] == "exercise" and (task.get("check") or {}).get("type") == "dom":
+        problems += check_dom(task)
     elif task["type"] == "exercise":
         if fails := run_tests(task["solution"], task):
             problems.append(f"эталон не проходит: {fails}")
