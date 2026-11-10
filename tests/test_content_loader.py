@@ -202,3 +202,55 @@ def test_fix_keeps_file_order(content_dir):
 
     spec = Exercise.objects.get(slug='fix-conf').spec
     assert spec['file_names'] == ['zz.conf', 'nginx.conf']
+
+
+DOM_TASK = """title: Шапка
+type: exercise
+difficulty: 1
+pitfall: P
+statement: S
+explanation: E
+files:
+  index.html: |
+    <header></header>
+  style.css: |
+    header {}
+check:
+  type: dom
+  rules:
+%s
+solution:
+  style.css: |
+    header { display: flex; }
+"""
+
+
+def test_dom_exercise_is_loaded(content_dir):
+    """exercise с check.type: dom — задача на вёрстку: файлы, правила, порядок."""
+    rules = (
+        "    - selector: header\n      style: {display: flex}\n"
+        "      fail: Нужен flex.\n"
+        "    - must_match: 'style\\\\.css'\n      fail: Подключите стили.\n"
+    )
+    layout = content_dir / HELLO / '06-layout.yaml'
+    layout.write_text(DOM_TASK % rules, encoding='utf-8')
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='layout').spec
+    assert spec['file_names'] == ['index.html', 'style.css']
+    assert spec['check']['rules'][0]['style'] == {'display': 'flex'}
+    assert 'starter_code' not in spec
+
+
+@pytest.mark.parametrize('rules, message', [
+    ('    - selector: header\n      color: red\n      fail: F\n',
+     "неизвестные поля \\['color'\\]"),
+    ('    - selector: header\n      count: 1\n', 'нужен словарь с fail'),
+    ('    - text: X\n      fail: F\n', 'нужен selector или must_match'),
+])
+def test_invalid_dom_rules_are_reported(content_dir, rules, message):
+    layout = content_dir / HELLO / '06-layout.yaml'
+    layout.write_text(DOM_TASK % rules, encoding='utf-8')
+
+    with pytest.raises(ContentError, match=message):
+        ContentLoader(content_dir).load()

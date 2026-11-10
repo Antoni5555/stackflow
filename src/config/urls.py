@@ -1,4 +1,5 @@
 """Главный роутер: подключает URL всех приложений."""
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import include, path
@@ -27,3 +28,11 @@ urlpatterns = [
 
 # Статика в разработке (runserver --nostatic); при DEBUG=False список пустой
 urlpatterns += staticfiles_urlpatterns()
+
+if settings.DEBUG:
+    from apps.trainers.views import HtmlCheckView
+
+    # Проверка эталонов задач на вёрстку — для сессии «Контент», только локально
+    urlpatterns += [
+        path('dev/html-check/', HtmlCheckView.as_view(), name='html_check'),
+    ]

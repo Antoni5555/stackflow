@@ -249,12 +249,37 @@ class ContentLoader:
 
 
 # Что нужно странице задачи каждого типа (кроме общих полей)
+# Задача на вёрстку — exercise с check.type: dom: файлы и правила по готовой странице
+DOM_FIELDS = (['files', 'check', 'solution'], [])
+DOM_CHECKS = {'count', 'min', 'exists', 'attr', 'text', 'style'}
 SPEC_FIELDS = {
     'exercise': (['starter_code', 'solution', 'check'], ['inputs']),
     'predict': (['code', 'answer'], []),
     'quiz': (['kind', 'options', 'answer'], []),
     'fix': (['files', 'check', 'solution'], []),
 }
+
+
+def is_dom_check(check):
+    return isinstance(check, dict) and check.get('type') == 'dom'
+
+
+def validate_dom_rules(rules, path):
+    """Правило dom: selector + что проверить, или must_match/must_not_match.
+
+    Сами правила выполняет браузер (js/engines/html/checker.js) — здесь только форма.
+    """
+    for number, rule in enumerate(rules, start=1):
+        if not isinstance(rule, dict) or not rule.get('fail'):
+            raise ContentError(path, f'правило {number}: нужен словарь с fail')
+        if 'selector' in rule:
+            unknown = set(rule) - DOM_CHECKS - {'selector', 'fail', 'width'}
+            if unknown:
+                raise ContentError(
+                    path, f'правило {number}: неизвестные поля {sorted(unknown)}',
+                )
+        elif not {'must_match', 'must_not_match'} & set(rule):
+            raise ContentError(path, f'правило {number}: нужен selector или must_match')
 
 
 PRACTICE_FIELDS = {'title', 'text', 'hint', 'answer'}
@@ -295,23 +320,29 @@ def exercise_spec(data, path):
     Код, тесты и правила сохраняются как есть; текст для показа
     (подсказки, варианты ответа) — сразу в HTML.
     """
-    required, optional = SPEC_FIELDS[data['type']]
+    is_dom = data['type'] == 'exercise' and is_dom_check(data.get('check'))
+    required, optional = DOM_FIELDS if is_dom else SPEC_FIELDS[data['type']]
     require(data, path, *required)
     spec = {key: data[key] for key in required + optional if key in data}
 
     check = spec.get('check')
     if check is not None:
         expected = {'exercise': 'tests', 'fix': 'rules'}[data['type']]
+        if is_dom:
+            expected = 'dom'
         if not isinstance(check, dict) or check.get('type') != expected:
             raise ContentError(path, f'check.type должен быть {expected}')
-        require(check, path, expected)
+        # у dom правила лежат в rules, как у fix
+        require(check, path, 'rules' if is_dom else expected)
+    if is_dom:
+        validate_dom_rules(check['rules'], path)
 
     if data['type'] == 'quiz':
         if data['kind'] not in ('single', 'multiple', 'order'):
             raise ContentError(path, 'kind — single, multiple или order')
         spec['options'] = [render_inline(str(option)) for option in data['options']]
 
-    if data['type'] == 'fix':
+    if data['type'] == 'fix' or is_dom:
         # JSONB в Postgres переставляет ключи — порядок файлов из YAML храним отдельно
         spec['file_names'] = list(data['files'])
 

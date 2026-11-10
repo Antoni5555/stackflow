@@ -6,6 +6,8 @@ import pytest
 from django.urls import reverse
 
 from apps.courses.models import Exercise
+from apps.trainers.views import HtmlCheckView
+from tests.factories import ExerciseFactory
 
 
 pytestmark = pytest.mark.django_db
@@ -178,3 +180,62 @@ def test_practice_404_without_tasks(client, loaded_content):
     url = reverse('trainers:practice', args=['python', 'basics', 'second'])
 
     assert client.get(url).status_code == 404
+
+
+def dom_exercise(topic):
+    """Задача на вёрстку в теме hello (после fix-conf)."""
+    return ExerciseFactory(
+        topic=topic, slug='layout', type='exercise', order=6,
+        spec={
+            'files': {'index.html': '<header></header>', 'style.css': 'header {}'},
+            'file_names': ['index.html', 'style.css'],
+            'check': {'type': 'dom', 'rules': [
+                {'selector': 'header', 'style': {'display': 'flex'},
+                 'fail': 'Нужен flex.'},
+            ]},
+            'solution': {'style.css': 'header { display: flex; }'},
+            'hints': [],
+        },
+    )
+
+
+def test_html_exercise_page(client, loaded_content):
+    dom_exercise(Exercise.objects.get(slug='greeting').topic)
+
+    html = client.get(exercise_url('layout')).content.decode()
+    data = exercise_data(html)
+
+    assert data['check']['type'] == 'dom' and 'solution' not in data
+    assert 'sandbox="allow-same-origin"' in html      # скрипты ученика не идут
+    assert html.count('data-file=') == 2              # вкладки index.html и style.css
+    assert 'Эталон: style.css' in html
+    assert 'js/pages/html-exercise.js' in html
+    assert 'js/pages/exercise.js' not in html
+
+
+def test_html_playground(client, loaded_content):
+    html = client.get(reverse('trainers:playground') + '?engine=html').content.decode()
+
+    assert 'data-playground="html"' in html and 'js/pages/playground-html.js' in html
+    assert 'id="playground-files"' in html
+    assert 'aria-current="page">HTML и CSS</a>' in html
+    assert 'Программа курса' not in html         # курса с движком html ещё нет
+
+
+def test_unknown_playground_engine_falls_back_to_python(client, loaded_content):
+    html = client.get(reverse('trainers:playground') + '?engine=cobol').content.decode()
+
+    assert 'data-playground="python"' in html
+
+
+def test_html_check_page_lists_dom_exercises(rf, loaded_content):
+    """Страница проверки эталонов (подключается только при DEBUG) — данные для JS."""
+    dom_exercise(Exercise.objects.get(slug='greeting').topic)
+
+    response = HtmlCheckView.as_view()(rf.get('/dev/html-check/'))
+    response.render()
+
+    data = response.context_data['exercises_data']
+    layout = Exercise.objects.get(slug='layout')
+    assert [item['title'] for item in data] == [layout.title]
+    assert data[0]['solution'] == {'style.css': 'header { display: flex; }'}

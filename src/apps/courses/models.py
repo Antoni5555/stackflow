@@ -55,6 +55,7 @@ class Course(ContentItem):
         SQL = 'sql', 'PostgreSQL в браузере'
         DJANGO = 'django', 'Django в браузере'
         LINUX = 'linux', 'Терминал Linux в браузере'
+        HTML = 'html', 'HTML и CSS в браузере'
 
     class Kind(models.TextChoices):
         MAIN = 'main', 'Основной путь'

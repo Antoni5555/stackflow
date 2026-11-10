@@ -299,6 +299,16 @@ def practice_topics(sections):
     return groups
 
 
+def dom_exercises():
+    """Все задачи на вёрстку (check.type: dom) — для страницы проверки эталонов."""
+    return list(
+        Exercise.objects.filter(spec__check__type='dom')
+        .select_related('topic__section__course')
+        .order_by('topic__section__course__order', 'topic__section__order',
+                  'topic__order', 'order')
+    )
+
+
 def first_open_card(cards):
     """Первый курс основного пути, где уже есть темы, — кнопка «Начать с …»."""
     return next((card for card in cards if card.step and not card.is_soon), None)

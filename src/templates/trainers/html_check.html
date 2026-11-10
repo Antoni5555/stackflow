@@ -1,0 +1,25 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% comment %} Только при DEBUG (/dev/html-check/): эталоны задач на вёрстку проверяются в браузере —
+   эталон (files + solution) проходит все правила, заготовка (files) хотя бы одно не проходит. {% endcomment %}
+
+{% block title %}Проверка эталонов вёрстки — {{ SITE_NAME }}{% endblock %}
+{% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
+{% block scripts %}<script type="module" src="{% static 'js/pages/html-check.js' %}"></script>{% endblock %}
+
+{% block content %}
+<div class="container">
+  {% include 'common/_page_head.html' with title='Проверка эталонов вёрстки' lead='Эталон должен проходить все правила, заготовка — не проходить хотя бы одно. Страница видна только при DEBUG.' %}
+  <p class="small" data-summary>Проверяем {{ exercises|length }} задач…</p>
+  <div class="table-wrap table-wrap--bordered">
+    <table class="data-table">
+      <thead><tr><th>Задача</th><th>Эталон</th><th>Заготовка</th></tr></thead>
+      <tbody data-rows></tbody>
+    </table>
+  </div>
+  <div class="workspace preview">
+    <div class="preview__frame"><iframe sandbox="allow-same-origin" title="Предпросмотр проверки" data-preview></iframe></div>
+  </div>
+</div>
+{{ exercises_data|json_script:'exercises-data' }}
+{% endblock %}

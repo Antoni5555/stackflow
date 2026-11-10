@@ -233,6 +233,7 @@
 }
 
 .tab:hover { color: var(--text); }
+a.tab { text-decoration: none; }
 .tab--active { color: var(--text); background: var(--surface-2); }
 .tab--static { color: var(--text); font-family: var(--font-code); font-size: var(--fs-xs); cursor: default; }
 

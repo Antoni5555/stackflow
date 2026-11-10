@@ -1,0 +1,11 @@
+{% comment %} Тренажёр HTML и CSS: index.html + style.css и живой предпросмотр.
+   Файлы по умолчанию — карточка товара; JS заменит их сохранёнными черновиками. {% endcomment %}
+<div class="playground">
+  <div class="course-main" data-playground="html">
+    {% include 'trainers/components/_html_workspace.html' with file_names=html_file_names %}
+  </div>
+  {% if course %}
+    {% include 'common/_side_panel.html' with flat=True note_open=True %}
+  {% endif %}
+</div>
+{{ html_files|json_script:'playground-files' }}

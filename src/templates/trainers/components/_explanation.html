@@ -10,7 +10,7 @@
   {% endif %}
   {% for name, code_html in solution_files %}
   <div class="code-block">
-    <div class="code-block__head"><span>Исправленный {{ name }}</span></div>
+    <div class="code-block__head"><span>{% if check_type == 'dom' %}Эталон: {{ name }}{% else %}Исправленный {{ name }}{% endif %}</span></div>
     <pre>{{ code_html|safe }}</pre>
   </div>
   {% endfor %}

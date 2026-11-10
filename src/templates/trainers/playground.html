@@ -3,7 +3,7 @@
 
 {% block title %}Тренажёр — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
-{% block scripts %}<script type="module" src="{% static 'js/pages/playground.js' %}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{% if engine == 'html' %}{% static 'js/pages/playground-html.js' %}{% else %}{% static 'js/pages/playground.js' %}{% endif %}"></script>{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -20,14 +20,19 @@
     </div>
   </div>
 
-  {# Вкладки движков: пока работает Python, остальные появятся на следующих этапах #}
-  <div class="tabs tabs--pills" role="tablist">
-    <span class="tab tab--active" role="tab" aria-selected="true">Python</span>
+  {# Вкладки движков — ссылки ?engine=: каждая грузит только свой движок; остальные появятся позже #}
+  <div class="tabs tabs--pills">
+    <a href="?engine=python" class="tab{% if engine == 'python' %} tab--active{% endif %}"{% if engine == 'python' %} aria-current="page"{% endif %}>Python</a>
+    <a href="?engine=html" class="tab{% if engine == 'html' %} tab--active{% endif %}"{% if engine == 'html' %} aria-current="page"{% endif %}>HTML и CSS</a>
     <span class="tab" aria-disabled="true">SQL <small class="muted">скоро</small></span>
     <span class="tab" aria-disabled="true">Django <small class="muted">скоро</small></span>
     <span class="tab" aria-disabled="true">Linux <small class="muted">скоро</small></span>
   </div>
 
-  {% include 'trainers/components/_playground_python.html' %}
+  {% if engine == 'html' %}
+    {% include 'trainers/components/_playground_html.html' %}
+  {% else %}
+    {% include 'trainers/components/_playground_python.html' %}
+  {% endif %}
 </div>
 {% endblock %}

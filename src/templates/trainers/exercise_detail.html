@@ -4,7 +4,8 @@
 {% block title %}{{ exercise.title }} — {{ course.title }} — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/courses.css' %}"><link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
 {# Python (exercise, predict) грузится только там, где он нужен; quiz и fix проверяются без движка #}
-{% block scripts %}{% if exercise.type == 'quiz' %}<script type="module" src="{% static 'js/pages/quiz.js' %}"></script>
+{% block scripts %}{% if check_type == 'dom' %}<script type="module" src="{% static 'js/pages/html-exercise.js' %}"></script>
+{% elif exercise.type == 'quiz' %}<script type="module" src="{% static 'js/pages/quiz.js' %}"></script>
 {% elif exercise.type == 'fix' %}<script type="module" src="{% static 'js/pages/fix.js' %}"></script>
 {% else %}<script type="module" src="{% static 'js/pages/exercise.js' %}"></script>{% endif %}{% endblock %}
 
@@ -18,7 +19,9 @@
          data-runner="{% static 'js/engines/python/runner.py' %}"
          data-pyodide="{{ PYODIDE_URL }}">
       {% include 'trainers/components/_task_card.html' %}
-      {% if exercise.type == 'exercise' %}
+      {% if check_type == 'dom' %}
+        {% include 'trainers/components/_html_workspace.html' with file_names=exercise.spec.file_names check=True %}
+      {% elif exercise.type == 'exercise' %}
         {% include 'trainers/components/_workspace.html' %}
       {% elif exercise.type == 'predict' %}
         {% include 'trainers/components/_predict.html' %}

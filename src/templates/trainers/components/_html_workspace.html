@@ -1,0 +1,33 @@
+{% comment %} Вёрстка: файлы на вкладках + живой предпросмотр в изолированном iframe.
+   Задача (check=True): «Проверить» и «Сбросить»; тренажёр — только «Сбросить».
+   Параметры: file_names — порядок файлов, check. JS — pages/html-exercise.js или
+   pages/playground-html.js (движок — js/engines/html/). {% endcomment %}
+<div class="workspace">
+  <div class="tabs" role="tablist">
+    {% for name in file_names %}
+      {% if file_names|length == 1 %}<span class="tab tab--static">{{ name }}</span>
+      {% else %}<button type="button" class="tab tab--static{% if forloop.first %} tab--active{% endif %}" role="tab" data-file="{{ name }}">{{ name }}</button>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="editor">
+    <div class="editor__gutter" aria-hidden="true"></div>
+    <textarea class="editor__code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Текст файла"></textarea>
+  </div>
+  <div class="toolbar">
+    {% if check %}<button type="button" class="btn btn--ink" data-action="check">Проверить <kbd>Ctrl ↵</kbd></button>{% endif %}
+    <button type="button" class="btn btn--ghost" data-action="reset">Сбросить</button>
+  </div>
+</div>
+<div class="workspace preview">
+  <div class="tabs">
+    <span class="tab tab--static">Предпросмотр</span>
+    <span class="seg" role="group" aria-label="Ширина предпросмотра">
+      <button type="button" class="seg__item seg__item--active" data-width="">ПК</button>
+      <button type="button" class="seg__item" data-width="375">Телефон</button>
+    </span>
+  </div>
+  <div class="preview__frame">
+    {# Без allow-scripts: код ученика не выполняется; allow-same-origin — чтобы сайт мог проверить страницу #}
+    <iframe sandbox="allow-same-origin" title="Предпросмотр страницы" data-preview></iframe>
+  </div>
+</div>
