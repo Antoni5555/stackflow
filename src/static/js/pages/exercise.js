@@ -2,6 +2,7 @@
 
 import { CodeEditor } from '../editor.js';
 import { PythonEngine } from '../engines/python/engine.js';
+import { highlightPython } from '../highlight.js';
 import { markSolved } from '../progress.js';
 import {
   drafts, escapeHtml, hideAlert, inlineCode, showAlert, showConsole, showEngineStatus,
@@ -34,6 +35,8 @@ const draftKey = `draft:${root.dataset.exercise}`;
 const textarea = root.querySelector('textarea.editor__code');
 const editor = new CodeEditor(textarea.closest('.editor'), {
   onRun: () => (exercise.type === 'predict' ? check() : run()),
+  // в predict поле — ответ (вывод программы), а не код: без подсветки
+  highlight: exercise.type === 'predict' ? null : highlightPython,
   onChange: (value) => drafts.set(draftKey, value),
 });
 const draft = drafts.get(draftKey);

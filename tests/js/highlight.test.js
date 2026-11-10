@@ -5,7 +5,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { highlightCss, highlightHtml, highlighterFor } from '../../src/static/js/highlight.js';
+import {
+  highlightCss, highlightHtml, highlightPython, highlighterFor,
+} from '../../src/static/js/highlight.js';
 
 const plain = (html) => html.replace(/<[^>]+>/g, '')
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
@@ -71,9 +73,35 @@ describe('подсветка', () => {
     assert.match(css, /<span class="kw">\n  \.top <\/span>\{ <span class="fn">flex-direction<\/span>/);
   });
 
+  it('Python: ключевые слова, встроенные функции, def/class, строки, числа, комментарии', () => {
+    const code = [
+      'def total(items):',
+      '    """Сумма."""',
+      '    return sum(x for x in items if x is not None)  # ok',
+      'class Cart:',
+      '    name = f"корзина {1}"',
+      "print(0x1F, 1.5e3, 'a\\'b')",
+      '',
+    ].join('\n');
+    for (let cut = 0; cut <= code.length; cut += 1) {
+      assert.equal(plain(highlightPython(code.slice(0, cut))), code.slice(0, cut), `обрезано на ${cut}`);
+    }
+    const html = highlightPython(code);
+    assert.match(html, /^<span class="kw">def<\/span> <span class="fn">total<\/span>\(items\):/);
+    assert.match(html, /<span class="str">"""Сумма\."""<\/span>/);
+    assert.match(html, /<span class="kw">is<\/span> <span class="kw">not<\/span> <span class="kw">None<\/span>/);
+    assert.match(html, /<span class="cm"># ok<\/span>/);
+    assert.match(html, /<span class="kw">class<\/span> <span class="fn">Cart<\/span>/);
+    assert.match(html, /<span class="str">f"корзина \{1\}"<\/span>/);
+    assert.match(html, /<span class="num">0x1F<\/span>, <span class="num">1\.5e3<\/span>/);
+    // незакрытая строка — до конца строки, следующая строка снова код
+    assert.match(highlightPython('x = "abc\nif y:'), /<span class="str">"abc<\/span>\n<span class="kw">if<\/span>/);
+  });
+
   it('язык — по имени файла', () => {
     assert.equal(highlighterFor('index.html'), highlightHtml);
     assert.equal(highlighterFor('style.css'), highlightCss);
+    assert.equal(highlighterFor('app.py'), highlightPython);
     assert.equal(highlighterFor('nginx.conf'), null);
   });
 });

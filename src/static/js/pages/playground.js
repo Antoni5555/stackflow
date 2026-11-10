@@ -2,6 +2,7 @@
 
 import { CodeEditor } from '../editor.js';
 import { PythonEngine } from '../engines/python/engine.js';
+import { highlightPython } from '../highlight.js';
 import { drafts, showConsole, showEngineStatus } from '../trainer-ui.js';
 
 const root = document.querySelector('[data-playground]');
@@ -25,6 +26,7 @@ async function run() {
 
 const editor = new CodeEditor(textarea.closest('.editor'), {
   onRun: run,
+  highlight: highlightPython,
   onChange: (value) => drafts.set(DRAFT_KEY, value),
 });
 const saved = drafts.get(DRAFT_KEY);

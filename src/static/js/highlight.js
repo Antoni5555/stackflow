@@ -1,6 +1,7 @@
-// Подсветка HTML и CSS при наборе (слой под textarea, js/editor.js).
-// Свой небольшой разбор без библиотек: теги, атрибуты, значения, комментарии, свойства CSS.
-// Классы — те же, что у кода в уроках (base.css): kw, fn, str, num, cm.
+// Подсветка HTML, CSS и Python при наборе (слой под textarea, js/editor.js).
+// Свой небольшой разбор без библиотек: теги, атрибуты, значения, комментарии, свойства CSS;
+// в Python — ключевые слова, встроенные функции, строки, числа, комментарии.
+// Классы — те же, что у кода в уроках (base.css, rendering.TOKEN_CLASSES): kw, fn, str, num, cm.
 // Разбор терпит незаконченный код: пока ученик печатает, тег может быть не закрыт.
 
 const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -124,9 +125,56 @@ export function highlightHtml(text) {
   return out;
 }
 
-/** Подсветка по имени файла: index.html → HTML, style.css → CSS, остальное — без подсветки. */
+// --- Python ---
+
+const PY_KEYWORDS = new Set(`False None True and as assert async await break class continue def del
+elif else except finally for from global if import in is lambda nonlocal not or pass raise return
+try while with yield match case`.split(/\s+/));
+
+const PY_BUILTINS = new Set(`abs all any bin bool breakpoint bytearray bytes callable chr classmethod
+compile complex delattr dict dir divmod enumerate eval exec filter float format frozenset getattr
+globals hasattr hash help hex id input int isinstance issubclass iter len list locals map max
+memoryview min next object oct open ord pow print property range repr reversed round set setattr
+slice sorted staticmethod str sum super tuple type vars zip __import__ self cls
+Exception ValueError TypeError KeyError IndexError ZeroDivisionError AttributeError NameError
+RuntimeError StopIteration NotImplementedError FileNotFoundError OSError ImportError
+ArithmeticError LookupError RecursionError AssertionError`.split(/\s+/));
+
+// Строка с префиксом (f, r, b, rb…), тройные кавычки — до закрывающих (или до конца текста),
+// обычные — до закрывающей кавычки или конца строки (пока ученик печатает)
+const PY_TOKEN = new RegExp([
+  '(#[^\\n]*)',
+  '((?:[rRbBuUfF]{1,2})?(?:\'\'\'[\\s\\S]*?(?:\'\'\'|$(?![\\s\\S]))|"""[\\s\\S]*?(?:"""|$(?![\\s\\S]))|\'(?:\\\\.|[^\'\\\\\\n])*\'?|"(?:\\\\.|[^"\\\\\\n])*"?))',
+  '((?:0[xX][\\da-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|(?:\\d[\\d_]*\\.?[\\d_]*|\\.\\d[\\d_]*)(?:[eE][+-]?\\d+)?[jJ]?)(?![\\p{L}\\d_]))',
+  '([\\p{L}_][\\p{L}\\p{N}_]*)',
+  '([\\s\\S])',
+].join('|'), 'gu');
+
+export function highlightPython(text) {
+  let out = '';
+  let afterDef = false;       // имя после def / class — как имя функции
+  for (const match of text.matchAll(PY_TOKEN)) {
+    const [token, comment, string, number, word] = match;
+    if (comment) out += span('cm', comment);
+    else if (string) out += span('str', string);
+    else if (number) out += span('num', number);
+    else if (word) {
+      if (afterDef) out += span('fn', word);
+      else if (PY_KEYWORDS.has(word)) out += span('kw', word);
+      else if (PY_BUILTINS.has(word)) out += span('fn', word);
+      else out += escape(word);
+      afterDef = word === 'def' || word === 'class';
+      continue;
+    } else out += escape(token);
+    if (!/^[ \t]+$/.test(token)) afterDef = false;
+  }
+  return out;
+}
+
+/** Подсветка по имени файла: .html, .css, .py; для остальных (nginx.conf…) — без подсветки. */
 export function highlighterFor(filename) {
   if (/\.html?$/i.test(filename)) return highlightHtml;
   if (/\.css$/i.test(filename)) return highlightCss;
+  if (/\.py$/i.test(filename)) return highlightPython;
   return null;
 }
