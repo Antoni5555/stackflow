@@ -63,16 +63,14 @@ async function checkExercise() {
     return;
   }
   showConsole(consoleEl, result);
-  const passed = result.total - result.failed.length;
   if (result.failed.length === 0) {
     markSolved(root.dataset.exercise);
     const next = revealExplanation();
-    showAlert(alertEl, 'success',
-      `<strong>Верно!</strong> Все проверки пройдены (${passed} из ${result.total}).${next}`);
+    showAlert(alertEl, 'success', `<strong>Верно!</strong> Решение прошло все проверки.${next}`);
   } else {
     // Показываем только первую непройденную проверку — это подсказка, а не список ответов
     showAlert(alertEl, 'error',
-      `<strong>Пока не так.</strong> Пройдено ${passed} из ${result.total}. ${inlineCode(result.failed[0])}`);
+      `<strong>Пока не так.</strong> Подсказка: ${inlineCode(result.failed[0])}`);
   }
 }
 
