@@ -440,3 +440,26 @@ li.quiz__option { cursor: default; counter-increment: quiz; }
 /* --- Задача в терминале (trainers/components/_linux_task.html) --- */
 .linux-task { display: grid; gap: var(--space-3); }
 .toolbar--plain { padding: 0; border: 0; }
+
+/* --- Подсветка при наборе (js/editor.js + js/highlight.js): <pre> под прозрачной textarea --- */
+.editor__area { position: relative; flex: 1; min-width: 0; }
+/* высоту редактора задают номера строк (как без подсветки) — textarea растягивается на неё */
+.editor__area > textarea.editor__code { width: 100%; height: 100%; }
+.editor__highlight {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  overflow: hidden;
+  font: inherit;
+  font-family: var(--font-code);
+  line-height: inherit;
+  color: var(--text);
+  white-space: pre;
+  tab-size: 4;
+  pointer-events: none;
+}
+/* Жирный и курсив сдвинули бы символы относительно textarea — в слое только цвет */
+.editor__highlight .kw,
+.editor__highlight .cm { font-weight: inherit; font-style: normal; }
+textarea.editor__code--highlighted { position: relative; color: transparent; caret-color: var(--text); }
+textarea.editor__code--highlighted::selection { color: transparent; background: color-mix(in srgb, var(--accent) 35%, transparent); }

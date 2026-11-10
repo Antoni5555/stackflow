@@ -3,6 +3,7 @@
 // Используют задачи fix и html и тренажёр HTML.
 
 import { CodeEditor } from './editor.js';
+import { highlighterFor } from './highlight.js';
 import { drafts } from './trainer-ui.js';
 
 export class FileEditor {
@@ -20,8 +21,10 @@ export class FileEditor {
       names.map((name) => [name, drafts.get(this.draftKey(name)) ?? initial[name]]),
     );
     this.current = names[0];
+    // подсветка — по имени файла: index.html, style.css; для остальных её нет
     this.editor = new CodeEditor(root.querySelector('.editor'), {
       onRun,
+      highlight: highlighterFor(this.current),
       onChange: (value) => {
         this.files[this.current] = value;
         drafts.set(this.draftKey(this.current), value);
@@ -35,6 +38,7 @@ export class FileEditor {
   open(name) {
     if (!this.tabs.length) return;
     this.current = name;
+    this.editor.setHighlight(highlighterFor(name));
     this.editor.value = this.files[name];
     for (const tab of this.tabs) {
       const active = tab.dataset.file === name;
