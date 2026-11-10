@@ -8,6 +8,7 @@
 // База песочницы хранится в IndexedDB (dataDir = 'idb://…'): переживает перезагрузку.
 // Без dataDir — в памяти (страницы задач: база всё равно создаётся заново на каждую проверку).
 
+import { checkSolution } from './checker.js';
 import { hasTables, prepareSession, resetDatabase, runScript, schemaOverview, snapshotTables, textParsers } from './session.js';
 
 const params = new URL(self.location.href).searchParams;
@@ -17,6 +18,7 @@ const DATA_DIR = params.get('datadir');      // 'idb://…' или пусто
 let db = null;
 let parsers = null;
 let base = '';
+const reference = new Map();     // эталоны задач: считаются один раз на страницу
 
 async function open(dataDir) {
   const { PGlite } = await import(PGLITE_URL);
@@ -52,6 +54,12 @@ const actions = {
     return {};
   },
   run: ({ sql }) => runScript(db, parsers, sql),
+  /** Задача: каждый запуск — на свежей базе (учебные данные + setup). */
+  async runFresh({ sql, setup = '' }) {
+    await resetDatabase(db, `${base}\n${setup}`);
+    return runScript(db, parsers, sql);
+  },
+  check: ({ task, code }) => checkSolution(db, parsers, base, task, code, reference),
   schema: () => schemaOverview(db),
   tables: ({ names = null } = {}) => snapshotTables(db, parsers, names),
 };

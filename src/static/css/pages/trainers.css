@@ -224,6 +224,13 @@
 .m6 { background: var(--match-6); }
 .data-table td.cell--changed { font-weight: var(--fw-bold); white-space: nowrap; }
 .db-table > p { margin: 0; padding: 6px 12px; border-top: 1px solid var(--border); }
+/* Проверка SQL-задачи: эталон и решение рядом */
+.sql-check { display: grid; gap: var(--space-3); }
+.sql-check__tables { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: start; }
+.row--extra { background: var(--error-bg); box-shadow: inset 3px 0 var(--error); }
+.row--missing { color: var(--muted); font-style: italic; box-shadow: inset 3px 0 var(--muted); }
+.legend__swatch--extra { background: var(--error); }
+.legend__swatch--missing { background: var(--muted); }
 .badge--error { color: var(--error); background: var(--error-bg); }
 .run-step__body .alert { margin: 0; }
 .schema-table li.row--added { box-shadow: inset 3px 0 var(--success); }

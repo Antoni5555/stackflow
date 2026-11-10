@@ -6,6 +6,7 @@
 // незавершённая транзакция, как при обрыве соединения с настоящим PostgreSQL.
 
 const RUN_TIMEOUT = 5000;
+const CHECK_TIMEOUT = 12000;      // проверка выполняет эталон и решение, каждое — на свежей базе
 
 const TIMEOUT_MESSAGE = 'Запрос выполнялся дольше 5 секунд и был остановлен — '
   + 'возможно, рекурсивный WITH без условия выхода или соединение огромных таблиц. '
@@ -95,6 +96,16 @@ export class SqlEngine {
    */
   run(sql) {
     return this.request('run', { sql });
+  }
+
+  /** Задача: выполнить текст на свежей базе (учебные данные + setup). */
+  runFresh(sql, setup = '') {
+    return this.request('runFresh', { sql, setup }, RUN_TIMEOUT * 2);
+  }
+
+  /** Проверить решение задачи: { ok, message, error, panel, log } (engines/sql/checker.js). */
+  check(task, code) {
+    return this.request('check', { task, code }, CHECK_TIMEOUT);
   }
 
   /** Сбросить базу к учебным данным (+ setup задачи). */

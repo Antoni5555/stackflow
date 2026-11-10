@@ -3,6 +3,7 @@
 // с подсветкой (добавлено / изменено / удалено), SELECT — результат, а с JOIN —
 // исходные таблицы с цветом совпавших пар.
 
+import { shortType } from './session.js';
 import { mask } from './split.js';
 
 const SHOWN_ROWS = 200;       // строк результата на экране; остальное — «ещё N»
@@ -66,16 +67,6 @@ function dbTable(title, columns, rows, { flag, alias, result } = {}) {
 /** Колонки ограничения: PRIMARY KEY (a, b) → ['a', 'b'] */
 const constraintColumns = (definition) => (/\(([^)]*)\)/.exec(definition)?.[1] ?? '')
   .split(',').map((name) => name.trim().replace(/^"|"$/g, ''));
-
-/** Короткое имя типа: timestamp with time zone → timestamptz; ? — может быть NULL. */
-export function shortType(column) {
-  const type = column.type
-    .replace('timestamp with time zone', 'timestamptz')
-    .replace('timestamp without time zone', 'timestamp')
-    .replace('character varying', 'varchar')
-    .replace(/^integer$/, 'int');
-  return column.notNull ? type : `${type}?`;
-}
 
 function keyColumns(table) {
   const pk = new Set();
@@ -345,4 +336,46 @@ export function runStep(item, number, schema = []) {
     li.append(wrap);
   }
   return li;
+}
+
+// --- «Ожидалось / получилось» после проверки задачи ---
+
+const CHECK_CLASS = { extra: 'row--extra', missing: 'row--missing', moved: 'row--changed' };
+const CHECK_ROWS = 30;        // строк в каждой таблице «ожидалось / получилось»
+
+/** Две таблицы рядом: эталон и решение ученика с отметками строк (checker.js → panel). */
+export function checkPanel(panel) {
+  const wrap = el('div', 'sql-check__tables');
+  const title = panel.kind === 'state' ? `${panel.table}: ` : '';
+  const expected = panel.expected.rows.slice(0, CHECK_ROWS).map((values) => ({ values }));
+  const actual = panel.actual.rows.slice(0, CHECK_ROWS).map((row) => ({
+    values: row.values, className: CHECK_CLASS[row.mark] ?? '',
+  }));
+  const more = (box, total) => {
+    if (total > CHECK_ROWS) box.append(el('p', 'muted small', `ещё ${rowsText(total - CHECK_ROWS)} не показаны`));
+    return box;
+  };
+  wrap.append(
+    more(dbTable(`${title}ожидалось`, panel.expected.columns, expected, {
+      flag: rowsText(panel.expected.rows.length),
+    }), panel.expected.rows.length),
+    more(dbTable(`${title}получилось`, panel.actual.columns, actual, {
+      flag: rowsText(panel.actual.rows.filter((row) => row.mark !== 'missing').length),
+    }), panel.actual.rows.length),
+  );
+  if (panel.kind === 'state') {
+    // в таблицах — только различающиеся строки
+    wrap.firstChild.querySelector('.db-table__name').firstChild.textContent = `${panel.table}: должно быть`;
+    wrap.lastChild.querySelector('.db-table__name').firstChild.textContent = `${panel.table}: у вас`;
+    const note = el('p', 'muted small', `Показаны только строки, которые отличаются; совпадают — ${rowsText(panel.same)}.`);
+    return [wrap, note];
+  }
+  const legend = el('div', 'legend');
+  legend.append(el('span', '', 'В «получилось»:'));
+  for (const [cls, text] of [['extra', 'лишняя строка'], ['missing', 'не хватает'], ['changed', 'не на своём месте']]) {
+    const item = el('span');
+    item.append(el('i', `legend__swatch legend__swatch--${cls}`), text);
+    legend.append(item);
+  }
+  return [wrap, legend];
 }

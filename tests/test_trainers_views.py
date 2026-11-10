@@ -7,7 +7,9 @@ from django.urls import reverse
 
 from apps.courses.models import Exercise
 from apps.trainers.views import HtmlCheckView
-from tests.factories import CourseFactory, ExerciseFactory, TrackFactory
+from tests.factories import (
+    CourseFactory, ExerciseFactory, SectionFactory, TopicFactory, TrackFactory,
+)
 
 
 pytestmark = pytest.mark.django_db
@@ -349,3 +351,28 @@ def test_sql_playground_without_sql_course(client, db):
     html = client.get(reverse('trainers:playground') + '?engine=sql').content.decode()
 
     assert sql_dataset(html) == 'SELECT 1;'
+
+
+def test_sql_exercise_page(client, db):
+    """SQL-задача: свой скрипт, редактор с заготовкой, эталон и setup — для браузера."""
+    track = TrackFactory(sql_dataset='CREATE TABLE users (id int);')
+    course = CourseFactory(track=track, engine='sql', slug='sql')
+    topic = TopicFactory(section=SectionFactory(course=course))
+    exercise = ExerciseFactory(
+        topic=topic, type=Exercise.Type.EXERCISE, slug='no-orders',
+        spec={
+            'solution': 'SELECT id FROM users;\n', 'starter_code': 'SELECT\n',
+            'setup': 'CREATE TABLE t (x int);',
+            'check': {'type': 'result', 'order_matters': True}, 'hints': [],
+        },
+    )
+    html = client.get(exercise.get_absolute_url()).content.decode()
+
+    assert 'js/pages/sql-exercise.js' in html and 'js/pages/exercise.js' not in html
+    assert 'data-sql-worker=' in html and 'pglite@0.2.17' in html
+    assert sql_dataset(html) == 'CREATE TABLE users (id int);'
+    data = exercise_data(html)
+    assert data['solution'] == 'SELECT id FROM users;\n'
+    assert data['setup'] == 'CREATE TABLE t (x int);'
+    assert 'solution.sql' in html and '>SELECT\n</textarea>' in html
+    assert 'Эталонное решение' in html and '<span class="k">SELECT</span>' not in html

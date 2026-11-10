@@ -34,7 +34,9 @@ def state_tasks():
             continue
         data = yaml.safe_load(path.read_text(encoding='utf-8'))
         check = data.get('check') if isinstance(data, dict) else None
-        if isinstance(check, dict) and check.get('type') == 'state':
+        # state у SQL-задач — таблицы, их проверяет tests/test_sql_tasks.py
+        if isinstance(check, dict) and check.get('type') == 'state' \
+                and course_engine(path) != 'sql':
             tasks[str(path.relative_to(CONTENT))] = {
                 'engine': course_engine(path),
                 'setup': data['setup'], 'rules': check['expect'],

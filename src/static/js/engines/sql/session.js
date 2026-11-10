@@ -104,6 +104,16 @@ export async function describeSchema(db) {
   return [...tables.values()];
 }
 
+/** Короткое имя типа: timestamp with time zone → timestamptz; ? — может быть NULL. */
+export function shortType(column) {
+  const type = column.type
+    .replace('timestamp with time zone', 'timestamptz')
+    .replace('timestamp without time zone', 'timestamp')
+    .replace('character varying', 'varchar')
+    .replace(/^integer$/, 'int');
+  return column.notNull ? type : `${type}?`;
+}
+
 // --- Снимки таблиц ---
 
 /** Колонки первичного ключа каждой таблицы: { orders: ['id'], product_tags: ['product_id', 'tag_id'] }. */

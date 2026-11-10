@@ -4,7 +4,8 @@
 {% block title %}{{ exercise.title }} — {{ course.title }} — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/courses.css' %}"><link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
 {# Python (exercise, predict) грузится только там, где он нужен; quiz и fix проверяются без движка #}
-{% block scripts %}{% if check_type == 'dom' %}<script type="module" src="{% static 'js/pages/html-exercise.js' %}"></script>
+{% block scripts %}{% if is_sql %}<script type="module" src="{% static 'js/pages/sql-exercise.js' %}"></script>
+{% elif check_type == 'dom' %}<script type="module" src="{% static 'js/pages/html-exercise.js' %}"></script>
 {% elif check_type == 'state' and course.engine == 'git' %}<script type="module" src="{% static 'js/pages/git-exercise.js' %}"></script>
 {% elif check_type == 'state' %}<script type="module" src="{% static 'js/pages/linux-exercise.js' %}"></script>
 {% elif exercise.type == 'quiz' %}<script type="module" src="{% static 'js/pages/quiz.js' %}"></script>
@@ -19,9 +20,13 @@
          data-exercise="{{ course.slug }}/{{ section.slug }}/{{ topic.slug }}/{{ exercise.slug }}"
          data-worker="{% static 'js/engines/python/worker.js' %}"
          data-runner="{% static 'js/engines/python/runner.py' %}"
-         data-pyodide="{{ PYODIDE_URL }}">
+         data-pyodide="{{ PYODIDE_URL }}"{% if is_sql %}
+         data-sql-worker="{% static 'js/engines/sql/worker.js' %}"
+         data-pglite="{{ PGLITE_URL }}"{% endif %}>
       {% include 'trainers/components/_task_card.html' %}
-      {% if check_type == 'state' %}
+      {% if is_sql %}
+        {% include 'trainers/components/_sql_task.html' %}
+      {% elif check_type == 'state' %}
         {% include 'trainers/components/_linux_task.html' %}
       {% elif check_type == 'dom' %}
         {% include 'trainers/components/_html_workspace.html' with file_names=exercise.spec.file_names check=True %}
@@ -43,4 +48,5 @@
 </div>
 {% include 'common/_report_error.html' with source=exercise_key %}
 {{ exercise_data|json_script:'exercise-data' }}
+{% if is_sql %}{{ sql_dataset|json_script:'sql-dataset' }}{% endif %}
 {% endblock %}

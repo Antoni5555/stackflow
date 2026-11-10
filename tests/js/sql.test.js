@@ -10,9 +10,9 @@ import { PGlite } from '@electric-sql/pglite';
 
 import { mentionedColumns, parseJoin } from '../../src/static/js/engines/sql/join.js';
 import { mask, splitStatements, statementKind } from '../../src/static/js/engines/sql/split.js';
-import { joinColors, mentionedTables, plural, shortType } from '../../src/static/js/engines/sql/view.js';
+import { joinColors, mentionedTables, plural } from '../../src/static/js/engines/sql/view.js';
 import {
-  describeSchema, diffSnapshots, hasTables, resetDatabase, runScript, snapshotTables, textParsers,
+  describeSchema, diffSnapshots, hasTables, resetDatabase, runScript, shortType, snapshotTables, textParsers,
 } from '../../src/static/js/engines/sql/session.js';
 
 const SHARED = new URL('../../content/backend/_shared/', import.meta.url);

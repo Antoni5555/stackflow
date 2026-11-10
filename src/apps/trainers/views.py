@@ -57,7 +57,14 @@ class ExerciseView(EngineMixin, TemplateView):
             context['inputs_html'] = highlight(spec['inputs'].rstrip('\n'), 'python')
         # dom — задача на вёрстку: файлы и правила по готовой странице, как у fix
         context['check_type'] = check_type = spec.get('check', {}).get('type')
-        if check_type in ('tests', 'state'):
+        # SQL-задача: решение и эталон выполняет PGlite в браузере на учебной базе
+        is_sql = context['course'].engine == 'sql' and exercise.type == 'exercise'
+        context['is_sql'] = is_sql
+        if is_sql:
+            solution = spec['solution'].rstrip('\n')
+            context['solution_html'] = highlight(solution, 'postgresql')
+            context['sql_dataset'] = selectors.sql_dataset(context['course'])
+        elif check_type in ('tests', 'state'):
             # state — задача в терминале: эталон — команды, подсветка как у bash
             solution = spec['solution'].rstrip('\n')
             context['solution_html'] = highlight(
@@ -73,7 +80,10 @@ class ExerciseView(EngineMixin, TemplateView):
         # Данные для JS: тип и всё, что нужно проверке. Подсказки и варианты quiz уже
         # в HTML страницы, эталон fix — в разборе
         hidden = {'hints', 'options'}
-        if exercise.type == exercise.Type.FIX or check_type in ('dom', 'state'):
+        # эталон SQL нужен браузеру: с ним сравнивается решение ученика
+        if not is_sql and (
+            exercise.type == exercise.Type.FIX or check_type in ('dom', 'state')
+        ):
             hidden.add('solution')
         context['exercise_data'] = {
             'type': exercise.type,

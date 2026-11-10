@@ -1,0 +1,22 @@
+{% comment %} SQL-задача (курс с движком sql): редактор, «Запустить» — на свежей базе (учебные данные
+   + setup задачи), «Проверить» — сравнение с эталоном по check.type (js/pages/sql-exercise.js).
+   Черновик — в localStorage; база не сохраняется: каждый запуск начинается с чистых данных. {% endcomment %}
+<div class="workspace">
+  <div class="tabs">
+    <span class="tab tab--static">solution.sql</span>
+    <span class="engine-badge" data-engine-status><span class="spinner spinner--sm" aria-hidden="true"></span>Загружаем PostgreSQL… первый раз ~3 МБ, дальше из кэша</span>
+  </div>
+  <div class="editor">
+    <div class="editor__gutter" aria-hidden="true"></div>
+    <textarea class="editor__code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Решение на SQL">{{ exercise.spec.starter_code }}</textarea>
+  </div>
+  <div class="toolbar">
+    <button type="button" class="btn btn--accent" data-action="run" disabled>Запустить <kbd>Ctrl ↵</kbd></button>
+    <button type="button" class="btn btn--ink" data-action="check" disabled>Проверить</button>
+    <button type="button" class="btn btn--ghost" data-action="reset">Сбросить</button>
+  </div>
+</div>
+<p class="muted small">Каждый запуск и проверка — на чистой учебной базе: изменения прошлого запуска не копятся.</p>
+{% include 'trainers/components/_schema_strip.html' %}
+<div class="sql-check" data-sql-panel hidden></div>
+<ol class="run-log" data-run-log aria-live="polite"></ol>
