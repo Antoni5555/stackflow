@@ -425,6 +425,43 @@ def check_state(task):
     return problems
 
 
+def course_engine(path):
+    """engine курса, в папке которого лежит файл (по ближайшему _course.yaml)."""
+    for folder in path.parents:
+        if (folder / "_course.yaml").exists():
+            return (yaml.safe_load((folder / "_course.yaml").read_text()) or {}).get("engine")
+    return None
+
+
+def check_sql(task):
+    """Форма SQL-задачи. Сам эталон в PGlite прогоняет тест сайта."""
+    problems = []
+    check = task.get("check") or {}
+    if check.get("type") not in ("result", "state", "schema"):
+        return [f"check.type у SQL-задачи — result, state или schema: {check.get('type')!r}"]
+    if not (task.get("solution") or "").strip():
+        problems.append("нет solution")
+    elif re.search(r"\bnow\(\)|current_date|current_timestamp", task["solution"], re.I):
+        problems.append("в solution now()/current_date — ответ зависит от дня запуска; даты — строкой")
+    if "setup" in task and not isinstance(task["setup"], str):
+        problems.append("setup — SQL строкой (setup: |)")
+    if check["type"] == "result":
+        if not isinstance(check.get("order_matters"), bool):
+            problems.append("у result нужен order_matters: true/false")
+        if unknown := set(check) - {"type", "order_matters"}:
+            problems.append(f"неизвестные ключи check: {sorted(unknown)}")
+    else:
+        tables = check.get("tables")
+        if not tables or not isinstance(tables, (list, dict)):
+            problems.append(f"у {check['type']} нужен tables: [таблица, …] или {{таблица: [колонки]}}")
+        elif isinstance(tables, dict) and (check["type"] == "schema" or
+                                           not all(isinstance(v, list) and v for v in tables.values())):
+            problems.append("tables словарём — только у state, значения — списки колонок")
+        if unknown := set(check) - {"type", "tables"}:
+            problems.append(f"неизвестные ключи check: {sorted(unknown)}")
+    return problems
+
+
 def check_task(path):
     with sandbox():
         return _check_task(path)
@@ -453,7 +490,9 @@ def _check_task(path):
     for key in ("title", "type", "difficulty", "pitfall", "statement", "explanation"):
         if key not in task:
             problems.append(f"нет поля {key}")
-    if task["type"] == "exercise" and (task.get("check") or {}).get("type") == "state":
+    if task["type"] == "exercise" and course_engine(path) == "sql":
+        problems += check_sql(task)
+    elif task["type"] == "exercise" and (task.get("check") or {}).get("type") == "state":
         problems += check_state(task)
     elif task["type"] == "exercise" and (task.get("check") or {}).get("type") == "dom":
         problems += check_dom(task)
