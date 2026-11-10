@@ -1,0 +1,13 @@
+{% load static %}
+{% comment %} Карточка «Репозиторий» под терминалом Git (js/engines/git/view.js): граф коммитов и
+   три области (рабочая папка → индекс → репозиторий). Вкладки — js/tabs.js. {% endcomment %}
+<div class="fs-card git-card" data-git-view data-tabs>
+  <div class="db-table__name">Репозиторий <span class="db-table__alias" data-git-branch></span></div>
+  <div class="tabs git-card__tabs" role="tablist">
+    <button type="button" class="tab" role="tab" data-tab="graph">Граф коммитов</button>
+    <button type="button" class="tab" role="tab" data-tab="areas">Три области</button>
+  </div>
+  <div class="fs-card__body" data-panel="graph"><div class="git-graph" data-git-graph></div></div>
+  <div class="fs-card__body" data-panel="areas" hidden><div class="git-areas" data-git-areas></div></div>
+</div>
+<script type="module" src="{% static 'js/tabs.js' %}"></script>

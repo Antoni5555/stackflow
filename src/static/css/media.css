@@ -29,6 +29,9 @@
 }
 
 @media (max-width: 720px) {
+  /* Git: три области — одна под другой */
+  .git-areas { grid-template-columns: minmax(0, 1fr); }
+
   /* Карта пути — вертикально: кружок слева, подписи справа; станции одной высоты,
      поэтому отрезок линии к станции = высота станции минус кружок */
   .metro { grid-template-columns: 1fr; grid-auto-flow: row; padding: var(--space-5); }

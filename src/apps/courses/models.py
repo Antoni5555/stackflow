@@ -56,6 +56,7 @@ class Course(ContentItem):
         DJANGO = 'django', 'Django в браузере'
         LINUX = 'linux', 'Терминал Linux в браузере'
         HTML = 'html', 'HTML и CSS в браузере'
+        GIT = 'git', 'Терминал и Git в браузере'
 
     class Kind(models.TextChoices):
         MAIN = 'main', 'Основной путь'

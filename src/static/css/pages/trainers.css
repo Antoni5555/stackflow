@@ -463,3 +463,36 @@ li.quiz__option { cursor: default; counter-increment: quiz; }
 .editor__highlight .cm { font-weight: inherit; font-style: normal; }
 textarea.editor__code--highlighted { position: relative; color: transparent; caret-color: var(--text); }
 textarea.editor__code--highlighted::selection { color: transparent; background: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* --- Git: карточка «Репозиторий» (trainers/components/_git_panel.html) --- */
+.git-card__tabs { padding: var(--space-2) var(--space-4) 0; }
+.git-graph__body { position: relative; overflow-x: auto; }
+.git-graph__lines { position: absolute; top: 0; left: 0; overflow: visible; }
+.git-graph__edge { fill: none; stroke: var(--muted); stroke-width: 2; }
+.git-graph__node { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
+.git-graph__node--head { fill: var(--accent); }
+.git-graph__node--new { stroke: var(--success); stroke-width: 3; }
+.git-graph__rows { margin: 0; list-style: none; }
+.git-graph__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.git-graph__id { color: var(--muted); }
+.git-graph__message { overflow: hidden; text-overflow: ellipsis; }
+.git-graph__row.file--added .git-graph__message { color: var(--success); }
+/* Подписи веток: HEAD — лайм, ветка — рамка, удалённая — пунктир, тег — серый */
+.git-ref { padding: 1px 8px; font-family: var(--font-code); font-size: var(--fs-xs); border: 1px solid var(--border); border-radius: var(--radius-pill); }
+.git-ref--head { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+.git-ref--remote { border-style: dashed; color: var(--muted); }
+.git-ref--tag { background: var(--surface-2); }
+
+.git-areas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+.git-area { min-width: 0; }
+.git-area__title { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.git-area__hint { margin-bottom: var(--space-2); }
+.git-area__files { overflow-wrap: anywhere; }

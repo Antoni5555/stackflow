@@ -278,3 +278,19 @@ def test_linux_exercise_page(client, loaded_content):
     assert 'data-terminal-input' in html and 'data-file-tree' in html
     assert 'js/pages/linux-exercise.js' in html and 'js/pages/exercise.js' not in html
     assert 'Эталонное решение' in html and 'config' in html
+
+
+def test_git_playground(client, loaded_content):
+    """Тренажёр Git: терминал, карточка «Репозиторий», дерево, проект для JS."""
+    url = reverse('trainers:playground') + '?engine=git'
+    html = client.get(url).content.decode()
+
+    assert 'data-playground="git"' in html and 'js/pages/playground-git.js' in html
+    parts = ('data-terminal-input', 'data-git-view', 'data-git-graph', 'data-file-tree')
+    for part in parts:
+        assert part in html
+    setup = json.loads(re.search(
+        r'<script id="git-setup" type="application/json">(.*?)</script>', html, re.S,
+    ).group(1))
+    assert setup['remote']['pushed'] == ['main'] and len(setup['commits']) == 4
+    assert 'aria-current="page">Git</a>' in html

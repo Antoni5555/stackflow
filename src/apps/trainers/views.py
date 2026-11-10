@@ -150,12 +150,38 @@ PLAYGROUND_LINUX = {
 }
 
 
+# Тренажёр Git по умолчанию: проект магазина с историей, веткой и «GitHub»
+PLAYGROUND_GIT = {
+    'cwd': '/home/shop/shop',
+    'commits': [
+        {'message': 'Каркас магазина', 'files': {
+            'README.md': '# Магазин\n',
+            'shop/settings.py': 'DEBUG = True\nALLOWED_HOSTS = []\n',
+            '.gitignore': '.env\nvenv/\n__pycache__/\n',
+        }},
+        {'message': 'Каталог товаров', 'files': {
+            'catalog/models.py': 'class Product:\n    name = ""\n    price = 0\n',
+        }},
+        # promo ответвляется до «Корзины»: в графе развилка, слияние — merge-коммит
+        {'message': 'Промокоды: модель', 'branch': 'promo', 'files': {
+            'promo/models.py': 'class Promo:\n    code = ""\n    discount = 0\n',
+        }},
+        {'message': 'Корзина', 'files': {
+            'cart/views.py': 'def cart(request):\n    pass\n',
+        }},
+    ],
+    'head': 'main',
+    'remote': {'url': 'git@github.com:shop/shop.git', 'pushed': ['main']},
+    'files': {'/home/shop/shop/.env': 'SECRET_KEY=change-me\n'},
+}
+
+
 class PlaygroundView(EngineMixin, TemplateView):
-    """Тренажёр-песочница без задач. Движок — ?engine=python, html или linux."""
+    """Тренажёр-песочница без задач. Движок — ?engine=python, html, linux или git."""
 
     template_name = 'trainers/playground.html'
     extra_context = {'active_nav': 'playground'}
-    engines = ('python', 'html', 'linux')
+    engines = ('python', 'html', 'linux', 'git')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -168,6 +194,8 @@ class PlaygroundView(EngineMixin, TemplateView):
             context['html_file_names'] = list(PLAYGROUND_HTML)
         if engine == 'linux':
             context['linux_setup'] = PLAYGROUND_LINUX
+        if engine == 'git':
+            context['git_setup'] = PLAYGROUND_GIT
         course = context['course']
         if course:
             context['note'] = note_panel(self.request.user, course, None, course.slug)

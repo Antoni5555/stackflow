@@ -1,0 +1,14 @@
+{% comment %} Тренажёр Git: терминал над проектом магазина с историей и «GitHub»,
+   карточка «Репозиторий» и дерево файлов. Состояние — в localStorage,
+   «Начать заново» — проект по умолчанию (PLAYGROUND_GIT во views.py). {% endcomment %}
+<div class="playground">
+  <div class="course-main" data-playground="git">
+    {% include 'trainers/components/_terminal.html' %}
+    {% include 'trainers/components/_git_panel.html' %}
+    {% include 'trainers/components/_file_tree.html' %}
+  </div>
+  {% if course %}
+    {% include 'common/_side_panel.html' with flat=True note_open=True %}
+  {% endif %}
+</div>
+{{ git_setup|json_script:'git-setup' }}
