@@ -155,3 +155,49 @@ describe('сохранение', () => {
     assert.match(run(copy, 'git log --oneline').out, /\(HEAD -> dev, origin\/main, main\) Корзина/);
   });
 });
+
+describe('задачи Git: правила', async () => {
+  const { firstFailedGitRule, verifyGitTask } = await import('../../src/static/js/engines/git/checker.js');
+  const setup = {
+    ...HISTORY,
+    remote: { url: URL, pushed: ['main'] },
+    files: { [`${ROOT}/.env`]: 'SECRET=1\n' },
+  };
+
+  it('эталон «убрать .env из репозитория» проходит, setup — нет', () => {
+    const task = {
+      setup: { ...setup, commits: [...HISTORY.commits, { message: 'Случайно .env', files: { '.env': 'SECRET=1\n' } }] },
+      rules: [
+        { tracked: '.env', exists: false, fail: '.env всё ещё в репозитории.' },
+        { path: `${ROOT}/.env`, exists: true, fail: 'Файл .env удалён с диска — нужен --cached.' },
+        { commit_count: { branch: 'main', count: 4 }, fail: 'Нужен ровно один новый коммит.' },
+        { clean: true, fail: 'Остались незакоммиченные изменения.' },
+      ],
+      solution: 'git rm --cached .env\necho ".env" > .gitignore\ngit add .gitignore\ngit commit -m "Убрать .env"\n',
+    };
+    assert.deepEqual(verifyGitTask(task), []);
+    assert.match(verifyGitTask({ ...task, solution: 'git rm .env\necho ".env" > .gitignore\ngit add .gitignore\ngit commit -m x\n' }).join('\n'), /--cached/);
+  });
+
+  it('branch, tag, staged, head, commit_in, merged, pushed, config, stash_count, pip_package', () => {
+    const sh = gitShellFromSetup(setup);
+    run(sh, 'git switch -c promo && echo x > p.py && git add p.py && git commit -m "Промокоды" && git switch main');
+    run(sh, 'git merge promo && git push && git tag v1 && echo y >> README.md && git add . ');
+    run(sh, 'git config user.email anna@shop.example && echo z >> cart.py && git stash');
+    run(sh, 'python3 -m venv venv && venv/bin/pip install django==5.0.10');
+    const ok = (rule) => firstFailedGitRule([{ fail: 'x', ...rule }], sh, setup) === null;
+    assert.ok(ok({ branch: 'promo' }) && ok({ branch: 'nope', exists: false }) && !ok({ branch: 'nope' }));
+    assert.ok(ok({ tag: 'v1' }));
+    assert.ok(ok({ head: 'main' }) && !ok({ head: 'promo' }));
+    assert.ok(ok({ commit_in: { branch: 'main', message: '^Промокоды$' } }));
+    assert.ok(ok({ merged: { from: 'promo', into: 'main' } }));
+    assert.ok(ok({ pushed: 'main' }) && !ok({ pushed: 'promo' }));
+    assert.ok(ok({ config: { key: 'user.email', value: '@shop\\.example$' } }));
+    assert.ok(ok({ stash_count: 1 }));
+    assert.ok(ok({ staged: 'README.md', exists: false }));      // ушло в stash
+    assert.ok(ok({ pip_package: { name: 'Django', version: '5.0.10' } }) && !ok({ pip_package: { name: 'django', version: '5.1.4' } }));
+    assert.ok(ok({ pip_package: { name: 'sqlparse' } }));
+    run(sh, 'cd /tmp');                                         // правила смотрят в репозиторий задачи
+    assert.ok(ok({ branch: 'promo' }));
+  });
+});

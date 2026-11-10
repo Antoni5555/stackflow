@@ -305,3 +305,71 @@ def test_invalid_state_rules_are_reported(content_dir, rules, message):
 
     with pytest.raises(ContentError, match=message):
         ContentLoader(content_dir).load()
+
+
+GIT_TASK = """title: Ветка для промокодов
+type: exercise
+difficulty: 1
+pitfall: P
+statement: S
+explanation: E
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас
+      files:
+        a.py: x
+  remote:
+    url: git@github.com:shop/shop.git
+    pushed: [main]
+  venv:
+    path: venv
+    packages: {django: 5.1.4}
+check:
+  type: state
+  expect:
+%s
+solution: |
+  git switch -c promo
+"""
+
+
+def test_git_state_exercise_is_loaded(content_dir):
+    """Задача Git: setup с историей, GitHub и venv; правила Git, exists: false."""
+    rules = (
+        "    - branch: promo\n      fail: F\n"
+        "    - tracked: .env\n      exists: false\n      fail: F\n"
+        "    - pip_package: {name: django}\n"
+        "      venv: venv\n      fail: F\n"
+    )
+    task = content_dir / HELLO / '06-promo.yaml'
+    task.write_text(GIT_TASK % rules, encoding='utf-8')
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='promo').spec
+    assert spec['setup']['remote']['pushed'] == ['main']
+    expected = {'tracked': '.env', 'exists': False, 'fail': 'F'}
+    assert spec['check']['expect'][1] == expected
+
+
+@pytest.mark.parametrize('rules, message', [
+    ('    - branch: promo\n      head: promo\n      fail: F\n', 'branch — без'),
+    ('    - head: main\n      exists: false\n      fail: F\n',
+     "head — без \\['exists'\\]"),
+])
+def test_invalid_git_rules_are_reported(content_dir, rules, message):
+    task = content_dir / HELLO / '06-promo.yaml'
+    task.write_text(GIT_TASK % rules, encoding='utf-8')
+
+    with pytest.raises(ContentError, match=message):
+        ContentLoader(content_dir).load()
+
+
+def test_unknown_setup_key_is_reported(content_dir):
+    rules = "    - branch: promo\n      fail: F\n"
+    task = content_dir / HELLO / '06-promo.yaml'
+    text = (GIT_TASK % rules).replace('  cwd:', '  owner: shop\n  cwd:')
+    task.write_text(text, encoding='utf-8')
+
+    with pytest.raises(ContentError, match="неизвестные ключи \\['owner'\\]"):
+        ContentLoader(content_dir).load()

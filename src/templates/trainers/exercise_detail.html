@@ -5,6 +5,7 @@
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/courses.css' %}"><link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
 {# Python (exercise, predict) грузится только там, где он нужен; quiz и fix проверяются без движка #}
 {% block scripts %}{% if check_type == 'dom' %}<script type="module" src="{% static 'js/pages/html-exercise.js' %}"></script>
+{% elif check_type == 'state' and course.engine == 'git' %}<script type="module" src="{% static 'js/pages/git-exercise.js' %}"></script>
 {% elif check_type == 'state' %}<script type="module" src="{% static 'js/pages/linux-exercise.js' %}"></script>
 {% elif exercise.type == 'quiz' %}<script type="module" src="{% static 'js/pages/quiz.js' %}"></script>
 {% elif exercise.type == 'fix' %}<script type="module" src="{% static 'js/pages/fix.js' %}"></script>

@@ -255,6 +255,17 @@ DOM_FIELDS = (['files', 'check', 'solution'], [])
 # по итоговому состоянию и solution — команды эталона по одной на строку
 STATE_FIELDS = (['setup', 'check', 'solution'], [])
 STATE_PATH_CHECKS = {'exists', 'contains', 'mode', 'owner', 'link_to'}
+# Git (курс с движком git): ключи setup и правила; «есть / нет» — через exists: false
+STATE_SETUP_KEYS = {
+    'cwd', 'files', 'dirs', 'repo', 'commits', 'head', 'remote', 'venv', 'gitconfig',
+}
+GIT_RULES = {
+    'branch': {'exists'}, 'tag': {'exists'},
+    'tracked': {'exists'}, 'staged': {'exists'},
+    'head': set(), 'commit_in': set(), 'commit_count': set(), 'clean': set(),
+    'merged': set(), 'pushed': set(), 'config': set(), 'stash_count': set(),
+    'pip_package': {'venv'},
+}
 DOM_CHECKS = {'count', 'min', 'exists', 'attr', 'text', 'style'}
 SPEC_FIELDS = {
     'exercise': (['starter_code', 'solution', 'check'], ['inputs']),
@@ -284,10 +295,12 @@ def validate_dom_rules(rules, path):
 
 def validate_state(spec, path):
     """Задача в терминале: форма setup и правил. Сами правила проверяет браузер
-    (js/engines/linux/checker.js), эталон прогоняет тест сайта через Node."""
+    (js/engines/linux/checker.js, для Git — engines/git/checker.js), эталон
+    прогоняет тест сайта через Node."""
     setup = spec['setup']
-    if not isinstance(setup, dict) or set(setup) - {'cwd', 'files', 'dirs'}:
-        raise ContentError(path, 'setup — словарь с cwd, files, dirs (Git — позже)')
+    if not isinstance(setup, dict) or set(setup) - STATE_SETUP_KEYS:
+        unknown = set(setup) - STATE_SETUP_KEYS if isinstance(setup, dict) else set()
+        raise ContentError(path, f'setup: неизвестные ключи {sorted(unknown)}')
     if not isinstance(setup.get('files', {}), dict):
         raise ContentError(path, 'setup.files — словарь {путь: текст или настройки}')
     if not isinstance(spec['solution'], str):
@@ -296,7 +309,15 @@ def validate_state(spec, path):
         if not isinstance(rule, dict) or not rule.get('fail'):
             raise ContentError(path, f'правило {number}: нужен словарь с fail')
         checks = set(rule) - {'path', 'fail'}
-        if 'output_matches' in rule:
+        git = [key for key in GIT_RULES if key in rule]
+        if git:
+            extra = set(rule) - {git[0], 'fail'} - GIT_RULES[git[0]]
+            if len(git) > 1 or extra:
+                raise ContentError(
+                    path,
+                    f'правило {number}: {git[0]} — без {sorted(extra or set(git[1:]))}',
+                )
+        elif 'output_matches' in rule:
             if checks != {'output_matches'} or 'path' in rule:
                 raise ContentError(
                     path, f'правило {number}: output_matches — только с fail',

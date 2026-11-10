@@ -19,6 +19,13 @@ SCRIPT = ROOT / 'tests' / 'js' / 'verify-state-tasks.js'
 pytestmark = pytest.mark.skipif(not shutil.which('node'), reason='нужен Node.js')
 
 
+def course_engine(path):
+    """Движок курса задачи (content/<направление>/<курс>/…): linux или git."""
+    course = CONTENT.joinpath(*path.relative_to(CONTENT).parts[:2], '_course.yaml')
+    data = yaml.safe_load(course.read_text(encoding='utf-8')) if course.exists() else {}
+    return (data or {}).get('engine') or 'linux'
+
+
 def state_tasks():
     """Все задачи state из content/: {путь: задача для verifyTask}."""
     tasks = {}
@@ -29,6 +36,7 @@ def state_tasks():
         check = data.get('check') if isinstance(data, dict) else None
         if isinstance(check, dict) and check.get('type') == 'state':
             tasks[str(path.relative_to(CONTENT))] = {
+                'engine': course_engine(path),
                 'setup': data['setup'], 'rules': check['expect'],
                 'solution': data['solution'],
             }
@@ -58,6 +66,25 @@ def test_example_task_is_verified():
 
     assert result['good'] == []
     assert any('кодом 1' in problem for problem in result['bad'])
+
+
+def test_example_git_task_is_verified():
+    """Задача Git: эталон в симуляторе с репозиторием, правила Git."""
+    task = {
+        'engine': 'git',
+        'setup': {'cwd': '/home/shop/shop', 'commits': [
+            {'message': 'Каркас', 'files': {'a.py': 'x\n'}},
+        ]},
+        'rules': [
+            {'branch': 'promo', 'fail': 'Нет ветки promo.'},
+            {'head': 'promo', 'fail': 'Переключитесь на promo.'},
+        ],
+        'solution': 'git switch -c promo\n',
+    }
+    result = verify({'good': task, 'bad': {**task, 'solution': 'git branch promo\n'}})
+
+    assert result['good'] == []
+    assert result['bad'] == ['эталон не проходит правило: Переключитесь на promo.']
 
 
 def test_content_state_tasks_pass_in_simulator():

@@ -294,3 +294,28 @@ def test_git_playground(client, loaded_content):
     ).group(1))
     assert setup['remote']['pushed'] == ['main'] and len(setup['commits']) == 4
     assert 'aria-current="page">Git</a>' in html
+
+
+def test_git_exercise_page(client, loaded_content):
+    """Задача в курсе с движком git: свой скрипт и карточка «Репозиторий»."""
+    greeting = Exercise.objects.get(slug='greeting')
+    course = greeting.topic.section.course
+    course.engine = 'git'
+    course.save()
+    ExerciseFactory(
+        topic=greeting.topic, slug='promo', type='exercise', order=6,
+        spec={
+            'setup': {
+                'cwd': '/home/shop/shop', 'commits': [{'message': 'x', 'files': {}}],
+            },
+            'check': {'type': 'state', 'expect': [{'branch': 'promo', 'fail': 'F'}]},
+            'solution': 'git switch -c promo\n',
+            'hints': [],
+        },
+    )
+
+    html = client.get(exercise_url('promo')).content.decode()
+
+    assert 'js/pages/git-exercise.js' in html
+    assert 'js/pages/linux-exercise.js' not in html
+    assert 'data-git-view' in html and 'data-terminal-input' in html
