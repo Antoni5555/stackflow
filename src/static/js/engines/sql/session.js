@@ -6,10 +6,12 @@
 // Значения — текстом, как их выводит PostgreSQL (1499.00, t, 2026-03-01 12:00:00+03):
 // так их видит ученик в psql и так их описывают задачи.
 
+import { mentionedColumns, parseJoin } from './join.js';
 import { errorLocation, splitStatements, statementKind } from './split.js';
 
 export const TIMEZONE = 'Europe/Moscow';
 export const MAX_ROWS = 500;          // учебная база маленькая; больше на экране не нужно
+export const JOIN_ROWS = 40;          // строк исходной таблицы на картинке JOIN
 
 const quote = (name) => `"${name.replace(/"/g, '""')}"`;
 
@@ -33,6 +35,16 @@ export async function resetDatabase(db, base = '') {
   await db.exec(`${drops}\nCREATE SCHEMA public;\nSET search_path TO public;`);
   await prepareSession(db);
   if (base.trim()) await db.exec(base);
+}
+
+/** Схема для полосы «Схема базы»: таблицы, колонки, ограничения и число строк. */
+export async function schemaOverview(db) {
+  const tables = await describeSchema(db);
+  for (const table of tables) {
+    const { rows } = await db.query(`SELECT count(*)::int AS n FROM ${quote(table.name)}`);
+    table.rowCount = rows[0].n;
+  }
+  return tables;
 }
 
 /** Есть ли в базе хоть одна своя таблица (пустая база песочницы — загрузить учебные данные). */
@@ -131,7 +143,7 @@ export async function snapshotTables(db, parsers, names = null) {
 const rowId = (table, row) => JSON.stringify(table.key.length ? table.key.map((i) => row[i]) : row);
 
 /**
- * Отличия таблицы после запроса: строки с отметкой added / changed (+ какие колонки)
+ * Отличия таблицы после запроса: строки с отметкой added / changed (+ какие колонки и что было)
  * / removed / null. Удалённые строки — в конце, чтобы их было видно.
  */
 export function diffTable(before, after) {
@@ -146,7 +158,10 @@ export function diffTable(before, after) {
       const j = before.columns.indexOf(col);
       return j === -1 || prev[j] !== values[i];
     });
-    return changed.length ? { values, mark: 'changed', changed } : { values, mark: null };
+    if (!changed.length) return { values, mark: null };
+    // old — прежние значения изменённых колонок: на экране «5 → 10»
+    const oldValues = Object.fromEntries(changed.map((col) => [col, prev[before.columns.indexOf(col)] ?? null]));
+    return { values, mark: 'changed', changed, old: oldValues };
   });
   for (const [id, prev] of old) {
     if (seen.has(id)) continue;
@@ -177,6 +192,59 @@ export function diffSnapshots(before, after) {
   return changes;
 }
 
+// --- Картинка JOIN ---
+
+/**
+ * Какие строки двух таблиц совпали: таблицы (колонки из запроса + ключ), пары строк
+ * и для каждой строки результата — её пара (если запрос без группировки).
+ * Строки связываем по ctid — физическому адресу строки: он есть у любой таблицы.
+ */
+export async function joinView(db, parsers, sql, columnsOfResult) {
+  const join = parseJoin(sql);
+  if (!join) return null;
+  const keys = await primaryKeys(db);
+  const ref = (side) => quote(side.alias ?? side.table);
+  const pairs = await db.query(
+    `SELECT ${ref(join.left)}.ctid::text AS l, ${ref(join.right)}.ctid::text AS r ${join.from}`,
+  );
+  const side = async (info) => {
+    const [all] = await db.exec(`SELECT * FROM ${quote(info.table)} LIMIT 0`, { parsers });
+    const names = all.fields.map((field) => field.name);
+    const pk = keys[info.table] ?? [];
+    const shown = [...new Set([...pk, ...mentionedColumns(sql, names)])];
+    const columns = shown.length ? names.filter((name) => shown.includes(name)) : names;
+    const order = pk.length ? pk.map(quote).join(', ') : 'ctid';
+    const [res] = await db.exec(
+      `SELECT ctid::text, ${columns.map(quote).join(', ')}, count(*) OVER () FROM ${quote(info.table)} ORDER BY ${order} LIMIT ${JOIN_ROWS}`,
+      { parsers, rowMode: 'array' },
+    );
+    return {
+      ...info,
+      columns,
+      ids: res.rows.map((row) => row[0]),
+      rows: res.rows.map((row) => row.slice(1, -1)),
+      total: Number(res.rows[0]?.at(-1) ?? 0),
+    };
+  };
+  const view = {
+    type: join.type,
+    on: join.on,
+    left: await side(join.left),
+    right: await side(join.right),
+    pairs: pairs.rows.map((row) => [row.l, row.r]),
+    resultPairs: null,
+  };
+  if (!join.grouped && columnsOfResult) {
+    // тот же запрос, к каждой строке результата — адреса её пары
+    const [res] = await db.exec(
+      `SELECT ${ref(join.left)}.ctid::text, ${ref(join.right)}.ctid::text, ${join.select} ${join.tail}`,
+      { parsers, rowMode: 'array' },
+    ).catch(() => [null]);
+    if (res) view.resultPairs = res.rows.slice(0, MAX_ROWS).map((row) => [row[0], row[1]]);
+  }
+  return view;
+}
+
 // --- Выполнение текста ученика ---
 
 function describeError(error, text, statement) {
@@ -189,7 +257,7 @@ function describeError(error, text, statement) {
 
 /**
  * Выполнить текст по запросам, до первой ошибки (как psql с ON_ERROR_STOP).
- * Для каждого: { sql, line, kind, columns, rows, truncated, affected, changes, error }.
+ * Для каждого: { sql, line, kind, ms, columns, rows, truncated, affected, changes, join, error }.
  * Таблицы снимаются до и после каждого запроса, который может что-то изменить:
  * база маленькая, целиком — быстрее, чем выяснять, что именно затронуто.
  */
@@ -202,9 +270,11 @@ export async function runScript(db, parsers, text) {
     const watch = kind !== 'query' && kind !== 'set';
     const item = { sql: statement.sql, line: statement.line, kind };
     if (watch && !snapshot) snapshot = await snapshotTables(db, parsers).catch(() => null);
+    const started = performance.now();
     try {
       // строки — массивами: у SELECT id, id две колонки с одним именем
       const [res] = await db.exec(statement.sql, { parsers, rowMode: 'array' });
+      item.ms = Math.round(performance.now() - started);
       if (res?.fields.length) {
         item.columns = res.fields.map((field) => field.name);
         item.rows = res.rows.slice(0, MAX_ROWS);
@@ -212,6 +282,9 @@ export async function runScript(db, parsers, text) {
         item.truncated = res.rows.length > MAX_ROWS;
       }
       if (kind === 'dml') item.affected = res?.affectedRows ?? 0;
+      if (kind === 'query' && /\bjoin\b/i.test(statement.sql)) {
+        item.join = await joinView(db, parsers, statement.sql, item.columns).catch(() => null);
+      }
     } catch (error) {
       item.error = describeError(error, text, statement);
       results.push(item);

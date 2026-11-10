@@ -219,6 +219,14 @@
 .m1 { background: var(--match-1); }
 .m2 { background: var(--match-2); }
 .m3 { background: var(--match-3); }
+.m4 { background: var(--match-4); }
+.m5 { background: var(--match-5); }
+.m6 { background: var(--match-6); }
+.data-table td.cell--changed { font-weight: var(--fw-bold); white-space: nowrap; }
+.db-table > p { margin: 0; padding: 6px 12px; border-top: 1px solid var(--border); }
+.badge--error { color: var(--error); background: var(--error-bg); }
+.run-step__body .alert { margin: 0; }
+.schema-table li.row--added { box-shadow: inset 3px 0 var(--success); }
 .row--unmatched { color: var(--muted); opacity: 0.55; }
 .file-tree .file--added { color: var(--success); }
 .file-tree .file--changed { color: var(--warning); }

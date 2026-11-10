@@ -7,9 +7,10 @@ const STATUS = {
   failed: 'Не удалось загрузить Python — проверьте интернет и обновите страницу',
 };
 
-/** Показать состояние движка и (раз)блокировать кнопки, которым нужен движок. */
-export function showEngineStatus(badge, buttons, state) {
-  badge.innerHTML = STATUS[state];
+/** Показать состояние движка и (раз)блокировать кнопки, которым нужен движок.
+ * texts — свои подписи состояний (у SQL — про PostgreSQL), по умолчанию про Python. */
+export function showEngineStatus(badge, buttons, state, texts = STATUS) {
+  badge.innerHTML = texts[state];
   for (const button of buttons) button.disabled = state !== 'ready';
 }
 

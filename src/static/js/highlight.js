@@ -1,4 +1,4 @@
-// Подсветка HTML, CSS и Python при наборе (слой под textarea, js/editor.js).
+// Подсветка HTML, CSS, Python и SQL при наборе (слой под textarea, js/editor.js).
 // Свой небольшой разбор без библиотек: теги, атрибуты, значения, комментарии, свойства CSS;
 // в Python — ключевые слова, встроенные функции, строки, числа, комментарии.
 // Классы — те же, что у кода в уроках (base.css, rendering.TOKEN_CLASSES): kw, fn, str, num, cm.
@@ -171,10 +171,52 @@ export function highlightPython(text) {
   return out;
 }
 
+// --- SQL ---
+
+const SQL_KEYWORDS = new Set(`add all alter and any as asc begin between by cascade case check
+column commit constraint create cross current_date current_timestamp default delete desc distinct
+drop else end except exists explain false fetch filter first foreign from full grant group having
+identity if ilike in index inner insert intersect into is join key last lateral left like limit
+materialized not null nulls offset on or order outer over partition primary recursive references
+rename replace restrict returning revoke right rollback row rows savepoint schema select sequence set
+table then to transaction true truncate union unique update using values view when where window
+with generated always serial bigserial integer int smallint bigint numeric decimal real text varchar
+char boolean bool date time timestamp timestamptz interval jsonb json uuid array`.split(/\s+/));
+
+// Строки '…' (и E'…'), $$…$$, имена в "кавычках", числа, комментарии -- и /* */
+const SQL_TOKEN = new RegExp([
+  '(--[^\\n]*|\\/\\*[\\s\\S]*?(?:\\*\\/|$(?![\\s\\S])))',
+  '([eE]\'(?:\'\'|\\\\.|[^\'\\\\])*\'?|\'(?:\'\'|[^\'])*\'?|\\$([A-Za-z_]\\w*)?\\$[\\s\\S]*?(?:\\$\\3\\$|$(?![\\s\\S])))',
+  '("(?:""|[^"])*"?)',
+  '(\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b)',
+  '([\\p{L}_][\\p{L}\\p{N}_$]*)',
+  '([\\s\\S])',
+].join('|'), 'gu');
+
+export function highlightSql(text) {
+  let out = '';
+  for (const match of text.matchAll(SQL_TOKEN)) {
+    const [token, comment, string, , quoted, number, word] = match;
+    if (comment) out += span('cm', comment);
+    else if (string) out += span('str', string);
+    else if (quoted) out += escape(quoted);
+    else if (number) out += span('num', number);
+    else if (word) {
+      const lower = word.toLowerCase();
+      if (SQL_KEYWORDS.has(lower)) out += span('kw', word);
+      // имя перед скобкой — функция: count(…), now()
+      else if (text[match.index + word.length] === '(') out += span('fn', word);
+      else out += escape(word);
+    } else out += escape(token);
+  }
+  return out;
+}
+
 /** Подсветка по имени файла: .html, .css, .py; для остальных (nginx.conf…) — без подсветки. */
 export function highlighterFor(filename) {
   if (/\.html?$/i.test(filename)) return highlightHtml;
   if (/\.css$/i.test(filename)) return highlightCss;
   if (/\.py$/i.test(filename)) return highlightPython;
+  if (/\.sql$/i.test(filename)) return highlightSql;
   return null;
 }

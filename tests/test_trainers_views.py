@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from apps.courses.models import Exercise
 from apps.trainers.views import HtmlCheckView
-from tests.factories import ExerciseFactory
+from tests.factories import CourseFactory, ExerciseFactory, TrackFactory
 
 
 pytestmark = pytest.mark.django_db
@@ -319,3 +319,33 @@ def test_git_exercise_page(client, loaded_content):
     assert 'js/pages/git-exercise.js' in html
     assert 'js/pages/linux-exercise.js' not in html
     assert 'data-git-view' in html and 'data-terminal-input' in html
+
+
+def sql_dataset(html):
+    return json.loads(re.search(
+        r'<script id="sql-dataset" type="application/json">(.*?)</script>', html, re.S,
+    ).group(1))
+
+
+def test_sql_playground(client, db):
+    """Тренажёр SQL: редактор, схема, журнал; учебная база направления курса SQL."""
+    track = TrackFactory(sql_dataset='CREATE TABLE users (id int);')
+    CourseFactory(track=track, engine='sql', slug='sql')
+    html = client.get(reverse('trainers:playground') + '?engine=sql').content.decode()
+
+    assert 'data-playground="sql"' in html and 'js/pages/playground-sql.js' in html
+    assert 'pglite@0.2.17' in html and 'js/engines/sql/worker' in html
+    for part in ('data-schema', 'data-run-log', 'data-action="step"'):
+        assert part in html
+    assert sql_dataset(html) == 'CREATE TABLE users (id int);'
+    assert 'JOIN categories c' in html
+    assert 'aria-current="page">SQL</a>' in html
+
+
+def test_sql_playground_without_sql_course(client, db):
+    """Курса SQL ещё нет — база берётся у направления, где она есть."""
+    TrackFactory(slug='empty')
+    TrackFactory(slug='backend', sql_dataset='SELECT 1;')
+    html = client.get(reverse('trainers:playground') + '?engine=sql').content.decode()
+
+    assert sql_dataset(html) == 'SELECT 1;'

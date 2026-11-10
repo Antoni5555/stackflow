@@ -276,6 +276,16 @@ def playground(engine):
     }
 
 
+def sql_dataset(course=None):
+    """Учебная база SQL: направления курса, иначе — первого направления с базой."""
+    if course and course.track.sql_dataset:
+        return course.track.sql_dataset
+    track = (
+        Track.objects.published().exclude(sql_dataset='').order_by('order').first()
+    )
+    return track.sql_dataset if track else ''
+
+
 def practice_topic(course_slug, section_slug, topic_slug):
     """Тема с задачником для плашки «Задачник» в тренажёре; 404, если задач нет."""
     topic = get_object_or_404(

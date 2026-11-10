@@ -1,0 +1,42 @@
+{% load static %}
+{% comment %} Тренажёр SQL: PostgreSQL в браузере на учебной базе магазина. Код — в localStorage,
+   база — в IndexedDB браузера; «Начать заново» возвращает учебные данные.
+   Журнал: карточка на каждый запрос — результат, изменённые строки, пары строк JOIN. {% endcomment %}
+<div class="playground">
+  <div class="course-main"
+       data-playground="sql"
+       data-worker="{% static 'js/engines/sql/worker.js' %}"
+       data-pglite="{{ PGLITE_URL }}">
+    <div class="workspace">
+      <div class="tabs">
+        <span class="tab tab--static">script.sql</span>
+        <span class="engine-badge" data-engine-status><span class="spinner spinner--sm" aria-hidden="true"></span>Загружаем PostgreSQL… первый раз ~3 МБ, дальше из кэша</span>
+      </div>
+      <div class="editor">
+        <div class="editor__gutter" aria-hidden="true"></div>
+        <textarea class="editor__code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Запросы SQL">{{ sql_code }}</textarea>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="btn btn--accent" data-action="run" disabled>Запустить всё <kbd>Ctrl ↵</kbd></button>
+        <button type="button" class="btn btn--ghost" data-action="run-selected" disabled>Выполнить выделенное</button>
+        <button type="button" class="btn btn--ghost toolbar__right" data-action="step" disabled>Пошагово</button>
+      </div>
+    </div>
+
+    {% include 'trainers/components/_schema_strip.html' %}
+
+    <div class="legend legend--log">
+      <span>Цвет строк в результатах:</span>
+      <span><i class="legend__swatch legend__swatch--added"></i>добавлено</span>
+      <span><i class="legend__swatch legend__swatch--changed"></i>изменено</span>
+      <span><i class="legend__swatch legend__swatch--removed"></i>удалено</span>
+    </div>
+    <div data-run-alert hidden></div>
+    <ol class="run-log" data-run-log aria-live="polite"></ol>
+    <p class="muted small" data-run-empty>Нажмите «Запустить всё» или Ctrl + Enter — здесь появится карточка на каждый запрос: результат, изменённые строки, новые таблицы.</p>
+  </div>
+  {% if course %}
+    {% include 'common/_side_panel.html' with flat=True note_open=True %}
+  {% endif %}
+</div>
+{{ sql_dataset|json_script:'sql-dataset' }}

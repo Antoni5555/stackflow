@@ -1,4 +1,4 @@
-// Подсветка HTML и CSS при наборе (src/static/js/highlight.js).
+// Подсветка HTML, CSS, Python и SQL при наборе (src/static/js/highlight.js).
 // Главное: текст слоя без тегов совпадает с исходным символ в символ — иначе цвета
 // разъедутся с курсором textarea.
 
@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  highlightCss, highlightHtml, highlightPython, highlighterFor,
+  highlightCss, highlightHtml, highlightPython, highlightSql, highlighterFor,
 } from '../../src/static/js/highlight.js';
 
 const plain = (html) => html.replace(/<[^>]+>/g, '')
@@ -98,10 +98,31 @@ describe('подсветка', () => {
     assert.match(highlightPython('x = "abc\nif y:'), /<span class="str">"abc<\/span>\n<span class="kw">if<\/span>/);
   });
 
+  it('SQL: ключевые слова, функции, строки, числа, комментарии', () => {
+    const code = [
+      '-- товары дороже 1000',
+      "SELECT p.name, count(*) AS n, E'it\\'s', 'C:\\' AS path, \"Order\"",
+      'FROM products p /* псевдоним */',
+      "WHERE price > 1499.50 AND body = $$a;'b$$",
+      '',
+    ].join('\n');
+    for (let cut = 0; cut <= code.length; cut += 1) {
+      assert.equal(plain(highlightSql(code.slice(0, cut))), code.slice(0, cut), `обрезано на ${cut}`);
+    }
+    const html = highlightSql(code);
+    assert.match(html, /^<span class="cm">-- товары дороже 1000<\/span>/);
+    assert.match(html, /<span class="kw">SELECT<\/span> p\.name, <span class="fn">count<\/span>\(\*\) <span class="kw">AS<\/span> n/);
+    assert.match(html, /<span class="str">E'it\\'s'<\/span>, <span class="str">'C:\\'<\/span>/);
+    assert.match(html, /<span class="num">1499\.50<\/span>/);
+    assert.match(html, /<span class="str">\$\$a;'b\$\$<\/span>/);
+    assert.ok(!html.includes('<span class="kw">Order</span>'));     // имя в кавычках — не слово SQL
+  });
+
   it('язык — по имени файла', () => {
     assert.equal(highlighterFor('index.html'), highlightHtml);
     assert.equal(highlighterFor('style.css'), highlightCss);
     assert.equal(highlighterFor('app.py'), highlightPython);
+    assert.equal(highlighterFor('script.sql'), highlightSql);
     assert.equal(highlighterFor('nginx.conf'), null);
   });
 });

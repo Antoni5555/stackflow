@@ -13,11 +13,12 @@ from apps.courses.services.rendering import highlight, highlight_file
 
 
 class EngineMixin:
-    """Адрес Pyodide для страниц с Python-тренажёром."""
+    """Адреса Pyodide и PGlite для страниц тренажёров."""
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['PYODIDE_URL'] = settings.PYODIDE_URL
+        context['PGLITE_URL'] = settings.PGLITE_URL
         return context
 
 
@@ -150,6 +151,20 @@ PLAYGROUND_LINUX = {
 }
 
 
+# Тренажёр SQL по умолчанию: JOIN и UPDATE на учебной базе магазина
+PLAYGROUND_SQL = """-- Учебная база «магазин»: таблицы и колонки — в «Схеме базы» ниже.
+-- Ctrl + Enter — выполнить всё; можно выделить запрос и выполнить только его.
+
+SELECT p.name, p.price, c.name AS category
+FROM products p
+JOIN categories c ON c.id = p.category_id
+WHERE p.price > 30000
+ORDER BY p.price DESC;
+
+UPDATE products SET stock = stock + 5 WHERE id = 1;
+"""
+
+
 # Тренажёр Git по умолчанию: проект магазина с историей, веткой и «GitHub»
 PLAYGROUND_GIT = {
     'cwd': '/home/shop/shop',
@@ -177,11 +192,11 @@ PLAYGROUND_GIT = {
 
 
 class PlaygroundView(EngineMixin, TemplateView):
-    """Тренажёр-песочница без задач. Движок — ?engine=python, html, linux или git."""
+    """Тренажёр-песочница без задач. ?engine= python, html, sql, linux или git."""
 
     template_name = 'trainers/playground.html'
     extra_context = {'active_nav': 'playground'}
-    engines = ('python', 'html', 'linux', 'git')
+    engines = ('python', 'html', 'sql', 'linux', 'git')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -196,6 +211,9 @@ class PlaygroundView(EngineMixin, TemplateView):
             context['linux_setup'] = PLAYGROUND_LINUX
         if engine == 'git':
             context['git_setup'] = PLAYGROUND_GIT
+        if engine == 'sql':
+            context['sql_code'] = PLAYGROUND_SQL
+            context['sql_dataset'] = selectors.sql_dataset(context['course'])
         course = context['course']
         if course:
             context['note'] = note_panel(self.request.user, course, None, course.slug)

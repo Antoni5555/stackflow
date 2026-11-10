@@ -8,7 +8,7 @@
 // База песочницы хранится в IndexedDB (dataDir = 'idb://…'): переживает перезагрузку.
 // Без dataDir — в памяти (страницы задач: база всё равно создаётся заново на каждую проверку).
 
-import { describeSchema, hasTables, prepareSession, resetDatabase, runScript, snapshotTables, textParsers } from './session.js';
+import { hasTables, prepareSession, resetDatabase, runScript, schemaOverview, snapshotTables, textParsers } from './session.js';
 
 const params = new URL(self.location.href).searchParams;
 const PGLITE_URL = params.get('pglite');     // dist/index.js пакета на CDN
@@ -52,7 +52,7 @@ const actions = {
     return {};
   },
   run: ({ sql }) => runScript(db, parsers, sql),
-  schema: () => describeSchema(db),
+  schema: () => schemaOverview(db),
   tables: ({ names = null } = {}) => snapshotTables(db, parsers, names),
 };
 

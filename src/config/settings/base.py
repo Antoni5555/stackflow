@@ -199,6 +199,12 @@ CONTENT_DIR = Path(os.getenv('CONTENT_DIR', BASE_DIR.parent / 'content'))
 PYODIDE_URL = os.getenv(
     'PYODIDE_URL', 'https://cdn.jsdelivr.net/pyodide/v0.27.8/full/',
 )
+# PGlite (PostgreSQL в браузере) — тоже с jsDelivr, ~3 МБ по сети. Версия 0.2.17 —
+# внутри PostgreSQL 16, как в формате контента; та же версия — в package.json (тесты).
+PGLITE_URL = os.getenv(
+    'PGLITE_URL',
+    'https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.2.17/dist/index.js',
+)
 
 # --- Админка (Unfold): своё меню по смыслу, а не по приложениям Django ---
 # Иконки — Material Symbols (https://fonts.google.com/icons), подключает сам Unfold.

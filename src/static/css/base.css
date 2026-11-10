@@ -164,6 +164,9 @@
   --match-1: light-dark(#dbe4ff, #1e2a4a);
   --match-2: light-dark(#ffe3e3, #3a1d22);
   --match-3: light-dark(#d3f9d8, #16301c);
+  --match-4: light-dark(#fff3bf, #3a3216);
+  --match-5: light-dark(#e5dbff, #2c2147);
+  --match-6: light-dark(#c5f6fa, #123338);
 
   /* ----- ОТСТУПЫ И ФОРМЫ ----- */
   --space-1: 4px;
