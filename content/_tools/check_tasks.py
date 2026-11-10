@@ -314,7 +314,7 @@ def check_state(task):
     for path in list((setup.get("files") or {})) + [p for p, _ in dir_items]:
         if not str(path).startswith("/"):
             problems.append(f"путь в setup не абсолютный: {path!r}")
-    file_keys = {"content", "size", "owner", "mode"}
+    file_keys = {"content", "size", "owner", "mode", "mtime"}
     for path, value in (setup.get("files") or {}).items():
         if isinstance(value, dict):
             if set(value) - file_keys:
