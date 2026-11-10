@@ -486,6 +486,10 @@ def check_sql(task):
                 problems.append(f"выражению в SELECT нужно имя через AS — иначе ученик не угадает колонку: {item!r}")
             elif alias.group(1).strip('"') not in task.get("statement", ""):
                 problems.append(f"имя колонки {alias.group(1)!r} не названо в условии")
+    changes = {"state": r"\b(insert|update|delete|truncate|merge)\b", "schema": r"\b(create|alter|drop)\b"}
+    if check["type"] in changes and not re.search(changes[check["type"]], task.get("solution") or "", re.I):
+        problems.append(f"эталон {check['type']} ничего не меняет в базе — нужен "
+                        + ("INSERT/UPDATE/DELETE" if check["type"] == "state" else "CREATE/ALTER/DROP"))
     if check["type"] == "result":
         if not isinstance(check.get("order_matters"), bool):
             problems.append("у result нужен order_matters: true/false")

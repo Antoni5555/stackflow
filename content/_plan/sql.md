@@ -1,7 +1,7 @@
 # Курс: SQL (PostgreSQL 16) — шаг 30
 
 **Контекст:** ученик работает с БД магазина напрямую: отвечает на запросы менеджера и аналитика («сколько заказов за месяц», «кто не покупал»), меняет структуру таблиц под новые фичи, разбирается, почему страница каталога тормозит.
-**Тренажёр:** PGlite (Postgres в браузере); визуализация DDL/DML/JOIN.
+**Тренажёр:** движок `sql` (готов 2026-11-10) — PGlite (PostgreSQL 16 в браузере), визуализация DDL/DML/JOIN. База задачи — `schema.sql` + `seed.sql` + `setup`; задачи — `exercise` с `check.type: result | state | schema` (формат — `docs/content-format.md`).
 **Источники:** `day_2_databases/01–05` (**D2**), `training_skills/SQL/01_sql_basics_select_join_group.md` — DDL и практикум с заданиями (**TS**), `КОНСПЕКТЫ/ТЕОРИЯ/Базы данных/Базы данных.docx` (**DOCX**). `D2/06` (NoSQL) — **убран**.
 
 Формат — [docs/content-format.md](../../docs/content-format.md), легенда — [00-overview.md](00-overview.md).
