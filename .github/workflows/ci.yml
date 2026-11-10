@@ -53,6 +53,8 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: pytest
+      # Симуляторы тренажёров (чистый JS) — тесты в Node, он уже есть в образе runner
+      - run: node --test tests/js/
 
   # Образы web и nginx с тегом = SHA коммита. Собираются всегда (сломанный
   # Dockerfile видно сразу), а в GHCR уходят только с main и только после
