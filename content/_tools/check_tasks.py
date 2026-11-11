@@ -543,6 +543,21 @@ def check_django(task):
                 ast.parse(task["setup"], "setup.py")
             except SyntaxError as e:
                 problems.append(f"setup: синтаксическая ошибка, строка {e.lineno}: {e.msg}")
+    settings = task.get("settings") or {}
+    if not isinstance(settings, dict):
+        problems.append("settings — словарь {НАСТРОЙКА: значение}")
+        settings = {}
+    for key, value in settings.items():
+        if key == "AUTH_USER_MODEL":
+            problems.append("settings: AUTH_USER_MODEL тренажёр не поддерживает — тема идёт на quiz/fix")
+        elif key == "TEMPLATES":
+            problems.append("settings: context processors — ключом CONTEXT_PROCESSORS, не через TEMPLATES")
+        elif key in ("MIDDLEWARE", "CONTEXT_PROCESSORS") and not (
+                isinstance(value, list) and value and all(isinstance(v, str) for v in value)):
+            problems.append(f"settings.{key} — список путей строками")
+    final = {**files, **solution}
+    if "admin.py" in final and "admin.site.urls" not in final.get("urls.py", ""):
+        problems.append('есть admin.py, но urls.py не подключает path("admin/", admin.site.urls)')
     tests = check.get("tests") or []
     if not tests:
         problems.append("нет check.tests")

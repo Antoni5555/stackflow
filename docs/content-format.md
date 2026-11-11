@@ -280,18 +280,24 @@ explanation: |
 ```
 
 **Правила:**
-- **Файлы.** `models.py`, `views.py`, `urls.py`, `forms.py`, `admin.py`, шаблоны `templates/shop/…` и свои модули (`queries.py`, `services.py`, `middleware.py`). Задача только на ORM — функция в `queries.py`, тест её импортирует: `from shop.queries import cheap_products`.
+- **Файлы.** `models.py`, `views.py`, `urls.py`, `forms.py`, `admin.py`, шаблоны `templates/shop/…` и любые свои модули `.py` (`queries.py`, `services.py`, `middleware.py`, `context.py`). Задача только на ORM — функция в `queries.py`, тест её импортирует: `from shop.queries import cheap_products`.
 - **`setup`** — Python с моделями ученика и `Q`, `F`, `Count`, `Sum`, `Avg`, `Min`, `Max`, `Prefetch`, `Value`, `User` без импорта. Данные — небольшие, в духе учебной базы магазина (`docs/shop-schema.md`); цены — строкой или `Decimal`.
-- **Тесты** — как у задач Python: `assert` + `fail`. Без импорта доступны: `client` (тестовый клиент Django), модели ученика, `User`, `reverse`, `max_queries(n)` (не больше `n` SQL-запросов внутри блока), `Q`, `F`, агрегаты. Пользователь — `client.force_login(User.objects.create_user(...))`.
+- **Тесты** — как у задач Python: `assert` + `fail`. Без импорта доступны: `client` (тестовый клиент Django), `csrf_client` (тот же клиент, но с проверкой CSRF: POST без токена — 403), модели ученика, `User`, `reverse`, `max_queries(n)` (не больше `n` SQL-запросов внутри блока), `templates_used(response)` (имена шаблонов ответа, с базовыми и включёнными), `Q`, `F`, агрегаты. Пользователь — `client.force_login(User.objects.create_user(...))`.
+- **Тесты независимы.** База и `setup` создаются один раз на проверку, каждый тест — в своей транзакции, которая после него откатывается: тест видит данные `setup` и не видит изменений предыдущих тестов. `client` и `csrf_client` в каждом тесте новые — вход (`force_login`) повторяем в каждом тесте, где он нужен.
 - **Проверка эталона** (тест сайта): эталон (`files` + `solution`) проходит все тесты, заготовка (`files`) хотя бы один не проходит.
-- **Чего в тренажёре нет:** файлов миграций (`makemigrations`, `RunPython`, конфликты — `quiz`/`fix`), `collectstatic` и статики (`quiz`), запуска сервера и `manage.py` (`quiz`).
+- **Чего в тренажёре нет:** файлов миграций (`makemigrations`, `RunPython`, конфликты — `quiz`/`fix`), `collectstatic` и статики (`quiz`), запуска сервера и `manage.py` (`quiz`), своей модели пользователя (`quiz`/`fix`).
 
-**⏳ Просьбы к «Разработке» — для разделов курса, которым не хватает черновика:**
-- `settings:` в задаче — добавки к настройкам (`MIDDLEWARE`, `TEMPLATES` → context processors, `AUTH_USER_MODEL`, `LOGIN_URL`) — для тем «Своё middleware», «Контекст-процессоры», «Модель пользователя»;
-- `django.contrib.admin` в тренажёре — для тем «Админка» и «Настройка админки» (тест открывает `/admin/shop/product/` под суперпользователем);
-- клиент с проверкой CSRF (`csrf_client`) — для тем «Формы» и «Безопасность Django»;
-- `templates_used(response)` — имена шаблонов ответа (тема «Наследование и включение»);
-- тесты ученика (раздел «Тесты в Django»): ученик пишет `tests.py`, проверка — тесты проходят на эталоне и падают на «сломанных» версиях кода (`mutants: [{files, fail}]`). Если это сложно — раздел пойдёт на `quiz`/`fix`.
+- **`settings:`** (необязательно) — добавки к настройкам тренажёра. `MIDDLEWARE` и `CONTEXT_PROCESSORS` (списки путей) добавляются в конец списков тренажёра; остальные ключи (`LOGIN_URL`, `LOGIN_REDIRECT_URL` и т. п.) заменяют значение. Context processors — только ключом `CONTEXT_PROCESSORS`, не через `TEMPLATES`. `AUTH_USER_MODEL` не поддерживается (Django выбирает модель пользователя один раз при старте) — тема «Модель пользователя» идёт на `quiz`/`fix`.
+  ```yaml
+  settings:
+    MIDDLEWARE: [shop.middleware.TimingMiddleware]
+    CONTEXT_PROCESSORS: [shop.context.cart_count]
+    LOGIN_URL: /login/
+  ```
+- **Админка** включена всегда. Задача про админку: `urls.py` подключает `path("admin/", admin.site.urls)`, у моделей есть `__str__` (иначе в списке — «Product object (3)»), тест входит суперпользователем: `client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))`.
+
+**⏳ Обещано «Разработкой» (шаг 3.4), формат уточним, когда будет готово:**
+- тесты ученика (раздел «Тесты в Django»): ученик пишет `tests.py`, проверка — тесты проходят на эталоне и падают на «сломанных» версиях кода (`mutants: [{files, fail}]`).
 
 ### quiz
 ```yaml
