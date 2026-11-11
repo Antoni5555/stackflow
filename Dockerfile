@@ -24,9 +24,10 @@ COPY --from=builder /venv /venv
 WORKDIR /app
 COPY src/ .
 
-# SECRET_KEY здесь фиктивный — collectstatic ничего не шифрует и не ходит в БД
+# SECRET_KEY здесь фиктивный — collectstatic ничего не шифрует и не ходит в БД.
+# Сначала — архив Django для тренажёра (static/vendor/django.zip, в git его нет)
 RUN DJANGO_SETTINGS_MODULE=config.settings.production SECRET_KEY=collectstatic \
-    python manage.py collectstatic --noinput
+    sh -c 'python manage.py build_django_bundle && python manage.py collectstatic --noinput'
 
 
 # --- 3. Образ Nginx: конфиг + готовая статика ---

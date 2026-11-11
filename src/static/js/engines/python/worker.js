@@ -1,4 +1,4 @@
-// Web Worker с Python (Pyodide). Код ученика выполняется здесь, а не на странице:
+// Web Worker с Python (Pyodide), на страницах Django — ещё и Django. Код ученика выполняется здесь, а не на странице:
 // даже бесконечный цикл не замораживает интерфейс — страница просто перезапустит воркер.
 //
 // Сообщения от страницы: { id, action: 'run' | 'check' | 'predict', ...данные }
@@ -9,10 +9,28 @@ const params = new URL(self.location.href).searchParams;
 const PYODIDE_URL = params.get('pyodide');   // папка Pyodide на CDN
 const RUNNER_URL = params.get('runner');     // общий runner.py (тот же, что у check_tasks.py)
 const HASH_SEED = params.get('hashseed');    // на страницах задач — '0', в песочнице — нет
+// Только на страницах Django: облегчённый архив Django и его runner (engines/django/)
+const DJANGO_URL = params.get('django');
+const DJANGO_RUNNER_URL = params.get('djangorunner');
 
 const RUNNER_MODULE = 'runner';
+const DJANGO_MODULE = 'django_runner';
 
 let runner = null;
+let djangoRunner = null;
+
+/** Django: sqlite3 из Pyodide + наш архив (django, asgiref, sqlparse) в site-packages. */
+async function bootDjango(pyodide) {
+  const [archive, source] = await Promise.all([
+    fetch(DJANGO_URL).then((response) => response.arrayBuffer()),
+    fetch(DJANGO_RUNNER_URL).then((response) => response.text()),
+    pyodide.loadPackage('sqlite3'),
+  ]);
+  pyodide.unpackArchive(archive, 'zip', { extractDir: '/lib/python3.12/site-packages' });
+  pyodide.FS.writeFile(`/home/pyodide/${DJANGO_MODULE}.py`, source);
+  djangoRunner = pyodide.pyimport(DJANGO_MODULE);
+  djangoRunner.configure();     // django.setup() — заранее, пока ученик читает условие
+}
 
 
 async function boot() {
@@ -39,6 +57,7 @@ builtins.input = _no_input
   // принимает такой вызов за импорт JS-файла и ищет файл «runner»
 
   runner = pyodide.pyimport(RUNNER_MODULE);
+  if (DJANGO_URL) await bootDjango(pyodide);
 
   self.pyodide = pyodide;
 }
@@ -72,6 +91,17 @@ const actions = {
     }
   },
   predict: ({ code, answer }) => toJs(runner.check_predict(code, answer)),
+  /** Django: { files, setup, requests, orm } → ответы, SQL, модели (engines/django/runner.py). */
+  django: ({ files, setup, requests, orm }) => {
+    const pyFiles = self.pyodide.toPy(files);
+    const pyRequests = self.pyodide.toPy(requests || []);
+    try {
+      return toJs(djangoRunner.run(pyFiles, setup || '', pyRequests, orm || ''));
+    } finally {
+      pyFiles.destroy();
+      pyRequests.destroy();
+    }
+  },
 };
 
 const ready = boot().then(

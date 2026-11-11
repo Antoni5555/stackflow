@@ -30,3 +30,6 @@ docs/START.md
 
 # Node (тесты JS)
 node_modules/
+
+# Архив Django для тренажёра — собирается командой build_django_bundle
+src/static/vendor/

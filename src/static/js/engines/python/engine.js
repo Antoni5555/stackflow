@@ -16,7 +16,8 @@ const CRASH_MESSAGE = 'RecursionError: программа ушла в слишк
 
 export class PythonEngine {
   /**
-   * @param {object} urls — { worker, runner, pyodide, hashSeed? } (из data-атрибутов страницы)
+   * @param {object} urls — { worker, runner, pyodide, hashSeed?, django?, djangoRunner? }
+   *   (из data-атрибутов страницы); django — архив Django: воркер загрузит и его
    * @param {function} onStatus — 'loading' | 'ready' | 'busy' | 'failed'
    */
   constructor(urls, onStatus = () => {}) {
@@ -36,6 +37,10 @@ export class PythonEngine {
     url.searchParams.set('pyodide', this.urls.pyodide);
     url.searchParams.set('runner', new URL(this.urls.runner, location.href).href);
     if (this.urls.hashSeed !== undefined) url.searchParams.set('hashseed', this.urls.hashSeed);
+    if (this.urls.django) {
+      url.searchParams.set('django', new URL(this.urls.django, location.href).href);
+      url.searchParams.set('djangorunner', new URL(this.urls.djangoRunner, location.href).href);
+    }
     this.worker = new Worker(url, { type: 'module' });
 
     this.readyPromise = new Promise((resolve, reject) => {
@@ -71,7 +76,7 @@ export class PythonEngine {
     request.resolve({ aborted: CRASH_MESSAGE });
   }
 
-  async request(action, data, timeout) {
+  async request(action, data, timeout, timeoutMessage = TIMEOUT_MESSAGE) {
     await this.init();
     this.onStatus('busy');
     const id = this.nextId++;
@@ -79,7 +84,7 @@ export class PythonEngine {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         this.reset();
-        resolve({ aborted: TIMEOUT_MESSAGE });
+        resolve({ aborted: timeoutMessage });
       }, timeout);
       this.pending.set(id, { resolve, reject, timer });
       this.worker.postMessage({ id, action, ...data });

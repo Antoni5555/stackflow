@@ -42,6 +42,14 @@ pytest
 Тестам с базой данных нужен PostgreSQL: проще всего держать запущенным
 `docker compose up db` (порт 5432 открыт только для вашего компьютера).
 
+Тренажёру Django нужен облегчённый архив Django (`src/static/vendor/django.zip`, в git
+его нет; в Docker-образе он собирается сам). Локально — один раз после установки
+зависимостей и после обновления Django:
+
+```bash
+cd src && python manage.py build_django_bundle
+```
+
 Тесты тренажёров на JS (симуляторы Linux и Git, движок SQL) — в Node 20+.
 Из npm нужен только PGlite той же версии, что грузится в браузере:
 
