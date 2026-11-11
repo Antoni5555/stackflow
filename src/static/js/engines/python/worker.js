@@ -119,6 +119,19 @@ const actions = {
       pySettings?.destroy?.();
     }
   },
+  /** Задача «напишите тесты»: tests.py ученика на коде задачи и на мутантах. */
+  djangoCheckTests: ({ files, mutants, settings = null }) => {
+    const pyFiles = self.pyodide.toPy(files);
+    const pyMutants = self.pyodide.toPy(mutants);
+    const pySettings = self.pyodide.toPy(settings);
+    try {
+      return toJs(djangoRunner.check_tests(pyFiles, pyMutants, pySettings));
+    } finally {
+      pyFiles.destroy();
+      pyMutants.destroy();
+      pySettings?.destroy?.();
+    }
+  },
 };
 
 const ready = boot().then(

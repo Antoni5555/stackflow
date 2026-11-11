@@ -551,3 +551,71 @@ def check(files, setup='', tests=(), settings=None):
                 if not result['error']:
                     result['error'] = format_error(error)
         return result
+
+
+# --- Тесты ученика (раздел «Тесты в Django») ---
+
+WRONG_TESTS = 'Ваши тесты не проходят на правильном коде задачи — ошибка в тестах.'
+NO_TESTS = 'В tests.py нет ни одного теста: методов TestCase с именем test_….'
+
+
+def run_student_tests():
+    """unittest для shop/tests.py, как manage.py test → (число тестов, успех, вывод)."""
+    import unittest
+    from django.test.utils import override_settings
+
+    class Result(unittest.TextTestResult):
+        def _exc_info_to_string(self, err, test):
+            return format_error(err[1])      # traceback только по файлам ученика
+
+    module = importlib.import_module(f'{APP}.tests')
+    suite = unittest.defaultTestLoader.loadTestsFromModule(module)
+    stream = io.StringIO()
+    runner = unittest.TextTestRunner(
+        stream=stream, verbosity=2, resultclass=Result)
+    # manage.py test выключает DEBUG — тесты видят то же, что сервер
+    with override_settings(DEBUG=False), contextlib.redirect_stdout(stream):
+        result = runner.run(suite)
+    return result.testsRun, result.wasSuccessful(), stream.getvalue()
+
+
+def check_tests(files, mutants=(), settings=None):
+    """Задача «напишите тесты»: tests.py ученика — в files.
+
+    Тесты должны пройти на коде задачи (files) и упасть на каждой «сломанной»
+    версии (mutant: {files — заменённые файлы, fail}). База — пустая, как у
+    manage.py test: данные тесты создают сами (setUpTestData, setUp).
+    → {'failed', 'total' (число мутантов), 'error', 'output'} или {'error', 'stage'}.
+    """
+    configure()
+    with with_settings(settings) as failed:
+        if failed:
+            return failed
+
+        def attempt(project):
+            prepared = prepare(project, '')
+            if isinstance(prepared, dict):
+                return prepared
+            try:
+                import_extra(settings or {})
+                return run_student_tests()
+            except Exception as error:     # ошибка в tests.py (импорт, синтаксис)
+                return {'error': format_error(error), 'stage': 'load'}
+
+        first = attempt(files)
+        if isinstance(first, dict):
+            return first
+        count, ok, output = first
+        result = {'failed': [], 'total': len(mutants), 'error': '', 'output': output}
+        if not count:
+            result['failed'].append(NO_TESTS)
+            return result
+        if not ok:
+            result['failed'].append(WRONG_TESTS)
+            return result
+        for mutant in mutants:
+            outcome = attempt({**files, **mutant['files']})
+            # сломанный код не собрался — тесты его тоже «поймали»
+            if not isinstance(outcome, dict) and outcome[1]:
+                result['failed'].append(mutant['fail'])
+        return result

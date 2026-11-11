@@ -4,6 +4,7 @@ runner настраивает Django своими settings.configure(), а в py
 настройками сайта, — поэтому runner выполняется в отдельном процессе Python.
 В браузере тот же файл выполняет Pyodide.
 """
+import ast
 import json
 import subprocess
 import sys
@@ -262,6 +263,68 @@ def test_admin_and_csrf_client():
     )
     assert with_admin['failed'] == []
     assert without_admin['failed'] == ['админка']
+
+
+STUDENT_TESTS = (
+    'from django.test import TestCase\n'
+    'from .models import Category, Product\n\n'
+    'class ProductListTests(TestCase):\n'
+    '    @classmethod\n'
+    '    def setUpTestData(cls):\n'
+    '        laptops = Category.objects.create(name="Ноутбуки")\n'
+    '        Product.objects.create(name="Ноутбук 0", category=laptops)\n\n'
+    '    def test_list_shows_product(self):\n'
+    '        response = self.client.get("/products/")\n'
+    '        self.assertContains(response, "Ноутбук 0")\n\n'
+    '    def test_template(self):\n'
+    '        response = self.client.get("/products/")\n'
+    '        self.assertTemplateUsed(response, "shop/list.html")\n'
+)
+MUTANTS = [
+    # список пустой — тест на содержимое страницы это замечает
+    {'files': {'views.py': FILES['views.py'].replace(
+        'Product.objects.all()', 'Product.objects.none()')}, 'fail': 'пустой список'},
+    # другой шаблон с тем же текстом — замечает только assertTemplateUsed
+    {'files': {
+        'views.py': FILES['views.py'].replace('shop/list.html', 'shop/other.html'),
+        'templates/shop/other.html': FILES['templates/shop/list.html'],
+    }, 'fail': 'другой шаблон'},
+]
+
+
+def runner_text(name):
+    """Сообщение ученику из runner.py (константа модуля)."""
+    source = (RUNNER_DIR / 'runner.py').read_text(encoding='utf-8')
+    return ast.literal_eval(source.split(f'\n{name} = ', 1)[1].split('\n', 1)[0])
+
+
+def check_tests_all(*runs):
+    return run_all(*runs, action='check_tests')
+
+
+def test_student_tests_catch_mutants():
+    only_content = STUDENT_TESTS.split('    def test_template')[0]
+    wrong_name = STUDENT_TESTS.replace('Ноутбук 0")\n\n', 'Ноутбук 9")\n\n')
+    full, weak, wrong, empty, broken = check_tests_all(
+        {'files': {**FILES, 'tests.py': STUDENT_TESTS}, 'mutants': MUTANTS},
+        {'files': {**FILES, 'tests.py': only_content}, 'mutants': MUTANTS},
+        {'files': {**FILES, 'tests.py': wrong_name}, 'mutants': MUTANTS},
+        {'files': {**FILES, 'tests.py': ''}, 'mutants': MUTANTS},
+        {'files': {**FILES, 'tests.py': 'from .models import Nope\n'},
+         'mutants': MUTANTS},
+    )
+
+    assert full['failed'] == [] and full['total'] == 2
+    assert ('test_template (shop.tests.ProductListTests.test_template) ... ok'
+            in full['output'])
+    # тест только на содержимое не замечает подмену шаблона
+    assert weak['failed'] == ['другой шаблон']
+    assert wrong['failed'] == [runner_text('WRONG_TESTS')]
+    assert 'FAIL: test_list_shows_product' in wrong['output']
+    assert 'File "tests.py", line 12, in test_list_shows_product' in wrong['output']
+    assert 'site-packages' not in wrong['output']
+    assert empty['failed'] == [runner_text('NO_TESTS')]
+    assert broken['stage'] == 'load' and "cannot import name 'Nope'" in broken['error']
 
 
 def test_bundle_has_code_and_only_needed_translations(tmp_path, monkeypatch):
