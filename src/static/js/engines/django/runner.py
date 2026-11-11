@@ -91,6 +91,9 @@ def configure():
         TIME_ZONE='Europe/Moscow',
         USE_TZ=True,
         PASSWORD_HASHERS=['django.contrib.auth.hashers.MD5PasswordHasher'],  # быстро
+        # страница 500 при DEBUG — короткая (ShortErrorReporter): полная страница Django
+        # собирает переменные всех кадров и в Pyodide упирается в стек браузера
+        DEFAULT_EXCEPTION_REPORTER=f'{__name__}.ShortErrorReporter',
     )
     import django
     django.setup()
@@ -215,6 +218,39 @@ def format_error(error):
     return text
 
 
+def short_error_page(error, request):
+    """Страница 500 в тренажёре: тип ошибки, адрес, traceback по файлам ученика."""
+    from django.utils.html import escape
+    path = escape(request.path) if request is not None else ''
+    return (
+        f'<h1>{escape(type(error).__name__)} at {path}</h1>'
+        f'<p>{escape(str(error))}</p>'
+        f'<pre>{escape(format_error(error))}</pre>'
+        '<p>Это страница ошибки при DEBUG = True. На сервере с DEBUG = False '
+        'пользователь увидел бы только «Server Error (500)».</p>'
+    )
+
+
+def _reporter_class():
+    from django.views.debug import ExceptionReporter
+
+    class ShortErrorReporter(ExceptionReporter):
+        def get_traceback_html(self):
+            return short_error_page(self.exc_value, self.request)
+
+        def get_traceback_text(self):
+            return format_error(self.exc_value)
+
+    return ShortErrorReporter
+
+
+def __getattr__(name):
+    # класс создаётся лениво: при импорте runner Django ещё не настроен
+    if name == 'ShortErrorReporter':
+        return _reporter_class()
+    raise AttributeError(name)
+
+
 # --- Запросы и ORM ---
 
 @contextlib.contextmanager
@@ -330,8 +366,12 @@ def describe_models():
     return described
 
 
-def run(files, setup='', requests=(), orm=''):
-    """Полный запуск: запросы, ORM, модели; ошибка в файлах ученика — {'error'}."""
+def run(files, setup='', requests=(), orm='', strict_setup=True):
+    """Полный запуск: запросы, ORM, модели; ошибка в файлах ученика — {'error'}.
+
+    strict_setup=False (песочница): ошибка учебных данных — предупреждение setup_error,
+    запуск продолжается (ученик мог переименовать модель, на которую рассчитан setup).
+    """
     configure()
     try:
         load_app(files)
@@ -343,16 +383,23 @@ def run(files, setup='', requests=(), orm=''):
     except Exception as error:
         return {'error': format_error(error), 'stage': 'migrate'}
     ns = namespace()
+    setup_error = None
     if setup:
         try:
             exec(compile(setup, 'setup.py', 'exec'), ns)
         except Exception as error:
-            message = f'Учебные данные не загрузились: {type(error).__name__}: {error}'
-            return {'error': message, 'stage': 'setup'}
+            name = type(error).__name__
+            setup_error = f'Учебные данные не загрузились: {name}: {error}'
+            if strict_setup:
+                return {'error': setup_error, 'stage': 'setup'}
+            fresh_database()      # недогруженные данные — не в базе
+            ns = namespace()
     result = {
         'requests': [make_request(spec) for spec in requests],
         'models': describe_models(),
     }
+    if setup_error:
+        result['setup_error'] = setup_error
     if orm.strip():
         result['orm'] = run_orm(orm, ns)
     return result

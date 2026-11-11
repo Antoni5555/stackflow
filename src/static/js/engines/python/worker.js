@@ -92,11 +92,11 @@ const actions = {
   },
   predict: ({ code, answer }) => toJs(runner.check_predict(code, answer)),
   /** Django: { files, setup, requests, orm } → ответы, SQL, модели (engines/django/runner.py). */
-  django: ({ files, setup, requests, orm }) => {
+  django: ({ files, setup, requests, orm, strictSetup = true }) => {
     const pyFiles = self.pyodide.toPy(files);
     const pyRequests = self.pyodide.toPy(requests || []);
     try {
-      return toJs(djangoRunner.run(pyFiles, setup || '', pyRequests, orm || ''));
+      return toJs(djangoRunner.run(pyFiles, setup || '', pyRequests, orm || '', strictSetup));
     } finally {
       pyFiles.destroy();
       pyRequests.destroy();

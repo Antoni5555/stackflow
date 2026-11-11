@@ -3,7 +3,7 @@
 
 {% block title %}Тренажёр — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
-{% block scripts %}<script type="module" src="{% if engine == 'html' %}{% static 'js/pages/playground-html.js' %}{% elif engine == 'sql' %}{% static 'js/pages/playground-sql.js' %}{% elif engine == 'linux' %}{% static 'js/pages/playground-linux.js' %}{% elif engine == 'git' %}{% static 'js/pages/playground-git.js' %}{% else %}{% static 'js/pages/playground.js' %}{% endif %}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{% if engine == 'html' %}{% static 'js/pages/playground-html.js' %}{% elif engine == 'sql' %}{% static 'js/pages/playground-sql.js' %}{% elif engine == 'django' %}{% static 'js/pages/playground-django.js' %}{% elif engine == 'linux' %}{% static 'js/pages/playground-linux.js' %}{% elif engine == 'git' %}{% static 'js/pages/playground-git.js' %}{% else %}{% static 'js/pages/playground.js' %}{% endif %}"></script>{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -15,7 +15,7 @@
     {# Сессия: код хранится в localStorage браузера #}
     <div class="session">
       <span class="dot dot--ok" aria-hidden="true"></span>
-      <span class="small">{% if engine == 'sql' %}Код и база сохраняются в браузере{% else %}Код сохраняется в браузере{% endif %}</span>
+      <span class="small">{% if engine == 'sql' %}Код и база сохраняются в браузере{% elif engine == 'django' %}Файлы сохраняются в браузере{% else %}Код сохраняется в браузере{% endif %}</span>
       <button type="button" class="btn btn--ghost" data-action="restart">Начать заново</button>
     </div>
   </div>
@@ -25,7 +25,7 @@
     <a href="?engine=python" class="tab{% if engine == 'python' %} tab--active{% endif %}"{% if engine == 'python' %} aria-current="page"{% endif %}>Python</a>
     <a href="?engine=html" class="tab{% if engine == 'html' %} tab--active{% endif %}"{% if engine == 'html' %} aria-current="page"{% endif %}>HTML и CSS</a>
     <a href="?engine=sql" class="tab{% if engine == 'sql' %} tab--active{% endif %}"{% if engine == 'sql' %} aria-current="page"{% endif %}>SQL</a>
-    <span class="tab" aria-disabled="true">Django <small class="muted">скоро</small></span>
+    <a href="?engine=django" class="tab{% if engine == 'django' %} tab--active{% endif %}"{% if engine == 'django' %} aria-current="page"{% endif %}>Django</a>
     <a href="?engine=linux" class="tab{% if engine == 'linux' %} tab--active{% endif %}"{% if engine == 'linux' %} aria-current="page"{% endif %}>Linux</a>
     <a href="?engine=git" class="tab{% if engine == 'git' %} tab--active{% endif %}"{% if engine == 'git' %} aria-current="page"{% endif %}>Git</a>
   </div>
@@ -34,6 +34,8 @@
     {% include 'trainers/components/_playground_html.html' %}
   {% elif engine == 'sql' %}
     {% include 'trainers/components/_playground_sql.html' %}
+  {% elif engine == 'django' %}
+    {% include 'trainers/components/_playground_django.html' %}
   {% elif engine == 'linux' %}
     {% include 'trainers/components/_playground_linux.html' %}
   {% elif engine == 'git' %}

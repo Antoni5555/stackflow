@@ -1,0 +1,46 @@
+{% load static %}
+{% comment %} Тренажёр Django: файлы проекта на вкладках, строка запроса (как адресная строка),
+   ответ — страница в изолированном iframe, заголовки и SQL (с подсветкой N+1); orm.py — строки
+   ORM, как в shell. Каждый запуск — проект и база заново (учебные данные — PLAYGROUND_DJANGO
+   во views.py). Файлы — в localStorage. JS — pages/playground-django.js. {% endcomment %}
+<div class="playground">
+  <div class="course-main"
+       data-playground="django"
+       data-worker="{% static 'js/engines/python/worker.js' %}"
+       data-runner="{% static 'js/engines/python/runner.py' %}"
+       data-pyodide="{{ PYODIDE_URL }}"
+       data-django="{% static 'vendor/django.zip' %}"
+       data-django-runner="{% static 'js/engines/django/runner.py' %}">
+    <div class="workspace">
+      <div class="tabs" role="tablist">
+        {% for name in django_file_names %}
+          <button type="button" class="tab tab--static{% if forloop.first %} tab--active{% endif %}" role="tab" data-file="{{ name }}">{{ name }}</button>
+        {% endfor %}
+        <span class="engine-badge" data-engine-status><span class="spinner spinner--sm" aria-hidden="true"></span>Загружаем Python и Django…</span>
+      </div>
+      <div class="editor">
+        <div class="editor__gutter" aria-hidden="true"></div>
+        <textarea class="editor__code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Текст файла"></textarea>
+      </div>
+      <form class="toolbar request-bar" data-request-form>
+        <span class="select"><select name="method" aria-label="Метод запроса"><option>GET</option><option>POST</option></select></span>
+        <input class="field__input request-bar__path" name="path" value="/products/" aria-label="Адрес страницы" spellcheck="false" autocomplete="off">
+        <button type="submit" class="btn btn--accent" data-action="send" disabled>Отправить <kbd>Ctrl ↵</kbd></button>
+        <button type="button" class="btn btn--ghost" data-action="orm" disabled>Выполнить orm.py</button>
+      </form>
+    </div>
+    <p class="muted small">Каждый запуск — проект и база заново: таблицы из models.py и учебные данные магазина. Ссылки и формы на показанной странице работают — тренажёр сам отправит запрос.</p>
+
+    <details class="schema-strip" data-schema>
+      <summary><span class="schema-strip__title">Модели</span><span class="muted small" data-schema-summary>появятся после первого запуска</span></summary>
+      <div class="explorer" data-schema-tables></div>
+    </details>
+
+    <div data-run-alert hidden></div>
+    <ol class="run-log" data-run-log aria-live="polite"></ol>
+  </div>
+  {% if course %}
+    {% include 'common/_side_panel.html' with flat=True note_open=True %}
+  {% endif %}
+</div>
+{{ django_project|json_script:'django-project' }}

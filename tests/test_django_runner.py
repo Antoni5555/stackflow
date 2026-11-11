@@ -89,6 +89,9 @@ def test_request_template_queries_and_orm():
     assert page['queries'][1]['sql'].startswith('SELECT "shop_category"')
 
     assert broken['status'] == 500
+    # страница 500 — короткая: полная страница Django в Pyodide упирается в стек
+    assert broken['body'].startswith('<h1>ZeroDivisionError at /broken/</h1>')
+    assert 'site-packages' not in broken['body']
     assert broken['error'].endswith('ZeroDivisionError: division by zero')
     assert 'File "views.py", line 9, in broken' in broken['error']
     assert 'site-packages' not in broken['error']
@@ -139,9 +142,12 @@ def test_errors_in_student_files_then_recovery():
 
 
 def test_post_and_setup_error():
-    post, bad_setup = run_all(
+    post, bad_setup, soft = run_all(
         {'files': FILES, 'requests': [{'method': 'POST', 'path': '/products/'}]},
         {'files': FILES, 'setup': 'Product.objects.create(name="без категории")'},
+        # песочница: ошибка учебных данных — предупреждение, запросы выполняются
+        {'files': FILES, 'setup': SETUP + 'Missing.objects.create()\n',
+         'strict_setup': False, 'requests': [{'path': '/products/'}]},
     )
 
     assert post['requests'][0]['method'] == 'POST'
@@ -149,6 +155,10 @@ def test_post_and_setup_error():
     assert bad_setup['stage'] == 'setup'
     assert bad_setup['error'].startswith(
         'Учебные данные не загрузились: IntegrityError')
+    assert soft['setup_error'].endswith("NameError: name 'Missing' is not defined")
+    # недогруженные данные убраны — база пустая, страница открывается
+    assert soft['requests'][0]['status'] == 200
+    assert '<li>' not in soft['requests'][0]['body']
 
 
 def test_bundle_has_code_and_only_needed_translations(tmp_path, monkeypatch):

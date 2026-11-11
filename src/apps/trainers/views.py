@@ -175,6 +175,103 @@ UPDATE products SET stock = stock + 5 WHERE id = 1;
 """
 
 
+# Тренажёр Django по умолчанию: каталог магазина. Список товаров специально
+# с N+1 (категория — отдельным запросом на товар), orm.py — как это исправить
+PLAYGROUND_DJANGO = {
+    'files': {
+        'models.py': """from django.db import models
+
+
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class Product(models.Model):
+    name = models.CharField(max_length=200)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    stock = models.PositiveIntegerField(default=0)
+    category = models.ForeignKey(
+        Category, on_delete=models.PROTECT, related_name="products",
+    )
+
+    def __str__(self):
+        return self.name
+""",
+        'views.py': """from django.shortcuts import get_object_or_404, render
+
+from .models import Product
+
+
+def product_list(request):
+    products = Product.objects.order_by("price")
+    return render(request, "shop/product_list.html", {"products": products})
+
+
+def product_detail(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    return render(request, "shop/product_detail.html", {"product": product})
+""",
+        'urls.py': """from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path("products/", views.product_list, name="product_list"),
+    path("products/<int:pk>/", views.product_detail, name="product_detail"),
+]
+""",
+        'templates/shop/product_list.html': """<h1>Каталог</h1>
+<ul>
+  {% for product in products %}
+    <li>
+      <a href="{% url 'product_detail' product.pk %}">{{ product.name }}</a>
+      — {{ product.category.name }}, {{ product.price }} ₽
+    </li>
+  {% empty %}
+    <li>Товаров пока нет.</li>
+  {% endfor %}
+</ul>
+""",
+        'templates/shop/product_detail.html': """<p>
+  <a href="{% url 'product_list' %}">← Каталог</a>
+</p>
+<h1>{{ product.name }}</h1>
+<p>{{ product.category.name }} · {{ product.price }} ₽</p>
+<p>
+  {% if product.stock %}В наличии: {{ product.stock }} шт.
+  {% else %}Нет в наличии{% endif %}
+</p>
+""",
+        'orm.py': """# Строки ORM, как в manage.py shell: видно результат и SQL.
+# Последняя строка-выражение выводится сама.
+cheap = Product.objects.filter(price__lt=5000).select_related("category")
+for product in cheap:
+    print(product.name, "—", product.category.name)
+
+Product.objects.count()
+""",
+    },
+    # Учебные данные: выполняются после migrate на каждом запуске (как фикстура)
+    'setup': """laptops = Category.objects.create(name="Ноутбуки")
+phones = Category.objects.create(name="Смартфоны")
+accessories = Category.objects.create(name="Аксессуары")
+for name, price, stock, category in [
+    ("Ноутбук Aster 14", 64990, 5, laptops),
+    ("Ноутбук Nimbus Air", 54990, 0, laptops),
+    ("Смартфон Pixelon 8", 39990, 12, phones),
+    ("Смартфон Lumo S", 24990, 3, phones),
+    ("Беспроводная мышь", 1499, 40, accessories),
+    ("Коврик для мыши", 490, 100, accessories),
+    ("USB-хаб на 4 порта", 1499, 0, accessories),
+]:
+    Product.objects.create(name=name, price=price, stock=stock, category=category)
+""",
+}
+
+
 # Тренажёр Git по умолчанию: проект магазина с историей, веткой и «GitHub»
 PLAYGROUND_GIT = {
     'cwd': '/home/shop/shop',
@@ -202,11 +299,11 @@ PLAYGROUND_GIT = {
 
 
 class PlaygroundView(EngineMixin, TemplateView):
-    """Тренажёр-песочница без задач. ?engine= python, html, sql, linux или git."""
+    """Тренажёр-песочница без задач. ?engine= python, html, sql, django, linux, git."""
 
     template_name = 'trainers/playground.html'
     extra_context = {'active_nav': 'playground'}
-    engines = ('python', 'html', 'sql', 'linux', 'git')
+    engines = ('python', 'html', 'sql', 'django', 'linux', 'git')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -221,6 +318,9 @@ class PlaygroundView(EngineMixin, TemplateView):
             context['linux_setup'] = PLAYGROUND_LINUX
         if engine == 'git':
             context['git_setup'] = PLAYGROUND_GIT
+        if engine == 'django':
+            context['django_project'] = PLAYGROUND_DJANGO
+            context['django_file_names'] = list(PLAYGROUND_DJANGO['files'])
         if engine == 'sql':
             context['sql_code'] = PLAYGROUND_SQL
             context['sql_dataset'] = selectors.sql_dataset(context['course'])

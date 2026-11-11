@@ -376,3 +376,20 @@ def test_sql_exercise_page(client, db):
     assert data['setup'] == 'CREATE TABLE t (x int);'
     assert 'solution.sql' in html and '>SELECT\n</textarea>' in html
     assert 'Эталонное решение' in html and '<span class="k">SELECT</span>' not in html
+
+
+def test_django_playground(client, db):
+    """Тренажёр Django: файлы проекта на вкладках, строка запроса, архив Django."""
+    url = reverse('trainers:playground') + '?engine=django'
+    html = client.get(url).content.decode()
+
+    assert 'data-playground="django"' in html
+    assert 'js/pages/playground-django.js' in html
+    assert 'vendor/django' in html and 'js/engines/django/runner' in html
+    for name in ('models.py', 'views.py', 'urls.py', 'orm.py'):
+        assert f'data-file="{name}"' in html
+    script = r'<script id="django-project" type="application/json">(.*?)</script>'
+    project = json.loads(re.search(script, html, re.S).group(1))
+    assert 'class Product(models.Model)' in project['files']['models.py']
+    assert 'Category.objects.create' in project['setup']
+    assert 'aria-current="page">Django</a>' in html

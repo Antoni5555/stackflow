@@ -11,6 +11,12 @@ const STATUS = {
     ready: '<span class="dot dot--ok" aria-hidden="true"></span>Python готов',
     failed: 'Не удалось загрузить Python — проверьте интернет и обновите страницу',
   },
+  django: {
+    loading: `${SPINNER}Загружаем Python и Django… первый раз ~15 МБ, дальше из кэша`,
+    starting: `${SPINNER}Запускаем Python и Django…`,
+    ready: '<span class="dot dot--ok" aria-hidden="true"></span>Django 5.2 · база SQLite',
+    failed: 'Не удалось загрузить Django — проверьте интернет и обновите страницу',
+  },
   sql: {
     loading: `${SPINNER}Загружаем PostgreSQL… первый раз ~3 МБ, дальше из кэша`,
     starting: `${SPINNER}Запускаем PostgreSQL…`,
@@ -20,7 +26,7 @@ const STATUS = {
 };
 const BUSY = `${SPINNER}Выполняется…`;
 
-/** Показать состояние движка (python | sql) и (раз)блокировать кнопки, которым он нужен.
+/** Показать состояние движка (python | django | sql) и (раз)блокировать кнопки, которым он нужен.
  * После первой удачной загрузки браузер это запоминает: дальше — «Запускаем…». */
 export function showEngineStatus(badge, buttons, state, engine = 'python') {
   const loadedKey = `engine-loaded:${engine}`;
