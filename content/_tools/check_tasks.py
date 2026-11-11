@@ -7,6 +7,7 @@
 в каждом запуске, и пример, зависящий от него (порядок множества строк, совпадение ячеек
 словаря), даёт разный вывод. Такие ошибки помечаются как нестабильные. --quick — один запуск.
 """
+import ast
 import concurrent.futures
 import contextlib
 import json
@@ -507,6 +508,57 @@ def check_sql(task):
     return problems
 
 
+def check_django(task):
+    """Форма Django-задачи. Сам эталон в тренажёре Django прогоняет тест сайта."""
+    problems = []
+    files, solution = task.get("files") or {}, task.get("solution") or {}
+    check = task.get("check") or {}
+    if check.get("type") != "django":
+        problems.append(f"check.type у Django-задачи — django: {check.get('type')!r}")
+    if not isinstance(files, dict) or not files:
+        return problems + ["files — словарь {путь в shop/: текст}"]
+    if not isinstance(solution, dict) or not solution:
+        return problems + ["solution — словарь только с изменёнными файлами"]
+    for name, text in {**files, **solution}.items():
+        if not isinstance(text, str):
+            problems.append(f"файл {name}: текст (|)")
+        elif name.startswith(("/", "shop/")):
+            problems.append(f"путь {name!r} — внутри shop/, без shop/ в начале")
+        elif name.endswith(".py"):
+            try:
+                ast.parse(text, name)
+            except SyntaxError as e:
+                problems.append(f"{name}: синтаксическая ошибка, строка {e.lineno}: {e.msg}")
+        elif not name.startswith("templates/"):
+            problems.append(f"файл {name!r}: .py или шаблон templates/…")
+    if "urls.py" not in files:
+        problems.append("в files нет urls.py (он же ROOT_URLCONF)")
+    if all(files.get(name) == text for name, text in solution.items()):
+        problems.append("solution не меняет ни одного файла заготовки")
+    if "setup" in task:
+        if not isinstance(task["setup"], str):
+            problems.append("setup — Python строкой (setup: |)")
+        else:
+            try:
+                ast.parse(task["setup"], "setup.py")
+            except SyntaxError as e:
+                problems.append(f"setup: синтаксическая ошибка, строка {e.lineno}: {e.msg}")
+    tests = check.get("tests") or []
+    if not tests:
+        problems.append("нет check.tests")
+    for n, test in enumerate(tests, 1):
+        if not isinstance(test, dict) or not test.get("code") or not test.get("fail"):
+            problems.append(f"тест {n}: нужны code и fail")
+            continue
+        try:
+            ast.parse(test["code"], f"test {n}")
+        except SyntaxError as e:
+            problems.append(f"тест {n}: синтаксическая ошибка, строка {e.lineno}: {e.msg}")
+        if "assert" not in test["code"] and "max_queries" not in test["code"]:
+            problems.append(f"тест {n} ничего не проверяет — нет assert или max_queries")
+    return problems
+
+
 def check_task(path):
     with sandbox():
         return _check_task(path)
@@ -535,7 +587,9 @@ def _check_task(path):
     for key in ("title", "type", "difficulty", "pitfall", "statement", "explanation"):
         if key not in task:
             problems.append(f"нет поля {key}")
-    if task["type"] == "exercise" and course_engine(path) == "sql":
+    if task["type"] == "exercise" and course_engine(path) == "django":
+        problems += check_django(task)
+    elif task["type"] == "exercise" and course_engine(path) == "sql":
         problems += check_sql(task)
     elif task["type"] == "exercise" and (task.get("check") or {}).get("type") == "state":
         problems += check_state(task)

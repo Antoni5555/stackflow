@@ -58,7 +58,7 @@ content/
 ```
 `NN` задаёт порядок. Slug — латиница, kebab-case; после публикации не меняется (от него зависят URL и прогресс).
 
-`_course.yaml` → `engine`: `python`, `sql`, `django`, `linux`, `git` (терминал Linux + Git, `venv`, `pip`), `html` или `null` (курс без тренажёра — только задачи `quiz`/`fix`).
+`_course.yaml` → `engine`: `python`, `sql`, `django` (Django в браузере, задачи — `check.type: django`), `linux`, `git` (терминал Linux + Git, `venv`, `pip`), `html` или `null` (курс без тренажёра — только задачи `quiz`/`fix`).
 
 `_course.yaml` → `kind`: `main` (по умолчанию, если поля нет) — курс основного пути, на карточке «Шаг N»; `module` — дополнительный модуль («Python под капотом», «Git в команде»): без «Шаг N», в каталоге — отдельным блоком «Дополнительные модули», на главной — строкой под картой пути. `order` у модуля задаёт порядок внутри блока модулей.
 
@@ -235,7 +235,63 @@ check:
 - у `result` эталон должен вернуть хотя бы одну строку, иначе пустой ответ «угадывается»; заготовка не должна случайно давать тот же результат;
 - ученик видит лишние и недостающие строки, поэтому условие однозначно задаёт колонки, их порядок и сортировку (или пишем `order_matters: false`).
 
-Формат многофайловых задач (Django: `models.py`, `views.py`, `urls.py`, шаблон) — ⏳ на этапе 5 разработки, вместе с тренажёром Django.
+### exercise (Django)
+> Черновик «Разработки» с дополнениями «Контента» (2026-11-11); утверждаем, когда готовы задачи Django на сайте.
+
+Задача в курсе с `engine: django`. Проект ученика — одно приложение `shop` из файлов; настройки задаёт тренажёр (DEBUG, `ru`, `Europe/Moscow`, SQLite, без файлов миграций — таблицы создаются по моделям).
+
+```yaml
+title: Каталог без N+1
+type: exercise
+difficulty: 2
+pitfall: Категория подгружается отдельным запросом на каждый товар.
+statement: |
+  ...
+files:                  # заготовка — файлы приложения shop (пути внутри shop/)
+  models.py: |
+    ...
+  views.py: |
+    ...
+  urls.py: |            # он же ROOT_URLCONF
+    ...
+  templates/shop/product_list.html: |
+    ...
+setup: |                # необязательно: учебные данные через ORM, модели — из files
+  phones = Category.objects.create(name="Смартфоны")
+  Product.objects.create(category=phones, name="Смартфон Lumo S", price="24990.00")
+solution:               # эталон — только файлы, которые ученик меняет (можно и новые: forms.py)
+  views.py: |
+    ...
+check:
+  type: django
+  tests:                # по порядку; ученик видит fail первого непройденного
+    - code: |
+        response = client.get("/products/")
+        assert response.status_code == 200
+        assert "Смартфон Lumo S" in response.content.decode()
+      fail: Список товаров должен открываться по /products/.
+    - code: |
+        with max_queries(2):
+            client.get("/products/")
+      fail: Категории подгружаются отдельным запросом на товар — нужен select_related.
+hints: [...]
+explanation: |
+  ...
+```
+
+**Правила:**
+- **Файлы.** `models.py`, `views.py`, `urls.py`, `forms.py`, `admin.py`, шаблоны `templates/shop/…` и свои модули (`queries.py`, `services.py`, `middleware.py`). Задача только на ORM — функция в `queries.py`, тест её импортирует: `from shop.queries import cheap_products`.
+- **`setup`** — Python с моделями ученика и `Q`, `F`, `Count`, `Sum`, `Avg`, `Min`, `Max`, `Prefetch`, `Value`, `User` без импорта. Данные — небольшие, в духе учебной базы магазина (`docs/shop-schema.md`); цены — строкой или `Decimal`.
+- **Тесты** — как у задач Python: `assert` + `fail`. Без импорта доступны: `client` (тестовый клиент Django), модели ученика, `User`, `reverse`, `max_queries(n)` (не больше `n` SQL-запросов внутри блока), `Q`, `F`, агрегаты. Пользователь — `client.force_login(User.objects.create_user(...))`.
+- **Проверка эталона** (тест сайта): эталон (`files` + `solution`) проходит все тесты, заготовка (`files`) хотя бы один не проходит.
+- **Чего в тренажёре нет:** файлов миграций (`makemigrations`, `RunPython`, конфликты — `quiz`/`fix`), `collectstatic` и статики (`quiz`), запуска сервера и `manage.py` (`quiz`).
+
+**⏳ Просьбы к «Разработке» — для разделов курса, которым не хватает черновика:**
+- `settings:` в задаче — добавки к настройкам (`MIDDLEWARE`, `TEMPLATES` → context processors, `AUTH_USER_MODEL`, `LOGIN_URL`) — для тем «Своё middleware», «Контекст-процессоры», «Модель пользователя»;
+- `django.contrib.admin` в тренажёре — для тем «Админка» и «Настройка админки» (тест открывает `/admin/shop/product/` под суперпользователем);
+- клиент с проверкой CSRF (`csrf_client`) — для тем «Формы» и «Безопасность Django»;
+- `templates_used(response)` — имена шаблонов ответа (тема «Наследование и включение»);
+- тесты ученика (раздел «Тесты в Django»): ученик пишет `tests.py`, проверка — тесты проходят на эталоне и падают на «сломанных» версиях кода (`mutants: [{files, fail}]`). Если это сложно — раздел пойдёт на `quiz`/`fix`.
 
 ### quiz
 ```yaml
