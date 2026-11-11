@@ -92,14 +92,31 @@ const actions = {
   },
   predict: ({ code, answer }) => toJs(runner.check_predict(code, answer)),
   /** Django: { files, setup, requests, orm } → ответы, SQL, модели (engines/django/runner.py). */
-  django: ({ files, setup, requests, orm, strictSetup = true }) => {
+  django: ({ files, setup, requests, orm, strictSetup = true, settings = null }) => {
     const pyFiles = self.pyodide.toPy(files);
     const pyRequests = self.pyodide.toPy(requests || []);
+    const pySettings = self.pyodide.toPy(settings);
     try {
-      return toJs(djangoRunner.run(pyFiles, setup || '', pyRequests, orm || '', strictSetup));
+      return toJs(djangoRunner.run(
+        pyFiles, setup || '', pyRequests, orm || '', strictSetup, pySettings,
+      ));
     } finally {
       pyFiles.destroy();
       pyRequests.destroy();
+      pySettings?.destroy?.();
+    }
+  },
+  /** Django-задача: { files, setup, tests, settings } → { failed, total, error }. */
+  djangoCheck: ({ files, setup, tests, settings = null }) => {
+    const pyFiles = self.pyodide.toPy(files);
+    const pyTests = self.pyodide.toPy(tests);
+    const pySettings = self.pyodide.toPy(settings);
+    try {
+      return toJs(djangoRunner.check(pyFiles, setup || '', pyTests, pySettings));
+    } finally {
+      pyFiles.destroy();
+      pyTests.destroy();
+      pySettings?.destroy?.();
     }
   },
 };

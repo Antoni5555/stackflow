@@ -18,8 +18,17 @@ export class DjangoEngine extends PythonEngine {
    * strictSetup: false — ошибка учебных данных не останавливает запуск (песочница).
    * Ответ — { requests, orm, models } или { error, stage }, после тайм-аута — { aborted }.
    */
-  run({ files, setup = '', requests = [], orm = '', strictSetup = true }) {
-    const data = { files, setup, requests, orm, strictSetup };
+  run({ files, setup = '', requests = [], orm = '', strictSetup = true, settings = null }) {
+    const data = { files, setup, requests, orm, strictSetup, settings };
     return this.request('django', data, DJANGO_TIMEOUT, TIMEOUT_MESSAGE);
+  }
+
+  /**
+   * Проверить задачу: тесты по порядку (client, csrf_client, max_queries, templates_used…).
+   * Ответ — { failed: [fail…], total, error } или { error, stage }, после тайм-аута — { aborted }.
+   */
+  check({ files, setup = '', tests, settings = null }) {
+    const data = { files, setup, tests, settings };
+    return this.request('djangoCheck', data, DJANGO_TIMEOUT, TIMEOUT_MESSAGE);
   }
 }

@@ -58,14 +58,14 @@ SETUP = (
 )
 
 
-def run_all(*runs):
+def run_all(*runs, action='run'):
     """Несколько запусков подряд в одном процессе — как в одном воркере браузера."""
     script = (
         'import json, sys\n'
         f'sys.path.insert(0, {str(RUNNER_DIR)!r})\n'
         'import runner\n'
         'runs = json.load(sys.stdin)\n'
-        'print(json.dumps([runner.run(**kwargs) for kwargs in runs]))\n'
+        f'print(json.dumps([runner.{action}(**kwargs) for kwargs in runs]))\n'
     )
     result = subprocess.run(
         [sys.executable, '-c', script], input=json.dumps(runs),
@@ -159,6 +159,109 @@ def test_post_and_setup_error():
     # недогруженные данные убраны — база пустая, страница открывается
     assert soft['requests'][0]['status'] == 200
     assert '<li>' not in soft['requests'][0]['body']
+
+
+def check_all(*runs):
+    return run_all(*runs, action='check')
+
+
+def case(code, fail='не так'):
+    return {'code': code, 'fail': fail}
+
+
+def test_check_reports_failed_tests_in_order():
+    tests = [
+        case('assert client.get("/products/").status_code == 200', 'нет списка'),
+        case('with max_queries(2):\n    client.get("/products/")', 'N+1'),
+        case('assert templates_used(client.get("/products/")) == ["shop/list.html"]'),
+        case('client.get("/broken/")', 'страница падает'),
+        # тесты не видят данных друг друга: удаление откатилось
+        case('Product.objects.all().delete()\nassert not Product.objects.exists()'),
+        case('assert Product.objects.count() == 3', 'данные прошлого теста'),
+    ]
+    [result] = check_all({'files': FILES, 'setup': SETUP, 'tests': tests})
+
+    assert result['total'] == 6
+    assert result['failed'] == ['N+1', 'страница падает']
+    # упал код ученика, а не assert, — traceback по его файлам
+    assert 'File "views.py", line 9, in broken' in result['error']
+    assert result['error'].endswith('ZeroDivisionError: division by zero')
+
+
+def test_check_stops_on_broken_project():
+    broken, bad_settings = check_all(
+        {'files': {**FILES, 'views.py': 'def product_list(request:\n'},
+         'tests': [case('1')]},
+        {'files': FILES, 'tests': [case('1')],
+         'settings': {'AUTH_USER_MODEL': 'shop.User'}},
+    )
+    assert broken['stage'] == 'load' and 'views.py' in broken['error']
+    assert bad_settings['error'] == (
+        'settings: настройки AUTH_USER_MODEL задача менять не может')
+
+
+def test_settings_middleware_and_context_processor():
+    files = {
+        **FILES,
+        'middleware.py': (
+            'class Version:\n'
+            '    def __init__(self, get_response):\n'
+            '        self.get_response = get_response\n'
+            '    def __call__(self, request):\n'
+            '        response = self.get_response(request)\n'
+            '        response["X-Shop"] = "1"\n'
+            '        return response\n'
+        ),
+        'context.py': 'def shop_name(request):\n    return {"shop_name": "Lumo"}\n',
+        'templates/shop/list.html': '{{ shop_name }}',
+    }
+    settings = {'MIDDLEWARE': ['shop.middleware.Version'],
+                'CONTEXT_PROCESSORS': ['shop.context.shop_name'],
+                'LOGIN_URL': '/enter/'}
+    tests = [
+        case('response = client.get("/products/")\n'
+             'assert response["X-Shop"] == "1"\nassert response.content == b"Lumo"'),
+        case('from django.conf import settings\n'
+             'assert settings.LOGIN_URL == "/enter/"'),
+    ]
+    with_settings, missing, without = check_all(
+        {'files': files, 'tests': tests, 'settings': settings},
+        {'files': FILES, 'tests': tests, 'settings': settings},
+        # следующий запуск — снова настройки тренажёра
+        {'files': files, 'tests': tests},
+    )
+    assert with_settings['failed'] == []
+    assert missing['stage'] == 'load'
+    assert "No module named 'shop.middleware'" in missing['error']
+    assert len(without['failed']) == 2
+
+
+def test_admin_and_csrf_client():
+    files = {
+        **FILES,
+        'admin.py': 'from django.contrib import admin\nfrom .models import Product\n\n'
+                    'admin.site.register(Product)\n',
+        'urls.py': 'from django.contrib import admin\n' + FILES['urls.py'].replace(
+            'urlpatterns = [\n',
+            'urlpatterns = [\n    path("admin/", admin.site.urls),\n'),
+    }
+    tests = [
+        case('admin = User.objects.create_superuser("admin", "a@shop.ru", "x")\n'
+             'client.force_login(admin)\n'
+             'response = client.get("/admin/shop/product/")\n'
+             'assert response.status_code == 200\n'
+             'assert "Product object (3)" in response.content.decode()', 'админка'),
+        # обычный клиент CSRF не проверяет, csrf_client — проверяет
+        case('assert client.post("/products/").status_code == 200'),
+        case('assert csrf_client.post("/products/").status_code == 403', 'csrf'),
+    ]
+    with_admin, without_admin = check_all(
+        {'files': files, 'setup': SETUP, 'tests': tests},
+        # следующий запуск без admin.py: модель снята с регистрации
+        {'files': {**files, 'admin.py': ''}, 'setup': SETUP, 'tests': tests},
+    )
+    assert with_admin['failed'] == []
+    assert without_admin['failed'] == ['админка']
 
 
 def test_bundle_has_code_and_only_needed_translations(tmp_path, monkeypatch):

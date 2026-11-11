@@ -12,6 +12,8 @@ urls.py (он же ROOT_URLCONF), forms.py, admin.py, templates/… — всё �
 3. выполняется setup — учебные данные через ORM;
 4. выполняются запросы через тестовый клиент Django (без сервера) и строка ORM;
    у каждого — SQL, которые ушли в базу.
+Задача (check) вместо запросов выполняет тесты: assert + fail, как у задач Python.
+Добавки задачи к настройкам (settings:) действуют только на время запуска.
 
 Тайм-аут здесь не реализован: зависший запрос останавливает страница
 (перезапуском Web Worker), как в тренажёре Python.
@@ -31,11 +33,18 @@ import traceback
 
 APP = 'shop'
 BASE_APPS = [
+    'django.contrib.admin',
     'django.contrib.contenttypes',
     'django.contrib.auth',
     'django.contrib.sessions',
     'django.contrib.messages',
 ]
+# Настройки, которые задача менять не может: тренажёр собирает проект на них.
+# AUTH_USER_MODEL Django читает один раз при старте — тренажёр же пересобирает
+# приложение на каждом запуске, поэтому своя модель пользователя не поддерживается.
+FIXED_SETTINGS = {
+    'INSTALLED_APPS', 'DATABASES', 'ROOT_URLCONF', 'AUTH_USER_MODEL', 'TEMPLATES',
+}
 MAX_BODY = 200_000        # символов тела ответа: страница ученика больше не бывает
 PROJECT = tempfile.mkdtemp(prefix='django-project-')
 APP_DIR = os.path.join(PROJECT, APP)
@@ -87,6 +96,7 @@ def configure():
             },
         }],
         DEFAULT_AUTO_FIELD='django.db.models.BigAutoField',
+        STATIC_URL='/static/',      # ссылки на CSS админки; файлов тренажёр не отдаёт
         LANGUAGE_CODE='ru',
         TIME_ZONE='Europe/Moscow',
         USE_TZ=True,
@@ -115,6 +125,9 @@ def unload_app():
         apps.unset_installed_apps()
         _loaded = False
     apps.all_models.pop(APP, None)
+    from django.contrib import admin
+    for model in [m for m in admin.site._registry if m._meta.app_label == APP]:
+        del admin.site._registry[model]
     for name in list(sys.modules):
         if name == APP or name.startswith(f'{APP}.'):
             del sys.modules[name]
@@ -148,6 +161,9 @@ def load_app(files):
         apps.unset_installed_apps()       # реестр как был: следующий запуск сможет
         raise
     _loaded = True
+    # admin.py Django ищет при старте (autodiscover), а приложение появляется позже
+    if 'admin.py' in files:
+        importlib.import_module(f'{APP}.admin')
     # urls.py (а с ним views.py) — сразу: ошибка в них видна при сборке, а не падением
     # страницы ошибки Django во время запроса
     if 'urls.py' in files:
@@ -165,6 +181,36 @@ def fresh_database():
     with contextlib.suppress(FileNotFoundError):
         os.remove(old)
     call_command('migrate', run_syncdb=True, verbosity=0, interactive=False)
+
+
+def task_settings(extra):
+    """settings: задачи → аргументы override_settings.
+
+    MIDDLEWARE и CONTEXT_PROCESSORS добавляются в конец списков тренажёра,
+    остальное (LOGIN_URL, LOGIN_REDIRECT_URL…) заменяет значение целиком.
+    """
+    from django.conf import settings
+    extra = dict(extra or {})
+    fixed = sorted(FIXED_SETTINGS & set(extra))
+    if fixed:
+        raise ValueError(f'настройки {", ".join(fixed)} задача менять не может')
+    if 'MIDDLEWARE' in extra:
+        extra['MIDDLEWARE'] = [*settings.MIDDLEWARE, *extra['MIDDLEWARE']]
+    processors = extra.pop('CONTEXT_PROCESSORS', None)
+    if processors:
+        templates = [{**engine, 'OPTIONS': {**engine['OPTIONS']}}
+                     for engine in settings.TEMPLATES]
+        options = templates[0]['OPTIONS']
+        options['context_processors'] = [*options['context_processors'], *processors]
+        extra['TEMPLATES'] = templates
+    return extra
+
+
+def import_extra(extra):
+    """Middleware и контекст-процессоры ученика — импорт при сборке: ошибка сразу."""
+    from django.utils.module_loading import import_string
+    for path in [*extra.get('MIDDLEWARE', ()), *extra.get('CONTEXT_PROCESSORS', ())]:
+        import_string(path)
 
 
 class CheckFailed(Exception):
@@ -366,13 +412,8 @@ def describe_models():
     return described
 
 
-def run(files, setup='', requests=(), orm='', strict_setup=True):
-    """Полный запуск: запросы, ORM, модели; ошибка в файлах ученика — {'error'}.
-
-    strict_setup=False (песочница): ошибка учебных данных — предупреждение setup_error,
-    запуск продолжается (ученик мог переименовать модель, на которую рассчитан setup).
-    """
-    configure()
+def prepare(files, setup, strict_setup=True):
+    """Сборка, проверки, база и setup. → (ns, setup_error) или {'error', 'stage'}."""
     try:
         load_app(files)
         system_checks()
@@ -394,12 +435,119 @@ def run(files, setup='', requests=(), orm='', strict_setup=True):
                 return {'error': setup_error, 'stage': 'setup'}
             fresh_database()      # недогруженные данные — не в базе
             ns = namespace()
-    result = {
-        'requests': [make_request(spec) for spec in requests],
-        'models': describe_models(),
+    return ns, setup_error
+
+
+@contextlib.contextmanager
+def with_settings(extra):
+    """settings: задачи — на время запуска; ошибка в них — {'error'} вместо запуска."""
+    from django.test.utils import override_settings
+    try:
+        overrides = task_settings(extra)
+    except ValueError as error:
+        yield {'error': f'settings: {error}', 'stage': 'load'}
+        return
+    with override_settings(**overrides):
+        yield None
+
+
+def run(files, setup='', requests=(), orm='', strict_setup=True, settings=None):
+    """Полный запуск: запросы, ORM, модели; ошибка в файлах ученика — {'error'}.
+
+    strict_setup=False (песочница): ошибка учебных данных — предупреждение setup_error,
+    запуск продолжается (ученик мог переименовать модель, на которую рассчитан setup).
+    """
+    configure()
+    with with_settings(settings) as failed:
+        if failed:
+            return failed
+        prepared = prepare(files, setup, strict_setup)
+        if isinstance(prepared, dict):
+            return prepared
+        ns, setup_error = prepared
+        try:
+            import_extra(settings or {})
+        except Exception as error:
+            return {'error': format_error(error), 'stage': 'load'}
+        result = {
+            'requests': [make_request(spec) for spec in requests],
+            'models': describe_models(),
+        }
+        if setup_error:
+            result['setup_error'] = setup_error
+        if orm.strip():
+            result['orm'] = run_orm(orm, ns)
+        return result
+
+
+# --- Проверка задачи ---
+
+@contextlib.contextmanager
+def max_queries(limit):
+    """В тестах задачи: не больше limit SQL-запросов внутри блока."""
+    queries = []
+    with capture_queries(queries):
+        yield queries
+    if len(queries) > limit:
+        raise AssertionError(f'{len(queries)} SQL-запросов, а можно не больше {limit}')
+
+
+def templates_used(response):
+    """В тестах задачи: имена шаблонов, которыми собран ответ (с базовыми и include)."""
+    return [template.name for template in response.templates if template.name]
+
+
+def test_namespace(ns):
+    """Имена для тестов задачи: модели и помощники setup + клиенты и проверки."""
+    from django.test import Client
+    from django.urls import reverse
+    return {
+        **ns,
+        'client': Client(),
+        'csrf_client': Client(enforce_csrf_checks=True),
+        'max_queries': max_queries,
+        'templates_used': templates_used,
+        'reverse': reverse,
     }
-    if setup_error:
-        result['setup_error'] = setup_error
-    if orm.strip():
-        result['orm'] = run_orm(orm, ns)
-    return result
+
+
+def check(files, setup='', tests=(), settings=None):
+    """Кнопка «Проверить»: тесты задачи по порядку.
+
+    → {'failed': [fail непройденных], 'total', 'error'} — error: traceback первого
+    непройденного теста, если упал код ученика (а не assert). Каждый тест — в своей
+    транзакции, которая откатывается: тесты не видят данных друг друга, только setup.
+    Ошибка сборки, базы или setup — {'error', 'stage'}, как у run().
+    """
+    from django.db import transaction
+    configure()
+    with with_settings(settings) as failed:
+        if failed:
+            return failed
+        prepared = prepare(files, setup)
+        if isinstance(prepared, dict):
+            return prepared
+        ns, _ = prepared
+        try:
+            import_extra(settings or {})
+        except Exception as error:
+            return {'error': format_error(error), 'stage': 'load'}
+        result = {'failed': [], 'total': len(tests), 'error': ''}
+        for number, test in enumerate(tests, 1):
+            env = test_namespace(ns)
+            name = f'test {number}'
+            lines = test['code'].splitlines(True)
+            linecache.cache[name] = (len(test['code']), None, lines, name)
+            try:
+                with transaction.atomic():
+                    try:
+                        exec(compile(test['code'], name, 'exec'), env)
+                    finally:
+                        transaction.set_rollback(True)
+            except AssertionError:
+                result['failed'].append(test['fail'])
+            except Exception as error:
+                result['failed'].append(test['fail'])
+                if not result['error']:
+                    result['error'] = format_error(error)
+        return result
