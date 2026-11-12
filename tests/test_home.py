@@ -89,7 +89,8 @@ def test_about_page(client, courses):
     assert f'href="{first.get_absolute_url()}"' in html
     assert 'Начать с Python' in html
     assert '<details class="faq__item" open' not in html
-    assert 'href="https://github.com/Antoni5555"' in html
+    assert 'href="https://github.com/Antoni5555"' not in html
+    assert 'href="https://t.me/antonimikeladze"' in html
     assert 'img/author' in html
 
 

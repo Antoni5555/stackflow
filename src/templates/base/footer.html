@@ -21,6 +21,11 @@
         <a href="{% url 'account_signup' %}">Регистрация</a>
       {% endif %}
     </nav>
+    <nav class="footer__col">
+      <span class="footer__label">Связь</span>
+      {% if SITE_EMAIL %}<a href="mailto:{{ SITE_EMAIL }}">{{ SITE_EMAIL }}</a>{% endif %}
+      <a href="https://www.tiktok.com/@stack_flow">TikTok</a>
+    </nav>
   </div>
   <div class="container footer__bottom">
     <span class="muted">© {% now 'Y' %} {{ SITE_NAME }} · открытый код</span>
@@ -28,6 +33,5 @@
       <a href="{% url 'pages:privacy' %}">Политика конфиденциальности</a>
       <a href="{% url 'pages:consent' %}">Согласие на обработку данных</a>
     </nav>
-    {# Ссылки GitHub / Telegram из макета добавим, когда появится репозиторий #}
   </div>
 </footer>
