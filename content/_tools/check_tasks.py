@@ -508,6 +508,52 @@ def check_sql(task):
     return problems
 
 
+def check_django_files(files, where=""):
+    problems = []
+    for name, text in files.items():
+        if not isinstance(text, str):
+            problems.append(f"{where}файл {name}: текст (|)")
+        elif name.startswith(("/", "shop/")):
+            problems.append(f"{where}путь {name!r} — внутри shop/, без shop/ в начале")
+        elif name.endswith(".py"):
+            try:
+                ast.parse(text, name)
+            except SyntaxError as e:
+                problems.append(f"{where}{name}: синтаксическая ошибка, строка {e.lineno}: {e.msg}")
+        elif not name.startswith("templates/"):
+            problems.append(f"{where}файл {name!r}: .py или шаблон templates/…")
+    return problems
+
+
+def check_django_mutants(task, files, solution, check):
+    """Задача «напиши тесты»: эталон — tests.py, сломанные версии кода — mutants."""
+    problems = []
+    if "tests" in check:
+        problems.append("check: mutants вместо tests, не вместе")
+    if set(solution) != {"tests.py"}:
+        problems.append("solution задачи на тесты — только tests.py")
+    if "setup" in task:
+        problems.append("setup к тестам ученика не применяется — данные в setUpTestData / setUp")
+    code = solution.get("tests.py", "")
+    if "TestCase" not in code or "def test" not in code:
+        problems.append("эталонный tests.py — класс TestCase с методами test_…")
+    mutants = check["mutants"]
+    if not isinstance(mutants, list) or not mutants:
+        return problems + ["mutants — непустой список {files, fail}"]
+    for n, mutant in enumerate(mutants, 1):
+        if not isinstance(mutant, dict) or not isinstance(mutant.get("files"), dict) \
+                or not mutant["files"] or not mutant.get("fail"):
+            problems.append(f"сломанная версия {n}: нужны files (словарь) и fail")
+            continue
+        changed = mutant["files"]
+        problems += check_django_files(changed, f"сломанная версия {n}: ")
+        if "tests.py" in changed:
+            problems.append(f"сломанная версия {n}: tests.py не меняют — ломают код задачи")
+        if all(files.get(name) == text for name, text in changed.items()):
+            problems.append(f"сломанная версия {n} не меняет ни одного файла задачи")
+    return problems
+
+
 def check_django(task):
     """Форма Django-задачи. Сам эталон в тренажёре Django прогоняет тест сайта."""
     problems = []
@@ -519,18 +565,7 @@ def check_django(task):
         return problems + ["files — словарь {путь в shop/: текст}"]
     if not isinstance(solution, dict) or not solution:
         return problems + ["solution — словарь только с изменёнными файлами"]
-    for name, text in {**files, **solution}.items():
-        if not isinstance(text, str):
-            problems.append(f"файл {name}: текст (|)")
-        elif name.startswith(("/", "shop/")):
-            problems.append(f"путь {name!r} — внутри shop/, без shop/ в начале")
-        elif name.endswith(".py"):
-            try:
-                ast.parse(text, name)
-            except SyntaxError as e:
-                problems.append(f"{name}: синтаксическая ошибка, строка {e.lineno}: {e.msg}")
-        elif not name.startswith("templates/"):
-            problems.append(f"файл {name!r}: .py или шаблон templates/…")
+    problems += check_django_files({**files, **solution})
     if "urls.py" not in files:
         problems.append("в files нет urls.py (он же ROOT_URLCONF)")
     if all(files.get(name) == text for name, text in solution.items()):
@@ -558,6 +593,8 @@ def check_django(task):
     final = {**files, **solution}
     if "admin.py" in final and "admin.site.urls" not in final.get("urls.py", ""):
         problems.append('есть admin.py, но urls.py не подключает path("admin/", admin.site.urls)')
+    if "mutants" in check:
+        return problems + check_django_mutants(task, files, solution, check)
     tests = check.get("tests") or []
     if not tests:
         problems.append("нет check.tests")
