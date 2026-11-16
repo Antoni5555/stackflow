@@ -19,13 +19,15 @@ const DJANGO_MODULE = 'django_runner';
 let runner = null;
 let djangoRunner = null;
 
-/** Django: sqlite3 из Pyodide + наш архив (django, asgiref, sqlparse) в site-packages. */
+/** Django: sqlite3 и tzdata из Pyodide + наш архив (django, asgiref, sqlparse) в site-packages.
+ * tzdata — сразу: время в шаблонах и админке Django переводит в Europe/Moscow через zoneinfo. */
 async function bootDjango(pyodide) {
   const [archive, source] = await Promise.all([
     fetch(DJANGO_URL).then((response) => response.arrayBuffer()),
     fetch(DJANGO_RUNNER_URL).then((response) => response.text()),
-    pyodide.loadPackage('sqlite3'),
+    pyodide.loadPackage(['sqlite3', 'tzdata']),
   ]);
+  tzdataLoaded = true;
   pyodide.unpackArchive(archive, 'zip', { extractDir: '/lib/python3.12/site-packages' });
   pyodide.FS.writeFile(`/home/pyodide/${DJANGO_MODULE}.py`, source);
   djangoRunner = pyodide.pyimport(DJANGO_MODULE);

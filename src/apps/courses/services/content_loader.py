@@ -394,6 +394,86 @@ def sql_spec(data, path):
     return spec
 
 
+# Django (курс с движком django): приложение shop из файлов, проверка — тесты с client
+# (check.tests) или тесты ученика против «сломанных» версий кода (check.mutants).
+# Проект и тесты выполняет браузер (js/engines/django/runner.py), эталоны — тест сайта
+DJANGO_FIELDS = (['files', 'solution', 'check'], ['setup', 'settings'])
+# как FIXED_SETTINGS в runner.py: на них тренажёр собирает проект
+DJANGO_FIXED_SETTINGS = {
+    'INSTALLED_APPS', 'DATABASES', 'ROOT_URLCONF', 'AUTH_USER_MODEL', 'TEMPLATES',
+}
+DJANGO_LIST_SETTINGS = ('MIDDLEWARE', 'CONTEXT_PROCESSORS')
+
+
+def django_files(value, path, name):
+    """{путь внутри shop/: текст} — файлы проекта ученика."""
+    if not isinstance(value, dict) or not value or not all(
+        isinstance(key, str) and isinstance(text, str) for key, text in value.items()
+    ):
+        raise ContentError(path, f'{name} — словарь {{путь в shop/: текст}}')
+    return value
+
+
+def django_checks(check, path):
+    """check.tests: [{code, fail}] или check.mutants: [{files, fail}] — одно из двух."""
+    if not isinstance(check, dict) or check.get('type') != 'django':
+        raise ContentError(path, 'check.type должен быть django')
+    kinds = [key for key in ('tests', 'mutants') if key in check]
+    if len(kinds) != 1 or set(check) - {'type', *kinds}:
+        raise ContentError(path, 'check: type django и tests или mutants (одно)')
+    kind = kinds[0]
+    items = check[kind]
+    if not isinstance(items, list) or not items:
+        raise ContentError(path, f'check.{kind} — непустой список')
+    field = 'code' if kind == 'tests' else 'files'
+    for number, item in enumerate(items, start=1):
+        if not isinstance(item, dict) or set(item) != {field, 'fail'}:
+            raise ContentError(path, f'{kind}, {number}: нужны {field} и fail')
+        if kind == 'mutants':
+            django_files(item['files'], path, f'mutants, {number}: files')
+        elif not isinstance(item['code'], str):
+            raise ContentError(path, f'tests, {number}: code — текст Python')
+    return {'type': 'django', kind: items}
+
+
+def django_settings(value, path):
+    """settings: — добавки к настройкам тренажёра на время запуска."""
+    if not isinstance(value, dict):
+        raise ContentError(path, 'settings — словарь {НАСТРОЙКА: значение}')
+    if fixed := sorted(DJANGO_FIXED_SETTINGS & set(value)):
+        raise ContentError(path, f'settings: {", ".join(fixed)} задача менять не может')
+    for key in DJANGO_LIST_SETTINGS:
+        if key in value and not (
+            isinstance(value[key], list) and all(isinstance(v, str) for v in value[key])
+        ):
+            raise ContentError(path, f'settings.{key} — список путей строками')
+    return value
+
+
+def django_spec(data, path):
+    """Задача Django: файлы заготовки, эталон (изменённые файлы), setup и проверка."""
+    required, optional = DJANGO_FIELDS
+    require(data, path, *required)
+    files = django_files(data['files'], path, 'files')
+    solution = django_files(data['solution'], path, 'solution')
+    spec = {
+        'files': files,
+        'solution': solution,
+        'check': django_checks(data['check'], path),
+        # JSONB переставляет ключи — порядок вкладок храним отдельно; файлы, которых
+        # нет в заготовке (forms.py), ученик пишет с нуля — пустая вкладка
+        'file_names': list(files) + [name for name in solution if name not in files],
+    }
+    if 'setup' in data:
+        if not isinstance(data['setup'], str):
+            raise ContentError(path, 'setup — Python строкой (setup: |)')
+        spec['setup'] = data['setup']
+    if 'settings' in data:
+        spec['settings'] = django_settings(data['settings'], path)
+    spec['hints'] = [render_inline(str(hint)) for hint in data.get('hints') or []]
+    return spec
+
+
 PRACTICE_FIELDS = {'title', 'text', 'hint', 'answer'}
 
 
@@ -435,6 +515,8 @@ def exercise_spec(data, path, engine=''):
     """
     if engine == Course.Engine.SQL and data['type'] == 'exercise':
         return sql_spec(data, path)
+    if engine == Course.Engine.DJANGO and data['type'] == 'exercise':
+        return django_spec(data, path)
     check = data.get('check')
     check_type = check.get('type') if isinstance(check, dict) else None
     is_dom = data['type'] == 'exercise' and check_type == 'dom'

@@ -393,3 +393,54 @@ def test_django_playground(client, db):
     assert 'class Product(models.Model)' in project['files']['models.py']
     assert 'Category.objects.create' in project['setup']
     assert 'aria-current="page">Django</a>' in html
+
+
+def django_exercise(check, **spec):
+    course = CourseFactory(engine='django', slug='django')
+    topic = TopicFactory(section=SectionFactory(course=course))
+    return ExerciseFactory(
+        topic=topic, type=Exercise.Type.EXERCISE, slug='catalog',
+        spec={
+            'files': {'urls.py': 'urlpatterns = []\n', 'views.py': 'pass\n'},
+            'solution': {'views.py': 'print()\n', 'forms.py': 'x = 1\n'},
+            'file_names': ['urls.py', 'views.py', 'forms.py'],
+            'check': check, 'hints': [], **spec,
+        },
+    )
+
+
+def test_django_exercise_page(client, db):
+    """Django-задача: свой скрипт, архив Django, вкладки, адрес из тестов, разбор."""
+    exercise = django_exercise(
+        {'type': 'django', 'tests': [
+            {'code': 'with max_queries(2):\n    client.post("/cart/add/")',
+             'fail': 'F'},
+        ]},
+        setup='Category.objects.create(name="A")', settings={'LOGIN_URL': '/enter/'},
+    )
+    html = client.get(exercise.get_absolute_url()).content.decode()
+
+    assert 'js/pages/django-exercise.js' in html and 'js/pages/exercise.js' not in html
+    assert 'data-django="/static/vendor/django' in html
+    for name in ('urls.py', 'views.py', 'forms.py'):
+        assert f'data-file="{name}"' in html
+    # строка запроса — первый запрос из тестов задачи
+    assert 'value="/cart/add/"' in html and '<option selected>POST</option>' in html
+    data = exercise_data(html)
+    assert 'solution' not in data
+    assert data['setup'] == 'Category.objects.create(name="A")'
+    assert data['settings'] == {'LOGIN_URL': '/enter/'}
+    assert data['check']['tests'][0]['fail'] == 'F'
+    assert 'Эталон: views.py' in html and 'Эталон: forms.py' in html
+    assert 'Запустить тесты' not in html and 'data-schema' in html
+
+
+def test_django_tests_exercise_page(client, db):
+    """«Напишите тесты»: без строки запроса и моделей, мутанты — для браузера."""
+    mutants = [{'files': {'views.py': 'x = 2\n'}, 'fail': 'F'}]
+    exercise = django_exercise({'type': 'django', 'mutants': mutants})
+    html = client.get(exercise.get_absolute_url()).content.decode()
+
+    assert 'Запустить тесты' in html and 'data-request-form' not in html
+    assert 'data-schema' not in html
+    assert exercise_data(html)['check']['mutants'] == mutants

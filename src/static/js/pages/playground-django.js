@@ -3,7 +3,7 @@
 // Каждый запуск собирает проект и базу заново (engines/django/runner.py). Файлы — в localStorage.
 
 import { DjangoEngine } from '../engines/django/engine.js';
-import { ModelsStrip, ormCard, responseCard } from '../engines/django/view.js';
+import { ModelsStrip, STAGE_TITLES, ormCard, responseCard } from '../engines/django/view.js';
 import { FileEditor } from '../file-editor.js';
 import { escapeHtml, hideAlert, showAlert, showEngineStatus } from '../trainer-ui.js';
 
@@ -52,8 +52,7 @@ async function execute(payload) {
   if (result.error) {
     // ошибка в файлах проекта: models.py, views.py, urls.py — как в терминале runserver
     log.replaceChildren();
-    const where = { load: 'Проект не собрался', migrate: 'Таблицы не создались', setup: 'Учебные данные не загрузились' }[result.stage];
-    showAlert(alertEl, 'error', `<strong>${where}.</strong><pre class="console console__line--error">${escapeHtml(result.error)}</pre>`);
+    showAlert(alertEl, 'error', `<strong>${STAGE_TITLES[result.stage]}.</strong><pre class="console console__line--error">${escapeHtml(result.error)}</pre>`);
     return null;
   }
   models.render(result.models);

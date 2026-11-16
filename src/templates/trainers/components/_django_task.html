@@ -1,0 +1,42 @@
+{% comment %} Django-задача (курс с движком django): файлы приложения shop на вкладках.
+   Обычная задача: «Запустить» — запрос к проекту (ответ и SQL, как в тренажёре), «Проверить» —
+   тесты задачи. Задача «напишите тесты» (writes_tests): «Запустить тесты» — tests.py ученика
+   на коде задачи, «Проверить» — ещё и на «сломанных» версиях. Каждый запуск — проект и база
+   заново. Черновики — в localStorage. JS — pages/django-exercise.js. {% endcomment %}
+<div class="workspace">
+  <div class="tabs" role="tablist">
+    {% for name in exercise.spec.file_names %}
+      <button type="button" class="tab tab--static{% if forloop.first %} tab--active{% endif %}" role="tab" data-file="{{ name }}">{{ name }}</button>
+    {% endfor %}
+    <span class="engine-badge" data-engine-status><span class="spinner spinner--sm" aria-hidden="true"></span>Загружаем Python и Django…</span>
+  </div>
+  <div class="editor">
+    <div class="editor__gutter" aria-hidden="true"></div>
+    <textarea class="editor__code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Текст файла"></textarea>
+  </div>
+  {% if writes_tests %}
+  <div class="toolbar">
+    <button type="button" class="btn btn--accent" data-action="run" disabled>Запустить тесты <kbd>Ctrl ↵</kbd></button>
+    <button type="button" class="btn btn--ink" data-action="check" disabled>Проверить</button>
+    <button type="button" class="btn btn--ghost" data-action="reset">Сбросить</button>
+  </div>
+  {% else %}
+  <form class="toolbar request-bar" data-request-form>
+    <span class="select"><select name="method" aria-label="Метод запроса"><option{% if request_method == 'GET' %} selected{% endif %}>GET</option><option{% if request_method == 'POST' %} selected{% endif %}>POST</option></select></span>
+    <input class="field__input request-bar__path" name="path" value="{{ request_path }}" aria-label="Адрес страницы" spellcheck="false" autocomplete="off">
+    <button type="submit" class="btn btn--accent" data-action="run" disabled>Запустить <kbd>Ctrl ↵</kbd></button>
+    <button type="button" class="btn btn--ink" data-action="check" disabled>Проверить</button>
+    <button type="button" class="btn btn--ghost" data-action="reset">Сбросить</button>
+  </form>
+  {% endif %}
+</div>
+<p class="muted small">{% if writes_tests %}Тесты идут как <code>manage.py test</code>: база пустая, данные создают сами тесты (<code>setUpTestData</code>, <code>setUp</code>).{% else %}Каждый запуск — проект и база заново: таблицы из models.py и данные задачи. Ссылки и формы на показанной странице работают.{% endif %}</p>
+
+{% if not writes_tests %}
+<details class="schema-strip" data-schema>
+  <summary><span class="schema-strip__title">Модели</span><span class="muted small" data-schema-summary>появятся после первого запуска</span></summary>
+  <div class="explorer" data-schema-tables></div>
+</details>
+{% endif %}
+
+<ol class="run-log" data-run-log aria-live="polite"></ol>

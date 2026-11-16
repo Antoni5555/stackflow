@@ -3,6 +3,8 @@
 Данные готовят функции из apps/courses/services/selectors.py.
 """
 
+import re
+
 from django.conf import settings
 from django.views.generic import TemplateView
 
@@ -20,6 +22,18 @@ class EngineMixin:
         context['PYODIDE_URL'] = settings.PYODIDE_URL
         context['PGLITE_URL'] = settings.PGLITE_URL
         return context
+
+
+# Первый запрос из тестов Django-задачи — адрес по умолчанию в строке запроса
+FIRST_REQUEST = re.compile(r'client\.(get|post)\(\s*[\'"]([^\'"]+)')
+
+
+def first_request(tests):
+    """(метод, адрес) первого client.get/post в тестах задачи, иначе GET /."""
+    for test in tests:
+        if match := FIRST_REQUEST.search(test['code']):
+            return match[1].upper(), match[2]
+    return 'GET', '/'
 
 
 class ExerciseView(EngineMixin, TemplateView):
@@ -60,6 +74,14 @@ class ExerciseView(EngineMixin, TemplateView):
         # SQL-задача: решение и эталон выполняет PGlite в браузере на учебной базе
         is_sql = context['course'].engine == 'sql' and exercise.type == 'exercise'
         context['is_sql'] = is_sql
+        # Django-задача: проект ученика и тесты выполняет Django в Pyodide
+        is_django = context['course'].engine == 'django' and exercise.type == 'exercise'
+        context['is_django'] = is_django
+        if is_django:
+            check = spec['check']
+            context['writes_tests'] = 'mutants' in check
+            context['request_method'], context['request_path'] = first_request(
+                check.get('tests', []))
         if is_sql:
             solution = spec['solution'].rstrip('\n')
             context['solution_html'] = highlight(solution, 'postgresql')
@@ -70,7 +92,7 @@ class ExerciseView(EngineMixin, TemplateView):
             context['solution_html'] = highlight(
                 solution, 'bash' if check_type == 'state' else 'python',
             )
-        if exercise.type == exercise.Type.FIX or check_type == 'dom':
+        if exercise.type == exercise.Type.FIX or check_type == 'dom' or is_django:
             # исправленные файлы — в разборе; язык подсветки — по имени файла
             context['solution_files'] = [
                 (name, highlight_file(spec['solution'][name].rstrip('\n'), name))
@@ -82,7 +104,8 @@ class ExerciseView(EngineMixin, TemplateView):
         hidden = {'hints', 'options'}
         # эталон SQL нужен браузеру: с ним сравнивается решение ученика
         if not is_sql and (
-            exercise.type == exercise.Type.FIX or check_type in ('dom', 'state')
+            exercise.type == exercise.Type.FIX
+            or check_type in ('dom', 'state', 'django')
         ):
             hidden.add('solution')
         context['exercise_data'] = {

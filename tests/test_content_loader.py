@@ -454,3 +454,93 @@ def test_invalid_sql_exercise_is_reported(content_dir, check, message):
 
 def test_track_without_shared_has_empty_dataset(loaded_content):
     assert Track.objects.get(slug='backend').sql_dataset == ''
+
+
+DJANGO_TOPIC = 'backend/django/01-views/01-list'
+DJANGO_TASK = """title: Каталог без N+1
+type: exercise
+difficulty: 2
+pitfall: P
+statement: S
+explanation: E
+files:
+  urls.py: |
+    urlpatterns = []
+  views.py: |
+    pass
+solution:
+  views.py: |
+    print()
+  forms.py: |
+    pass
+%s
+hints: ['Нужен **select_related**']
+"""
+DJANGO_TESTS = """check:
+  type: django
+  tests:
+    - code: assert True
+      fail: F
+"""
+
+
+def django_course(content_dir, rest):
+    topic = content_dir / DJANGO_TOPIC
+    topic.mkdir(parents=True)
+    (content_dir / 'backend/django/_course.yaml').write_text(
+        'title: Django\nengine: django\norder: 50\n', encoding='utf-8')
+    (content_dir / 'backend/django/01-views/_section.yaml').write_text(
+        'title: Страницы\n', encoding='utf-8')
+    (topic / '_topic.yaml').write_text('title: Список\n', encoding='utf-8')
+    (topic / '01-catalog.yaml').write_text(DJANGO_TASK % rest, encoding='utf-8')
+
+
+def test_django_exercise_is_loaded(content_dir):
+    django_course(content_dir, DJANGO_TESTS + (
+        'setup: |\n  Category.objects.create(name="A")\n'
+        'settings:\n  MIDDLEWARE: [shop.middleware.Timing]\n  LOGIN_URL: /enter/\n'
+    ))
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='catalog').spec
+    # вкладки: файлы заготовки по порядку, затем новые файлы эталона
+    assert spec['file_names'] == ['urls.py', 'views.py', 'forms.py']
+    assert spec['check'] == {
+        'type': 'django', 'tests': [{'code': 'assert True', 'fail': 'F'}]}
+    assert spec['setup'] == 'Category.objects.create(name="A")\n'
+    assert spec['settings'] == {
+        'MIDDLEWARE': ['shop.middleware.Timing'], 'LOGIN_URL': '/enter/'}
+    assert spec['hints'] == ['Нужен <strong>select_related</strong>']
+
+
+def test_django_mutants_are_loaded(content_dir):
+    django_course(content_dir, (
+        'check:\n  type: django\n  mutants:\n'
+        '    - files: {views.py: "x = 1"}\n      fail: F\n'
+    ))
+    ContentLoader(content_dir).load()
+
+    check = Exercise.objects.get(slug='catalog').spec['check']
+    assert check == {
+        'type': 'django', 'mutants': [{'files': {'views.py': 'x = 1'}, 'fail': 'F'}]}
+
+
+@pytest.mark.parametrize('rest, message', [
+    ('check:\n  type: tests', 'check.type должен быть django'),
+    ('check:\n  type: django', 'tests или mutants'),
+    (DJANGO_TESTS + '  mutants: []', 'tests или mutants'),
+    ('check:\n  type: django\n  tests: []', 'check.tests — непустой список'),
+    ('check:\n  type: django\n  tests:\n    - code: x', 'tests, 1: нужны code и fail'),
+    ('check:\n  type: django\n  mutants:\n    - files: {}\n      fail: F',
+     'mutants, 1: files'),
+    (DJANGO_TESTS + 'setup: {a: 1}', 'setup — Python строкой'),
+    (DJANGO_TESTS + 'settings:\n  AUTH_USER_MODEL: shop.User',
+     'AUTH_USER_MODEL задача менять не может'),
+    (DJANGO_TESTS + 'settings:\n  MIDDLEWARE: shop.middleware.Timing',
+     'settings.MIDDLEWARE — список'),
+])
+def test_invalid_django_exercise_is_reported(content_dir, rest, message):
+    django_course(content_dir, rest)
+
+    with pytest.raises(ContentError, match=message):
+        ContentLoader(content_dir).load()

@@ -5,6 +5,7 @@
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/courses.css' %}"><link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
 {# Python (exercise, predict) грузится только там, где он нужен; quiz и fix проверяются без движка #}
 {% block scripts %}{% if is_sql %}<script type="module" src="{% static 'js/pages/sql-exercise.js' %}"></script>
+{% elif is_django %}<script type="module" src="{% static 'js/pages/django-exercise.js' %}"></script>
 {% elif check_type == 'dom' %}<script type="module" src="{% static 'js/pages/html-exercise.js' %}"></script>
 {% elif check_type == 'state' and course.engine == 'git' %}<script type="module" src="{% static 'js/pages/git-exercise.js' %}"></script>
 {% elif check_type == 'state' %}<script type="module" src="{% static 'js/pages/linux-exercise.js' %}"></script>
@@ -22,10 +23,14 @@
          data-runner="{% static 'js/engines/python/runner.py' %}"
          data-pyodide="{{ PYODIDE_URL }}"{% if is_sql %}
          data-sql-worker="{% static 'js/engines/sql/worker.js' %}"
-         data-pglite="{{ PGLITE_URL }}"{% endif %}>
+         data-pglite="{{ PGLITE_URL }}"{% endif %}{% if is_django %}
+         data-django="{% static 'vendor/django.zip' %}"
+         data-django-runner="{% static 'js/engines/django/runner.py' %}"{% endif %}>
       {% include 'trainers/components/_task_card.html' %}
       {% if is_sql %}
         {% include 'trainers/components/_sql_task.html' %}
+      {% elif is_django %}
+        {% include 'trainers/components/_django_task.html' %}
       {% elif check_type == 'state' %}
         {% include 'trainers/components/_linux_task.html' %}
       {% elif check_type == 'dom' %}
