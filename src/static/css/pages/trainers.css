@@ -91,6 +91,9 @@
   gap: var(--space-5);
 }
 
+/* Поле «Ввод» песочницы Python: строки для input() */
+.stdin-field__text { font-family: var(--font-code); font-size: var(--fs-sm); resize: vertical; }
+
 .console {
   min-height: 140px;
   padding: var(--space-4);

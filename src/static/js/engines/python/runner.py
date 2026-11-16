@@ -21,6 +21,7 @@
 Тайм-аут здесь не реализован: в браузере зависшую программу останавливает
 главная страница (перезапуском Web Worker), в check_tasks.py — signal.alarm через guard.
 """
+import builtins
 import contextlib
 import importlib
 import io
@@ -109,12 +110,43 @@ def reset_logging():
             logger.disabled = False
 
 
-def execute(code, inputs='', override=None, guard=contextlib.nullcontext):
+STDIN_EOF = 'EOF when reading a line — строки в поле «Ввод» закончились'
+
+
+@contextlib.contextmanager
+def stdin_lines(text):
+    """input() берёт строки из поля «Ввод» песочницы по одной, как из клавиатуры.
+
+    Подсказка и введённое значение попадают в вывод — как в терминале:
+    «Сколько товаров? 3». Строки кончились — EOFError, как при конце ввода.
+    """
+    lines = iter(text.splitlines())
+
+    def read_line(prompt=''):
+        print(prompt, end='')
+        try:
+            value = next(lines)
+        except StopIteration:
+            print()
+            raise EOFError(STDIN_EOF) from None
+        print(value)
+        return value
+
+    saved = builtins.input
+    builtins.input = read_line
+    try:
+        yield
+    finally:
+        builtins.input = saved
+
+
+def execute(code, inputs='', override=None, guard=contextlib.nullcontext, stdin=None):
     """Выполняет inputs, подменяет значения из override, затем код ученика.
 
     Возвращает (пространство имён, ошибка или None). Вывод — в ns['output'].
     Выполняет в текущей папке: пустую папку даёт workdir() (run_program, run_tests…).
     guard — контекст-менеджер вокруг выполнения (в check_tasks.py — тайм-аут).
+    stdin — текст поля «Ввод» (песочница): тогда input() читает из него.
     """
     ns = {'__name__': '__main__'}
     reset_logging()
@@ -127,8 +159,9 @@ def execute(code, inputs='', override=None, guard=contextlib.nullcontext):
     ns.update(override or {})
     buffer = io.StringIO()
     try:
+        reader = stdin_lines(stdin) if stdin is not None else contextlib.nullcontext()
         with guard(), recursion_limit(), contextlib.redirect_stdout(buffer), \
-                contextlib.redirect_stderr(buffer):
+                contextlib.redirect_stderr(buffer), reader:
             exec(compile(code, STUDENT_FILE, 'exec'), ns)
         error = None
     except BaseException as exc:  # нужна любая ошибка ученика, даже SystemExit
@@ -182,10 +215,10 @@ def run_tests(code, task, guard=contextlib.nullcontext):
     return ns, error, failed
 
 
-def run_program(code, inputs=''):
+def run_program(code, inputs='', stdin=None):
     """Запуск в песочнице и кнопка «Запустить»: вывод и текст ошибки."""
     with workdir():
-        ns, error = execute(code, inputs)
+        ns, error = execute(code, inputs, stdin=stdin)
     return {
         'output': ns['output'],
         'error': format_error(error) if error is not None else '',

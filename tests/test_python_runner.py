@@ -3,6 +3,7 @@
 Здесь он работает в обычном Python: правила те же, что в браузере.
 Последний тест прогоняет все задачи из content/ — эталоны должны проходить на сайте.
 """
+import builtins
 import contextlib
 import importlib.util
 import signal
@@ -17,6 +18,7 @@ RUNNER_PATH = Path(settings.BASE_DIR) / 'static/js/engines/python/runner.py'
 spec = importlib.util.spec_from_file_location('runner', RUNNER_PATH)
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
+ORIGINAL_INPUT = builtins.input
 
 
 @contextlib.contextmanager
@@ -230,3 +232,21 @@ def test_recursion_in_setter_is_reported_and_limit_restored():
     assert result['error'].endswith('RecursionError: maximum recursion depth exceeded')
     assert result['failed'] == ['Сеттер вызывает сам себя.']
     assert sys.getrecursionlimit() == limit_before
+
+
+def test_input_reads_stdin_field():
+    """Песочница: input() берёт строки поля «Ввод», подсказка и значение — в выводе."""
+    code = ('name = input("Имя? ")\n'
+            'count = int(input("Сколько? "))\nprint(name * count)\n')
+    result = runner.run_program(code, stdin='ab\n2\n')
+
+    assert result == {'output': 'Имя? ab\nСколько? 2\nabab\n', 'error': ''}
+
+
+def test_input_without_lines_is_eof():
+    result = runner.run_program('input("Имя? ")\n', stdin='')
+
+    assert result['output'] == 'Имя? \n'
+    assert result['error'].endswith(f'EOFError: {runner.STDIN_EOF}')
+    # после запуска input() снова прежний
+    assert builtins.input is ORIGINAL_INPUT

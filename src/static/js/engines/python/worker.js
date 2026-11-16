@@ -51,7 +51,8 @@ async function boot() {
 import builtins
 
 def _no_input(prompt=''):
-    raise RuntimeError('input() в тренажёре не работает: задайте значение переменной в коде')
+    raise RuntimeError('input() здесь не работает: задайте значение переменной в коде '
+                       '(в песочнице есть поле «Ввод»)')
 
 builtins.input = _no_input
 `);
@@ -83,7 +84,7 @@ async function loadExtraPackages(data) {
 }
 
 const actions = {
-  run: ({ code, inputs }) => toJs(runner.run_program(code, inputs || '')),
+  run: ({ code, inputs, stdin = null }) => toJs(runner.run_program(code, inputs || '', stdin)),
   check: ({ code, task }) => {
     const pyTask = self.pyodide.toPy(task);
     try {

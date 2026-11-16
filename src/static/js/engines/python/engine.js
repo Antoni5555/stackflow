@@ -91,9 +91,9 @@ export class PythonEngine {
     });
   }
 
-  /** Запустить программу: { output, error } */
-  run(code, inputs = '') {
-    return this.request('run', { code, inputs }, RUN_TIMEOUT);
+  /** Запустить программу: { output, error }. stdin — строки для input() (поле «Ввод»). */
+  run(code, inputs = '', stdin = null) {
+    return this.request('run', { code, inputs, stdin }, RUN_TIMEOUT);
   }
 
   /** Проверить решение задачи по её типу (exercise — тесты, predict — ответ). */
