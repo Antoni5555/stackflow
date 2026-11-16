@@ -91,8 +91,19 @@
   gap: var(--space-5);
 }
 
-/* Поле «Ввод» песочницы Python: строки для input() */
-.stdin-field__text { font-family: var(--font-code); font-size: var(--fs-sm); resize: vertical; }
+/* Поле «Ввод» песочницы Python: строки для input(). Как редактор, но в одну строку
+   и растёт по мере ввода (высоту в строках задаёт JS) */
+.editor--stdin {
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.editor--stdin .editor__gutter,
+.editor--stdin textarea.editor__code { padding-block: var(--space-2); }
+.editor--stdin .editor__gutter { overflow: hidden; }
+.editor--stdin textarea.editor__code { min-height: 0; resize: none; overflow-y: auto; }
+.console__input { color: var(--muted); }
 
 .console {
   min-height: 140px;

@@ -28,12 +28,16 @@ for name, quantity in counts.most_common():
         <button type="button" class="btn btn--ghost" data-action="clear">Очистить вывод</button>
       </div>
     </div>
-    {# Поле «Ввод» — только когда в коде есть input(): каждый вызов берёт следующую строку #}
-    <label class="field stdin-field" data-stdin hidden>
-      <span class="field__label">Ввод для input()</span>
-      <textarea class="field__input stdin-field__text" rows="3" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="По строке на каждый вызов input(), например:&#10;Анна&#10;3"></textarea>
-      <span class="field__hint">Программа не ждёт клавиатуру: input() берёт строки отсюда по порядку.</span>
-    </label>
+    {% comment %} Поле «Ввод» — только когда в коде есть input(): строка N уходит в N-й вызов
+       input(). Начинается с одной строки и растёт по Enter (js/pages/playground.js) {% endcomment %}
+    <div class="field stdin-field" data-stdin hidden>
+      <span class="field__label" id="stdin-label">Ввод для input()</span>
+      <div class="editor editor--stdin">
+        <div class="editor__gutter" aria-hidden="true"></div>
+        <textarea class="editor__code" rows="1" spellcheck="false" autocapitalize="off" autocomplete="off" aria-labelledby="stdin-label" placeholder="Значение и Enter — следующее"></textarea>
+      </div>
+      <span class="field__hint">Строка 1 — для первого input(), строка 2 — для второго и так далее. Программа не ждёт клавиатуру: значения нужно вписать заранее.</span>
+    </div>
     <div class="console" data-console aria-live="polite">
       <div class="console__line console__line--muted">Нажмите «Запустить» или Ctrl + Enter — вывод появится здесь.</div>
     </div>

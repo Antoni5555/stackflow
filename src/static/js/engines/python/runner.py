@@ -111,6 +111,9 @@ def reset_logging():
 
 
 STDIN_EOF = 'EOF when reading a line — строки в поле «Ввод» закончились'
+# Введённое значение в выводе — между этими символами: песочница покажет его серым,
+# как набранное с клавиатуры, и отличит от того, что напечатала программа
+INPUT_START, INPUT_END = '\x02', '\x03'
 
 
 @contextlib.contextmanager
@@ -118,7 +121,8 @@ def stdin_lines(text):
     """input() берёт строки из поля «Ввод» песочницы по одной, как из клавиатуры.
 
     Подсказка и введённое значение попадают в вывод — как в терминале:
-    «Сколько товаров? 3». Строки кончились — EOFError, как при конце ввода.
+    «Сколько товаров? 3» (значение помечено INPUT_START/INPUT_END).
+    Строки кончились — EOFError, как при конце ввода.
     """
     lines = iter(text.splitlines())
 
@@ -129,7 +133,7 @@ def stdin_lines(text):
         except StopIteration:
             print()
             raise EOFError(STDIN_EOF) from None
-        print(value)
+        print(f'{INPUT_START}{value}{INPUT_END}')
         return value
 
     saved = builtins.input

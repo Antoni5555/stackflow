@@ -240,7 +240,8 @@ def test_input_reads_stdin_field():
             'count = int(input("Сколько? "))\nprint(name * count)\n')
     result = runner.run_program(code, stdin='ab\n2\n')
 
-    assert result == {'output': 'Имя? ab\nСколько? 2\nabab\n', 'error': ''}
+    assert result == {
+        'output': 'Имя? \x02ab\x03\nСколько? \x022\x03\nabab\n', 'error': ''}
 
 
 def test_input_without_lines_is_eof():
