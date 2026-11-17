@@ -1,0 +1,17 @@
+title: Все категории
+type: exercise
+difficulty: 1
+pitfall: Таблицы магазина названы во множественном числе — category, product, user таких таблиц нет.
+statement: |
+  Выведите таблицу категорий магазина целиком: все столбцы и все строки. Порядок строк не важен.
+starter_code: |
+  SELECT * FROM category;
+solution: |
+  SELECT * FROM categories;
+check:
+  type: result
+  order_matters: false
+hints:
+  - Посмотрите имя таблицы в полосе «Схема базы».
+explanation: |
+  Таблица называется `categories`. На запрос к `category` PostgreSQL ответит `relation "category" does not exist`. Имена таблиц в магазине — во множественном числе: `users`, `products`, `orders`.

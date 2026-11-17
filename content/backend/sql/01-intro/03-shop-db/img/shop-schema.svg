@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 510" width="880" height="510" class="fig" role="img" aria-labelledby="t"><title id="t">Таблицы магазина и связи между ними: стрелка идёт от внешнего ключа к таблице, на которую он ссылается</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<rect x="20" y="20" width="170" height="150" rx="12" class="fig-box"/>
+<rect x="20" y="20" width="170" height="30" rx="12" class="fig-acc"/>
+<text x="32" y="40" text-anchor="start" class="fig-onacc">users</text>
+<text x="32" y="66" text-anchor="start" class="fig-cs">id</text>
+<text x="32" y="86" text-anchor="start" class="fig-cs">email</text>
+<text x="32" y="106" text-anchor="start" class="fig-cs">name</text>
+<text x="32" y="126" text-anchor="start" class="fig-cs">city ?</text>
+<text x="32" y="146" text-anchor="start" class="fig-cs">is_active</text>
+<text x="32" y="166" text-anchor="start" class="fig-cs">created_at</text>
+<rect x="20" y="240" width="170" height="90" rx="12" class="fig-box"/>
+<rect x="20" y="240" width="170" height="30" rx="12" class="fig-box2"/>
+<text x="32" y="260" text-anchor="start" class="fig-c">profiles</text>
+<text x="32" y="286" text-anchor="start" class="fig-cs">user_id → users</text>
+<text x="32" y="306" text-anchor="start" class="fig-cs">phone ?</text>
+<text x="32" y="326" text-anchor="start" class="fig-cs">birth_date ?</text>
+<rect x="20" y="380" width="170" height="90" rx="12" class="fig-box"/>
+<rect x="20" y="380" width="170" height="30" rx="12" class="fig-box2"/>
+<text x="32" y="400" text-anchor="start" class="fig-c">reviews</text>
+<text x="32" y="426" text-anchor="start" class="fig-cs">user_id → users</text>
+<text x="32" y="446" text-anchor="start" class="fig-cs">product_id → …</text>
+<text x="32" y="466" text-anchor="start" class="fig-cs">rating, text ?</text>
+<rect x="250" y="20" width="170" height="130" rx="12" class="fig-box"/>
+<rect x="250" y="20" width="170" height="30" rx="12" class="fig-acc"/>
+<text x="262" y="40" text-anchor="start" class="fig-onacc">orders</text>
+<text x="262" y="66" text-anchor="start" class="fig-cs">id</text>
+<text x="262" y="86" text-anchor="start" class="fig-cs">user_id → users</text>
+<text x="262" y="106" text-anchor="start" class="fig-cs">promo_code_id ?</text>
+<text x="262" y="126" text-anchor="start" class="fig-cs">status</text>
+<text x="262" y="146" text-anchor="start" class="fig-cs">created_at</text>
+<rect x="250" y="240" width="170" height="130" rx="12" class="fig-box"/>
+<rect x="250" y="240" width="170" height="30" rx="12" class="fig-box2"/>
+<text x="262" y="260" text-anchor="start" class="fig-c">promo_codes</text>
+<text x="262" y="286" text-anchor="start" class="fig-cs">id</text>
+<text x="262" y="306" text-anchor="start" class="fig-cs">code</text>
+<text x="262" y="326" text-anchor="start" class="fig-cs">discount_percent</text>
+<text x="262" y="346" text-anchor="start" class="fig-cs">valid_until</text>
+<text x="262" y="366" text-anchor="start" class="fig-cs">is_active</text>
+<rect x="480" y="20" width="170" height="110" rx="12" class="fig-box"/>
+<rect x="480" y="20" width="170" height="30" rx="12" class="fig-box2"/>
+<text x="492" y="40" text-anchor="start" class="fig-c">order_items</text>
+<text x="492" y="66" text-anchor="start" class="fig-cs">order_id → orders</text>
+<text x="492" y="86" text-anchor="start" class="fig-cs">product_id →</text>
+<text x="492" y="106" text-anchor="start" class="fig-cs">quantity</text>
+<text x="492" y="126" text-anchor="start" class="fig-cs">price</text>
+<rect x="480" y="240" width="170" height="170" rx="12" class="fig-box"/>
+<rect x="480" y="240" width="170" height="30" rx="12" class="fig-acc"/>
+<text x="492" y="260" text-anchor="start" class="fig-onacc">products</text>
+<text x="492" y="286" text-anchor="start" class="fig-cs">id</text>
+<text x="492" y="306" text-anchor="start" class="fig-cs">category_id →</text>
+<text x="492" y="326" text-anchor="start" class="fig-cs">name</text>
+<text x="492" y="346" text-anchor="start" class="fig-cs">price</text>
+<text x="492" y="366" text-anchor="start" class="fig-cs">stock</text>
+<text x="492" y="386" text-anchor="start" class="fig-cs">attributes</text>
+<text x="492" y="406" text-anchor="start" class="fig-cs">created_at</text>
+<rect x="700" y="20" width="160" height="70" rx="12" class="fig-box"/>
+<rect x="700" y="20" width="160" height="30" rx="12" class="fig-box2"/>
+<text x="712" y="40" text-anchor="start" class="fig-c">product_tags</text>
+<text x="712" y="66" text-anchor="start" class="fig-cs">product_id →</text>
+<text x="712" y="86" text-anchor="start" class="fig-cs">tag_id →</text>
+<rect x="700" y="120" width="160" height="70" rx="12" class="fig-box"/>
+<rect x="700" y="120" width="160" height="30" rx="12" class="fig-box2"/>
+<text x="712" y="140" text-anchor="start" class="fig-c">tags</text>
+<text x="712" y="166" text-anchor="start" class="fig-cs">id</text>
+<text x="712" y="186" text-anchor="start" class="fig-cs">name</text>
+<rect x="700" y="240" width="160" height="90" rx="12" class="fig-box"/>
+<rect x="700" y="240" width="160" height="30" rx="12" class="fig-box2"/>
+<text x="712" y="260" text-anchor="start" class="fig-c">categories</text>
+<text x="712" y="286" text-anchor="start" class="fig-cs">id</text>
+<text x="712" y="306" text-anchor="start" class="fig-cs">name</text>
+<text x="712" y="326" text-anchor="start" class="fig-cs">parent_id ?</text>
+<path d="M160 240V156" class="fig-ln" marker-end="url(#a)"/>
+<path d="M190 420H215V100H190" class="fig-ln" marker-end="url(#a)"/>
+<path d="M105 470V495H565V410" class="fig-ln" marker-end="url(#a)"/>
+<path d="M250 75H190" class="fig-ln" marker-end="url(#a)"/>
+<path d="M335 150V240" class="fig-ln" marker-end="url(#a)"/>
+<path d="M480 75H420" class="fig-ln" marker-end="url(#a)"/>
+<path d="M565 130V240" class="fig-ln" marker-end="url(#a)"/>
+<path d="M700 60H675V265H650" class="fig-ln" marker-end="url(#a)"/>
+<path d="M780 90V120" class="fig-ln" marker-end="url(#a)"/>
+<path d="M650 301H700" class="fig-ln" marker-end="url(#a)"/>
+<path d="M860 341H874V258H860" class="fig-ln" marker-end="url(#a)"/>
+<text x="700" y="380" text-anchor="start" class="fig-s">→ внешний ключ: стрелка</text>
+<text x="700" y="398" text-anchor="start" class="fig-s">к таблице, на которую он</text>
+<text x="700" y="416" text-anchor="start" class="fig-s">ссылается</text>
+<text x="700" y="440" text-anchor="start" class="fig-s">? — может быть NULL</text>
+<text x="700" y="464" text-anchor="start" class="fig-s">лайм — главные таблицы</text>
+</svg>

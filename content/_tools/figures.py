@@ -1011,6 +1011,98 @@ def shared_layout():
     f.save(out(HC5 / "03-shared-parts" / "img" / "shared-layout.svg"))
 
 
+# ---------- SQL 1.01: приложение, СУБД, файлы ----------
+SQ1 = ROOT / "sql" / "01-intro"
+
+
+def app_dbms():
+    f = Figure(880, 250, "Приложения отправляют SQL-запросы СУБД; только она работает с файлами базы на диске")
+    for k, name in enumerate(("Сайт магазина", "Админка", "Скрипт отчёта")):
+        f.box(20, 30 + k * 70, 180, 50, name, "box")
+        f.arrow(f"M200 {55 + k * 70}L330 {125 + (k - 1) * 20}")
+    f.text(214, 30, "SQL-запрос →", "cs")
+    f.text(214, 226, "← строки результата", "cs")
+    f.box(334, 40, 280, 170, "", "acc")
+    f.text(474, 72, "СУБД PostgreSQL", "onacc", "middle")
+    for k, line in enumerate(("очередь одновременных запросов", "проверка ограничений", "поиск по индексам",
+                              "транзакции: всё или ничего")):
+        f.text(352, 104 + k * 26, "• " + line, "onacc")
+    f.arrow("M614 125H690")
+    f.box(694, 70, 166, 110, "файлы базы|на диске", "box2")
+    f.text(694, 206, "напрямую их не читает", "s")
+    f.text(694, 224, "никто, кроме СУБД", "s")
+    f.save(out(SQ1 / "01-what-is-db" / "img" / "app-dbms.svg"))
+
+
+# ---------- SQL 1.02: первичный и внешний ключ ----------
+def _grid(f, x, y, cols, rows, key):
+    cx = x
+    for name, w in cols:
+        f.box(cx, y, w, 34, name, "acc" if name == key else "box2", "onacc" if name == key else "c", rx=4)
+        cx += w
+    for r, row in enumerate(rows):
+        cx = x
+        for (name, w), v in zip(cols, row):
+            f.box(cx, y + 34 + r * 34, w, 34, v, "box", "t" if name in ("name", "status") else "c", rx=4)
+            cx += w
+
+
+def table_keys():
+    f = Figure(880, 260, "Таблица orders ссылается на users: значение user_id равно id покупателя")
+    f.text(20, 24, "users", "h")
+    _grid(f, 20, 34, [("id", 60), ("name", 180)],
+          [("1", "Анна Смирнова"), ("2", "Борис Иванов"), ("3", "Вера Кузнецова")], "id")
+    f.text(540, 24, "orders", "h")
+    _grid(f, 540, 34, [("id", 60), ("user_id", 100), ("status", 140)],
+          [("1", "1", "shipped"), ("2", "2", "shipped"), ("3", "3", "cancelled"), ("6", "1", "shipped")], "user_id")
+    for r_from, r_to in ((0, 0), (1, 1), (2, 2), (3, 0)):
+        f.arrow(f"M540 {85 + r_from * 34}L264 {85 + r_to * 34}", "lnd")
+    f.text(20, 190, "id — первичный ключ: уникален, не NULL,", "s")
+    f.text(20, 208, "по нему строку находят однозначно", "s")
+    f.text(540, 222, "user_id — внешний ключ: значение id", "s")
+    f.text(540, 240, "строки в users; заказ 6 — снова Анна", "s")
+    f.save(out(SQ1 / "02-tables-keys" / "img" / "table-keys.svg"))
+
+
+# ---------- SQL 1.03: схема БД магазина ----------
+def shop_schema():
+    f = Figure(880, 510, "Таблицы магазина и связи между ними: стрелка идёт от внешнего ключа к таблице, на которую он ссылается")
+
+    def tab(key, x, y, cols, acc=False, w=170):
+        f.box(x, y, w, 30 + 20 * len(cols), "", "box")
+        f.raw(f'<rect x="{x}" y="{y}" width="{w}" height="30" rx="12" class="fig-{"acc" if acc else "box2"}"/>')
+        f.text(x + 12, y + 20, key, "onacc" if acc else "c")
+        for k, c in enumerate(cols):
+            f.text(x + 12, y + 46 + k * 20, c, "cs")
+
+    tab("users", 20, 20, ["id", "email", "name", "city ?", "is_active", "created_at"], True)
+    tab("profiles", 20, 240, ["user_id → users", "phone ?", "birth_date ?"])
+    tab("reviews", 20, 380, ["user_id → users", "product_id → …", "rating, text ?"])
+    tab("orders", 250, 20, ["id", "user_id → users", "promo_code_id ?", "status", "created_at"], True)
+    tab("promo_codes", 250, 240, ["id", "code", "discount_percent", "valid_until", "is_active"])
+    tab("order_items", 480, 20, ["order_id → orders", "product_id →", "quantity", "price"])
+    tab("products", 480, 240, ["id", "category_id →", "name", "price", "stock", "attributes", "created_at"], True)
+    tab("product_tags", 700, 20, ["product_id →", "tag_id →"], w=160)
+    tab("tags", 700, 120, ["id", "name"], w=160)
+    tab("categories", 700, 240, ["id", "name", "parent_id ?"], w=160)
+    f.arrow("M160 240V156")                      # profiles → users
+    f.arrow("M190 420H215V100H190")              # reviews → users
+    f.arrow("M105 470V495H565V410")              # reviews → products
+    f.arrow("M250 75H190")                       # orders → users
+    f.arrow("M335 150V240")                      # orders → promo_codes
+    f.arrow("M480 75H420")                       # order_items → orders
+    f.arrow("M565 130V240")                      # order_items → products
+    f.arrow("M700 60H675V265H650")               # product_tags → products
+    f.arrow("M780 90V120")                       # product_tags → tags
+    f.arrow("M650 301H700")                      # products → categories
+    f.arrow("M860 341H874V258H860")              # categories → categories (родитель)
+    f.text(700, 380, "→ внешний ключ: стрелка", "s")
+    f.text(700, 398, "к таблице, на которую он", "s")
+    f.text(700, 416, "ссылается", "s")
+    f.text(700, 440, "? — может быть NULL", "s")
+    f.text(700, 464, "лайм — главные таблицы", "s")
+    f.save(out(SQ1 / "03-shop-db" / "img" / "shop-schema.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1024,6 +1116,7 @@ if __name__ == "__main__":
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,
                   form_to_request, validation_layers, csrf_attack,
                   css_specificity, box_model, flex_axes, responsive_grid,
-                  card_anatomy, catalog_states, shared_layout):
+                  card_anatomy, catalog_states, shared_layout,
+                  app_dbms, table_keys, shop_schema):
         build()
     print("ok")
