@@ -1,0 +1,25 @@
+title: Нет в наличии или мало
+type: quiz
+kind: single
+difficulty: 2
+pitfall: CASE выполняет первую подходящую ветку — частный случай должен стоять раньше общего.
+statement: |
+  Что выведет запрос для товара с `stock = 0`?
+
+  ```sql
+  SELECT CASE
+             WHEN stock < 5 THEN 'мало'
+             WHEN stock = 0 THEN 'нет в наличии'
+             ELSE 'есть'
+         END AS availability
+  FROM products
+  WHERE id = 3;
+  ```
+options:
+  - нет в наличии
+  - мало
+  - есть
+  - "NULL — подошли две ветки"
+answer: [1]
+explanation: |
+  Ветки проверяются сверху вниз, срабатывает первая подходящая: `0 < 5` — истина, результат «мало». До проверки `stock = 0` дело не доходит. Частный случай ставят первым: сначала `stock = 0`, потом `stock < 5`.

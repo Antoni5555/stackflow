@@ -1103,6 +1103,68 @@ def shop_schema():
     f.text(700, 464, "лайм — главные таблицы", "s")
     f.save(out(SQ1 / "03-shop-db" / "img" / "shop-schema.svg"))
 
+# ---------- SQL 2.01: SELECT выбирает столбцы, WHERE — строки ----------
+SQ2 = ROOT / "sql" / "02-select"
+
+
+def select_where():
+    f = Figure(880, 280, "SELECT оставляет нужные столбцы, WHERE — нужные строки")
+    cols = [("id", 50), ("name", 230), ("price", 110), ("stock", 80)]
+    rows = [("1", "Ноутбук Aster 14", "64990.00", "5"), ("3", "Ноутбук Nimbus Air", "54990.00", "0"),
+            ("4", "Беспроводная мышь", "1499.00", "12"), ("8", "USB-хаб на 4 порта", "1499.00", "0")]
+    keep_cols, keep_rows = {"name", "price"}, {1, 3}
+    cx = 20
+    for name, w in cols:
+        f.box(cx, 30, w, 32, name, "acc" if name in keep_cols else "box2", "onacc" if name in keep_cols else "c", rx=4)
+        for r, row in enumerate(rows):
+            v = row[[c for c, _ in cols].index(name)]
+            on = name in keep_cols and r in keep_rows
+            f.box(cx, 62 + r * 32, w, 32, v, "acc" if on else "box", "onacc" if on else "t", rx=4)
+        cx += w
+    f.text(20, 22, "products", "h")
+    f.text(20, 214, "SELECT name, price — лаймовые столбцы", "s")
+    f.text(20, 234, "WHERE stock = 0 — строки 3 и 8", "s")
+    f.arrow("M500 126H580")
+    for r, (a, b) in enumerate((("name", "price"), ("Ноутбук Nimbus Air", "54990.00"), ("USB-хаб на 4 порта", "1499.00"))):
+        f.box(584, 78 + r * 32, 180, 32, a, "box2" if r == 0 else "box", "c" if r == 0 else "t", rx=4)
+        f.box(764, 78 + r * 32, 96, 32, b, "box2" if r == 0 else "box", "c" if r == 0 else "t", rx=4)
+    f.text(584, 200, "(2 rows)", "cs")
+    f.save(out(SQ2 / "01-select" / "img" / "select-where.svg"))
+
+
+# ---------- SQL 2.04: сравнение с NULL ----------
+def null_compare():
+    f = Figure(880, 230, "Сравнение с NULL даёт «неизвестно», и WHERE отбрасывает строку")
+    f.box(20, 30, 250, 60, "city = 'Москва'|для city = NULL", "box", "c")
+    f.arrow("M270 60H330")
+    f.box(334, 30, 150, 60, "NULL|«неизвестно»", "box2")
+    f.arrow("M484 60H544")
+    f.box(548, 30, 312, 60, "WHERE берёт только TRUE —|строка отброшена", "err", "errt")
+    f.box(20, 130, 250, 60, "city IS NULL", "box", "c")
+    f.arrow("M270 160H330")
+    f.box(334, 130, 150, 60, "TRUE", "ok")
+    f.arrow("M484 160H544")
+    f.box(548, 130, 312, 60, "строка в результате", "ok")
+    f.text(20, 218, "= NULL, <> NULL, > NULL — всегда NULL; проверять отсутствие значения — только IS NULL / IS NOT NULL", "s")
+    f.save(out(SQ2 / "04-null" / "img" / "null-compare.svg"))
+
+
+# ---------- SQL 2.05: LIMIT и OFFSET ----------
+def limit_offset():
+    f = Figure(880, 220, "Пагинация: ORDER BY задаёт порядок, OFFSET пропускает строки предыдущих страниц, LIMIT берёт страницу")
+    for k in range(15):
+        page = k // 5
+        cls = "acc" if page == 1 else ("box2" if page == 0 else "box")
+        f.box(20 + k * 56, 50, 50, 50, str(k + 1), cls, "onacc" if page == 1 else "c", rx=6)
+    f.text(20, 36, "строки после ORDER BY price, id", "h")
+    f.line("M20 116H294", "ln"); f.text(20, 138, "OFFSET 5 — пропустить страницу 1", "s")
+    f.line("M300 116H574", "ln"); f.text(300, 138, "LIMIT 5 — взять страницу 2", "s")
+    f.text(580, 138, "страница 3 — OFFSET 10", "s")
+    f.text(20, 186, "OFFSET = (номер страницы − 1) × размер страницы. Без ORDER BY порядок строк не гарантирован,", "s")
+    f.text(20, 206, "и одна и та же строка может попасть на две страницы.", "s")
+    f.save(out(SQ2 / "05-order-limit" / "img" / "limit-offset.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1117,6 +1179,7 @@ if __name__ == "__main__":
                   form_to_request, validation_layers, csrf_attack,
                   css_specificity, box_model, flex_axes, responsive_grid,
                   card_anatomy, catalog_states, shared_layout,
-                  app_dbms, table_keys, shop_schema):
+                  app_dbms, table_keys, shop_schema,
+                  select_where, null_compare, limit_offset):
         build()
     print("ok")

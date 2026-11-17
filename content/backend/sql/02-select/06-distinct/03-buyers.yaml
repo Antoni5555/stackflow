@@ -1,0 +1,21 @@
+title: Кто делал заказы
+type: exercise
+difficulty: 2
+pitfall: DISTINCT убирает повторы строки целиком — лишний столбец превращает уникальные значения в уникальные пары.
+statement: |
+  Выведите `user_id` покупателей, у которых есть хотя бы один заказ: каждого один раз, по возрастанию. Заготовка повторяет покупателей.
+starter_code: |
+  SELECT DISTINCT user_id, status
+  FROM orders
+  ORDER BY user_id;
+solution: |
+  SELECT DISTINCT user_id
+  FROM orders
+  ORDER BY user_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Уникальна вся строка результата. Что в ней лишнее?
+explanation: |
+  С двумя столбцами `DISTINCT` оставляет уникальные пары «покупатель — статус», и покупатель с заказами в трёх статусах встречается трижды. Для уникальных покупателей в `SELECT` должен остаться только `user_id`.

@@ -1,0 +1,34 @@
+title: Пустой статус
+type: exercise
+difficulty: 1
+pitfall: CASE без ELSE возвращает NULL для каждого неучтённого значения.
+statement: |
+  Выведите `id` и статус по-русски в колонке `status_ru` для заказов покупателя 2 по возрастанию `id`. Статусы: `new` — «новый», `paid` — «оплачен», `shipped` — «отправлен», `cancelled` — «отменён». В заготовке у одного заказа статус пустой.
+starter_code: |
+  SELECT id,
+         CASE status
+             WHEN 'new' THEN 'новый'
+             WHEN 'paid' THEN 'оплачен'
+             WHEN 'shipped' THEN 'отправлен'
+         END AS status_ru
+  FROM orders
+  WHERE user_id = 2
+  ORDER BY id;
+solution: |
+  SELECT id,
+         CASE status
+             WHEN 'new' THEN 'новый'
+             WHEN 'paid' THEN 'оплачен'
+             WHEN 'shipped' THEN 'отправлен'
+             WHEN 'cancelled' THEN 'отменён'
+         END AS status_ru
+  FROM orders
+  WHERE user_id = 2
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Какой статус у заказа 9?
+explanation: |
+  Ни одна ветка не подошла для `cancelled`, а `ELSE` нет — `CASE` вернул NULL. Каждое значение должно быть учтено. Часто ещё добавляют `ELSE status`, чтобы новый статус, появившийся в базе позже, показывался хотя бы как есть, а не пустотой.

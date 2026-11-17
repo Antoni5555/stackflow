@@ -1,0 +1,21 @@
+title: Чужие заказы в выборке
+type: exercise
+difficulty: 2
+pitfall: AND выполняется раньше OR — без скобок условие читается не так, как задумано.
+statement: |
+  Выведите `id` и `status` незавершённых заказов покупателя 1 — со статусом `new` или `paid`. Заготовка возвращает и чужие заказы. Порядок строк не важен.
+starter_code: |
+  SELECT id, status
+  FROM orders
+  WHERE user_id = 1 AND status = 'new' OR status = 'paid';
+solution: |
+  SELECT id, status
+  FROM orders
+  WHERE user_id = 1 AND (status = 'new' OR status = 'paid');
+check:
+  type: result
+  order_matters: false
+hints:
+  - "Заготовка читается как `(user_id = 1 AND status = 'new') OR status = 'paid'`."
+explanation: |
+  `AND` сильнее `OR`, поэтому заготовка отбирала новые заказы покупателя 1 плюс оплаченные заказы всех покупателей. Скобки собирают два статуса в одно условие, и `user_id = 1` относится к обоим. Ту же мысль короче выражает `status IN ('new', 'paid')`.

@@ -1,0 +1,23 @@
+title: Заказы за день
+type: exercise
+difficulty: 2
+pitfall: Сравнение timestamptz с датой ищет ровно полночь — день целиком берут через ::date или интервал.
+statement: |
+  Выведите `id` заказов, сделанных 15 апреля 2026 года, по возрастанию `id`. Заготовка не находит ни одного, хотя заказы в этот день были.
+starter_code: |
+  SELECT id
+  FROM orders
+  WHERE created_at = '2026-04-15'
+  ORDER BY id;
+solution: |
+  SELECT id
+  FROM orders
+  WHERE created_at::date = '2026-04-15'
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "`created_at` — дата и время. Во что превращается строка `'2026-04-15'`?"
+explanation: |
+  Строка `'2026-04-15'` при сравнении с `timestamptz` становится моментом 15 апреля, 00:00, а заказы сделаны днём и вечером. `created_at::date` отбрасывает время, и сравниваются дни. Для больших таблиц лучше интервал `created_at >= '2026-04-15' AND created_at < '2026-04-16'` — он может использовать индекс по `created_at`.

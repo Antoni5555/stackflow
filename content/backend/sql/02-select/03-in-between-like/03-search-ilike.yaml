@@ -1,0 +1,21 @@
+title: Поиск «Мыш»
+type: exercise
+difficulty: 1
+pitfall: LIKE учитывает регистр — поиск по тексту, который вводит человек, делают через ILIKE.
+statement: |
+  Покупатель набрал в поиске «Мыш» с заглавной буквы. Выведите `id` и `name` товаров, в названии которых встречается «Мыш» в любом регистре и в любом месте. Порядок строк не важен.
+starter_code: |
+  SELECT id, name
+  FROM products
+  WHERE name LIKE '%Мыш%';
+solution: |
+  SELECT id, name
+  FROM products
+  WHERE name ILIKE '%Мыш%';
+check:
+  type: result
+  order_matters: false
+hints:
+  - В названиях «мышь» написана со строчной буквы.
+explanation: |
+  `LIKE` сравнивает с учётом регистра: «Мыш» не совпадает с «мышь» в «Беспроводная мышь». `ILIKE` регистр не учитывает и находит мыши и коврик для мыши. `ILIKE` есть только в PostgreSQL; переносимый вариант — `lower(name) LIKE lower('%Мыш%')`.

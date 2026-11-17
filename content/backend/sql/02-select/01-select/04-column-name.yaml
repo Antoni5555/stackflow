@@ -1,0 +1,20 @@
+title: Как назовётся колонка
+type: quiz
+kind: single
+difficulty: 1
+pitfall: PostgreSQL сам придумывает имя выражению без AS, и это имя неудобно.
+statement: |
+  Как будет называться вторая колонка в результате запроса?
+
+  ```sql
+  SELECT name, price * stock
+  FROM products;
+  ```
+options:
+  - "`price`"
+  - "`price * stock`"
+  - "`?column?`"
+  - Запрос упадёт — выражению обязательно нужно имя
+answer: [2]
+explanation: |
+  Выражению без псевдонима PostgreSQL даёт имя `?column?` (для вызова функции — имя функции, например `round`). Запрос выполнится, но и человеку, и коду такое имя ничего не говорит. Пишут `price * stock AS stock_value`.

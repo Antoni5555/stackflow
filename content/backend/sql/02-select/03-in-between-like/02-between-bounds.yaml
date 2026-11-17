@@ -1,0 +1,21 @@
+title: Граница диапазона
+type: exercise
+difficulty: 1
+pitfall: «От … до … включительно» — это BETWEEN или >= и <=; строгие < и > теряют товары ровно на границах.
+statement: |
+  Выведите `id`, `name` и `price` товаров дешевле среднего сегмента: от 1290 до 1890 ₽ **включительно**. Порядок строк не важен.
+starter_code: |
+  SELECT id, name, price
+  FROM products
+  WHERE price > 1290 AND price < 1890;
+solution: |
+  SELECT id, name, price
+  FROM products
+  WHERE price BETWEEN 1290 AND 1890;
+check:
+  type: result
+  order_matters: false
+hints:
+  - Есть товары ровно за 1290 и ровно за 1890 ₽.
+explanation: |
+  `BETWEEN 1290 AND 1890` включает обе границы — это `price >= 1290 AND price <= 1890`. Строгие сравнения потеряли футболки за 1290 ₽ и две книги за 1890 ₽. Цены часто «круглые», поэтому ошибка на границе — одна из самых частых.

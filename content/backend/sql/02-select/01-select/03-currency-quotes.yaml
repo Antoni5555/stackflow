@@ -1,0 +1,19 @@
+title: Валюта в кавычках
+type: exercise
+difficulty: 1
+pitfall: Двойные кавычки в SQL — имя столбца, а не строка; строковые значения пишут в одинарных.
+statement: |
+  Для выгрузки в маркетплейс нужны все товары: `name`, `price` и колонка `currency` со строкой `RUB` в каждой строке. Заготовка падает с ошибкой — исправьте её. Порядок строк не важен.
+starter_code: |
+  SELECT name, price, "RUB" AS currency
+  FROM products;
+solution: |
+  SELECT name, price, 'RUB' AS currency
+  FROM products;
+check:
+  type: result
+  order_matters: false
+hints:
+  - Прочитайте текст ошибки — что PostgreSQL ищет под именем RUB?
+explanation: |
+  `"RUB"` — идентификатор: PostgreSQL ищет столбец с таким именем и сообщает `column "RUB" does not exist`. Строковая константа — в одинарных кавычках: `'RUB'`. Двойные нужны для имён с пробелами или заглавными буквами, например `AS "Цена"`.

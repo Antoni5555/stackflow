@@ -1,0 +1,23 @@
+title: Третья страница каталога
+type: exercise
+difficulty: 2
+pitfall: Страница p размером n начинается с OFFSET (p − 1) × n — первая страница идёт с OFFSET 0.
+statement: |
+  Каталог показывает по 4 товара на странице, от дешёвых к дорогим, при равной цене — по `id`. Выведите `id`, `name` и `price` товаров **третьей** страницы в этом порядке.
+starter_code: |
+  SELECT id, name, price
+  FROM products
+  ORDER BY price, id
+  LIMIT 4 OFFSET 12;
+solution: |
+  SELECT id, name, price
+  FROM products
+  ORDER BY price, id
+  LIMIT 4 OFFSET 8;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько товаров на первых двух страницах?
+explanation: |
+  Третья страница начинается после двух полных страниц: `OFFSET (3 − 1) × 4 = 8`. `OFFSET 12` — это уже четвёртая. Удобно считать, что первая страница — `OFFSET 0`.

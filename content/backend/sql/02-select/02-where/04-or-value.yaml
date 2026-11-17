@@ -1,0 +1,20 @@
+title: OR со значением
+type: quiz
+kind: single
+difficulty: 1
+pitfall: С каждой стороны OR — отдельное условие; 'paid' само по себе условием не является.
+statement: |
+  Что произойдёт при выполнении запроса?
+
+  ```sql
+  SELECT id FROM orders
+  WHERE status = 'shipped' OR 'paid';
+  ```
+options:
+  - Вернутся отправленные и оплаченные заказы
+  - Вернутся только отправленные заказы
+  - "Ошибка: PostgreSQL не может превратить строку 'paid' в boolean"
+  - Вернутся все заказы — непустая строка считается истиной
+answer: [2]
+explanation: |
+  Справа от `OR` должно стоять условие (`boolean`). PostgreSQL пытается привести `'paid'` к `boolean` и сообщает `invalid input syntax for type boolean: "paid"`. Правильно: `status = 'shipped' OR status = 'paid'` или `status IN ('shipped', 'paid')`. В отличие от Python, непустая строка в SQL истиной не считается.

@@ -1,0 +1,20 @@
+title: DISTINCT в скобках
+type: quiz
+kind: single
+difficulty: 2
+pitfall: DISTINCT — не функция одного столбца; скобки вокруг столбца ничего не меняют.
+statement: |
+  Что вернёт запрос?
+
+  ```sql
+  SELECT DISTINCT(user_id), status
+  FROM orders;
+  ```
+options:
+  - Каждого покупателя один раз и статус одного из его заказов
+  - Уникальные пары «покупатель — статус»
+  - Ошибку — DISTINCT нельзя писать со скобками
+  - Все заказы — DISTINCT со скобками не работает
+answer: [1]
+explanation: |
+  Скобки здесь просто окружают столбец: запрос — то же, что `SELECT DISTINCT user_id, status`, и уникальны пары. Взять по одной строке на покупателя позволяет `DISTINCT ON (user_id)` в PostgreSQL или группировка — о ней в разделе «Агрегация».

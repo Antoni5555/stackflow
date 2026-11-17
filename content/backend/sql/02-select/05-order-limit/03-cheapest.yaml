@@ -1,0 +1,23 @@
+title: Три самых дешёвых
+type: exercise
+difficulty: 1
+pitfall: LIMIT без ORDER BY возвращает «какие-то» строки, а не первые по нужному признаку.
+statement: |
+  Для блока «Недорогие подарки» выведите `id`, `name` и `price` трёх самых дешёвых товаров: по возрастанию цены, при равной цене — по `id`.
+starter_code: |
+  SELECT id, name, price
+  FROM products
+  LIMIT 3;
+solution: |
+  SELECT id, name, price
+  FROM products
+  ORDER BY price, id
+  LIMIT 3;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "`LIMIT` отрезает первые строки результата. Что определяет, какие строки первые?"
+  - Два товара стоят одинаково — 590 ₽.
+explanation: |
+  Без `ORDER BY` база возвращает строки в удобном ей порядке, и `LIMIT 3` берёт первые попавшиеся — здесь три ноутбука. `ORDER BY price, id` сначала упорядочивает, потом `LIMIT` берёт три. `id` в конце решает, какой из двух товаров за 590 ₽ идёт раньше, — без него порядок между ними не гарантирован.

@@ -1,0 +1,22 @@
+title: Скидка ноль процентов
+type: exercise
+difficulty: 1
+pitfall: Целое, делённое на целое, даёт целое — дробная часть отбрасывается.
+statement: |
+  Для расчёта цены со скидкой нужна доля скидки: для 10 % — 0.10. Выведите `code` и долю скидки в колонке `share`, округлённую до двух знаков, для всех промокодов по возрастанию `id`.
+starter_code: |
+  SELECT code, discount_percent / 100 AS share
+  FROM promo_codes
+  ORDER BY id;
+solution: |
+  SELECT code, round(discount_percent / 100.0, 2) AS share
+  FROM promo_codes
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Какого типа `discount_percent` и `100`? Что даёт деление двух целых?
+  - "Дробный результат — если хотя бы одно число дробное: `100.0`."
+explanation: |
+  `discount_percent` — `integer`, и `10 / 100` — целочисленное деление: `0`. Дробное число в делителе (`100.0`) делает результат `numeric`. Без округления было бы `0.10000000000000000000`, `round(…, 2)` оставляет `0.10`.

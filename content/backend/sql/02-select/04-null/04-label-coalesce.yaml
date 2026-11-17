@@ -1,0 +1,19 @@
+title: Подпись для рассылки
+type: exercise
+difficulty: 2
+pitfall: Склейка строк с NULL даёт NULL целиком — пропуски заменяют через COALESCE.
+statement: |
+  Для рассылки нужна подпись вида «Анна Смирнова — Москва». Если город не указан, вместо него пишется «город не указан». Выведите `id` и подпись в колонке `label` для всех покупателей. Порядок строк не важен.
+starter_code: |
+  SELECT id, name || ' — ' || city AS label
+  FROM users;
+solution: |
+  SELECT id, name || ' — ' || COALESCE(city, 'город не указан') AS label
+  FROM users;
+check:
+  type: result
+  order_matters: false
+hints:
+  - Посмотрите на подписи Дарьи Соколовой и Кирилла Волкова в результате заготовки.
+explanation: |
+  `||` с NULL даёт NULL: у покупателей без города пропадала вся подпись, даже имя. `COALESCE(city, 'город не указан')` подставляет текст вместо NULL до склейки. Функция `concat(…)` пропускает NULL, но оставила бы висящее « — » в конце.

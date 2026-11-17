@@ -1,0 +1,21 @@
+title: Покупатели без города
+type: exercise
+difficulty: 1
+pitfall: Сравнение с NULL через = всегда «неизвестно» — ни одной строки; отсутствие значения проверяют IS NULL.
+statement: |
+  Для анкеты нужны покупатели, не указавшие город. Выведите их `id` и `name`. Заготовка возвращает пустой результат. Порядок строк не важен.
+starter_code: |
+  SELECT id, name
+  FROM users
+  WHERE city = NULL;
+solution: |
+  SELECT id, name
+  FROM users
+  WHERE city IS NULL;
+check:
+  type: result
+  order_matters: false
+hints:
+  - Чему равно `NULL = NULL`?
+explanation: |
+  `city = NULL` для любой строки даёт NULL, а не TRUE, и `WHERE` отбрасывает все строки. Для проверки отсутствия значения в SQL есть отдельный оператор — `IS NULL` (и `IS NOT NULL`).

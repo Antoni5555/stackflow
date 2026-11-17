@@ -1,0 +1,19 @@
+title: Цена с НДС
+type: exercise
+difficulty: 1
+pitfall: У выражения без псевдонима имя колонки ?column? — ни отчёт, ни код его не поймут.
+statement: |
+  Выведите для всех товаров `name` и цену с НДС 20 % (цена × 1.2) в колонке `price_with_vat`. Порядок строк не важен.
+starter_code: |
+  SELECT name, price * 1.2
+  FROM products;
+solution: |
+  SELECT name, price * 1.2 AS price_with_vat
+  FROM products;
+check:
+  type: result
+  order_matters: false
+hints:
+  - Посмотрите, как называется вторая колонка в результате заготовки.
+explanation: |
+  Без псевдонима PostgreSQL называет колонку выражения `?column?`. Имя `price_with_vat` задаёт `AS`: под ним значение увидит менеджер в отчёте, и по нему же код на Python достанет его из строки результата.

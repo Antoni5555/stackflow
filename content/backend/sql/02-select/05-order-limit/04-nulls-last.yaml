@@ -1,0 +1,21 @@
+title: Пустые города наверху
+type: exercise
+difficulty: 2
+pitfall: В PostgreSQL NULL при сортировке больше любого значения — при DESC они оказываются первыми.
+statement: |
+  Выведите `id` и `city` всех покупателей: города в обратном алфавитном порядке, покупатели без города — **в конце**; при одинаковом городе — по `id`.
+starter_code: |
+  SELECT id, city
+  FROM users
+  ORDER BY city DESC, id;
+solution: |
+  SELECT id, city
+  FROM users
+  ORDER BY city DESC NULLS LAST, id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Где оказались покупатели 5 и 10 в результате заготовки?
+explanation: |
+  PostgreSQL считает NULL больше любого значения: при `ASC` NULL идут в конце, при `DESC` — в начале. Положение задают явно: `NULLS LAST` или `NULLS FIRST` у нужного столбца.

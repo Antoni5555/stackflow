@@ -1,0 +1,23 @@
+title: Города доставки
+type: exercise
+difficulty: 1
+pitfall: Без DISTINCT значение повторяется столько раз, сколько строк его содержат.
+statement: |
+  Логистам нужен список городов, где есть покупатели: каждый город один раз, без пустого значения, по алфавиту. Выведите колонку `city`.
+starter_code: |
+  SELECT city
+  FROM users
+  WHERE city IS NOT NULL
+  ORDER BY city;
+solution: |
+  SELECT DISTINCT city
+  FROM users
+  WHERE city IS NOT NULL
+  ORDER BY city;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько раз в результате заготовки встречается Москва?
+explanation: |
+  Заготовка выводит город каждого покупателя — Москва повторяется четыре раза. `DISTINCT` оставляет по одной строке на значение. `WHERE city IS NOT NULL` убирает покупателей без города: иначе в списке была бы строка с NULL.
