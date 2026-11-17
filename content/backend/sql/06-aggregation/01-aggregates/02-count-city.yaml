@@ -1,0 +1,20 @@
+title: Сколько указали город
+type: exercise
+difficulty: 1
+pitfall: count(*) считает строки, count(столбец) — только строки, где столбец не NULL.
+statement: |
+  Маркетинг хочет знать, сколько покупателей указали город. Выведите это число в колонке `with_city`. Заготовка возвращает 13 — это все покупатели. Исправьте её.
+starter_code: |
+  SELECT count(*) AS with_city
+  FROM users;
+solution: |
+  SELECT count(city) AS with_city
+  FROM users;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Что именно считает `count(*)`?
+  - "`count(столбец)` пропускает NULL."
+explanation: |
+  `count(*)` считает строки — всех 13 покупателей. `count(city)` пропускает строки, где `city` — NULL, и даёт 11. Тот же ответ дал бы `count(*)` с `WHERE city IS NOT NULL`.

@@ -1,0 +1,15 @@
+title: Где виден псевдоним
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: Псевдоним существует только после шага SELECT.
+statement: |
+  В запросе `SELECT category_id, count(*) AS total FROM products …` где можно написать `total` (PostgreSQL)?
+options:
+  - "`WHERE total > 3`"
+  - "`HAVING total > 3`"
+  - "`ORDER BY total DESC`"
+  - "`GROUP BY total`"
+answer: [2]
+explanation: |
+  Псевдоним появляется на шаге `SELECT`, а после него идёт только `ORDER BY` (и `LIMIT`). `WHERE` и `HAVING` выполняются раньше и псевдонима не видят. `GROUP BY` по псевдониму PostgreSQL разрешает, но `total` — это агрегат, а группировать по агрегату нельзя: `aggregate functions are not allowed in GROUP BY`.

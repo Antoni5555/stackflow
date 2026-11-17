@@ -1,0 +1,24 @@
+title: Название в группе
+type: exercise
+difficulty: 1
+pitfall: Столбец вне GROUP BY и вне агрегата выводить нельзя — в группе у него много значений.
+statement: |
+  Выведите число товаров в каждой категории: `category_id` и `total`, по возрастанию `category_id`. Запрос из заготовки падает. Исправьте его.
+starter_code: |
+  SELECT category_id, name, count(*) AS total
+  FROM products
+  GROUP BY category_id
+  ORDER BY category_id;
+solution: |
+  SELECT category_id, count(*) AS total
+  FROM products
+  GROUP BY category_id
+  ORDER BY category_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько названий у товаров категории 4?
+  - Нужно ли название для ответа на вопрос?
+explanation: |
+  В группе «категория 4» шесть товаров с разными названиями, и одной строке результата нечего показать в `name`: `column "products.name" must appear in the GROUP BY clause or be used in an aggregate function`. Название для ответа не нужно — убираем его. Если бы оно было нужно, `GROUP BY category_id, name` дал бы группу на каждый товар, и считать стало бы нечего.

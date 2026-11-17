@@ -1,0 +1,28 @@
+title: Активные покупатели
+type: exercise
+difficulty: 2
+pitfall: В PostgreSQL псевдоним из SELECT в HAVING не виден — HAVING выполняется раньше SELECT.
+statement: |
+  Выведите покупателей, у которых три или больше оплаченных либо отправленных заказа (статус `paid` или `shipped`): `user_id` и число таких заказов `total`, по возрастанию `user_id`. Запрос из заготовки падает. Исправьте его.
+starter_code: |
+  SELECT user_id, count(*) AS total
+  FROM orders
+  WHERE status IN ('paid', 'shipped')
+  GROUP BY user_id
+  HAVING total >= 3
+  ORDER BY user_id;
+solution: |
+  SELECT user_id, count(*) AS total
+  FROM orders
+  WHERE status IN ('paid', 'shipped')
+  GROUP BY user_id
+  HAVING count(*) >= 3
+  ORDER BY user_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Когда вычисляется `total` — до `HAVING` или после?
+  - Повторите в `HAVING` само выражение.
+explanation: |
+  `HAVING` выполняется до `SELECT`, и псевдонима `total` в этот момент ещё нет: `column "total" does not exist`. В условии повторяют агрегат: `HAVING count(*) >= 3`. В `ORDER BY` псевдоним работает — сортировка идёт после `SELECT`. Пример `HAVING cnt > 5` из конспектов и MySQL в PostgreSQL не пройдёт.

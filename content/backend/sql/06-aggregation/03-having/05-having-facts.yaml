@@ -1,0 +1,16 @@
+title: Про HAVING
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: HAVING фильтрует группы и выполняется до SELECT.
+statement: |
+  Что верно в PostgreSQL?
+options:
+  - "В `HAVING` можно использовать агрегат, которого нет в `SELECT`"
+  - "`HAVING total > 5` работает, если в `SELECT` есть `count(*) AS total`"
+  - "`HAVING` выполняется после `GROUP BY`, но до `SELECT`"
+  - "В `ORDER BY` можно сослаться на псевдоним из `SELECT`"
+  - "`WHERE count(*) > 5` равносильно `HAVING count(*) > 5`"
+answer: [0, 2, 3]
+explanation: |
+  `HAVING` может отбирать группы по любому агрегату, даже не выведенному. Он выполняется до `SELECT`, поэтому псевдонимов ещё не видит — `HAVING total > 5` даёт `column "total" does not exist`. `ORDER BY` идёт после `SELECT`, и псевдонимы в нём работают. Агрегат в `WHERE` — ошибка.

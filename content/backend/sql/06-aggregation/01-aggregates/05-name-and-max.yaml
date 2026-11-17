@@ -1,0 +1,19 @@
+title: Самый дорогой товар
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Без GROUP BY агрегат сворачивает все строки в одну, и обычный столбец рядом с ним выводить нельзя.
+statement: |
+  Что вернёт запрос?
+  ```sql
+  SELECT name, max(price)
+  FROM products;
+  ```
+options:
+  - Название и цену самого дорогого товара
+  - Все 22 товара, у каждого — максимальная цена каталога
+  - Ошибку — `name` нужно указать в `GROUP BY` или в агрегатной функции
+  - Первый товар таблицы и максимальную цену
+answer: [2]
+explanation: |
+  Без `GROUP BY` все строки — одна группа, и результат — одна строка. `max(price)` для неё определён, а `name` — нет: в группе 22 названия. PostgreSQL отвечает `column "products.name" must appear in the GROUP BY clause or be used in an aggregate function`. Самый дорогой товар ищут сортировкой: `SELECT name, price FROM products ORDER BY price DESC LIMIT 1`. (MySQL в старом режиме вернул бы случайное название — тихая ошибка.)

@@ -1,0 +1,19 @@
+title: Три count
+type: quiz
+kind: single
+difficulty: 2
+pitfall: count(*) — строки, count(x) — непустые значения, count(DISTINCT x) — разные непустые значения.
+statement: |
+  В `users` 13 строк. Город указан у 11 покупателей: Москва — 4, Казань — 2, Санкт-Петербург — 2, Екатеринбург, Краснодар, Новосибирск — по одному. Что вернёт запрос?
+  ```sql
+  SELECT count(*) AS a, count(city) AS b, count(DISTINCT city) AS c
+  FROM users;
+  ```
+options:
+  - "`13 | 11 | 6`"
+  - "`13 | 13 | 7`"
+  - "`11 | 11 | 6`"
+  - "`13 | 11 | 7`"
+answer: [0]
+explanation: |
+  `count(*)` — все 13 строк; `count(city)` пропускает двоих без города — 11; `count(DISTINCT city)` — разные непустые города, 6. NULL в `count(DISTINCT …)` не считается отдельным значением (в отличие от `SELECT DISTINCT`, где он даёт строку).

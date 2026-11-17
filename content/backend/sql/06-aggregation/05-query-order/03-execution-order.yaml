@@ -1,0 +1,18 @@
+title: Порядок шагов
+type: quiz
+kind: order
+difficulty: 2
+pitfall: SELECT пишут первым, а выполняется он после WHERE, GROUP BY и HAVING.
+statement: |
+  Расставьте части запроса в логическом порядке выполнения.
+options:
+  - "`FROM orders`"
+  - "`WHERE status <> 'cancelled'`"
+  - "`GROUP BY user_id`"
+  - "`HAVING count(*) >= 4`"
+  - "`SELECT user_id, count(*) AS total`"
+  - "`ORDER BY total DESC`"
+  - "`LIMIT 3`"
+answer: [0, 1, 2, 3, 4, 5, 6]
+explanation: |
+  Сначала источник строк (`FROM`), затем отбор строк (`WHERE`), группировка (`GROUP BY`) и отбор групп (`HAVING`). Только после этого `SELECT` вычисляет столбцы и псевдоним `total`, поэтому `ORDER BY total` работает, а `HAVING total` — нет. `LIMIT` — последним, по отсортированному результату.

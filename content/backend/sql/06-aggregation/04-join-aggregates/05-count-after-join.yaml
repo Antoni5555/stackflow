@@ -1,0 +1,21 @@
+title: Что посчитано
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Агрегат видит строки после соединения — с повторами строк из таблицы «одного».
+statement: |
+  У Анны 6 заказов, в них в сумме 11 позиций. Что вернёт запрос?
+  ```sql
+  SELECT count(o.id) AS a, count(DISTINCT o.id) AS b
+  FROM orders o
+  JOIN order_items oi ON oi.order_id = o.id
+  WHERE o.user_id = 1;
+  ```
+options:
+  - "`6 | 6`"
+  - "`11 | 6`"
+  - "`11 | 11`"
+  - "`6 | 11`"
+answer: [1]
+explanation: |
+  После соединения строка заказа повторяется для каждой позиции — 11 строк, и `count(o.id)` считает их все. `count(DISTINCT o.id)` считает разные номера заказов — 6. `count(o.id)` не спасает от повторов: он пропускает только NULL.

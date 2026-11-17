@@ -1,0 +1,29 @@
+title: Все заказы и отменённые
+type: exercise
+difficulty: 3
+pitfall: Условие в WHERE действует на все агрегаты; условие для одного агрегата — FILTER.
+statement: |
+  Для каждого покупателя, у которого есть заказы, выведите `id`, общее число заказов `total` и число отменённых `cancelled` (у кого отмен нет — `0`). Порядок — по `id`. В заготовке и `total` неверный, и покупатели без отмен пропали. Исправьте её.
+starter_code: |
+  SELECT u.id, count(*) AS total, count(*) AS cancelled
+  FROM users u
+  JOIN orders o ON o.user_id = u.id
+  WHERE o.status = 'cancelled'
+  GROUP BY u.id
+  ORDER BY u.id;
+solution: |
+  SELECT u.id,
+         count(*) AS total,
+         count(*) FILTER (WHERE o.status = 'cancelled') AS cancelled
+  FROM users u
+  JOIN orders o ON o.user_id = u.id
+  GROUP BY u.id
+  ORDER BY u.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Какие строки видит `count(*) AS total`, если `WHERE` оставил только отменённые заказы?
+  - "Условие только для одного агрегата: `count(*) FILTER (WHERE …)`."
+explanation: |
+  `WHERE` выбрасывает строки до группировки — для всех агрегатов сразу: `total` считает только отменённые, а покупатели без отмен исчезают целиком. `FILTER (WHERE o.status = 'cancelled')` применяет условие только к одному агрегату, а `total` считает все заказы. Тот же результат даёт `sum(CASE WHEN o.status = 'cancelled' THEN 1 ELSE 0 END)`.

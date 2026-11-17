@@ -1,0 +1,24 @@
+title: Цена со скидкой
+type: exercise
+difficulty: 1
+pitfall: Псевдоним из SELECT не виден в WHERE — WHERE выполняется раньше SELECT.
+statement: |
+  На распродаже все товары дешевеют на 30 %. Выведите `id`, `name` и цену со скидкой `sale_price` (`price * 0.7`) для товаров, у которых цена со скидкой меньше 1000 ₽, по возрастанию `id`. Запрос из заготовки падает. Исправьте его.
+starter_code: |
+  SELECT id, name, price * 0.7 AS sale_price
+  FROM products
+  WHERE sale_price < 1000
+  ORDER BY id;
+solution: |
+  SELECT id, name, price * 0.7 AS sale_price
+  FROM products
+  WHERE price * 0.7 < 1000
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Что выполняется раньше — `WHERE` или `SELECT`?
+  - Повторите выражение в `WHERE`.
+explanation: |
+  `WHERE` отбирает строки до того, как `SELECT` вычислит столбцы, поэтому псевдонима `sale_price` ещё нет: `column "sale_price" does not exist`. Выражение повторяют: `WHERE price * 0.7 < 1000`. В `ORDER BY` псевдоним работал бы — сортировка идёт после `SELECT`.

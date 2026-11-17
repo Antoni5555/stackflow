@@ -1,0 +1,26 @@
+title: Ноль заказов
+type: exercise
+difficulty: 2
+pitfall: После LEFT JOIN count(*) считает и строку без пары — у покупателя без заказов получается 1.
+statement: |
+  Для каждого покупателя выведите `id`, `name` и число его заказов `total`; у покупателей без заказов должно быть `0`. Порядок — по `id`. В заготовке у четырёх покупателей без заказов стоит 1. Исправьте её.
+starter_code: |
+  SELECT u.id, u.name, count(*) AS total
+  FROM users u
+  LEFT JOIN orders o ON o.user_id = u.id
+  GROUP BY u.id
+  ORDER BY u.id;
+solution: |
+  SELECT u.id, u.name, count(o.id) AS total
+  FROM users u
+  LEFT JOIN orders o ON o.user_id = u.id
+  GROUP BY u.id
+  ORDER BY u.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько строк остаётся после `LEFT JOIN` у покупателя без заказов?
+  - Какой `count` пропускает NULL?
+explanation: |
+  `LEFT JOIN` сохраняет покупателя без заказов одной строкой с NULL в столбцах `orders`. `count(*)` считает строки — получается 1. `count(o.id)` считает непустые `o.id` и для такой строки даёт 0.

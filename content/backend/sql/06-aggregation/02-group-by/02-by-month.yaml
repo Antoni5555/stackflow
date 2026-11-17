@@ -1,0 +1,26 @@
+title: Заказы по месяцам
+type: exercise
+difficulty: 2
+pitfall: Группируют по тому же выражению, что выводят; GROUP BY по исходному столбцу даёт группу на каждое значение.
+statement: |
+  Для графика продаж нужно число **неотменённых** заказов по месяцам: месяц (`date_trunc` от `created_at`) в колонке `month` и число заказов `total`, по возрастанию месяца. Заготовка выдаёт много строк с одним и тем же месяцем. Исправьте её.
+starter_code: |
+  SELECT date_trunc('month', created_at) AS month, count(*) AS total
+  FROM orders
+  WHERE status <> 'cancelled'
+  GROUP BY created_at
+  ORDER BY month;
+solution: |
+  SELECT date_trunc('month', created_at) AS month, count(*) AS total
+  FROM orders
+  WHERE status <> 'cancelled'
+  GROUP BY date_trunc('month', created_at)
+  ORDER BY month;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько разных значений `created_at`? А сколько месяцев?
+  - "Группировать нужно по тому же выражению, что выводится в `month`."
+explanation: |
+  `GROUP BY created_at` создаёт группу на каждый момент времени — по одному заказу в группе, — а `date_trunc` применяется уже к выводу, и месяцы повторяются. Группа должна строиться по месяцу: `GROUP BY date_trunc('month', created_at)` (в PostgreSQL можно и `GROUP BY month` — по псевдониму). Отменённые заказы убирает `WHERE` ещё до группировки.

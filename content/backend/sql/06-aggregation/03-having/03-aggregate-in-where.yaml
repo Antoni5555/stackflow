@@ -1,0 +1,26 @@
+title: Дорогие категории
+type: exercise
+difficulty: 1
+pitfall: Агрегат в WHERE нельзя — на момент WHERE групп ещё нет.
+statement: |
+  Выведите категории, где максимальная цена товара больше 30 000 ₽: `category_id` и максимальную цену `max_price`, по возрастанию `category_id`. Запрос из заготовки падает. Исправьте его.
+starter_code: |
+  SELECT category_id, max(price) AS max_price
+  FROM products
+  WHERE max(price) > 30000
+  GROUP BY category_id
+  ORDER BY category_id;
+solution: |
+  SELECT category_id, max(price) AS max_price
+  FROM products
+  GROUP BY category_id
+  HAVING max(price) > 30000
+  ORDER BY category_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "`WHERE` проверяет отдельные строки. Что такое `max(price)` для одной строки?"
+  - Условие на группу — после `GROUP BY`.
+explanation: |
+  `WHERE` выполняется до группировки и видит по одной строке, а `max(price)` — свойство группы: `aggregate functions are not allowed in WHERE`. Условие на группу пишут в `HAVING` после `GROUP BY`. Подходят ноутбуки (3) и смартфоны (5).

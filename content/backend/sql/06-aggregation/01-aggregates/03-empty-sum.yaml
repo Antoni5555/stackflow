@@ -1,0 +1,22 @@
+title: Остаток пустой категории
+type: exercise
+difficulty: 2
+pitfall: sum по пустому набору строк — NULL, а не ноль.
+statement: |
+  Отчёт склада показывает, сколько штук товара лежит в каждой категории. Выведите суммарный остаток (`stock`) товаров категории «Обувь» (`category_id` 8) в колонке `total`. Если товаров нет, в отчёте должен быть `0`. Заготовка возвращает пустую ячейку — исправьте её.
+starter_code: |
+  SELECT sum(stock) AS total
+  FROM products
+  WHERE category_id = 8;
+solution: |
+  SELECT COALESCE(sum(stock), 0) AS total
+  FROM products
+  WHERE category_id = 8;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько строк проходит `WHERE`? Что `sum` возвращает для пустого набора?
+  - "Подставить значение вместо NULL — `COALESCE`."
+explanation: |
+  В категории «Обувь» товаров нет, и `sum` от пустого набора — NULL: складывать нечего. `count` в такой ситуации вернул бы 0, а `sum`, `avg`, `min`, `max` возвращают NULL. `COALESCE(sum(stock), 0)` заменяет NULL нулём.

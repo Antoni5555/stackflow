@@ -1,0 +1,20 @@
+title: Сколько групп
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Строки с NULL в столбце группировки образуют одну общую группу.
+statement: |
+  У 11 покупателей указано 6 разных городов, у двоих город не указан. Сколько строк вернёт запрос?
+  ```sql
+  SELECT city, count(*) AS total
+  FROM users
+  GROUP BY city;
+  ```
+options:
+  - "6"
+  - "7"
+  - "8"
+  - "13"
+answer: [1]
+explanation: |
+  Шесть групп по городам и одна группа для NULL: для `GROUP BY` (как и для `DISTINCT`) все NULL одинаковы. В ней `count(*)` = 2. Если NULL-группа не нужна, её убирают в `WHERE city IS NOT NULL`.

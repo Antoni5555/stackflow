@@ -1425,6 +1425,93 @@ def set_operations():
     f.save(out(SQ5 / "06-set-operations" / "img" / "set-operations.svg"))
 
 
+# ---------- SQL 6.01: count и NULL ----------
+SQ6 = ROOT / "sql" / "06-aggregation"
+
+
+def count_null():
+    f = Figure(880, 250, "count(*) считает строки, count(city) — непустые значения, count(DISTINCT city) — разные непустые")
+    cities = ["Москва", "Москва", "Казань", "NULL", "Казань", "Москва", "NULL", "Краснодар"]
+    f.text(20, 22, "users.city (часть строк)", "h")
+    for k, c in enumerate(cities):
+        f.box(20 + k * 100, 32, 96, 32, c, "box2" if c == "NULL" else "box", "c", rx=4)
+    rows = [("count(*)", "8 — все строки"), ("count(city)", "6 — без NULL"), ("count(DISTINCT city)", "3 — Москва, Казань, Краснодар")]
+    for k, (fn, res) in enumerate(rows):
+        y = 100 + k * 44
+        f.box(20, y, 240, 34, fn, "acc", "onacc", rx=6)
+        f.arrow(f"M260 {y + 17}H296")
+        f.text(304, y + 22, res, "t")
+    f.save(out(SQ6 / "01-aggregates" / "img" / "count-null.svg"))
+
+
+# ---------- SQL 6.02: GROUP BY ----------
+def group_by():
+    f = Figure(880, 270, "GROUP BY status раскладывает заказы по статусам; count(*) считает строки каждой группы")
+    groups = [("cancelled", 5, "m2"), ("new", 3, "m1"), ("paid", 4, "m3"), ("shipped", 22, "acc")]
+    f.text(20, 22, "orders", "h")
+    order = ["shipped", "shipped", "cancelled", "shipped", "new", "paid", "shipped", "cancelled", "paid", "new"]
+    cls = {g: c for g, _, c in groups}
+    for k, st in enumerate(order):
+        f.box(20, 30 + k * 22, 150, 20, st, cls[st], "cs", rx=3)
+    f.text(20, 256, "… ещё 24 заказа", "s")
+    f.arrow("M180 140H260")
+    for k, (g, n, c) in enumerate(groups):
+        y = 30 + k * 52
+        f.box(270, y, 220, 44, g, c, "c", rx=8)
+        f.arrow(f"M490 {y + 22}H546")
+        f.box(550, y, 130, 44, f"count = {n}", "box", "c", rx=8)
+    f.text(700, 60, "строка результата", "s")
+    f.text(700, 78, "на каждую группу", "s")
+    f.save(out(SQ6 / "02-group-by" / "img" / "group-by.svg"))
+
+
+# ---------- SQL 6.03: WHERE и HAVING ----------
+def where_having():
+    f = Figure(880, 200, "WHERE отбирает строки до группировки, HAVING — группы после неё")
+    steps = [("orders", "34 строки", "box2"), ("WHERE status|<> 'cancelled'", "29 строк", "box"),
+             ("GROUP BY user_id", "9 групп", "box"), ("HAVING|count(*) >= 4", "3 группы", "acc")]
+    for k, (title, note, c) in enumerate(steps):
+        x = 20 + k * 215
+        f.box(x, 40, 190, 64, title, c, "onacc" if c == "acc" else "c", rx=10)
+        f.text(x + 95, 128, note, "s", "middle")
+        if k:
+            f.arrow(f"M{x - 25} 72H{x - 4}")
+    f.text(20, 170, "Агрегат в WHERE — ошибка: групп ещё нет. Псевдоним из SELECT в HAVING — ошибка: SELECT выполняется позже.", "s")
+    f.save(out(SQ6 / "03-having" / "img" / "where-having.svg"))
+
+
+# ---------- SQL 6.04: count после JOIN ----------
+def join_count():
+    f = Figure(880, 230, "После JOIN с позициями строка заказа повторяется — count(*) считает позиции, count(DISTINCT o.id) — заказы")
+    f.text(20, 22, "orders JOIN order_items (заказ 1)", "h")
+    _cells(f, 20, 30, [("o.id", 70), ("o.user_id", 100), ("oi.product_id", 140)],
+           [("1", "1", "1"), ("1", "1", "4"), ("1", "1", "7")], {0: "m1", 1: "m1", 2: "m1"})
+    f.box(400, 40, 250, 34, "count(*) = 3", "box", "c", rx=6)
+    f.box(400, 84, 250, 34, "count(o.id) = 3", "box", "c", rx=6)
+    f.box(400, 128, 250, 34, "count(DISTINCT o.id) = 1", "acc", "onacc", rx=6)
+    f.arrow("M330 90H394")
+    f.text(670, 62, "позиции", "s"); f.text(670, 106, "тоже позиции", "s"); f.text(670, 150, "заказы", "s")
+    f.text(20, 210, "Сумма столбца заказа по таким строкам тоже завышена втрое — суммы считают по позициям или до соединения.", "s")
+    f.save(out(SQ6 / "04-join-aggregates" / "img" / "join-count.svg"))
+
+
+# ---------- SQL 6.05: порядок выполнения ----------
+def query_order():
+    f = Figure(880, 220, "SELECT пишут первым, а выполняется он после WHERE, GROUP BY и HAVING")
+    written = ["SELECT", "FROM", "WHERE", "GROUP BY", "HAVING", "ORDER BY", "LIMIT"]
+    run = ["FROM", "WHERE", "GROUP BY", "HAVING", "SELECT", "ORDER BY", "LIMIT"]
+    f.text(20, 22, "пишем", "h"); f.text(20, 100, "выполняется", "h")
+    for k, w in enumerate(written):
+        f.box(20 + k * 122, 30, 112, 34, w, "acc" if w == "SELECT" else "box2", "onacc" if w == "SELECT" else "c", rx=6)
+    for k, w in enumerate(run):
+        f.box(20 + k * 122, 108, 112, 34, f"{k + 1}. {w}", "acc" if w == "SELECT" else "box", "onacc" if w == "SELECT" else "c", rx=6)
+        if k:
+            f.arrow(f"M{20 + k * 122 - 10} 125H{20 + k * 122 - 1}")
+    f.text(20, 176, "Псевдонимы из SELECT видны только справа от него: в ORDER BY (и в GROUP BY как расширение PostgreSQL).", "s")
+    f.text(20, 196, "WHERE и HAVING выполняются раньше — псевдонимов там нет.", "s")
+    f.save(out(SQ6 / "05-query-order" / "img" / "query-order.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1443,6 +1530,7 @@ if __name__ == "__main__":
                   select_where, null_compare, limit_offset,
                   insert_defaults, fk_actions, upsert_flow,
                   type_choice, wishlist_fk, drop_order,
-                  relation_types, inner_join, left_join, join_chain, self_join, set_operations):
+                  relation_types, inner_join, left_join, join_chain, self_join, set_operations,
+                  count_null, group_by, where_having, join_count, query_order):
         build()
     print("ok")

@@ -1,0 +1,20 @@
+title: Города по дате регистрации
+type: quiz
+kind: single
+difficulty: 3
+pitfall: После DISTINCT остаются только выведенные столбцы — сортировать по другим нельзя.
+statement: |
+  Что вернёт запрос?
+  ```sql
+  SELECT DISTINCT city
+  FROM users
+  ORDER BY created_at;
+  ```
+options:
+  - Города в порядке регистрации первого покупателя из каждого
+  - Города в порядке регистрации последнего покупателя
+  - "Ошибку `for SELECT DISTINCT, ORDER BY expressions must appear in select list`"
+  - Города по алфавиту — `ORDER BY` по невыведенному столбцу игнорируется
+answer: [2]
+explanation: |
+  `DISTINCT` выполняется до `ORDER BY` и оставляет одну строку на город. У строки «Москва» нет одного `created_at` — москвичей четверо, — поэтому сортировать по нему нечем. Нужен агрегат: `SELECT city FROM users GROUP BY city ORDER BY min(created_at)` — по первому покупателю из города.

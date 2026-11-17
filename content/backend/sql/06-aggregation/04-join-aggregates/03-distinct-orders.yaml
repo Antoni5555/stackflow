@@ -1,0 +1,28 @@
+title: В скольких заказах
+type: exercise
+difficulty: 2
+pitfall: После соединения с позициями заказ повторяется для каждой позиции — число заказов считают через count(DISTINCT).
+statement: |
+  Для каждой категории, товары которой покупали, выведите название категории в колонке `category` и число **заказов**, в которых были её товары, в колонке `orders`. Порядок — по названию категории. Заготовка считает позиции, а не заказы. Исправьте её.
+starter_code: |
+  SELECT c.name AS category, count(oi.order_id) AS orders
+  FROM order_items oi
+  JOIN products p ON p.id = oi.product_id
+  JOIN categories c ON c.id = p.category_id
+  GROUP BY c.id, c.name
+  ORDER BY c.name;
+solution: |
+  SELECT c.name AS category, count(DISTINCT oi.order_id) AS orders
+  FROM order_items oi
+  JOIN products p ON p.id = oi.product_id
+  JOIN categories c ON c.id = p.category_id
+  GROUP BY c.id, c.name
+  ORDER BY c.name;
+check:
+  type: result
+  order_matters: true
+hints:
+  - В заказе 1 мышь и коврик — обе «Аксессуары». Сколько раз заказ 1 попадёт в группу «Аксессуары»?
+  - Число разных значений — `count(DISTINCT …)`.
+explanation: |
+  Каждая строка `order_items` — позиция. Если в заказе два аксессуара, он дважды попадает в группу «Аксессуары», и `count(oi.order_id)` считает его два раза. `count(DISTINCT oi.order_id)` считает разные заказы: аксессуары были в 12 заказах, хотя позиций с ними 20.
