@@ -54,3 +54,20 @@ export function firstFailedRule(rules, files, preview) {
     preview.iframe.style.width = width;
   }
 }
+
+/**
+ * Эталон задачи (files + solution) проходит все правила, заготовка (files) — не все.
+ * Список проблем, пустой — задача в порядке. Для /dev/html-check/ и теста в CI.
+ */
+export async function verifyHtmlTask(task, preview) {
+  const problems = [];
+  const solved = { ...task.files, ...task.solution };
+  await preview.render(solved);
+  const solutionRule = firstFailedRule(task.rules, solved, preview);
+  if (solutionRule) problems.push(`эталон не проходит: ${solutionRule.fail}`);
+  await preview.render(task.files);
+  if (!firstFailedRule(task.rules, task.files, preview)) {
+    problems.push('заготовка проходит все правила — задачу нечего решать');
+  }
+  return problems;
+}

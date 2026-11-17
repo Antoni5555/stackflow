@@ -52,9 +52,14 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements-dev.txt
-      # Симуляторы тренажёров (чистый JS) — тесты в Node, он уже есть в образе runner;
-      # из npm — только PGlite для SQL-тренажёра (нужен и pytest: эталоны SQL-задач)
+      # Симуляторы тренажёров (чистый JS) — тесты в Node. Из npm — PGlite (эталоны
+      # SQL-задач) и Playwright (эталоны задач на вёрстку: стили считает только браузер);
+      # Playwright нужен Node 20+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: pytest
       - run: node --test tests/js/*.test.js
 
