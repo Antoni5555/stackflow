@@ -1,0 +1,26 @@
+title: Пустой request.POST
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Сервер разбирает тело по Content-Type, а не по тому, как тело выглядит.
+statement: |
+  Клиент отправил запрос:
+  ```http
+  POST /orders/ HTTP/1.1
+  Host: shop.example
+  Content-Type: application/json
+  Content-Length: 33
+
+  {"product_id": 17, "quantity": 2}
+  ```
+  В Django-коде `request.POST` пустой. Почему?
+options:
+  - Django не принимает POST без `Accept`
+  - "`request.POST` заполняется только для данных формы; JSON читают из `request.body`"
+  - Тело слишком короткое
+  - В запросе нет заголовка `Cookie`
+answer: [1]
+hints:
+  - Какие значения `Content-Type` отправляет обычная HTML-форма?
+explanation: |
+  `request.POST` — разобранные поля формы (`application/x-www-form-urlencoded` или `multipart/form-data`). JSON Django сам не разбирает: тело лежит в `request.body` байтами, его читают `json.loads(request.body)`.

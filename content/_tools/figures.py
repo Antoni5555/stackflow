@@ -585,6 +585,135 @@ def with_flow():
     f.text(300, 388, "да — ошибка подавлена, выполнение идёт дальше", "s")
     f.save(out(PY7 / "13-context-managers" / "img" / "with-flow.svg"))
 
+
+# ---------- HTML/CSS 1.01: клиент и сервер ----------
+HC1 = ROOT / "html-css" / "01-how-web-works"
+
+
+def client_server():
+    f = Figure(880, 250, "Браузер отправляет запрос, сервер магазина собирает страницу из шаблона и данных базы и возвращает ответ")
+    f.text(20, 24, "клиент (frontend)", "h")
+    f.box(20, 40, 220, 150, "", "box")
+    f.text(40, 72, "Браузер покупателя", "t")
+    f.text(40, 104, "показывает HTML,", "s"); f.text(40, 124, "применяет CSS,", "s"); f.text(40, 144, "выполняет JS", "s")
+    f.arrow("M240 92H430"); f.text(335, 82, "GET /catalog/", "cs", "middle")
+    f.arrow("M430 150H240"); f.text(335, 170, "200 OK + HTML", "cs", "middle")
+    f.text(440, 24, "сервер (backend)", "h")
+    f.box(440, 40, 230, 150, "", "box")
+    f.text(460, 72, "Приложение на Django", "t")
+    f.text(460, 104, "1. разбирает запрос", "s"); f.text(460, 124, "2. берёт данные из базы", "s"); f.text(460, 144, "3. подставляет их в шаблон", "s")
+    f.arrow("M670 104H740"); f.arrow("M740 130H670")
+    f.box(744, 84, 116, 66, "PostgreSQL", "box2")
+    f.text(20, 226, "Браузер видит только ответ — HTML-текст. Код Django и база остаются на сервере.", "s")
+    f.save(out(HC1 / "01-client-server" / "img" / "client-server.svg"))
+
+
+# ---------- HTML/CSS 1.02: части URL ----------
+def url_anatomy():
+    f = Figure(880, 200, "Части URL: схема, домен, порт, путь, параметры запроса и фрагмент")
+    parts = [("https", "схема"), ("://", ""), ("shop.example", "домен"), (":443", "порт"),
+             ("/catalog/", "путь"), ("?category=5&page=2", "query-параметры"), ("#reviews", "фрагмент")]
+    x = 20
+    char = 11.2
+    for k, (s, label) in enumerate(parts):
+        w = len(s) * char
+        if label:
+            cls = "acc" if k % 2 == 0 else "m1"
+            f.raw(f'<rect x="{x - 2}" y="40" width="{w + 4}" height="34" rx="6" class="fig-{cls}"/>')
+            f.line(f"M{x + w / 2} 78V{100 + (k % 2) * 40}", "lnd")
+            f.text(x + w / 2, 116 + (k % 2) * 40, label, "s", "middle")
+        f.text(x, 63, s, "c" if not label else ("onacc" if k % 2 == 0 else "c"))
+        x += w + (4 if label else 0)
+    f.text(20, 190, "Порт 443 для https браузер подставляет сам — в адресной строке его обычно не пишут. Фрагмент на сервер не уходит.", "s")
+    f.save(out(HC1 / "02-url" / "img" / "url-anatomy.svg"))
+
+
+# ---------- HTML/CSS 1.03: DNS ----------
+def dns_lookup():
+    f = Figure(880, 330, "Браузер узнаёт IP-адрес домена у DNS и подключается к этому адресу на нужный порт")
+    for x, title in [(20, "Браузер"), (360, "DNS-сервер"), (700, "Сервер магазина")]:
+        f.box(x, 20, 160, 44, title, "box2" if x == 360 else "box")
+        f.line(f"M{x + 80} 64V200", "lnd")
+    steps = [(100, 100, 440, "1. shop.example — какой IP?"), (136, 440, 100, "2. 203.0.113.10"),
+             (180, 100, 780, "3. соединение с 203.0.113.10:443")]
+    for y, x1, x2, s in steps:
+        f.arrow(f"M{x1} {y}H{x2 - 4 if x2 > x1 else x2 + 4}")
+        f.text((x1 + x2) / 2 if y < 180 else 610, y - 8, s, "cs", "middle")
+    f.text(20, 236, "Порт выбирает программу на сервере:", "t")
+    for i, (port, what) in enumerate([(":443", "HTTPS — Nginx"), (":80", "HTTP — Nginx"),
+                                      (":8000", "runserver Django"), (":5432", "PostgreSQL")]):
+        x = 20 + i * 215
+        f.box(x, 252, 200, 56, "", "box")
+        f.text(x + 14, 285, port, "c"); f.text(x + 76, 285, what, "s")
+    f.save(out(HC1 / "03-dns-ip-ports" / "img" / "dns-lookup.svg"))
+
+
+# ---------- HTML/CSS 1.04: устройство запроса и ответа ----------
+def http_message():
+    f = Figure(880, 300, "HTTP-сообщение: стартовая строка, заголовки, пустая строка и тело")
+    cols = [("Запрос", ["POST /orders/ HTTP/1.1", "Host: shop.example", "Content-Type: application/x-www-form-urlencoded", "Content-Length: 24", "", "product_id=17&quantity=2"]),
+            ("Ответ", ["HTTP/1.1 302 Found", "Location: /orders/1042/", "Set-Cookie: cart=; Max-Age=0", "Content-Length: 0", "", ""])]
+    for c, (title, lines) in enumerate(cols):
+        x = 20 + c * 440
+        f.text(x, 24, title, "h")
+        f.raw(f'<rect x="{x}" y="36" width="420" height="200" rx="14" class="fig-term"/>')
+        for i, s in enumerate(lines):
+            f.text(x + 16, 64 + i * 28, s, "tt")
+    f.text(20, 262, "Сверху вниз: стартовая строка → заголовки «Имя: значение» → пустая строка → тело.", "t")
+    f.text(20, 286, "Запрос начинается с метода и пути, ответ — с версии HTTP и кода.", "s")
+    f.save(out(HC1 / "04-request-response" / "img" / "http-message.svg"))
+
+
+# ---------- HTML/CSS 1.05: POST → редирект → GET ----------
+def post_redirect_get():
+    f = Figure(880, 270, "После успешного POST сервер отвечает редиректом, и браузер сам делает GET на страницу заказа")
+    f.box(20, 20, 170, 220, "", "box"); f.text(105, 46, "Браузер", "t", "middle")
+    f.box(690, 20, 170, 220, "", "box"); f.text(775, 46, "Сервер", "t", "middle")
+    steps = [(80, "POST /orders/  (данные формы)", True), (120, "302 Found, Location: /orders/1042/", False),
+             (170, "GET /orders/1042/", True), (210, "200 OK + страница заказа", False)]
+    for y, s, right in steps:
+        if right:
+            f.arrow(f"M190 {y}H690")
+        else:
+            f.arrow(f"M690 {y}H190")
+        f.text(440, y - 8, s, "cs", "middle")
+    f.text(20, 262, "Обновление страницы повторит безопасный GET, а не отправку заказа ещё раз.", "s")
+    f.save(out(HC1 / "05-methods-status-codes" / "img" / "post-redirect-get.svg"))
+
+
+# ---------- HTML/CSS 1.06: cookie сессии ----------
+def session_cookie():
+    f = Figure(880, 330, "Сервер выдаёт cookie с номером сессии, браузер возвращает его в каждом запросе, данные корзины лежат на сервере")
+    f.box(20, 20, 170, 270, "", "box"); f.text(105, 46, "Браузер", "t", "middle")
+    f.box(30, 234, 150, 46, "cookie:|sessionid=k3x9", "box2", "cs")
+    f.box(560, 20, 160, 270, "", "box"); f.text(640, 46, "Сервер", "t", "middle")
+    f.box(750, 70, 120, 120, "", "box2"); f.text(810, 94, "сессии", "h", "middle")
+    f.text(762, 124, "k3x9:", "cs"); f.text(762, 146, "корзина: 17×2", "cs")
+    f.arrow("M720 130H746")
+    steps = [(84, "1. POST /cart/add/17/", True), (124, "2. Set-Cookie: sessionid=k3x9", False),
+             (174, "3. GET /cart/  +  Cookie: sessionid=k3x9", True), (214, "4. страница корзины: 17 × 2", False)]
+    for y, s, right in steps:
+        f.arrow(f"M190 {y}H560" if right else f"M560 {y}H190")
+        f.text(375, y - 8, s, "cs", "middle")
+    f.text(20, 318, "В cookie — только номер сессии. Сама корзина хранится на сервере и в cookie не попадает.", "s")
+    f.save(out(HC1 / "06-cookies-sessions" / "img" / "session-cookie.svg"))
+
+
+# ---------- HTML/CSS 1.07: что видит посредник ----------
+def https_visibility():
+    f = Figure(880, 250, "Что видит посредник в сети при HTTP и при HTTPS")
+    for c, (title, cls, rows) in enumerate([
+        ("HTTP — всё открытым текстом", "err", ["shop.example", "POST /checkout/", "Cookie: sessionid=k3x9", "card=0000 1111 2222 3333"]),
+        ("HTTPS — зашифровано", "ok", ["shop.example", "8f3a 1c9e 04b7 d25e", "e61b 7a0f 93c4 1d88", "5c2e b940 a7d3 0f16"]),
+    ]):
+        x = 20 + c * 440
+        f.text(x, 24, title, "h")
+        f.box(x, 36, 420, 170, "", cls)
+        for i, s in enumerate(rows):
+            f.text(x + 20, 70 + i * 34, s, "c")
+    f.text(20, 236, "При HTTPS посредник видит только домен и IP (и объём трафика). Путь, cookies и данные формы скрыты.", "s")
+    f.save(out(HC1 / "07-https" / "img" / "https-visibility.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -592,6 +721,8 @@ if __name__ == "__main__":
                   try_flow, traceback_stack, for_protocol, generator_flow, lazy_pipeline,
                   dict_lookup, lost_key, objects_and_class,
                   attribute_lookup, inheritance_mro, shop_errors,
-                  is_a_has_a, with_flow):
+                  is_a_has_a, with_flow,
+                  client_server, url_anatomy, dns_lookup, http_message,
+                  post_redirect_get, session_cookie, https_visibility):
         build()
     print("ok")

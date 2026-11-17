@@ -1,0 +1,15 @@
+title: Зачем HttpOnly
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Без HttpOnly чужой скрипт на странице прочитает cookie сессии и войдёт от имени пользователя.
+statement: |
+  Что даёт атрибут `HttpOnly` в `Set-Cookie: sessionid=k3x9pq; HttpOnly`?
+options:
+  - Cookie отправляется только по HTTP, но не по HTTPS
+  - JavaScript на странице не может прочитать эту cookie, но браузер всё равно отправляет её с запросами
+  - Cookie удаляется при закрытии вкладки
+  - Cookie видна только на главной странице
+answer: [1]
+explanation: |
+  `HttpOnly` скрывает cookie от `document.cookie`. Если злоумышленник внедрит скрипт на страницу (XSS), номер сессии он не украдёт. Для запросов к серверу cookie работает как обычно. Только по HTTPS отправляет атрибут `Secure`, а не `HttpOnly`.

@@ -1,0 +1,15 @@
+title: Номер страницы из query
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Все значения query-параметров — строки, даже если выглядят как числа.
+statement: |
+  Запрос пришёл на `/catalog/?page=2`. Что лежит в `request.GET["page"]` в Django?
+options:
+  - Число `2`
+  - Строка `"2"`
+  - Список `["2"]`
+  - "`None` — параметры читают через `request.POST`"
+answer: [1]
+explanation: |
+  URL — это текст, поэтому значения параметров приходят строками. `request.GET["page"]` возвращает `"2"` (последнее значение ключа), а все значения — `request.GET.getlist("page")`. Перед вычислениями строку переводят в `int` и обрабатывают ошибку для `?page=abc`.

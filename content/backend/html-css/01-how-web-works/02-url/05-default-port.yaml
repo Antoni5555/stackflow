@@ -1,0 +1,15 @@
+title: Куда подключится браузер
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Без явного порта берётся порт по умолчанию для схемы — 443 для https и 80 для http.
+statement: |
+  К какому порту подключится браузер по адресу `http://shop.example/catalog/`?
+options:
+  - "443"
+  - "80"
+  - "8000"
+  - Ни к какому — без порта адрес неполный
+answer: [1]
+explanation: |
+  Схема `http` без порта означает порт 80, `https` — 443. Порт 8000 — привычный порт `runserver` Django при разработке, его пишут явно: `http://localhost:8000/`.
