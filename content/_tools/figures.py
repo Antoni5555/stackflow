@@ -1233,6 +1233,69 @@ def upsert_flow():
     f.save(out(SQ3 / "04-upsert" / "img" / "upsert-flow.svg"))
 
 
+# ---------- SQL 4.01: выбор типа ----------
+SQ4 = ROOT / "sql" / "04-tables"
+
+
+def type_choice():
+    f = Figure(880, 300, "Тип столбца выбирают по смыслу значения")
+    rows = [("цена, сумма, скидка в рублях", "numeric(10,2)", "real — погрешность: 0.1 + 0.2 ≠ 0.3"),
+            ("количество, остаток, ключ", "integer / bigint", "numeric — лишняя точность"),
+            ("название, email, адрес", "text", "varchar(255) — лимит без смысла"),
+            ("да / нет", "boolean", "'yes' / 'no', 0 / 1"),
+            ("день без времени", "date", "text — сортировка по алфавиту"),
+            ("момент события", "timestamptz", "timestamp — неизвестен пояс"),
+            ("разные характеристики", "jsonb", "столбец на каждый ключ")]
+    f.text(20, 24, "значение", "h")
+    f.text(310, 24, "тип", "h")
+    f.text(540, 24, "не так", "h")
+    for k, (what, typ, bad) in enumerate(rows):
+        y = 34 + k * 37
+        f.box(20, y, 270, 31, what, "box", "t", rx=6)
+        f.arrow(f"M290 {y + 15}H306")
+        f.box(310, y, 210, 31, typ, "acc", "onacc", rx=6)
+        f.text(540, y + 20, bad, "s")
+    f.save(out(SQ4 / "01-create-types" / "img" / "type-choice.svg"))
+
+
+# ---------- SQL 4.03: внешние ключи wishlist ----------
+def wishlist_fk():
+    f = Figure(880, 250, "wishlist ссылается на users и products; ON DELETE CASCADE удаляет строки избранного вместе с покупателем или товаром")
+
+    def tab(key, x, y, cols, acc=False, w=230):
+        f.box(x, y, w, 30 + 22 * len(cols), "", "box")
+        f.raw(f'<rect x="{x}" y="{y}" width="{w}" height="30" rx="12" class="fig-{"acc" if acc else "box2"}"/>')
+        f.text(x + 12, y + 20, key, "onacc" if acc else "c")
+        for k, c in enumerate(cols):
+            f.text(x + 12, y + 48 + k * 22, c, "cs")
+
+    tab("users", 20, 20, ["id  PRIMARY KEY", "email", "name"])
+    tab("products", 20, 140, ["id  PRIMARY KEY", "name", "price"])
+    tab("wishlist", 560, 60, ["user_id → users", "product_id → products", "added_at", "PK (user_id, product_id)"], True, w=300)
+    f.arrow("M560 107H400V45H250")
+    f.arrow("M560 129H400V165H250")
+    f.text(268, 36, "ON DELETE CASCADE", "s")
+    f.text(268, 184, "ON DELETE CASCADE", "s")
+    f.text(560, 210, "ссылка — только на PRIMARY KEY или UNIQUE;", "s")
+    f.text(560, 228, "users и products создают раньше wishlist", "s")
+    f.save(out(SQ4 / "03-foreign-keys" / "img" / "wishlist-fk.svg"))
+
+
+# ---------- SQL 4.05: порядок DROP ----------
+def drop_order():
+    f = Figure(880, 250, "Удаляют сначала таблицу, которая ссылается; DROP … CASCADE удаляет только внешний ключ")
+    f.box(20, 40, 240, 60, "import_rows|batch_id → import_batches", "box2", "c")
+    f.arrow("M260 70H330")
+    f.text(297, 120, "внешний ключ", "s", "middle")
+    f.box(334, 40, 200, 60, "import_batches", "box2", "c")
+    f.box(580, 30, 280, 36, "1. DROP TABLE import_rows", "ok", "c", rx=8)
+    f.box(580, 74, 280, 36, "2. DROP TABLE import_batches", "ok", "c", rx=8)
+    f.box(20, 150, 514, 60, "DROP TABLE import_batches → ошибка:|cannot drop … other objects depend on it", "err", "errt")
+    f.box(580, 140, 280, 80, "DROP TABLE import_batches CASCADE|import_rows остаётся,|удалён только внешний ключ", "box", "t")
+    f.text(20, 240, "Или обе таблицы одной командой: DROP TABLE import_rows, import_batches — порядок PostgreSQL выберет сам.", "s")
+    f.save(out(SQ4 / "05-drop" / "img" / "drop-order.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1249,6 +1312,7 @@ if __name__ == "__main__":
                   card_anatomy, catalog_states, shared_layout,
                   app_dbms, table_keys, shop_schema,
                   select_where, null_compare, limit_offset,
-                  insert_defaults, fk_actions, upsert_flow):
+                  insert_defaults, fk_actions, upsert_flow,
+                  type_choice, wishlist_fk, drop_order):
         build()
     print("ok")

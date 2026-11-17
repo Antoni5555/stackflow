@@ -1,0 +1,19 @@
+title: Два пустых email
+type: quiz
+kind: single
+difficulty: 2
+pitfall: UNIQUE не считает NULL одинаковыми — пустых значений может быть сколько угодно.
+statement: |
+  Столбец объявлен `email text UNIQUE` (без `NOT NULL`). Что произойдёт?
+  ```sql
+  INSERT INTO gift_cards (code, amount, balance, email)
+  VALUES ('GIFT-1', 1000, 1000, NULL), ('GIFT-2', 1000, 1000, NULL);
+  ```
+options:
+  - Обе строки запишутся
+  - Запишется только первая — повтор email
+  - Ошибка, не запишется ни одна
+  - Ошибка — в столбец `UNIQUE` нельзя записать NULL
+answer: [0]
+explanation: |
+  Для `UNIQUE` два NULL не равны друг другу: «неизвестно» нельзя признать повтором. Поэтому строк с пустым email может быть сколько угодно. Если нужно «email обязателен и уникален» — `NOT NULL UNIQUE`; если «пустой допустим, но только один» — `UNIQUE NULLS NOT DISTINCT` (PostgreSQL 15+).

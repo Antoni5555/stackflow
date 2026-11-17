@@ -1,0 +1,15 @@
+title: Как снять проверку цены
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Чтобы удалить ограничение, нужно его имя; безымянное получает имя автоматически по шаблону.
+statement: |
+  В `products` цена объявлена так: `price numeric(10,2) NOT NULL CHECK (price >= 0)`. Какая команда удалит эту проверку?
+options:
+  - "`ALTER TABLE products DROP CONSTRAINT products_price_check;`"
+  - "`ALTER TABLE products DROP CHECK (price >= 0);`"
+  - "`ALTER TABLE products ALTER COLUMN price DROP CHECK;`"
+  - "`ALTER TABLE products DROP CONSTRAINT price_check;`"
+answer: [0]
+explanation: |
+  Ограничение удаляют по имени: `DROP CONSTRAINT имя`. Безымянному `CHECK` у столбца PostgreSQL даёт имя `таблица_столбец_check` — `products_price_check`; его же видно в тексте ошибки при нарушении. По условию удалить нельзя, а `price_check` — не то имя. Чтобы не угадывать, ограничениям дают имя сразу: `CONSTRAINT products_price_non_negative CHECK (price >= 0)`.

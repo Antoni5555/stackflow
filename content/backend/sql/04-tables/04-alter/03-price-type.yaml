@@ -1,0 +1,33 @@
+title: Цены текстом
+type: exercise
+difficulty: 3
+pitfall: Смена типа приводит все значения; одно неприводимое значение отменяет всю команду.
+statement: |
+  В `import_products` цены загружены текстом (`price text`), причём в части строк разряды разделены пробелом: `'5 990'`. Переведите столбец `price` в тип `numeric(10,2)`, сохранив все цены.
+
+  Запрос из заготовки падает. Сначала уберите пробелы из цен (`replace`), потом смените тип.
+setup: |
+  CREATE TABLE import_products (
+      id    integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      name  text NOT NULL,
+      price text
+  );
+  INSERT INTO import_products (name, price)
+  VALUES ('Кеды', '3490.00'), ('Кроссовки', '5 990'), ('Сланцы', '790'), ('Ботинки', '12 490.50');
+starter_code: |
+  ALTER TABLE import_products
+  ALTER COLUMN price TYPE numeric(10,2) USING price::numeric(10,2);
+solution: |
+  UPDATE import_products
+  SET price = replace(price, ' ', '');
+
+  ALTER TABLE import_products
+  ALTER COLUMN price TYPE numeric(10,2) USING price::numeric(10,2);
+check:
+  type: state
+  tables: [import_products]
+hints:
+  - "На каком значении падает приведение? Выполните `SELECT price FROM import_products;`."
+  - "`replace(price, ' ', '')` убирает пробелы — запишите результат `UPDATE`, а потом `ALTER`."
+explanation: |
+  `'5 990'::numeric` — `invalid input syntax for type numeric`: пробел внутри числа PostgreSQL не понимает. `ALTER` приводит все строки разом, и одна плохая отменяет всю команду — тип не поменялся. Сначала чистим данные `UPDATE … SET price = replace(price, ' ', '')`, потом меняем тип. То же можно сделать одной командой: `USING replace(price, ' ', '')::numeric(10,2)`. Проверка сравнивает данные таблицы: цены должны стать `5990.00`, `12490.50` — с двумя знаками, как у `numeric(10,2)`.

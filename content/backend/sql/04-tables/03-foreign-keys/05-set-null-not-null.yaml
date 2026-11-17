@@ -1,0 +1,23 @@
+title: SET NULL у обязательного столбца
+type: quiz
+kind: single
+difficulty: 3
+pitfall: ON DELETE SET NULL у столбца с NOT NULL проходит при создании таблицы и ломает удаление.
+statement: |
+  Таблицу создали так:
+  ```sql
+  CREATE TABLE notes (
+      user_id integer NOT NULL REFERENCES users (id) ON DELETE SET NULL,
+      body    text
+  );
+  INSERT INTO notes (user_id, body) VALUES (13, 'перезвонить');
+  ```
+  Что произойдёт при `DELETE FROM users WHERE id = 13;`?
+options:
+  - Покупатель удалится, у заметки `user_id` станет NULL
+  - Покупатель удалится вместе с заметкой
+  - Ошибка, покупатель не удалится
+  - Ошибка была ещё раньше — в `CREATE TABLE`
+answer: [2]
+explanation: |
+  `CREATE TABLE` не проверяет, что `SET NULL` сочетается с `NOT NULL`, и таблица создаётся. При удалении база пытается записать NULL в `user_id`, получает `null value in column "user_id" of relation "notes" violates not-null constraint`, и весь `DELETE` отменяется. Нужно выбрать одно: необязательная связь (без `NOT NULL`) с `SET NULL` или обязательная с `CASCADE` / `RESTRICT`.

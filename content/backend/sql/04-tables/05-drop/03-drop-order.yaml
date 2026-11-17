@@ -1,0 +1,15 @@
+title: Порядок удаления
+type: quiz
+kind: order
+difficulty: 2
+pitfall: Таблицу, на которую ссылаются, удаляют последней.
+statement: |
+  Четыре временные таблицы связаны внешними ключами: `import_errors` ссылается на `import_rows`, `import_rows` — на `import_batches`, `import_batches` — на `import_sources`. Расставьте команды в порядке, в котором они выполнятся без ошибок (по одной таблице, без `CASCADE`).
+options:
+  - "`DROP TABLE import_errors;`"
+  - "`DROP TABLE import_rows;`"
+  - "`DROP TABLE import_batches;`"
+  - "`DROP TABLE import_sources;`"
+answer: [0, 1, 2, 3]
+explanation: |
+  Удалять можно только таблицу, на которую уже никто не ссылается. На `import_errors` не ссылается никто — она первая; после неё свободна `import_rows`, потом `import_batches`, и последней — `import_sources`. Создавали их в обратном порядке. Одной командой `DROP TABLE import_errors, import_rows, import_batches, import_sources` порядок не важен.

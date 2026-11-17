@@ -472,7 +472,8 @@ def check_sql(task):
         return [f"check.type у SQL-задачи — result, state или schema: {check.get('type')!r}"]
     if not (task.get("solution") or "").strip():
         problems.append("нет solution")
-    elif re.search(r"\bnow\(\)|current_date|current_timestamp", task["solution"], re.I):
+    elif check["type"] != "schema" and re.search(r"\bnow\(\)|current_date|current_timestamp", task["solution"], re.I):
+        # у schema данные не сравниваются: DEFAULT now() в CREATE TABLE — обычное определение столбца
         problems.append("в solution now()/current_date — ответ зависит от дня запуска; даты — строкой")
     if "setup" in task and not isinstance(task["setup"], str):
         problems.append("setup — SQL строкой (setup: |)")

@@ -1,0 +1,15 @@
+title: Какие заказы примет база
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: Внешний ключ не запрещает NULL — обязательность связи задаёт NOT NULL.
+statement: |
+  В `orders` объявлено `promo_code_id integer REFERENCES promo_codes (id) ON DELETE SET NULL` (без `NOT NULL`). Промокоды в базе — с `id` от 1 до 5. Какие строки `INSERT INTO orders (user_id, promo_code_id) VALUES …` будут приняты?
+options:
+  - "`(1, 1)`"
+  - "`(1, NULL)`"
+  - "`(1, 99)`"
+  - "`(1, 0)`"
+answer: [0, 1]
+explanation: |
+  `1` — существующий промокод, ссылка верна. NULL — «промокода нет»: внешний ключ проверяет только непустые значения, а `NOT NULL` у столбца нет. `99` и `0` — ссылки на несуществующие строки: `violates foreign key constraint "orders_promo_code_id_fkey"`.

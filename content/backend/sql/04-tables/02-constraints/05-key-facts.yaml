@@ -1,0 +1,16 @@
+title: Про ключи и уникальность
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: PRIMARY KEY — это UNIQUE и NOT NULL вместе, и он в таблице один.
+statement: |
+  Что верно в PostgreSQL?
+options:
+  - "`PRIMARY KEY` запрещает и повтор, и NULL"
+  - В таблице может быть несколько ограничений `PRIMARY KEY`, если они на разных столбцах
+  - Первичный ключ может состоять из нескольких столбцов
+  - В столбце с `UNIQUE` нельзя хранить NULL
+  - "`CHECK` может сравнивать между собой несколько столбцов строки"
+answer: [0, 2, 4]
+explanation: |
+  `PRIMARY KEY` — это `UNIQUE` + `NOT NULL`, он в таблице один, но может быть составным: `PRIMARY KEY (order_id, product_id)`. Уникальных ограничений может быть сколько угодно, и без `NOT NULL` они пропускают NULL. `CHECK` — любое условие над строкой, например `CHECK (balance <= amount)`.

@@ -1,0 +1,19 @@
+title: Слишком длинный размер
+type: quiz
+kind: single
+difficulty: 1
+pitfall: varchar(n) в PostgreSQL не обрезает длинную строку, а отклоняет её.
+statement: |
+  Что произойдёт?
+  ```sql
+  CREATE TABLE sizes (code varchar(3) NOT NULL);
+  INSERT INTO sizes (code) VALUES ('XXXL');
+  ```
+options:
+  - Запишется `XXX` — лишний символ обрежется
+  - Запишется `XXXL` — длина в PostgreSQL не проверяется
+  - Ошибка `value too long for type character varying(3)`, строка не запишется
+  - Запишется NULL
+answer: [2]
+explanation: |
+  Значение длиннее `n` — ошибка, и `INSERT` ничего не записывает. Обрезает строку только явное приведение типа: `'XXXL'::varchar(3)` даёт `XXX`, — да и то молча, что хуже ошибки. Утверждение «длинная строка будет обрезана» встречается в конспектах про другие СУБД; в PostgreSQL это не так.

@@ -1,0 +1,19 @@
+title: Правило для старых строк
+type: quiz
+kind: single
+difficulty: 2
+pitfall: ADD CONSTRAINT проверяет все строки, которые уже есть в таблице.
+statement: |
+  В `products` четыре товара с `stock = 0`. Что сделает запрос?
+  ```sql
+  ALTER TABLE products
+  ADD CONSTRAINT products_stock_positive CHECK (stock > 0);
+  ```
+options:
+  - Добавит ограничение; оно будет проверять только новые и изменённые строки
+  - Добавит ограничение и удалит четыре строки, которые его нарушают
+  - Упадёт с ошибкой, ограничение не появится
+  - Добавит ограничение и заменит нулевые остатки на 1
+answer: [2]
+explanation: |
+  Новое ограничение проверяется на всех строках таблицы, и PostgreSQL отвечает `check constraint "products_stock_positive" of relation "products" is violated by some row`. Данные база сама не исправляет и не удаляет — сначала их приводят в порядок `UPDATE`. Вариант «только для новых строк» существует (`ADD CONSTRAINT … NOT VALID`), но его пишут явно, а старые строки потом проверяют `VALIDATE CONSTRAINT`.

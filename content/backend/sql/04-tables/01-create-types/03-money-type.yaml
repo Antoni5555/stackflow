@@ -1,0 +1,34 @@
+title: История цен
+type: exercise
+difficulty: 1
+pitfall: real и double precision хранят дроби приближённо — деньги в них теряют копейки.
+statement: |
+  Создайте таблицу `price_history` — история изменения цен:
+  - `id` — ключ `integer GENERATED ALWAYS AS IDENTITY`;
+  - `product_id` — целое, обязательное;
+  - `price` — новая цена в рублях с копейками, не больше 99 999 999.99, обязательная;
+  - `changed_at` — момент изменения, обязательный, по умолчанию `now()`.
+
+  В заготовке тип цены выбран неудачно. Исправьте.
+starter_code: |
+  CREATE TABLE price_history (
+      id         integer     GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      product_id integer     NOT NULL,
+      price      real        NOT NULL,
+      changed_at timestamptz NOT NULL DEFAULT now()
+  );
+solution: |
+  CREATE TABLE price_history (
+      id         integer       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      product_id integer       NOT NULL,
+      price      numeric(10,2) NOT NULL,
+      changed_at timestamptz   NOT NULL DEFAULT now()
+  );
+check:
+  type: schema
+  tables: [price_history]
+hints:
+  - "Чему равно `0.1::real + 0.2::real` с точностью до знака? А в `numeric`?"
+  - "До 99 999 999.99 — это 10 цифр всего, 2 после запятой."
+explanation: |
+  `real` — двоичная дробь примерно на 7 значащих цифр. Цена 89990.99 хранится в нём приближённо: три таких ноутбука дают `269972.9765625` вместо `269972.97`, а цена 1234567.89 превращается в `1.2345679e+06` — копейки потеряны. `numeric(10,2)` хранит десятичные цифры точно: 10 всего, 2 после запятой — ровно до 99 999 999.99. Так объявлены `products.price` и `order_items.price` в учебной базе.

@@ -1,0 +1,15 @@
+title: Что осталось от заказов
+type: quiz
+kind: single
+difficulty: 2
+pitfall: DROP … CASCADE удаляет внешние ключи, но не ссылающиеся таблицы и не их данные.
+statement: |
+  На `promo_codes` ссылается `orders.promo_code_id`. Что станет с `orders` после `DROP TABLE promo_codes CASCADE;`?
+options:
+  - Таблица `orders` тоже удалится
+  - Удалятся заказы, у которых был промокод
+  - "`promo_code_id` у всех заказов станет NULL"
+  - Заказы и значения `promo_code_id` останутся, но внешнего ключа больше нет
+answer: [3]
+explanation: |
+  `CASCADE` удаляет зависимые объекты — здесь ограничение `orders_promo_code_id_fkey` (`NOTICE: drop cascades to constraint …`). Таблица `orders`, её строки и значения в `promo_code_id` не трогаются: правила `ON DELETE` срабатывают при удалении строк, а не таблицы. Теперь номера промокодов ни на что не ссылаются, и база примет в `promo_code_id` любое число.

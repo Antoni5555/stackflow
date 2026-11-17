@@ -1,0 +1,34 @@
+title: Избранное удалённого товара
+type: exercise
+difficulty: 2
+pitfall: Без ON DELETE внешний ключ запрещает удаление — каскад нужно написать явно.
+statement: |
+  Создайте таблицу `wishlist`:
+  - `user_id` — обязательная ссылка на `users (id)`;
+  - `product_id` — обязательная ссылка на `products (id)`;
+  - `added_at` — `timestamptz`, обязательное, по умолчанию `now()`;
+  - первичный ключ — пара `(user_id, product_id)`.
+
+  Когда удаляют покупателя или товар, его строки в избранном должны удаляться сами. С заготовкой база не даст удалить ни покупателя, ни товар, пока они есть в чьём-то избранном. Исправьте.
+starter_code: |
+  CREATE TABLE wishlist (
+      user_id    integer     NOT NULL REFERENCES users (id),
+      product_id integer     NOT NULL REFERENCES products (id),
+      added_at   timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, product_id)
+  );
+solution: |
+  CREATE TABLE wishlist (
+      user_id    integer     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      product_id integer     NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+      added_at   timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, product_id)
+  );
+check:
+  type: schema
+  tables: [wishlist]
+hints:
+  - Что делает внешний ключ при удалении, если `ON DELETE` не написан?
+  - Какой вариант `ON DELETE` удаляет ссылающиеся строки?
+explanation: |
+  По умолчанию внешний ключ — `ON DELETE NO ACTION`: пока на покупателя или товар ссылается строка избранного, удалить их нельзя. Избранное — часть данных покупателя, без него оно бессмысленно, поэтому обе ссылки — `ON DELETE CASCADE`. Для заказов так делать нельзя: удаление покупателя унесло бы историю продаж.

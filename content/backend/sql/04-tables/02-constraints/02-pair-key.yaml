@@ -1,0 +1,32 @@
+title: Каждый товар — один раз
+type: exercise
+difficulty: 2
+pitfall: Составной ключ уникален парой; два отдельных UNIQUE запрещают повтор каждого столбца по отдельности.
+statement: |
+  Создайте таблицу `wishlist` без отдельного `id`:
+  - `user_id` и `product_id` — целые, обязательные;
+  - `added_at` — `timestamptz`, обязательное, по умолчанию `now()`;
+  - первичный ключ — пара `(user_id, product_id)`: один покупатель может отложить много товаров, а один товар могут отложить многие покупатели, но пара не повторяется.
+
+  Заготовка создаётся без ошибок, но в ней покупатель сможет отложить только один товар. Исправьте.
+starter_code: |
+  CREATE TABLE wishlist (
+      user_id    integer     NOT NULL UNIQUE,
+      product_id integer     NOT NULL UNIQUE,
+      added_at   timestamptz NOT NULL DEFAULT now()
+  );
+solution: |
+  CREATE TABLE wishlist (
+      user_id    integer     NOT NULL,
+      product_id integer     NOT NULL,
+      added_at   timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, product_id)
+  );
+check:
+  type: schema
+  tables: [wishlist]
+hints:
+  - "Попробуйте в заготовке `INSERT INTO wishlist (user_id, product_id) VALUES (1, 4), (1, 7);` — что ответит база?"
+  - "Ограничение на два столбца пишут отдельной строкой в конце: `PRIMARY KEY (…, …)`."
+explanation: |
+  `user_id … UNIQUE` запрещает повтор `user_id` во всей таблице — у покупателя может быть только одна строка, то есть один отложенный товар. То же с `product_id`. Нужна уникальность **пары**: `PRIMARY KEY (user_id, product_id)` отдельной строкой. Отдельный `id` здесь не нужен: строку однозначно задаёт пара — так же устроена `product_tags` в учебной базе.

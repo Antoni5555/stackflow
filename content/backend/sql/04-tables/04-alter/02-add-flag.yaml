@@ -1,0 +1,30 @@
+title: Отметка о проверке
+type: exercise
+difficulty: 2
+pitfall: ADD COLUMN … NOT NULL без DEFAULT не работает на таблице, где уже есть строки.
+statement: |
+  В таблице `import_products` лежат товары из файла поставщика. Добавьте столбец `is_checked` — проверил ли менеджер товар: `boolean`, обязательный; все уже загруженные товары ещё не проверены.
+
+  Запрос из заготовки падает. Исправьте.
+setup: |
+  CREATE TABLE import_products (
+      id    integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      name  text NOT NULL,
+      price numeric(10,2)
+  );
+  INSERT INTO import_products (name, price)
+  VALUES ('Кеды', 3490.00), ('Кроссовки', 5990.00), ('Сланцы', 790.00);
+starter_code: |
+  ALTER TABLE import_products
+  ADD COLUMN is_checked boolean NOT NULL;
+solution: |
+  ALTER TABLE import_products
+  ADD COLUMN is_checked boolean NOT NULL DEFAULT false;
+check:
+  type: schema
+  tables: [import_products]
+hints:
+  - Какое значение получат в новом столбце три уже загруженных товара?
+  - Значение для старых строк и для новых, если его не указали, — `DEFAULT`.
+explanation: |
+  В таблице три строки, и в новом столбце им нечего записать, кроме NULL, — `NOT NULL` этого не позволяет: `column "is_checked" … contains null values`. `DEFAULT false` даёт значение и существующим строкам, и будущим `INSERT`, где столбец не указан. Значение по умолчанию здесь есть по смыслу — «ещё не проверен», — поэтому трёх шагов не нужно.

@@ -1,0 +1,40 @@
+title: Поставщики и поставки
+type: exercise
+difficulty: 1
+pitfall: Внешний ключ ссылается на существующую таблицу — родительскую таблицу создают первой.
+statement: |
+  Создайте две таблицы:
+  - `suppliers`: `id` — ключ `integer GENERATED ALWAYS AS IDENTITY`, `name` — текст, обязательный;
+  - `supplies`: `id` — такой же ключ, `supplier_id` — обязательная ссылка на `suppliers (id)`, `quantity` — целое, обязательное.
+
+  Скрипт из заготовки падает на первом же запросе. Исправьте.
+starter_code: |
+  CREATE TABLE supplies (
+      id          integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      supplier_id integer NOT NULL REFERENCES suppliers (id),
+      quantity    integer NOT NULL
+  );
+
+  CREATE TABLE suppliers (
+      id   integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      name text    NOT NULL
+  );
+solution: |
+  CREATE TABLE suppliers (
+      id   integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      name text    NOT NULL
+  );
+
+  CREATE TABLE supplies (
+      id          integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      supplier_id integer NOT NULL REFERENCES suppliers (id),
+      quantity    integer NOT NULL
+  );
+check:
+  type: schema
+  tables: [suppliers, supplies]
+hints:
+  - "`relation \"suppliers\" does not exist` — в момент какого запроса?"
+  - Поменяйте запросы местами.
+explanation: |
+  Запросы выполняются по порядку, и когда создаётся `supplies`, таблицы `suppliers` ещё нет — внешнему ключу не на что ссылаться. Сначала создают таблицу, на которую ссылаются, потом ту, что ссылается. При удалении — наоборот.

@@ -1,0 +1,31 @@
+title: Сертификат без номинала
+type: exercise
+difficulty: 2
+pitfall: CHECK отклоняет только FALSE — при NULL условие «неизвестно», и строка проходит.
+statement: |
+  Создайте таблицу `gift_cards`:
+  - `id` — ключ `integer GENERATED ALWAYS AS IDENTITY`;
+  - `code` — текст, обязательный, уникальный;
+  - `amount` — номинал `numeric(10,2)`: обязательный, проверка `amount > 0`.
+
+  В заготовке сертификат можно создать вообще без номинала. Исправьте.
+starter_code: |
+  CREATE TABLE gift_cards (
+      id     integer       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      code   text          NOT NULL UNIQUE,
+      amount numeric(10,2) CHECK (amount > 0)
+  );
+solution: |
+  CREATE TABLE gift_cards (
+      id     integer       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      code   text          NOT NULL UNIQUE,
+      amount numeric(10,2) NOT NULL CHECK (amount > 0)
+  );
+check:
+  type: schema
+  tables: [gift_cards]
+hints:
+  - "Выполните заготовку и `INSERT INTO gift_cards (code) VALUES ('GIFT-X');` — пройдёт ли?"
+  - Чему равно `NULL > 0` и какие строки отклоняет `CHECK`?
+explanation: |
+  `CHECK` отклоняет строку, только если условие FALSE. Для пустого номинала `NULL > 0` — NULL, и сертификат без суммы записывается. Обязательность задаёт только `NOT NULL`; вместе с `CHECK` получается «есть и больше нуля».

@@ -49,6 +49,8 @@
 | 04 | ALTER TABLE | добавить/удалить/переименовать столбец, сменить тип, добавить ограничение | добавить товарам поле `attributes` | ✅ TS «ALTER», DOCX (подробно) |
 | 05 | DROP и порядок удаления | `DROP TABLE`, `IF EXISTS`, `CASCADE` | удалить временную таблицу импорта | ✅ TS |
 
+✅ Написан: `content/backend/sql/04-tables` — 5 уроков, 20 задач (10 `exercise`: 8 `schema`, 2 `state`; 10 `quiz`), 3 рисунка. Таблицы задач — отдельные (`wishlist`, `price_history`, `gift_cards`, `suppliers`/`supplies`, `import_*`), основная схема не меняется. Неточности конспектов исправлены в уроках: `SERIAL` как основной способ задать `id` (TS, DOCX) → `GENERATED ALWAYS AS IDENTITY`; «`VARCHAR(n)` обрезает длинную строку» (DOCX) — в PostgreSQL это ошибка; «`TIMESTAMPTZ` хранит часовой пояс» (TS, DOCX) — хранит момент в UTC, пояс не сохраняется; `ARRAY` в списке типов (TS) — не тип, а запись `integer[]`; `DEFAULT CURRENT_TIMESTAMP` у `TIMESTAMP` (TS) — для событий нужен `timestamptz`.
+
 ## 5. Связи и JOIN ●●○
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|

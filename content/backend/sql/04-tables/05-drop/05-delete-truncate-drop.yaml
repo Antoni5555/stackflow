@@ -1,0 +1,16 @@
+title: DELETE, TRUNCATE или DROP
+type: quiz
+kind: multiple
+difficulty: 1
+pitfall: DELETE и TRUNCATE удаляют строки, DROP — саму таблицу.
+statement: |
+  Что верно?
+options:
+  - После `TRUNCATE products_import` таблица остаётся, но пустая
+  - После `DROP TABLE products_import` запрос `SELECT * FROM products_import` вернёт ноль строк
+  - "`DELETE` без `WHERE` и `TRUNCATE` оставляют структуру таблицы"
+  - "`DROP TABLE IF EXISTS t` не падает, если таблицы `t` нет"
+  - "`DROP TABLE` можно ограничить условием `WHERE`"
+answer: [0, 2, 3]
+explanation: |
+  `DELETE` и `TRUNCATE` удаляют строки — таблица с её столбцами и ограничениями остаётся. `DROP TABLE` удаляет саму таблицу: запрос к ней падает с `relation "products_import" does not exist`, а не возвращает ноль строк. `IF EXISTS` превращает ошибку об отсутствующей таблице в замечание. Условия у `DROP` (как и у `TRUNCATE`) нет — удалить часть строк можно только `DELETE … WHERE`.

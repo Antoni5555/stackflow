@@ -1,0 +1,33 @@
+title: Ключ для отложенных товаров
+type: exercise
+difficulty: 1
+pitfall: SERIAL — не IDENTITY; он разрешает ручной id и поэтому в новых таблицах не используется.
+statement: |
+  Создайте таблицу `wishlist` для отложенных товаров:
+  - `id` — ключ, номера выдаёт база, вписать свой нельзя;
+  - `user_id` и `product_id` — целые числа, обязательные;
+  - `added_at` — время добавления, обязательное, по умолчанию `now()`.
+
+  Заготовку написали по старому конспекту — проверка её не принимает. Исправьте.
+starter_code: |
+  CREATE TABLE wishlist (
+      id         SERIAL PRIMARY KEY,
+      user_id    integer     NOT NULL,
+      product_id integer     NOT NULL,
+      added_at   timestamptz NOT NULL DEFAULT now()
+  );
+solution: |
+  CREATE TABLE wishlist (
+      id         integer     GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id    integer     NOT NULL,
+      product_id integer     NOT NULL,
+      added_at   timestamptz NOT NULL DEFAULT now()
+  );
+check:
+  type: schema
+  tables: [wishlist]
+hints:
+  - "Что значит «вписать свой нельзя»? Какая запись `id` это гарантирует?"
+  - "`integer GENERATED ALWAYS AS IDENTITY`."
+explanation: |
+  `SERIAL` — это `integer` с `DEFAULT nextval('wishlist_id_seq')`: номер можно передать вручную, и счётчик об этом не узнает — однажды он выдаст уже занятый `id`. `GENERATED ALWAYS AS IDENTITY` выдаёт номера сам и отклоняет ручной `id`. Так устроены все ключи учебной базы.
