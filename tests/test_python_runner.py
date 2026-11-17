@@ -107,13 +107,18 @@ def test_timeout_message():
 
 
 def content_tasks():
-    """Все задачи exercise и predict из content/ (кроме служебных файлов)."""
+    """Задачи Python из content/: exercise с тестами и predict (кроме служебных файлов).
+
+    exercise других движков (HTML — check.type: dom) проверяются своими тестами.
+    """
     tasks = []
     for path in sorted(Path(settings.CONTENT_DIR).rglob('*.yaml')):
         if path.name.startswith('_'):
             continue
         task = yaml.safe_load(path.read_text(encoding='utf-8'))
-        if task.get('type') in ('exercise', 'predict'):
+        is_python_exercise = (task.get('type') == 'exercise'
+                              and task.get('check', {}).get('type') == 'tests')
+        if is_python_exercise or task.get('type') == 'predict':
             name = str(path.relative_to(settings.CONTENT_DIR))
             tasks.append(pytest.param(task, id=name))
     return tasks
