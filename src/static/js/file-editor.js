@@ -2,6 +2,7 @@
 // Текст каждого файла хранится в памяти и черновиком в localStorage (draftPrefix + имя).
 // Используют задачи fix и html и тренажёр HTML.
 
+import { revealTab } from './active-tab.js';
 import { CodeEditor } from './editor.js';
 import { highlighterFor } from './highlight.js';
 import { drafts } from './trainer-ui.js';
@@ -44,6 +45,7 @@ export class FileEditor {
       const active = tab.dataset.file === name;
       tab.classList.toggle('tab--active', active);
       tab.setAttribute('aria-selected', active);
+      if (active) revealTab(tab);
     }
   }
 

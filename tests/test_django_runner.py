@@ -333,14 +333,34 @@ def test_bundle_has_code_and_only_needed_translations(tmp_path, monkeypatch):
     call_command('build_django_bundle', stdout=open('/dev/null', 'w'))
 
     names = set(zipfile.ZipFile(target).namelist())
-    packages = {'django/__init__.py', 'asgiref/__init__.py', 'sqlparse/__init__.py'}
+    # модули — байт-кодом без исходников: Pyodide не компилирует их при каждом старте
+    packages = {'django/__init__.pyc', 'asgiref/__init__.pyc', 'sqlparse/__init__.pyc'}
     assert packages <= names
+    assert not any(name.endswith('.py') for name in names)
     assert 'django/conf/locale/ru/LC_MESSAGES/django.mo' in names
-    assert 'django/conf/locale/de/formats.py' in names       # форматы нужны всем языкам
+    assert 'django/conf/locale/de/formats.pyc' in names      # форматы нужны всем языкам
     assert not any(name.endswith('.mo') and '/locale/de/' in name for name in names)
     assert not any('/static/' in name or 'contrib/gis' in name for name in names)
     assert not any('__pycache__' in name for name in names)
-    assert target.stat().st_size < 2_500_000
+    assert target.stat().st_size < 3_500_000
+
+    # Django из архива (только .pyc) собирает и запускает проект, как в браузере
+    zipfile.ZipFile(target).extractall(tmp_path / 'site')
+    script = (
+        'import json, sys\n'
+        f'sys.path[:0] = [{str(tmp_path / "site")!r}, {str(RUNNER_DIR)!r}]\n'
+        'import django, runner\n'
+        'result = runner.run(**json.load(sys.stdin))\n'
+        'print(json.dumps([django.__file__, result["requests"][0]["status"]]))\n'
+    )
+    done = subprocess.run(
+        [sys.executable, '-c', script],
+        input=json.dumps(
+            {'files': FILES, 'setup': SETUP, 'requests': [{'path': '/products/'}]}),
+        capture_output=True, text=True, check=True, timeout=60,
+    )
+    module, status = json.loads(done.stdout)
+    assert module.endswith('django/__init__.pyc') and status == 200
 
 
 @pytest.mark.parametrize('path, skipped', [

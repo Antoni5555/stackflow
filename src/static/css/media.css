@@ -29,6 +29,16 @@
 }
 
 @media (max-width: 720px) {
+  /* Таблицы из Markdown (урок, условие, разбор): на телефоне текст в ячейках
+     переносится по пробелам — иначе таблица шириной в три экрана (слова и код
+     не рвём). Таблицы тренажёров (результат запроса, строки базы) не трогаем */
+  .article .data-table th,
+  .article .data-table td,
+  .task__text .data-table th,
+  .task__text .data-table td {
+    padding: 8px 12px;
+    white-space: normal;
+  }
   /* Git: три области — одна под другой */
   .git-areas { grid-template-columns: minmax(0, 1fr); }
 

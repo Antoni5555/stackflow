@@ -216,8 +216,11 @@
   gap: var(--space-1);
   padding: var(--space-2);
   overflow-x: auto;
+  scrollbar-width: none;   /* на телефоне полоса прокрутки под вкладками — лишний шум */
   border-bottom: 1px solid var(--border);
 }
+
+.tabs::-webkit-scrollbar { display: none; }
 
 .tab {
   padding: 6px 14px;

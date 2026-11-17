@@ -3,7 +3,8 @@
 
 {% block title %}Тренажёр — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/trainers.css' %}">{% endblock %}
-{% block scripts %}<script type="module" src="{% if engine == 'html' %}{% static 'js/pages/playground-html.js' %}{% elif engine == 'sql' %}{% static 'js/pages/playground-sql.js' %}{% elif engine == 'django' %}{% static 'js/pages/playground-django.js' %}{% elif engine == 'linux' %}{% static 'js/pages/playground-linux.js' %}{% elif engine == 'git' %}{% static 'js/pages/playground-git.js' %}{% else %}{% static 'js/pages/playground.js' %}{% endif %}"></script>{% endblock %}
+{% block scripts %}<script type="module" src="{% if engine == 'html' %}{% static 'js/pages/playground-html.js' %}{% elif engine == 'sql' %}{% static 'js/pages/playground-sql.js' %}{% elif engine == 'django' %}{% static 'js/pages/playground-django.js' %}{% elif engine == 'linux' %}{% static 'js/pages/playground-linux.js' %}{% elif engine == 'git' %}{% static 'js/pages/playground-git.js' %}{% else %}{% static 'js/pages/playground.js' %}{% endif %}"></script>
+<script type="module">import { revealActiveTabs } from '{% static "js/active-tab.js" %}'; revealActiveTabs();</script>{% endblock %}
 
 {% block content %}
 <div class="container">

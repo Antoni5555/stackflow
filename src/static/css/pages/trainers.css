@@ -342,7 +342,7 @@
 .schema-strip > summary::-webkit-details-marker { display: none; }
 .schema-strip > summary::before { content: '▸'; font-size: var(--fs-xs); color: var(--muted); }
 .schema-strip[open] > summary::before { content: '▾'; }
-.schema-strip__title { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.schema-strip__title { flex-shrink: 0; font-size: var(--fs-sm); font-weight: var(--fw-bold); white-space: nowrap; }
 
 .schema-strip .explorer {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
