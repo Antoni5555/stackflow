@@ -4,7 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
-  <meta name="description" content="{% block description %}Практика для разработчиков: короткая теория, задачи и тренажёры Python, SQL, Django и Linux прямо в браузере.{% endblock %}">
+  {# Описание и заголовок превью — из view (meta_description, meta_title, core/seo.py), иначе общие #}
+  {% firstof meta_description 'Практика для разработчиков: короткая теория, задачи и тренажёры Python, SQL, Django и Linux прямо в браузере. Бесплатно.' as description %}
+  <meta name="description" content="{{ description }}">
+  {# Основной адрес страницы — без ?engine= и других параметров: для поиска это одна страница #}
+  <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+  {% block robots %}{% endblock %}
   <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
   <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="32x32">
   <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
@@ -14,9 +19,9 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ SITE_NAME }}">
   <meta property="og:locale" content="ru_RU">
-  <meta property="og:title" content="{{ SITE_NAME }} — практика для разработчиков">
-  <meta property="og:description" content="Короткая теория, задачи и тренажёры Python, SQL, Django и Linux прямо в браузере. Бесплатно.">
-  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta property="og:title" content="{% if meta_title %}{{ meta_title }}{% else %}{{ SITE_NAME }} — практика для разработчиков{% endif %}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
   <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'img/og.png' %}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">

@@ -1,4 +1,7 @@
 from django.conf import settings
+from django.http import HttpResponse
+from django.urls import reverse
+from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 
 from apps.courses.services.selectors import home_summary, start_card
@@ -28,7 +31,27 @@ class AboutView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['first_card'] = start_card()   # кнопка «Начать с …» в CTA
+        context['meta_description'] = (
+            f'Зачем сделан {settings.SITE_NAME}, как устроен сайт — код выполняется '
+            'прямо в браузере — и кто его автор.'
+        )
         return context
+
+
+# Закрыто от поиска: служебное (админка, API), личное (аккаунт, шпаргалки — заметки
+# ученика) и кусочки страниц (задачник тренажёра подгружается фрагментами HTML)
+ROBOTS_DISALLOW = (
+    '/admin/', '/api/', '/accounts/', '/cheatsheets/', '/playground/practice/', '/dev/',
+)
+
+
+@require_GET
+def robots_txt(request):
+    """robots.txt: что не индексировать и где карта сайта."""
+    lines = ['User-agent: *', *(f'Disallow: {path}' for path in ROBOTS_DISALLOW), '']
+    lines.append(f'Sitemap: {request.build_absolute_uri(reverse("sitemap"))}')
+    text = '\n'.join(lines) + '\n'
+    return HttpResponse(text, content_type='text/plain; charset=utf-8')
 
 
 class LegalView(TemplateView):

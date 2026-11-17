@@ -1,5 +1,6 @@
 {% extends 'base/base.html' %}
 {% load static plural dates %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% block title %}Шпаргалка: {{ course.title }} — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/cheatsheets.css' %}">{% endblock %}

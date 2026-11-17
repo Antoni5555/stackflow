@@ -12,6 +12,7 @@ from apps.courses.services import selectors
 from apps.cheatsheets.services.notes import note_panel
 from apps.progress.services import progress
 from apps.courses.services.rendering import highlight, highlight_file
+from core.seo import summary
 
 
 class EngineMixin:
@@ -58,6 +59,10 @@ class ExerciseView(EngineMixin, TemplateView):
         context['note'] = note_panel(
             self.request.user, context['course'], context['topic'],
             context['exercise_key'],
+        )
+        context.update(
+            meta_title=f'{exercise.title} — {context["course"].title}',
+            meta_description=summary(exercise.statement_html, prefix='Задача. '),
         )
         spec = exercise.spec
         # Код на странице — с подсветкой, как в уроке
@@ -325,7 +330,14 @@ class PlaygroundView(EngineMixin, TemplateView):
     """Тренажёр-песочница без задач. ?engine= python, html, sql, django, linux, git."""
 
     template_name = 'trainers/playground.html'
-    extra_context = {'active_nav': 'playground'}
+    extra_context = {
+        'active_nav': 'playground',
+        'meta_description': (
+            'Песочница для Python, SQL, Django, HTML и CSS, терминала Linux и Git: '
+            'пишите код и сразу смотрите результат. Всё работает в браузере, '
+            'без установки.'
+        ),
+    }
     engines = ('python', 'html', 'sql', 'django', 'linux', 'git')
 
     def get_context_data(self, **kwargs):

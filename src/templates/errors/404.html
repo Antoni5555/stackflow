@@ -1,5 +1,6 @@
 {% extends 'base/base.html' %}
 {% load static %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
 
 {% block title %}Страница не найдена — {{ SITE_NAME }}{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'css/pages/errors.css' %}">{% endblock %}

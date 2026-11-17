@@ -4,6 +4,7 @@ from django.views.generic import TemplateView
 
 from apps.cheatsheets.services.notes import note_panel
 from apps.progress.services import progress
+from core.seo import summary
 
 from .services import selectors
 
@@ -12,7 +13,13 @@ class CourseListView(TemplateView):
     """Каталог курсов направления: /courses/?track=backend."""
 
     template_name = 'courses/course_list.html'
-    extra_context = {'active_nav': 'courses'}
+    extra_context = {
+        'active_nav': 'courses',
+        'meta_description': (
+            'Программа по шагам: от Python и SQL до Django, Docker и деплоя. '
+            'Короткая теория и задачи с проверкой прямо в браузере.'
+        ),
+    }
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -39,6 +46,8 @@ class CourseDetailView(TemplateView):
         if self.request.user.is_authenticated and context['progress']['solved']:
             items = selectors.course_items(sections)
             context['continue_item'] = progress.next_item(items)
+        course = context['course']
+        context.update(meta_title=course.title, meta_description=course.description)
         return context
 
 
@@ -59,5 +68,10 @@ class LessonView(TemplateView):
         context['note'] = note_panel(
             self.request.user, context['course'], context['topic'],
             progress.lesson_key(context['topic']),
+        )
+        lesson = context['lesson']
+        context.update(
+            meta_title=f'{lesson.title} — {context["course"].title}',
+            meta_description=summary(lesson.body_html),
         )
         return context
