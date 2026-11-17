@@ -1,5 +1,5 @@
 ---
-title: NULL
+title: "NULL"
 type: lesson
 level: 1
 reading_time: 8
