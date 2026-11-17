@@ -1,0 +1,24 @@
+title: Дороже среднего
+type: exercise
+difficulty: 2
+pitfall: Агрегат в WHERE нельзя — вычисленное значение для сравнения даёт скалярный подзапрос.
+statement: |
+  Выведите `id`, `name` и `price` товаров, которые стоят меньше средней цены каталога, по возрастанию `id`. Запрос из заготовки падает. Исправьте его.
+starter_code: |
+  SELECT id, name, price
+  FROM products
+  WHERE price < avg(price)
+  ORDER BY id;
+solution: |
+  SELECT id, name, price
+  FROM products
+  WHERE price < (SELECT avg(price) FROM products)
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "`WHERE` проверяет каждую строку отдельно. Откуда ему знать среднее по всем строкам?"
+  - Среднюю цену можно посчитать отдельным запросом в скобках.
+explanation: |
+  В `WHERE` агрегат недоступен: `aggregate functions are not allowed in WHERE`. Среднюю цену считает скалярный подзапрос `(SELECT avg(price) FROM products)` — одно число, с которым сравнивается каждая строка. Подзапрос не зависит от внешней строки, и PostgreSQL выполняет его один раз.

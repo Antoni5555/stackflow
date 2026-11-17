@@ -1,0 +1,19 @@
+title: Сколько строк
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Оконная функция не сворачивает строки — в отличие от GROUP BY.
+statement: |
+  В `products` 22 строки в 7 категориях. Сколько строк вернёт запрос?
+  ```sql
+  SELECT name, avg(price) OVER (PARTITION BY category_id) AS category_avg
+  FROM products;
+  ```
+options:
+  - "7"
+  - "22"
+  - "1"
+  - Ошибку — `name` нет в `GROUP BY`
+answer: [1]
+explanation: |
+  `avg(…) OVER (…)` — оконная функция: она считает среднее по категории, но оставляет каждую строку, поэтому строк 22, а у товаров одной категории одинаковый `category_avg`. `GROUP BY` здесь нет, и ошибки про `name` тоже нет. С `GROUP BY category_id` было бы 7 строк — и без названий.

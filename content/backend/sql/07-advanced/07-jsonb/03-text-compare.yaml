@@ -1,0 +1,24 @@
+title: Память от 16 ГБ
+type: exercise
+difficulty: 2
+pitfall: Значение из ->> — текст, и числа в нём сравниваются по алфавиту.
+statement: |
+  Выведите `id`, `name` и объём памяти `ram_gb` (число) товаров, у которых в `attributes` ключ `ram_gb` не меньше 16, по возрастанию `id`. Заготовка возвращает и ноутбук с 8 ГБ. Исправьте её.
+starter_code: |
+  SELECT id, name, attributes ->> 'ram_gb' AS ram_gb
+  FROM products
+  WHERE attributes ->> 'ram_gb' >= '16'
+  ORDER BY id;
+solution: |
+  SELECT id, name, (attributes ->> 'ram_gb')::int AS ram_gb
+  FROM products
+  WHERE (attributes ->> 'ram_gb')::int >= 16
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "Что больше по алфавиту — `'8'` или `'16'`?"
+  - Приведите значение к целому числу и в `WHERE`, и в выводе.
+explanation: |
+  `->>` возвращает текст, а текст сравнивается посимвольно: `'8'` больше `'1'`, значит, `'8' >= '16'` — TRUE. После `::int` сравниваются числа, и 8 < 16. Приведение и в выводе: колонка `ram_gb` должна быть числом (выравнивается вправо), а не текстом.

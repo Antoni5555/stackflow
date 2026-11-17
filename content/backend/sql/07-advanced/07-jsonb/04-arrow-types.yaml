@@ -1,0 +1,16 @@
+title: Что вернёт стрелка
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: -> возвращает jsonb, ->> — text; отсутствующий ключ — NULL без ошибки.
+statement: |
+  У товара `attributes = '{"color": "black", "ram_gb": 16}'`. Что верно?
+options:
+  - "`attributes -> 'color'` возвращает `\"black\"` типа `jsonb`"
+  - "`attributes ->> 'color'` возвращает `black` типа `text`"
+  - "`attributes ->> 'ram_gb'` возвращает число `16`"
+  - "`attributes ->> 'size'` — ошибка: ключа нет"
+  - "`attributes @> '{\"color\": \"black\"}'` — TRUE"
+answer: [0, 1, 4]
+explanation: |
+  `->` даёт `jsonb` — строка в JSON-кавычках, `->>` — `text`. Даже число через `->>` приходит текстом `'16'`; для сравнения его приводят `::int`. Отсутствующий ключ — NULL, ошибки нет (поэтому опечатки в ключах незаметны). `@>` проверяет, что документ содержит указанные пары.

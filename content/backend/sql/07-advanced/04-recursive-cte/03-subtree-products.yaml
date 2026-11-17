@@ -1,0 +1,27 @@
+title: Товары раздела
+type: exercise
+difficulty: 3
+pitfall: Товар лежит в конкретной подкатегории, поэтому «товары раздела» ищут по всему поддереву.
+statement: |
+  Страница раздела «Одежда» (`id` 6) должна показывать число товаров вместе со всеми подкатегориями. Выведите это число в колонке `total`. Заготовка считает только товары, лежащие прямо в «Одежде». Исправьте её.
+starter_code: |
+  SELECT count(*) AS total
+  FROM products
+  WHERE category_id = 6;
+solution: |
+  WITH RECURSIVE tree AS (
+      SELECT id FROM categories WHERE id = 6
+      UNION ALL
+      SELECT c.id FROM categories c JOIN tree t ON c.parent_id = t.id
+  )
+  SELECT count(*) AS total
+  FROM products
+  WHERE category_id IN (SELECT id FROM tree);
+check:
+  type: result
+  order_matters: true
+hints:
+  - В какой категории лежат футболки?
+  - Сначала соберите `id` всех категорий поддерева, потом посчитайте товары с `category_id` из этого списка.
+explanation: |
+  Прямо в «Одежде» лежат только носки, а футболки — в подкатегории «Футболки», обувь — в «Обуви». Рекурсивный CTE собирает `id` всего поддерева (6, 7, 8), и товары считаются по `category_id IN (…)` — пять товаров.

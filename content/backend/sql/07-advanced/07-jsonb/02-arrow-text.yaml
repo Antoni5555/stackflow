@@ -1,0 +1,24 @@
+title: Белые товары
+type: exercise
+difficulty: 2
+pitfall: Оператор -> возвращает jsonb, и строку для сравнения PostgreSQL пытается прочитать как JSON.
+statement: |
+  Выведите `id` и `name` товаров белого цвета (`color` в `attributes` — `white`), по возрастанию `id`. Запрос из заготовки падает. Исправьте его.
+starter_code: |
+  SELECT id, name
+  FROM products
+  WHERE attributes -> 'color' = 'white'
+  ORDER BY id;
+solution: |
+  SELECT id, name
+  FROM products
+  WHERE attributes ->> 'color' = 'white'
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Какого типа результат `->`? С чем его сравнивают?
+  - Для сравнения с текстом значение нужно достать как текст.
+explanation: |
+  `attributes -> 'color'` — значение типа `jsonb` (`"white"` в кавычках). Чтобы сравнить его с `'white'`, PostgreSQL пробует прочитать `white` как JSON и падает: `invalid input syntax for type json`. `->>` возвращает текст `white`, и сравнение работает. Другой вариант — `attributes @> '{"color": "white"}'`.

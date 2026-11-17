@@ -1,0 +1,32 @@
+title: Никто не купил
+type: exercise
+difficulty: 2
+pitfall: Без связи с внешней строкой коррелированный подзапрос перестаёт зависеть от неё — и запрос отвечает на другой вопрос.
+statement: |
+  Выведите `id` и `name` товаров, которые ни разу не заказывали, по возрастанию `id`. Запрос из заготовки работает без ошибок, но возвращает пустой результат. Исправьте его.
+starter_code: |
+  SELECT p.id, p.name
+  FROM products p
+  WHERE NOT EXISTS (
+      SELECT 1
+      FROM order_items oi
+      WHERE oi.product_id = oi.product_id
+  )
+  ORDER BY p.id;
+solution: |
+  SELECT p.id, p.name
+  FROM products p
+  WHERE NOT EXISTS (
+      SELECT 1
+      FROM order_items oi
+      WHERE oi.product_id = p.id
+  )
+  ORDER BY p.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Где в подзапросе упоминается товар `p` из внешнего запроса?
+  - "`oi.product_id = oi.product_id` верно для любой позиции."
+explanation: |
+  Условие `oi.product_id = oi.product_id` сравнивает столбец сам с собой и верно для каждой позиции. Подзапрос перестал зависеть от товара: он находит строки всегда, и `NOT EXISTS` для любого товара — FALSE. Связь с внешней строкой — `oi.product_id = p.id`: «есть ли позиции с **этим** товаром».

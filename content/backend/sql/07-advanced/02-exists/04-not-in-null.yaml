@@ -1,0 +1,24 @@
+title: NOT IN или NOT EXISTS
+type: quiz
+kind: single
+difficulty: 3
+pitfall: NOT IN со списком, где есть NULL, не пропускает ни одной строки; NOT EXISTS к NULL не чувствителен.
+statement: |
+  У большинства заказов `promo_code_id` — NULL. Промокоды 2 и 3 ни разу не применялись. Что вернут два запроса?
+  ```sql
+  -- A
+  SELECT id FROM promo_codes
+  WHERE id NOT IN (SELECT promo_code_id FROM orders);
+
+  -- B
+  SELECT id FROM promo_codes p
+  WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.promo_code_id = p.id);
+  ```
+options:
+  - A и B — промокоды 2 и 3
+  - A — пусто, B — промокоды 2 и 3
+  - A — промокоды 2 и 3, B — пусто
+  - Оба — ошибку из-за NULL
+answer: [1]
+explanation: |
+  `NOT IN (…, NULL, …)` разворачивается в цепочку `id <> … AND id <> NULL`, последнее сравнение — «неизвестно», и ни одна строка не проходит. `NOT EXISTS` проверяет наличие строк с `o.promo_code_id = p.id`; заказы с NULL под это условие просто не подходят, и промокоды 2 и 3 находятся.

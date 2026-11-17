@@ -1,0 +1,28 @@
+title: Предыдущий заказ покупателя
+type: exercise
+difficulty: 3
+pitfall: Без PARTITION BY lag берёт предыдущую строку всего результата — чужого покупателя.
+statement: |
+  Для заказов покупателей 1 и 8 выведите `user_id`, `id` заказа и номер предыдущего заказа **того же** покупателя в колонке `prev_order_id` (у первого заказа — пусто). Порядок — по `user_id`, затем по `id`.
+
+  Заготовка выполняется, но предыдущий заказ у некоторых строк чужой. Исправьте её.
+starter_code: |
+  SELECT user_id, id,
+         lag(id) OVER (ORDER BY id) AS prev_order_id
+  FROM orders
+  WHERE user_id IN (1, 8)
+  ORDER BY user_id, id;
+solution: |
+  SELECT user_id, id,
+         lag(id) OVER (PARTITION BY user_id ORDER BY id) AS prev_order_id
+  FROM orders
+  WHERE user_id IN (1, 8)
+  ORDER BY user_id, id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Какой заказ стоит перед заказом 4 Захара, если сортировать все строки по `id`?
+  - Окно для каждого покупателя своё — `PARTITION BY`.
+explanation: |
+  Без `PARTITION BY` окно — все отобранные строки, отсортированные по `id`: перед заказом 4 Захара стоит заказ 1 Анны. `PARTITION BY user_id` делит строки на окна покупателей, и `lag` смотрит только внутрь своего окна: у первого заказа каждого покупателя предыдущего нет — NULL.

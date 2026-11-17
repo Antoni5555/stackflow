@@ -1,0 +1,42 @@
+title: Товары и выручка категорий
+type: exercise
+difficulty: 3
+pitfall: Две ветки «многих» в одном JOIN перемножают строки; свёрнутые по отдельности в CTE — нет.
+statement: |
+  Для каждой категории, в которой есть товары, выведите название `category`, число товаров `products` и выручку по всем позициям заказов `revenue` (`quantity * price`; если товары категории не покупали — `0`). Порядок — по названию категории.
+
+  В заготовке число товаров завышено. Исправьте её: посчитайте товары и выручку в двух CTE и соедините с `categories`.
+starter_code: |
+  SELECT c.name AS category,
+         count(p.id) AS products,
+         COALESCE(sum(oi.quantity * oi.price), 0) AS revenue
+  FROM categories c
+  JOIN products p ON p.category_id = c.id
+  LEFT JOIN order_items oi ON oi.product_id = p.id
+  GROUP BY c.id, c.name
+  ORDER BY c.name;
+solution: |
+  WITH product_counts AS (
+      SELECT category_id, count(*) AS products
+      FROM products
+      GROUP BY category_id
+  ),
+  revenues AS (
+      SELECT p.category_id, sum(oi.quantity * oi.price) AS revenue
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      GROUP BY p.category_id
+  )
+  SELECT c.name AS category, pc.products, COALESCE(r.revenue, 0) AS revenue
+  FROM categories c
+  JOIN product_counts pc ON pc.category_id = c.id
+  LEFT JOIN revenues r ON r.category_id = c.id
+  ORDER BY c.name;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько строк даёт мышь, которую заказывали 6 раз, после `LEFT JOIN order_items`?
+  - "Сначала свернуть: товары по категориям — одно CTE, выручка по категориям — другое."
+explanation: |
+  После соединения с позициями товар повторяется по числу своих позиций, и `count(p.id)` считает позиции: у аксессуаров 21 вместо 6. Выручка при этом верная — каждая позиция встречается один раз. Если свернуть товары и выручку в отдельных CTE, на каждую категорию приходится по одной строке с каждой стороны, и соединять уже нечего перемножать. (Здесь помог бы и `count(DISTINCT p.id)`, но с двумя суммами — например, остатком и выручкой — без отдельных шагов не обойтись.)

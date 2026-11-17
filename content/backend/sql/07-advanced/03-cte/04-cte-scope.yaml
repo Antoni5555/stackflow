@@ -1,0 +1,23 @@
+title: Где видно CTE
+type: quiz
+kind: single
+difficulty: 2
+pitfall: CTE — часть одного запроса, после точки с запятой его нет.
+statement: |
+  Что произойдёт?
+  ```sql
+  WITH paid AS (
+      SELECT id FROM orders WHERE status = 'paid'
+  )
+  SELECT count(*) AS total FROM paid;
+
+  SELECT id FROM paid ORDER BY id;
+  ```
+options:
+  - Оба запроса выполнятся
+  - Первый выполнится, второй упадёт — `paid` уже не существует
+  - Упадут оба — CTE нужно сначала создать командой `CREATE`
+  - Второй запрос вернёт результат первого
+answer: [1]
+explanation: |
+  CTE определено только для своего запроса — до точки с запятой. Во втором запросе таблицы `paid` нет: `relation "paid" does not exist`. Чтобы переиспользовать запрос, нужно представление (`CREATE VIEW`) или повторить `WITH`.

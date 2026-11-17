@@ -1,0 +1,32 @@
+title: Всё внутри Электроники
+type: exercise
+difficulty: 2
+pitfall: Условие на parent_id находит только детей; внуков и глубже находит рекурсия.
+statement: |
+  Выведите `id` и `name` категории «Электроника» (`id` 1) и всех категорий внутри неё на любой глубине, по возрастанию `id`. Заготовка теряет «Ноутбуки» и «Аксессуары». Исправьте её с помощью `WITH RECURSIVE`.
+starter_code: |
+  SELECT id, name
+  FROM categories
+  WHERE id = 1 OR parent_id = 1
+  ORDER BY id;
+solution: |
+  WITH RECURSIVE tree AS (
+      SELECT id, name
+      FROM categories
+      WHERE id = 1
+      UNION ALL
+      SELECT c.id, c.name
+      FROM categories c
+      JOIN tree t ON c.parent_id = t.id
+  )
+  SELECT id, name
+  FROM tree
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Чей ребёнок «Ноутбуки» — «Электроники» или «Компьютеров»?
+  - "Стартовая часть — сама «Электроника», рекурсивная — дети найденных на прошлом шаге: `JOIN tree t ON c.parent_id = t.id`."
+explanation: |
+  `parent_id = 1` находит только прямых детей — «Компьютеры» и «Смартфоны». «Ноутбуки» и «Аксессуары» — дети «Компьютеров», внуки «Электроники». Рекурсивный CTE повторяет шаг «найти детей найденного», пока они есть, — так находится поддерево любой глубины.

@@ -1,0 +1,29 @@
+title: Два самых дорогих
+type: exercise
+difficulty: 3
+pitfall: Оконные функции вычисляются на шаге SELECT, поэтому фильтровать по ним можно только во внешнем запросе.
+statement: |
+  Для каждой категории выведите два самых дорогих товара: `category_id`, `name`, `price`. При равной цене выше тот, у кого меньше `id`. Порядок вывода — по `category_id`, затем по убыванию цены, затем по `name`. Запрос из заготовки падает. Исправьте его.
+starter_code: |
+  SELECT category_id, name, price
+  FROM products
+  WHERE row_number() OVER (PARTITION BY category_id ORDER BY price DESC, id) <= 2
+  ORDER BY category_id, price DESC, name;
+solution: |
+  WITH ranked AS (
+      SELECT category_id, name, price,
+             row_number() OVER (PARTITION BY category_id ORDER BY price DESC, id) AS n
+      FROM products
+  )
+  SELECT category_id, name, price
+  FROM ranked
+  WHERE n <= 2
+  ORDER BY category_id, price DESC, name;
+check:
+  type: result
+  order_matters: true
+hints:
+  - На каком шаге выполнения запроса вычисляются оконные функции?
+  - Посчитайте номер в CTE, а `WHERE n <= 2` напишите во внешнем запросе.
+explanation: |
+  `WHERE` выполняется до `SELECT`, а оконные функции — на шаге `SELECT`: `window functions are not allowed in WHERE`. Шаблон «топ-N в каждой группе»: номер считается в CTE, отбор — снаружи. Здесь нужны ровно два товара на категорию, поэтому `row_number`, а `id` в `ORDER BY` окна делает выбор между равными ценами однозначным.

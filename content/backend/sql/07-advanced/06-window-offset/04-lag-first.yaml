@@ -1,0 +1,20 @@
+title: Первая строка окна
+type: quiz
+kind: single
+difficulty: 2
+pitfall: У первой строки окна предыдущей нет — lag возвращает NULL, и вычисления с ним дают NULL.
+statement: |
+  Что будет в колонке `diff` у первого месяца?
+  ```sql
+  SELECT month, revenue,
+         revenue - lag(revenue) OVER (ORDER BY month) AS diff
+  FROM monthly;
+  ```
+options:
+  - "`0`"
+  - "Выручка первого месяца"
+  - NULL
+  - Ошибка — у первой строки нет предыдущей
+answer: [2]
+explanation: |
+  У первой строки окна предыдущей нет, и `lag` возвращает NULL; `revenue - NULL` — тоже NULL. Если нужен 0, пишут `lag(revenue, 1, 0)` (третий аргумент — значение по умолчанию) или `COALESCE`. Но «прирост к несуществующему месяцу» честнее оставить пустым.

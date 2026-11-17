@@ -1,0 +1,32 @@
+title: Устаревший отчёт
+type: exercise
+difficulty: 2
+pitfall: Материализованное представление хранит результат на момент создания — после изменения данных его обновляют REFRESH.
+statement: |
+  Аналитик читает остатки по категориям из материализованного представления `stock_report` (`category_id`, `total_stock`). После его создания на склад пришла поставка — остатки в `products` изменились (это уже сделано в базе задачи). Выведите **актуальный** отчёт из `stock_report`: все столбцы, по возрастанию `category_id`.
+
+  Заготовка показывает старые остатки. Исправьте её.
+setup: |
+  CREATE MATERIALIZED VIEW stock_report AS
+  SELECT category_id, sum(stock) AS total_stock
+  FROM products
+  GROUP BY category_id;
+  UPDATE products SET stock = stock + 20 WHERE category_id = 3;
+starter_code: |
+  SELECT category_id, total_stock
+  FROM stock_report
+  ORDER BY category_id;
+solution: |
+  REFRESH MATERIALIZED VIEW stock_report;
+
+  SELECT category_id, total_stock
+  FROM stock_report
+  ORDER BY category_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Хранит ли материализованное представление запрос или его результат?
+  - Какая команда пересчитывает материализованное представление?
+explanation: |
+  Материализованное представление сохранило результат в момент создания: у ноутбуков (категория 3) было 7 штук. Поставка изменила `products`, но не снимок. `REFRESH MATERIALIZED VIEW stock_report` выполняет запрос заново, и у ноутбуков становится 67. Обычное представление (`CREATE VIEW`) обновления не требует — оно каждый раз выполняет запрос.

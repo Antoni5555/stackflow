@@ -1,0 +1,40 @@
+title: Выше среднего покупателя
+type: exercise
+difficulty: 3
+pitfall: Среднее нужно взять на том же уровне, что и сравниваемое значение — по покупателям, а не по позициям.
+statement: |
+  Выведите покупателей, чья сумма покупок по неотменённым заказам больше средней суммы покупок среди покупателей: `user_id` и сумму `total`, по возрастанию `user_id`.
+
+  Заготовка сравнивает сумму покупателя со средней суммой **позиции** — под условие попадают лишние покупатели. Исправьте её, используя `user_totals` дважды.
+starter_code: |
+  WITH user_totals AS (
+      SELECT o.user_id, sum(oi.quantity * oi.price) AS total
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.status <> 'cancelled'
+      GROUP BY o.user_id
+  )
+  SELECT user_id, total
+  FROM user_totals
+  WHERE total > (SELECT avg(quantity * price) FROM order_items)
+  ORDER BY user_id;
+solution: |
+  WITH user_totals AS (
+      SELECT o.user_id, sum(oi.quantity * oi.price) AS total
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.status <> 'cancelled'
+      GROUP BY o.user_id
+  )
+  SELECT user_id, total
+  FROM user_totals
+  WHERE total > (SELECT avg(total) FROM user_totals)
+  ORDER BY user_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Среднее чего считает подзапрос в заготовке?
+  - "Средняя сумма покупателя — `avg(total)` по `user_totals`."
+explanation: |
+  Подзапрос заготовки — средняя стоимость одной позиции заказа, около 16 тысяч, а любой постоянный покупатель тратит больше: в ответ попадают шесть человек вместо четырёх. Сравнивать нужно с величиной того же уровня: средним `total` по покупателям — `(SELECT avg(total) FROM user_totals)`. CTE для этого и удобно: шаг «суммы покупателей» описан один раз и используется дважды.

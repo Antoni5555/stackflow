@@ -1,0 +1,35 @@
+title: Новый столбец отчёта
+type: exercise
+difficulty: 3
+pitfall: CREATE OR REPLACE VIEW разрешает только добавлять столбцы в конец — существующие нельзя переименовать или сдвинуть.
+statement: |
+  В базе задачи есть представление `order_totals` (`order_id`, `total` — сумма позиций заказа). Аналитик просит добавить в него число позиций `items`. Измените представление и выведите из него все столбцы для заказов 1 и 2 по возрастанию `order_id`.
+
+  Заготовка падает на `CREATE OR REPLACE VIEW`. Исправьте её, не удаляя представление.
+setup: |
+  CREATE VIEW order_totals AS
+  SELECT order_id, sum(quantity * price) AS total
+  FROM order_items
+  GROUP BY order_id;
+starter_code: |
+  CREATE OR REPLACE VIEW order_totals AS
+  SELECT order_id, count(*) AS items, sum(quantity * price) AS total
+  FROM order_items
+  GROUP BY order_id;
+
+  SELECT * FROM order_totals WHERE order_id IN (1, 2) ORDER BY order_id;
+solution: |
+  CREATE OR REPLACE VIEW order_totals AS
+  SELECT order_id, sum(quantity * price) AS total, count(*) AS items
+  FROM order_items
+  GROUP BY order_id;
+
+  SELECT * FROM order_totals WHERE order_id IN (1, 2) ORDER BY order_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "На каком месте `total` было в старом представлении и на каком оказалось в новом?"
+  - "`OR REPLACE` разрешает дописать новый столбец только после всех старых."
+explanation: |
+  `CREATE OR REPLACE VIEW` сравнивает новый список столбцов со старым по позициям: второй столбец был `total`, а стал `items` — `cannot change name of view column "total" to "items"`. Новые столбцы можно только дописать в конец: `order_id, total, items`. Поменять порядок или удалить столбец можно, лишь удалив представление (`DROP VIEW`) и создав его заново — и все, кто читал его через `SELECT *`, увидят столбцы в новом порядке.

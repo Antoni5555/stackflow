@@ -1,0 +1,15 @@
+title: Заказов на покупателя
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Агрегат от агрегата считают через подзапрос в FROM — вложить avg(count(*)) нельзя.
+statement: |
+  Нужно среднее число заказов на одного покупателя (среди тех, у кого заказы есть). Какой запрос это посчитает?
+options:
+  - "`SELECT avg(count(*)) FROM orders GROUP BY user_id;`"
+  - "`SELECT avg(total) FROM (SELECT user_id, count(*) AS total FROM orders GROUP BY user_id) AS t;`"
+  - "`SELECT count(*) / count(user_id) FROM orders;`"
+  - "`SELECT avg(user_id) FROM orders;`"
+answer: [1]
+explanation: |
+  Сначала подзапрос в `FROM` считает число заказов каждого покупателя, потом внешний запрос берёт среднее от этих чисел — 3.78. `avg(count(*))` — ошибка `aggregate function calls cannot be nested`. `count(*) / count(user_id)` — 34 / 34 = 1 (оба считают строки заказов), а `avg(user_id)` — среднее номеров покупателей, бессмыслица.

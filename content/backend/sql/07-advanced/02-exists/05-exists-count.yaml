@@ -1,0 +1,22 @@
+title: EXISTS и count
+type: quiz
+kind: single
+difficulty: 3
+pitfall: Агрегат без GROUP BY всегда возвращает одну строку — EXISTS с ним всегда TRUE.
+statement: |
+  Что вернёт запрос?
+  ```sql
+  SELECT u.id
+  FROM users u
+  WHERE EXISTS (
+      SELECT count(*) FROM orders o WHERE o.user_id = u.id
+  );
+  ```
+options:
+  - Только покупателей, у которых есть заказы
+  - Всех 13 покупателей
+  - Только покупателей без заказов
+  - Ошибку — в `EXISTS` нельзя использовать агрегат
+answer: [1]
+explanation: |
+  `count(*)` без `GROUP BY` возвращает ровно одну строку всегда — с числом 0 у покупателей без заказов. `EXISTS` видит строку и даёт TRUE для всех. `EXISTS` смотрит только на наличие строк, а не на их значения: внутри пишут `SELECT 1` и условие на строки.

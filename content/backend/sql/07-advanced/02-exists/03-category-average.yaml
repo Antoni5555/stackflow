@@ -1,0 +1,31 @@
+title: Дороже своей категории
+type: exercise
+difficulty: 3
+pitfall: Чтобы сравнить со средним своей группы, подзапрос должен быть связан с внешней строкой.
+statement: |
+  Выведите `id`, `name`, `price` и `category_id` товаров, которые дороже средней цены **своей** категории, по возрастанию `id`. Заготовка сравнивает со средней ценой всего каталога. Исправьте её.
+starter_code: |
+  SELECT p.id, p.name, p.price, p.category_id
+  FROM products p
+  WHERE p.price > (
+      SELECT avg(p2.price)
+      FROM products p2
+  )
+  ORDER BY p.id;
+solution: |
+  SELECT p.id, p.name, p.price, p.category_id
+  FROM products p
+  WHERE p.price > (
+      SELECT avg(p2.price)
+      FROM products p2
+      WHERE p2.category_id = p.category_id
+  )
+  ORDER BY p.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - По каким товарам `p2` считается среднее в заготовке?
+  - "Ограничьте `p2` категорией внешнего товара `p`."
+explanation: |
+  Без условия подзапрос считает среднюю по всем 22 товарам — 16 113.55, и под условие попадают только ноутбуки и смартфоны. `WHERE p2.category_id = p.category_id` делает подзапрос коррелированным: для каждого товара среднее считается по его категории. Поэтому в ответе и клавиатура за 5490 — она дорогая среди аксессуаров.

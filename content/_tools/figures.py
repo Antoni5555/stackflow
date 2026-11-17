@@ -1512,6 +1512,130 @@ def query_order():
     f.save(out(SQ6 / "05-query-order" / "img" / "query-order.svg"))
 
 
+# ---------- SQL 7: продвинутые запросы ----------
+SQ7 = ROOT / "sql" / "07-advanced"
+
+
+def subquery_kinds():
+    f = Figure(880, 250, "Подзапрос возвращает значение, список или таблицу — и стоит там, где это ожидается")
+    rows = [("скалярный", "(SELECT avg(price) FROM products)", "16113.55", "WHERE price > …"),
+            ("список", "(SELECT user_id FROM orders …)", "1, 3, 12", "WHERE id IN …"),
+            ("таблица", "(SELECT user_id, count(*) … ) AS t", "строки и столбцы", "FROM … AS t")]
+    for k, (kind, q, res, where) in enumerate(rows):
+        y = 20 + k * 72
+        f.box(20, y, 120, 52, kind, "acc", "onacc", rx=8)
+        f.box(156, y, 330, 52, q, "box", "cs", rx=8)
+        f.arrow(f"M486 {y + 26}H516")
+        f.box(520, y, 150, 52, res, "box2", "c", rx=8)
+        f.text(690, y + 31, where, "cs")
+    f.text(20, 240, "Скалярный: ноль строк — NULL, больше одной — ошибка. Список: повторы не размножают строки внешнего запроса.", "s")
+    f.save(out(SQ7 / "01-subqueries" / "img" / "subquery-kinds.svg"))
+
+
+def correlated():
+    f = Figure(880, 230, "Коррелированный подзапрос берёт category_id из текущей строки внешнего запроса")
+    f.text(20, 22, "products p (внешний запрос)", "h")
+    _cells(f, 20, 30, [("name", 230), ("price", 100), ("category_id", 110)],
+           [("Механическая клавиатура", "5490.00", "4"), ("Коврик для мыши", "490.00", "4"), ("Книга «Python с нуля»", "1890.00", "9")],
+           {0: "m1", 1: "m1", 2: "m2"})
+    f.box(520, 40, 340, 44, "avg по category_id = 4 → 2259.67", "m1", "cs", rx=8)
+    f.box(520, 100, 340, 44, "avg по category_id = 9 → 1790.00", "m2", "cs", rx=8)
+    f.arrow("M460 75H516"); f.arrow("M460 135L516 122")
+    f.text(20, 190, "WHERE p2.category_id = p.category_id — связь с внешней строкой.", "s")
+    f.text(20, 210, "Без неё подзапрос один для всех строк: средняя по всему каталогу.", "s")
+    f.save(out(SQ7 / "02-exists" / "img" / "correlated.svg"))
+
+
+def cte_steps():
+    f = Figure(880, 200, "CTE — именованный шаг: его результат основной запрос использует как таблицу, даже дважды")
+    f.box(20, 40, 300, 90, "WITH user_totals AS (|сумма покупок|каждого покупателя)", "acc", "onacc", rx=10)
+    f.box(380, 20, 480, 60, "SELECT user_id, total FROM user_totals", "box", "cs", rx=10)
+    f.box(380, 100, 480, 60, "WHERE total > (SELECT avg(total) FROM user_totals)", "box", "cs", rx=10)
+    f.arrow("M320 70L376 50"); f.arrow("M320 100L376 130")
+    f.text(20, 186, "Шаги читаются сверху вниз; CTE живёт до конца запроса (до точки с запятой).", "s")
+    f.save(out(SQ7 / "03-cte" / "img" / "cte-steps.svg"))
+
+
+def recursive_steps():
+    f = Figure(880, 240, "Рекурсивный CTE: каждый шаг находит детей строк, найденных на прошлом шаге")
+    steps = [("старт", ["Электроника"]), ("шаг 1", ["Компьютеры", "Смартфоны"]),
+             ("шаг 2", ["Ноутбуки", "Аксессуары"]), ("шаг 3", ["— пусто, стоп"])]
+    for k, (title, items) in enumerate(steps):
+        x = 20 + k * 215
+        f.text(x, 24, title, "h")
+        for j, it in enumerate(items):
+            last = it.startswith("—")
+            f.box(x, 34 + j * 50, 190, 40, it, "box2" if last else ("acc" if k == 0 else "box"),
+                  "t" if last else ("onacc" if k == 0 else "c"), rx=8)
+        if k:
+            f.arrow(f"M{x - 25} 54H{x - 4}")
+    f.text(20, 190, "Стартовая часть — до UNION ALL; рекурсивная — после, с JOIN tree t ON c.parent_id = t.id.", "s")
+    f.text(20, 210, "Результат — строки всех шагов: 5 категорий поддерева.", "s")
+    f.save(out(SQ7 / "04-recursive-cte" / "img" / "recursive-steps.svg"))
+
+
+def ranking():
+    f = Figure(880, 250, "row_number, rank и dense_rank по-разному нумеруют одинаковые значения")
+    _cells(f, 20, 20, [("price", 110), ("row_number", 130), ("rank", 100), ("dense_rank", 130)],
+           [("5490.00", "1", "1", "1"), ("3990.00", "2", "2", "2"), ("1890.00", "3", "3", "3"),
+            ("1890.00", "4", "3", "3"), ("1590.00", "5", "5", "4")], {2: "m1", 3: "m1", 4: "m2"})
+    f.text(520, 60, "row_number — у каждой строки свой номер;", "s")
+    f.text(520, 80, "порядок равных — произвольный", "s")
+    f.text(520, 120, "rank — равные делят место,", "s")
+    f.text(520, 140, "следующее пропускается (нет 4)", "s")
+    f.text(520, 180, "dense_rank — равные делят место,", "s")
+    f.text(520, 200, "без пропусков", "s")
+    f.save(out(SQ7 / "05-window-ranking" / "img" / "ranking.svg"))
+
+
+def lag_running():
+    f = Figure(880, 250, "lag берёт значение из предыдущей строки окна, sum с ORDER BY копит итог от начала окна")
+    _cells(f, 20, 20, [("month", 120), ("revenue", 120), ("lag", 120), ("running", 120)],
+           [("2025-11", "113520", "NULL", "113520"), ("2025-12", "41770", "113520", "155290"),
+            ("2026-01", "126798", "41770", "282088"), ("2026-02", "81009", "126798", "363097")],
+           {0: "m1", 1: "m1"})
+    f.text(20, 190, "Выручка ноября (113520) в строке декабря стала lag — значением прошлой строки.", "s")
+    f.text(520, 50, "lag(revenue) OVER (ORDER BY month):", "cs")
+    f.text(520, 70, "значение прошлой строки; у первой — NULL", "s")
+    f.text(520, 110, "sum(revenue) OVER (ORDER BY month):", "cs")
+    f.text(520, 130, "сумма от первой строки до текущей", "s")
+    f.text(520, 170, "PARTITION BY — своё окно на группу:", "s")
+    f.text(520, 190, "соседи только внутри неё", "s")
+    f.save(out(SQ7 / "06-window-offset" / "img" / "lag-running.svg"))
+
+
+def jsonb_operators():
+    f = Figure(880, 200, "-> возвращает значение как jsonb, ->> — как текст")
+    f.box(20, 60, 300, 50, '{"color": "black", "size": "L"}', "box2", "cs", rx=8)
+    f.arrow("M320 75L420 45"); f.arrow("M320 95L420 125")
+    f.box(424, 20, 200, 44, "-> 'color'", "box", "cs", rx=8)
+    f.box(424, 104, 200, 44, "->> 'color'", "box", "cs", rx=8)
+    f.arrow("M624 42H660"); f.arrow("M624 126H660")
+    f.box(664, 20, 196, 44, '"black"  (jsonb)', "box2", "cs", rx=8)
+    f.box(664, 104, 196, 44, "black  (text)", "acc", "onacc", rx=8)
+    f.text(20, 186, "Сравнение со строкой и приведение к числу — через ->>. Нет ключа — NULL без ошибки.", "s")
+    f.save(out(SQ7 / "07-jsonb" / "img" / "jsonb-operators.svg"))
+
+
+def view_kinds():
+    f = Figure(880, 230, "VIEW выполняет свой запрос при каждом чтении, MATERIALIZED VIEW читает сохранённый результат")
+    f.text(20, 24, "VIEW", "h")
+    f.box(20, 34, 180, 50, "SELECT … FROM view", "box", "cs", rx=8)
+    f.arrow("M200 59H246")
+    f.box(250, 34, 200, 50, "текст запроса", "box2", "c", rx=8)
+    f.arrow("M450 59H496")
+    f.box(500, 34, 200, 50, "таблицы — сейчас", "acc", "onacc", rx=8)
+    f.text(20, 134, "MATERIALIZED VIEW", "h")
+    f.box(20, 144, 180, 50, "SELECT … FROM mv", "box", "cs", rx=8)
+    f.arrow("M200 169H246")
+    f.box(250, 144, 200, 50, "сохранённый результат", "box2", "c", rx=8)
+    f.box(500, 144, 200, 50, "таблицы", "box", "c", rx=8)
+    f.arrow("M500 169H454", "lnd")
+    f.text(720, 165, "REFRESH", "cs")
+    f.text(720, 183, "пересчитывает", "s")
+    f.save(out(SQ7 / "08-views" / "img" / "view-kinds.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1531,6 +1655,8 @@ if __name__ == "__main__":
                   insert_defaults, fk_actions, upsert_flow,
                   type_choice, wishlist_fk, drop_order,
                   relation_types, inner_join, left_join, join_chain, self_join, set_operations,
-                  count_null, group_by, where_having, join_count, query_order):
+                  count_null, group_by, where_having, join_count, query_order,
+                  subquery_kinds, correlated, cte_steps, recursive_steps, ranking, lag_running,
+                  jsonb_operators, view_kinds):
         build()
     print("ok")

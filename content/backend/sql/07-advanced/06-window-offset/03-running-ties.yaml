@@ -1,0 +1,40 @@
+title: Нарастающий итог по дням
+type: exercise
+difficulty: 3
+pitfall: Рамка окна по умолчанию (RANGE) объединяет строки с равным значением сортировки.
+statement: |
+  Для каждого заказа апреля 2026 выведите `id` и нарастающую выручку апреля по порядку оформления заказов в колонке `running` — сумму всех позиций (`quantity * price`) этого и всех более ранних заказов апреля. Порядок — по `id`. Отменённых заказов в апреле нет.
+
+  У заказов 33 и 34 (оба 15 апреля) в заготовке одинаковый итог. Исправьте её: итог должен расти от заказа к заказу.
+starter_code: |
+  WITH april AS (
+      SELECT o.id, o.created_at, sum(oi.quantity * oi.price) AS total
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.created_at >= '2026-04-01' AND o.created_at < '2026-05-01'
+      GROUP BY o.id
+  )
+  SELECT id,
+         sum(total) OVER (ORDER BY created_at::date) AS running
+  FROM april
+  ORDER BY id;
+solution: |
+  WITH april AS (
+      SELECT o.id, o.created_at, sum(oi.quantity * oi.price) AS total
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.created_at >= '2026-04-01' AND o.created_at < '2026-05-01'
+      GROUP BY o.id
+  )
+  SELECT id,
+         sum(total) OVER (ORDER BY created_at, id) AS running
+  FROM april
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Что значит «до текущей строки», если у двух строк одна и та же дата сортировки?
+  - "Сортируйте окно по уникальному порядку (`created_at, id`) или задайте рамку `ROWS`."
+explanation: |
+  С `ORDER BY` окно по умолчанию берёт рамку `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`: в неё входят все строки с тем же значением сортировки. Заказы 33 и 34 сделаны в один день, поэтому оба получили сумму с учётом друг друга. Однозначная сортировка (`created_at, id`) или рамка `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` считает строго по строкам.

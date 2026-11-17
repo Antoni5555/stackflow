@@ -1,0 +1,15 @@
+title: Места при равных ценах
+type: quiz
+kind: single
+difficulty: 2
+pitfall: rank пропускает места после равных значений, dense_rank — нет.
+statement: |
+  Цены по убыванию: 1890, 1890, 1590, 1499. Какие значения даст `rank() OVER (ORDER BY price DESC)` и `dense_rank() OVER (ORDER BY price DESC)`?
+options:
+  - "rank: 1, 1, 3, 4; dense_rank: 1, 1, 2, 3"
+  - "rank: 1, 1, 2, 3; dense_rank: 1, 1, 3, 4"
+  - "rank: 1, 2, 3, 4; dense_rank: 1, 1, 2, 3"
+  - "rank: 1, 1, 2, 3; dense_rank: 1, 1, 2, 3"
+answer: [0]
+explanation: |
+  Обе функции дают равным ценам одно место. `rank` после двух первых мест пропускает второе: следующая цена — третья (как в спорте: два золота, бронза). `dense_rank` не пропускает: 1, 1, 2, 3. `row_number` дал бы 1, 2, 3, 4.

@@ -1,0 +1,36 @@
+title: Самые дешёвые в категории
+type: exercise
+difficulty: 3
+pitfall: row_number выбирает одну строку из равных; если нужны все равные — rank.
+statement: |
+  Для каждой категории выведите самые дешёвые товары: `category_id`, `name` и `price`. Если минимальная цена у нескольких товаров, вывести нужно все. Порядок — по `category_id`, затем по `name`.
+
+  В заготовке у «Футболок» только одна футболка, хотя две стоят одинаково. Исправьте её.
+starter_code: |
+  WITH ranked AS (
+      SELECT category_id, name, price,
+             row_number() OVER (PARTITION BY category_id ORDER BY price) AS place
+      FROM products
+  )
+  SELECT category_id, name, price
+  FROM ranked
+  WHERE place = 1
+  ORDER BY category_id, name;
+solution: |
+  WITH ranked AS (
+      SELECT category_id, name, price,
+             rank() OVER (PARTITION BY category_id ORDER BY price) AS place
+      FROM products
+  )
+  SELECT category_id, name, price
+  FROM ranked
+  WHERE place = 1
+  ORDER BY category_id, name;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Какой номер получат две футболки по 1290 у `row_number`?
+  - Какая функция даёт равным значениям одно место?
+explanation: |
+  `row_number` всегда даёт разные номера: из двух футболок по 1290 одна станет первой, другая — второй, и какая именно — не определено. `rank` даёт равным ценам одно место, и обе футболки проходят условие `place = 1`. `dense_rank` здесь сработал бы так же — разница между ними видна только на следующих местах.

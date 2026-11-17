@@ -1,0 +1,15 @@
+title: Два шага
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Несколько CTE перечисляют через запятую после одного WITH.
+statement: |
+  Какая запись двух CTE правильная?
+options:
+  - "`WITH a AS (SELECT 1 AS x) WITH b AS (SELECT 2 AS y) SELECT * FROM a, b;`"
+  - "`WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT * FROM a, b;`"
+  - "`WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y), SELECT * FROM a, b;`"
+  - "`WITH (a AS SELECT 1 AS x, b AS SELECT 2 AS y) SELECT * FROM a, b;`"
+answer: [1]
+explanation: |
+  `WITH` пишется один раз, CTE — через запятую, после последнего запятой нет. Второй `WITH` даёт `syntax error at or near "WITH"`, запятая перед основным `SELECT` — тоже синтаксическая ошибка. Запрос каждого CTE — в своих скобках.

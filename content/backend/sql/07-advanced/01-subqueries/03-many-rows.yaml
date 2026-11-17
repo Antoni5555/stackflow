@@ -1,0 +1,24 @@
+title: Заказы из Казани
+type: exercise
+difficulty: 1
+pitfall: Знак = ждёт от подзапроса одно значение; список сравнивают через IN.
+statement: |
+  Выведите `id` и `user_id` заказов покупателей из Казани, по возрастанию `id`. Запрос из заготовки падает. Исправьте его.
+starter_code: |
+  SELECT id, user_id
+  FROM orders
+  WHERE user_id = (SELECT id FROM users WHERE city = 'Казань')
+  ORDER BY id;
+solution: |
+  SELECT id, user_id
+  FROM orders
+  WHERE user_id IN (SELECT id FROM users WHERE city = 'Казань')
+  ORDER BY id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько покупателей из Казани?
+  - Чем `IN` отличается от `=`?
+explanation: |
+  В Казани два покупателя, подзапрос возвращает две строки, а `=` сравнивает с одним значением: `more than one row returned by a subquery used as an expression`. `IN` проверяет вхождение в список. Заказы есть только у Глеба (4) — у Лидии их нет, но это не ошибка: `IN` просто не находит для неё строк.
