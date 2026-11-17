@@ -1,5 +1,6 @@
 {% comment %} Вёрстка: файлы на вкладках + живой предпросмотр в изолированном iframe.
    Задача (check=True): «Проверить» и «Сбросить»; тренажёр — только «Сбросить».
+   Предпросмотр — страница, открытая в редакторе (её имя — когда страниц несколько).
    Параметры: file_names — порядок файлов, check. JS — pages/html-exercise.js или
    pages/playground-html.js (движок — js/engines/html/). {% endcomment %}
 <div class="workspace">
@@ -20,7 +21,7 @@
 </div>
 <div class="workspace preview">
   <div class="tabs">
-    <span class="tab tab--static">Предпросмотр</span>
+    <span class="tab tab--static">Предпросмотр <span class="muted" data-preview-page></span></span>
     <span class="seg" role="group" aria-label="Ширина предпросмотра">
       <button type="button" class="seg__item seg__item--active" data-width="">ПК</button>
       <button type="button" class="seg__item" data-width="375">Телефон</button>

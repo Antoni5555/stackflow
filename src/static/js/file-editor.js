@@ -11,9 +11,12 @@ export class FileEditor {
   /**
    * @param {Element} root — где искать вкладки [data-file] и .editor
    * @param {object} options — { initial: {имя: текст}, names: порядок файлов,
-   *   draftPrefix, onChange(files), onRun }
+   *   draftPrefix, onChange(files), onRun, onOpen(имя) — открыта другая вкладка }
    */
-  constructor(root, { initial, names, draftPrefix, onChange = () => {}, onRun = () => {} }) {
+  constructor(root, {
+    initial, names, draftPrefix, onChange = () => {}, onRun = () => {}, onOpen = () => {},
+  }) {
+    this.onOpen = onOpen;
     this.initial = initial;
     this.names = names;
     this.draftKey = (name) => `${draftPrefix}${name}`;
@@ -47,6 +50,7 @@ export class FileEditor {
       tab.setAttribute('aria-selected', active);
       if (active) revealTab(tab);
     }
+    this.onOpen(name);
   }
 
   /** Вернуть исходные файлы и удалить черновики. */

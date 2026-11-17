@@ -1,4 +1,4 @@
-// Предпросмотр вёрстки: index.html в изолированном iframe.
+// Предпросмотр вёрстки: страница (по умолчанию index.html) в изолированном iframe.
 // sandbox="allow-same-origin" без allow-scripts: скрипты страницы ученика не выполняются,
 // формы не отправляются, а сайт может читать DOM и вычисленные стили (для проверки).
 // <link href="style.css"> (и любой другой .css из файлов) заменяется на <style> с текстом
@@ -6,9 +6,11 @@
 
 const LINK = /<link\b[^>]*\bhref\s*=\s*["']?([^"'\s>]+)["']?[^>]*>/gi;
 
+export const MAIN_PAGE = 'index.html';
+
 /** Текст страницы для iframe: подключённые CSS-файлы — встроенными <style>. */
-export function buildDocument(files) {
-  const html = files['index.html'] ?? '';
+export function buildDocument(files, page = MAIN_PAGE) {
+  const html = files[page] ?? '';
   return html.replace(LINK, (tag, href) => {
     const css = files[href.replace(/^\.\//, '')];
     if (css === undefined || !/\brel\s*=\s*["']?stylesheet/i.test(tag)) return tag;
@@ -22,14 +24,14 @@ export class HtmlPreview {
     this.iframe = iframe;
   }
 
-  /** Показать файлы; промис — когда страница загрузилась и её можно проверять. */
-  render(files) {
+  /** Показать страницу page из файлов; промис — когда она загрузилась и её можно проверять. */
+  render(files, page = MAIN_PAGE) {
     return new Promise((resolve) => {
       this.iframe.addEventListener('load', () => {
         this.blockLinks();
         resolve(this.iframe.contentDocument);
       }, { once: true });
-      this.iframe.srcdoc = buildDocument(files);
+      this.iframe.srcdoc = buildDocument(files, page);
     });
   }
 
