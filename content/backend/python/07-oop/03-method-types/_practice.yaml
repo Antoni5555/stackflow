@@ -61,11 +61,14 @@
             return 1 <= qty <= 99
 
 
-    print(Cart.is_valid_qty(3), Cart.is_valid_qty(0), Cart.is_valid_qty(150))
+    for qty in (3, 0, 150):
+        print(qty, Cart.is_valid_qty(qty))
     ```
     Результат:
     ```
-    True False False
+    3 True
+    0 False
+    150 False
     ```
     Статическому методу не нужны ни `self`, ни `cls` — это обычная функция, положенная в класс по смыслу.
 - title: Какой метод выбрать
@@ -94,10 +97,15 @@
             return round(price, -1)
 
 
-    print(Product("Чайник", 2490).price_with_vat(), Product.free().name, Product.round_price(2487))
+    kettle = Product("Чайник", 2490)
+    print(kettle.price_with_vat())
+    print(Product.free().name)
+    print(Product.round_price(2487))
     ```
     Результат:
     ```
-    2988 Образец 2490
+    2988
+    Образец
+    2490
     ```
     Нужны данные объекта — обычный метод; создаём объект — `classmethod`; ни то ни другое — `staticmethod`.

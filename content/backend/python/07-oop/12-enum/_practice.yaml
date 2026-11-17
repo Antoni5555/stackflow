@@ -98,10 +98,12 @@
                 return None
 
 
-    print(next_status(OrderStatus.NEW), next_status(OrderStatus.SHIPPED))
+    print(next_status(OrderStatus.NEW))
+    print(next_status(OrderStatus.SHIPPED))
     ```
     Результат:
     ```
-    OrderStatus.PAID None
+    OrderStatus.PAID
+    None
     ```
     В `case` пишем `OrderStatus.NEW` с точкой — так `match` сравнивает со значением, а не создаёт переменную.

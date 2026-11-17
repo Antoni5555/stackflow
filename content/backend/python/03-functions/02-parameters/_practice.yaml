@@ -37,26 +37,27 @@
   text: |
     ```python
     products = [
-        {"name": "Чайник", "category": "кухня", "in_stock": True},
-        {"name": "Кружка", "category": "кухня", "in_stock": False},
-        {"name": "Лейка", "category": "сад", "in_stock": True},
+        {"name": "Чайник", "category": "кухня", "stock": True},
+        {"name": "Кружка", "category": "кухня", "stock": False},
+        {"name": "Лейка", "category": "сад", "stock": True},
     ]
     ```
     Напишите `filter_products(products, **filters)`: возвращает названия товаров, у которых все поля из `filters` совпадают.
   hint: |
-    `filters` — обычный словарь. Для товара проверьте `all(p[key] == value for key, value in filters.items())`.
+    `filters` — обычный словарь. Для товара проверьте `all(p[k] == v for k, v in filters.items())`.
   answer: |
     Ответ:
     ```python
     def filter_products(products, **filters):
         return [
             p["name"] for p in products
-            if all(p[key] == value for key, value in filters.items())
+            if all(p[k] == v for k, v in filters.items())
         ]
 
 
     print(filter_products(products, category="кухня"))
-    print(filter_products(products, category="кухня", in_stock=True))
+    print(filter_products(products, category="кухня",
+                          stock=True))
     ```
     Результат:
     ```

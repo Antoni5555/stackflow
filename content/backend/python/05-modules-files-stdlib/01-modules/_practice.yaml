@@ -58,7 +58,7 @@
     ```python
     import string
 
-    print([name for name in dir(string) if name.startswith("ascii")])
+    print([n for n in dir(string) if n.startswith("ascii")])
     print(string.digits)
     ```
     Результат:

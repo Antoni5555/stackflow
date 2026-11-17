@@ -76,7 +76,8 @@
     def opened_order(number):
         order = {"number": number, "items": []}
         yield order
-        print(f"Заказ {number} закрыт, позиций: {len(order['items'])}")
+        count = len(order["items"])
+        print(f"Заказ {number} закрыт, позиций: {count}")
 
 
     with opened_order(1042) as order:

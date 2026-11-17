@@ -69,7 +69,7 @@
     Ответ:
     ```python
     week_ago = today - timedelta(days=6)
-    print([number for number, day in orders if week_ago <= day <= today])
+    print([n for n, day in orders if week_ago <= day <= today])
     ```
     Результат:
     ```
@@ -85,7 +85,8 @@
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    created = datetime(2026, 11, 17, 21, 30, tzinfo=ZoneInfo("UTC"))
+    utc = ZoneInfo("UTC")
+    created = datetime(2026, 11, 17, 21, 30, tzinfo=utc)
     moscow = created.astimezone(ZoneInfo("Europe/Moscow"))
     print(moscow)
     print(moscow.date())

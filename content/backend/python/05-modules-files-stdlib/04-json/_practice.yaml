@@ -2,7 +2,7 @@
   text: |
     API получил тело запроса:
     ```python
-    body = '{"product_id": 17, "quantity": 2, "gift": true, "comment": null}'
+    body = '{"id": 17, "qty": 2, "gift": true, "note": null}'
     ```
     Разберите его и напечатайте получившийся словарь и количество, умноженное на 2.
   answer: |
@@ -12,11 +12,11 @@
 
     data = json.loads(body)
     print(data)
-    print(data["quantity"] * 2)
+    print(data["qty"] * 2)
     ```
     Результат:
     ```
-    {'product_id': 17, 'quantity': 2, 'gift': True, 'comment': None}
+    {'id': 17, 'qty': 2, 'gift': True, 'note': None}
     4
     ```
     `true` → `True`, `null` → `None`, числа сразу становятся `int`.
@@ -41,7 +41,11 @@
     from datetime import date
     from decimal import Decimal
 
-    order = {"id": 1042, "total": Decimal("3270.50"), "created": date(2026, 11, 17)}
+    order = {
+        "id": 1042,
+        "total": Decimal("3270.50"),
+        "created": date(2026, 11, 17),
+    }
     ```
     `json.dumps(order)` падает с `TypeError`. Сериализуйте заказ, превращая такие значения в строки.
   answer: |
@@ -72,11 +76,13 @@
             return None
 
 
-    print(parse_body('{"quantity": 2}'), parse_body("quantity=2"))
+    print(parse_body('{"quantity": 2}'))
+    print(parse_body("quantity=2"))
     ```
     Результат:
     ```
-    {'quantity': 2} None
+    {'quantity': 2}
+    None
     ```
 - title: Сохранить корзину в файл
   text: |

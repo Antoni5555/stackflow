@@ -1,12 +1,12 @@
 - title: Проверка количества
   text: |
-    Напишите `validate_quantity(quantity)`: при количестве меньше 1 выбрасывает `ValueError("Количество должно быть больше нуля")`, иначе возвращает его. Вызовите с 0, поймайте ошибку и напечатайте её текст.
+    Напишите `validate_quantity(quantity)`: при количестве меньше 1 выбрасывает `ValueError("Количество должно быть > 0")`, иначе возвращает его. Вызовите с 0, поймайте ошибку и напечатайте её текст.
   answer: |
     Ответ:
     ```python
     def validate_quantity(quantity):
         if quantity < 1:
-            raise ValueError("Количество должно быть больше нуля")
+            raise ValueError("Количество должно быть > 0")
         return quantity
 
 
@@ -17,7 +17,7 @@
     ```
     Результат:
     ```
-    Количество должно быть больше нуля
+    Количество должно быть > 0
     ```
 - title: Проверка заказа перед оплатой
   text: |
@@ -64,7 +64,8 @@
         try:
             return int(raw)
         except ValueError as error:
-            raise ValueError(f"Неверное количество: {raw!r}") from error
+            message = f"Неверное количество: {raw!r}"
+            raise ValueError(message) from error
 
 
     try:

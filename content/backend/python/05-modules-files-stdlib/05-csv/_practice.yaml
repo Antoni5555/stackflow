@@ -2,8 +2,15 @@
   text: |
     Создайте выгрузку заказов:
     ```python
-    with open("orders.csv", "w", encoding="utf-8", newline="") as f:
-        f.write("id,status,total\n1040,paid,2490\n1041,new,390\n1042,paid,1250\n")
+    from pathlib import Path
+
+    Path("orders.csv").write_text(
+        "id,status,total\n"
+        "1040,paid,2490\n"
+        "1041,new,390\n"
+        "1042,paid,1250\n",
+        encoding="utf-8",
+    )
     ```
     Прочитайте её через `csv.DictReader` и напечатайте сумму оплаченных заказов.
   answer: |
@@ -37,8 +44,10 @@
     ```python
     import csv
 
-    with open("report.csv", "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["name", "price", "stock"])
+    fields = ["name", "price", "stock"]
+    with open("report.csv", "w", newline="",
+              encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         writer.writerows(products)
 
@@ -59,7 +68,8 @@
     ```python
     import csv
 
-    with open("items.csv", "w", encoding="utf-8", newline="") as f:
+    with open("items.csv", "w", newline="",
+              encoding="utf-8") as f:
         csv.writer(f).writerow(["Набор «Чай, кофе»", 990])
 
     with open("items.csv", encoding="utf-8") as f:
@@ -79,8 +89,12 @@
   text: |
     Excel с русскими настройками сохраняет CSV через точку с запятой:
     ```python
-    with open("excel.csv", "w", encoding="utf-8", newline="") as f:
-        f.write("товар;цена\nЧайник;2490\nКружка;390\n")
+    from pathlib import Path
+
+    Path("excel.csv").write_text(
+        "товар;цена\nЧайник;2490\nКружка;390\n",
+        encoding="utf-8",
+    )
     ```
     Прочитайте файл и напечатайте словарь `{товар: цена}` с ценами-числами.
   answer: |
@@ -89,7 +103,8 @@
     import csv
 
     with open("excel.csv", encoding="utf-8", newline="") as f:
-        prices = {row["товар"]: int(row["цена"]) for row in csv.DictReader(f, delimiter=";")}
+        rows = csv.DictReader(f, delimiter=";")
+        prices = {r["товар"]: int(r["цена"]) for r in rows}
     print(prices)
     ```
     Результат:

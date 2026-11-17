@@ -785,6 +785,9 @@ def _check_lesson(path):
     return problems
 
 
+PRACTICE_WIDTH = 60   # колонка задачника на сайте ~290 px: длиннее — прокрутка вбок
+
+
 def check_practice(path):
     with sandbox():
         return _check_practice(path)
@@ -811,6 +814,12 @@ def _check_practice(path):
             problems.append(f"задача {n}: лишние поля {sorted(extra)}")
         for problem in check_lesson_code(item["text"] + "\n\n" + item["answer"]):
             problems.append(f"задача {n} «{item['title']}»: {problem}")
+        for field in ("text", "hint", "answer"):
+            for lang, code, _ in fenced_blocks(item.get(field) or ""):
+                long = [line for line in code.splitlines() if len(line) > PRACTICE_WIDTH]
+                if lang == "python" and long:
+                    problems.append(f"задача {n} «{item['title']}»: строка кода длиннее "
+                                    f"{PRACTICE_WIDTH} символов (узкая колонка): {long[0].strip()[:40]}…")
     return problems
 
 

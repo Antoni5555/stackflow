@@ -1,7 +1,11 @@
 - title: Сумма без списка
   text: |
     ```python
-    items = [{"price": 2490, "qty": 1}, {"price": 390, "qty": 2}, {"price": 120, "qty": 5}]
+    items = [
+        {"price": 2490, "qty": 1},
+        {"price": 390, "qty": 2},
+        {"price": 120, "qty": 5},
+    ]
     ```
     Посчитайте сумму заказа генераторным выражением, не создавая промежуточный список.
   answer: |
@@ -54,8 +58,12 @@
     ```python
     from itertools import groupby
 
-    by_status = sorted(orders, key=lambda o: o["status"])
-    for status, group in groupby(by_status, key=lambda o: o["status"]):
+    def get_status(order):
+        return order["status"]
+
+
+    by_status = sorted(orders, key=get_status)
+    for status, group in groupby(by_status, key=get_status):
         print(status, len(list(group)))
     ```
     Результат:
@@ -97,8 +105,10 @@
   answer: |
     Ответ:
     ```python
-    errors = (line for line in read_log() if line.startswith("ERROR"))
-    order_ids = (int(line.split()[1].removeprefix("order=")) for line in errors)
+    lines = read_log()
+    errors = (s for s in lines if s.startswith("ERROR"))
+    fields = (s.split()[1] for s in errors)
+    order_ids = (int(f.removeprefix("order=")) for f in fields)
     print(list(order_ids))
     ```
     Результат:

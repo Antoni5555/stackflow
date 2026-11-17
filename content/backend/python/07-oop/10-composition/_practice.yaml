@@ -11,7 +11,7 @@
         def total(self):
             return sum(price for _, price in self.items)
     ```
-    Напишите `Order(number, cart)`: хранит корзину и в методе `summary()` возвращает `Заказ 1042: 2 товара на 2880 ₽`.
+    Напишите `Order(number, cart)`: хранит корзину и в методе `summary()` возвращает `Заказ 1042: 2 шт. на 2880 ₽`.
   answer: |
     Ответ:
     ```python
@@ -21,7 +21,10 @@
             self.cart = cart
 
         def summary(self):
-            return f"Заказ {self.number}: {len(self.cart.items)} товара на {self.cart.total()} ₽"
+            number = self.number
+            count = len(self.cart.items)
+            total = self.cart.total()
+            return f"Заказ {number}: {count} шт. на {total} ₽"
 
 
     cart = Cart()
@@ -31,7 +34,7 @@
     ```
     Результат:
     ```
-    Заказ 1042: 2 товара на 2880 ₽
+    Заказ 1042: 2 шт. на 2880 ₽
     ```
     Заказ не «является» корзиной, а «имеет» её — поэтому атрибут, а не наследование.
 - title: Уведомитель подменяется

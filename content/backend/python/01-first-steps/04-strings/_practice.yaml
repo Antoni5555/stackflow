@@ -27,7 +27,8 @@
   answer: |
     Ответ:
     ```python
-    clean = phone.replace(" ", "").replace("(", "").replace(")", "").replace("-", "")
+    clean = phone.replace(" ", "").replace("-", "")
+    clean = clean.replace("(", "").replace(")", "")
     print(clean)
     ```
     Результат:

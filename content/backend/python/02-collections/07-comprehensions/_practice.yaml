@@ -61,7 +61,7 @@
   answer: |
     Ответ:
     ```python
-    cells = [f"{row}{shelf}" for row in "AB" for shelf in range(1, 3)]
+    cells = [f"{row}{n}" for row in "AB" for n in range(1, 3)]
     print(cells)
     ```
     Результат:
@@ -78,7 +78,10 @@
   answer: |
     Ответ:
     ```python
-    labels = {name: "есть" if stock > 0 else "нет" for name, stock in stocks.items()}
+    labels = {
+        name: "есть" if stock > 0 else "нет"
+        for name, stock in stocks.items()
+    }
     print(labels)
     ```
     Результат:

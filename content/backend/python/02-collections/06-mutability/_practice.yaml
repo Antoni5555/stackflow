@@ -60,7 +60,7 @@
     ```python
     import copy
 
-    order = {"id": 1042, "items": [{"name": "Кружка", "qty": 2}]}
+    order = {"id": 1042, "items": [{"qty": 2}]}
     draft = copy.copy(order)
     draft["items"][0]["qty"] = 5
     print(order["items"][0]["qty"])
@@ -71,7 +71,7 @@
   answer: |
     Ответ:
     ```python
-    order = {"id": 1042, "items": [{"name": "Кружка", "qty": 2}]}
+    order = {"id": 1042, "items": [{"qty": 2}]}
     draft = copy.deepcopy(order)
     draft["items"][0]["qty"] = 5
     print(order["items"][0]["qty"], draft["items"][0]["qty"])

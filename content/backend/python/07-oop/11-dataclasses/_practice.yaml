@@ -82,7 +82,11 @@
   text: |
     Сделайте dataclass `Delivery(days: int, price: int, name: str)` сравнимым и выберите вариант доставки с минимальным сроком, а при равном сроке — с минимальной ценой.
     ```python
-    options = [("Почта", 7, 200), ("Курьер", 1, 500), ("Пункт выдачи", 1, 0)]
+    options = [
+        ("Почта", 7, 200),
+        ("Курьер", 1, 500),
+        ("Пункт выдачи", 1, 0),
+    ]
     ```
   answer: |
     Ответ:
@@ -97,7 +101,10 @@
         name: str
 
 
-    deliveries = [Delivery(days, price, name) for name, days, price in options]
+    deliveries = [
+        Delivery(days, price, name)
+        for name, days, price in options
+    ]
     print(min(deliveries))
     ```
     Результат:

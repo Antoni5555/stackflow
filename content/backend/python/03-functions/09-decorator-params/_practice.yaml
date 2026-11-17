@@ -76,7 +76,10 @@
     def repeat(times):
         def decorator(func):
             def wrapper(*args, **kwargs):
-                return [func(*args, **kwargs) for _ in range(times)]
+                results = []
+                for _ in range(times):
+                    results.append(func(*args, **kwargs))
+                return results
             return wrapper
         return decorator
 

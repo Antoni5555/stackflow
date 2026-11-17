@@ -16,7 +16,11 @@
         pass
 
 
-    for error in [OutOfStockError("нет чайника"), PaymentError("карта отклонена")]:
+    errors = [
+        OutOfStockError("нет чайника"),
+        PaymentError("карта отклонена"),
+    ]
+    for error in errors:
         try:
             raise error
         except ShopError as e:
@@ -42,7 +46,10 @@
             self.product = product
             self.requested = requested
             self.available = available
-            super().__init__(f"{product}: запрошено {requested}, на складе {available}")
+            super().__init__(
+                f"{product}: запрошено {requested}, "
+                f"на складе {available}"
+            )
 
 
     try:
@@ -70,7 +77,10 @@
             self.product = product
             self.requested = requested
             self.available = available
-            super().__init__(f"{product}: запрошено {requested}, на складе {available}")
+            super().__init__(
+                f"{product}: запрошено {requested}, "
+                f"на складе {available}"
+            )
 
 
     stock = {"Чайник": 2, "Кружка": 10}
@@ -119,7 +129,8 @@
         try:
             charge(order_id)
         except ConnectionError as error:
-            raise PaymentError(f"Заказ {order_id} не оплачен") from error
+            message = f"Заказ {order_id} не оплачен"
+            raise PaymentError(message) from error
 
 
     try:

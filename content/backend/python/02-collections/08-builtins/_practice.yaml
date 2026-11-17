@@ -79,7 +79,7 @@
     ```python
     catalog = dict(zip(names, prices))
     print(catalog)
-    print(sum(price for price in catalog.values() if price > 500))
+    print(sum(p for p in catalog.values() if p > 500))
     ```
     Результат:
     ```

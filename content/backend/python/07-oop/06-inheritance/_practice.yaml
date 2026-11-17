@@ -18,7 +18,9 @@
             return 0
 
 
-    print(Product("Чайник", 2490).delivery_price(), DigitalProduct("Курс", 990).delivery_price())
+    kettle = Product("Чайник", 2490)
+    course = DigitalProduct("Курс", 990)
+    print(kettle.delivery_price(), course.delivery_price())
     ```
     Результат:
     ```
@@ -42,12 +44,12 @@
             self.download_url = download_url
 
 
-    course = DigitalProduct("Курс по Python", 990, "/files/python.zip")
+    course = DigitalProduct("Курс", 990, "/files/py.zip")
     print(course.name, course.price, course.download_url)
     ```
     Результат:
     ```
-    Курс по Python 990 /files/python.zip
+    Курс 990 /files/py.zip
     ```
     Без `super().__init__` у объекта не было бы `name` и `price`.
 - title: Описание с дополнением

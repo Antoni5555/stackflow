@@ -62,10 +62,12 @@
             self.items = []
 
         def add(self, name, price, qty=1):
-            self.items.append({"name": name, "price": price, "qty": qty})
+            item = {"name": name, "price": price, "qty": qty}
+            self.items.append(item)
 
         def total(self):
-            return sum(item["price"] * item["qty"] for item in self.items)
+            return sum(i["price"] * i["qty"]
+                       for i in self.items)
 
 
     cart = Cart()

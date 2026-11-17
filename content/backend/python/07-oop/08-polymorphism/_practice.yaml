@@ -111,14 +111,19 @@
             return f"sms: {text}"
 
 
-    def notify_all(notifiers: list[Notifier], text: str) -> list[str]:
+    def notify_all(
+        notifiers: list[Notifier], text: str
+    ) -> list[str]:
         return [n.send(text) for n in notifiers]
 
 
-    print(notify_all([EmailNotifier(), SmsNotifier()], "Заказ 1042 отправлен"))
+    notifiers = [EmailNotifier(), SmsNotifier()]
+    for result in notify_all(notifiers, "Заказ 1042 отправлен"):
+        print(result)
     ```
     Результат:
     ```
-    ['email: Заказ 1042 отправлен', 'sms: Заказ 1042 отправлен']
+    email: Заказ 1042 отправлен
+    sms: Заказ 1042 отправлен
     ```
     `Protocol` — описание для аннотаций и mypy. Реализациям не нужно от него наследоваться — достаточно нужного метода.

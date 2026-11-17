@@ -24,7 +24,9 @@
 
     folder = Path("reports")
     folder.mkdir()
-    for name in ["2026-11-01.csv", "2026-11-02.csv", "notes.txt", "2026-10-31.csv"]:
+    names = ["2026-11-01.csv", "2026-11-02.csv",
+             "notes.txt", "2026-10-31.csv"]
+    for name in names:
         (folder / name).write_text("", encoding="utf-8")
     ```
     Напечатайте по алфавиту имена CSV-файлов за ноябрь 2026.
@@ -68,8 +70,9 @@
 
     folder = Path("exports") / "2026" / "11"
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "orders.txt").write_text("1040\n", encoding="utf-8")
-    print((folder / "orders.txt").exists())
+    orders = folder / "orders.txt"
+    orders.write_text("1040\n", encoding="utf-8")
+    print(orders.exists())
     ```
     Результат:
     ```

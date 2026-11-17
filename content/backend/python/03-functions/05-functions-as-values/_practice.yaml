@@ -54,7 +54,9 @@
   answer: |
     Ответ:
     ```python
-    ordered = sorted(products, key=lambda p: (p["category"], p["price"]))
+    ordered = sorted(
+        products, key=lambda p: (p["category"], p["price"])
+    )
     print([p["name"] for p in ordered])
     ```
     Результат:

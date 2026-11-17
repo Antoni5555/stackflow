@@ -43,7 +43,10 @@
             return self.sku == other.sku
 
 
-    catalog = [Product("SH-001", "Чайник"), Product("SH-002", "Кружка")]
+    catalog = [
+        Product("SH-001", "Чайник"),
+        Product("SH-002", "Кружка"),
+    ]
     print(Product("SH-001", "Чайник Steel") in catalog)
     ```
     Результат:
@@ -107,7 +110,8 @@
         def __add__(self, other):
             if self.currency != other.currency:
                 raise ValueError("Разные валюты")
-            return Money(self.amount + other.amount, self.currency)
+            amount = self.amount + other.amount
+            return Money(amount, self.currency)
 
         def __str__(self):
             return f"{self.amount} {self.currency}"

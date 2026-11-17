@@ -61,7 +61,8 @@
     for item in items:
         line_total = item["price"] * item["qty"]
         total += line_total
-        print(f"{item['name']} × {item['qty']} = {line_total} ₽")
+        name, qty = item["name"], item["qty"]
+        print(f"{name} × {qty} = {line_total} ₽")
     print(f"Итого: {total} ₽")
     ```
     Результат:
@@ -74,7 +75,10 @@
 - title: Товары по категориям
   text: |
     ```python
-    by_category = {"кухня": ["чайник", "кружка"], "сад": ["лейка"]}
+    by_category = {
+        "кухня": ["чайник", "кружка"],
+        "сад": ["лейка"],
+    }
     ```
     Добавьте `"сковорода"` в кухню, а новую категорию `"дом"` с товаром `"плед"`. Напечатайте, сколько товаров в каждой категории.
   answer: |

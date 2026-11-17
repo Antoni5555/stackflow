@@ -6,7 +6,10 @@
     ```python
     import logging
 
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(message)s",
+    )
     logging.info("Заказ 1042 оформлен")
     ```
     Результат:
@@ -40,7 +43,8 @@
     ```python
     import logging
 
-    logging.basicConfig(format="%(name)s - %(levelname)s - %(message)s")
+    fmt = "%(name)s - %(levelname)s - %(message)s"
+    logging.basicConfig(format=fmt)
     logger = logging.getLogger("shop.orders")
     logger.warning("Промокод SALE10 истёк")
     ```
@@ -57,7 +61,7 @@
     ```python
     import logging
 
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.basicConfig(level="INFO", format="%(message)s")
     logger = logging.getLogger("shop")
     order_id, total = 1042, 3270
     logger.info("Заказ %s на сумму %s ₽", order_id, total)

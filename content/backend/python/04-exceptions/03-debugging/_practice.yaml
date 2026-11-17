@@ -2,7 +2,10 @@
   text: |
     Итог должен быть 3270, а печатается 780:
     ```python
-    items = [{"price": 2490, "qty": 1}, {"price": 390, "qty": 2}]
+    items = [
+        {"price": 2490, "qty": 1},
+        {"price": 390, "qty": 2},
+    ]
     for item in items:
         total = 0
         total += item["price"] * item["qty"]
@@ -28,13 +31,13 @@
     Добавьте в `calc_total` проверку: итог не может быть отрицательным — иначе ошибка с текстом `итог отрицательный: …`. Вызовите с позицией, где количество `-2`.
     ```python
     def calc_total(items):
-        return sum(item["price"] * item["qty"] for item in items)
+        return sum(i["price"] * i["qty"] for i in items)
     ```
   answer: |
     Ответ:
     ```python
     def calc_total(items):
-        total = sum(item["price"] * item["qty"] for item in items)
+        total = sum(i["price"] * i["qty"] for i in items)
         assert total >= 0, f"итог отрицательный: {total}"
         return total
 
@@ -73,7 +76,8 @@
     ```python
     def apply_discount(price, percent):
         result = price * (100 - percent) // 100
-        print("DEBUG", f"{price=}", f"{percent=}", f"{result=}", sep=" | ")
+        print("DEBUG", f"{price=}", f"{percent=}",
+              f"{result=}", sep=" | ")
         return result
 
 
