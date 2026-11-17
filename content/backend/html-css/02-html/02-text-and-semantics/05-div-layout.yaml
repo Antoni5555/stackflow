@@ -1,0 +1,83 @@
+title: Страница из одних div
+type: exercise
+difficulty: 2
+pitfall: Области страницы из одних div не видны поисковикам и экранному доступу — для них есть header, nav, main, footer.
+statement: |
+  Страница свёрстана одними `div` с классами. Замените обёртки на смысловые теги: шапка, меню в ней, основное содержимое, подвал. Классы можно оставить.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Доставка</title>
+    </head>
+    <body>
+      <div class="header">
+        <a href="/">Магазин</a>
+        <div class="menu">
+          <a href="/catalog/">Каталог</a>
+          <a href="/delivery/">Доставка</a>
+          <a href="/cart/">Корзина</a>
+        </div>
+      </div>
+      <div class="content">
+        <h1>Доставка</h1>
+        <p>Привезём за 1 день.</p>
+      </div>
+      <div class="footer">
+        <p>shop.example, 2026</p>
+      </div>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: body > header
+      count: 1
+      fail: Шапка страницы — header прямо в body.
+    - selector: header nav a
+      count: 3
+      fail: Меню из трёх ссылок — nav внутри header.
+    - selector: body > main
+      count: 1
+      fail: Основное содержимое — main прямо в body.
+    - selector: main h1
+      count: 1
+      fail: Заголовок страницы — внутри main.
+    - selector: body > footer
+      count: 1
+      fail: Подвал — footer прямо в body.
+    - selector: div
+      exists: false
+      fail: div здесь больше не нужны — у каждой обёртки есть смысловой тег.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Доставка</title>
+    </head>
+    <body>
+      <header class="header">
+        <a href="/">Магазин</a>
+        <nav class="menu">
+          <a href="/catalog/">Каталог</a>
+          <a href="/delivery/">Доставка</a>
+          <a href="/cart/">Корзина</a>
+        </nav>
+      </header>
+      <main class="content">
+        <h1>Доставка</h1>
+        <p>Привезём за 1 день.</p>
+      </main>
+      <footer class="footer">
+        <p>shop.example, 2026</p>
+      </footer>
+    </body>
+    </html>
+hints:
+  - Шапка — header, меню — nav, основное — main, подвал — footer.
+explanation: |
+  Внешне ничего не изменилось, но теперь области страницы имеют смысл. Экранный доступ даёт перейти сразу к `main` или к меню. Режим чтения браузера убирает шапку и подвал. Поисковик знает, где основное содержимое.

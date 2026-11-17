@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 250" width="880" height="250" class="fig" role="img" aria-labelledby="t"><title id="t">Куда ведут разные пути, если открыта страница https://shop.example/products/17/</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<text x="20" y="24" text-anchor="start" class="fig-c">Открыта страница:  https://shop.example/products/17/</text>
+<rect x="20" y="50" width="250" height="36" rx="12" class="fig-box2"/>
+<text x="34" y="73" text-anchor="start" class="fig-cs">img/kettle.jpg</text>
+<path d="M270 68H540" class="fig-ln" marker-end="url(#a)"/>
+<text x="405" y="62" text-anchor="middle" class="fig-s">относительный</text>
+<rect x="544" y="50" width="316" height="36" rx="12" class="fig-box"/>
+<text x="558" y="73" text-anchor="start" class="fig-cs">/products/17/img/kettle.jpg</text>
+<rect x="20" y="98" width="250" height="36" rx="12" class="fig-box2"/>
+<text x="34" y="121" text-anchor="start" class="fig-cs">../18/</text>
+<path d="M270 116H540" class="fig-ln" marker-end="url(#a)"/>
+<text x="405" y="110" text-anchor="middle" class="fig-s">относительный, на уровень вверх</text>
+<rect x="544" y="98" width="316" height="36" rx="12" class="fig-box"/>
+<text x="558" y="121" text-anchor="start" class="fig-cs">/products/18/</text>
+<rect x="20" y="146" width="250" height="36" rx="12" class="fig-box2"/>
+<text x="34" y="169" text-anchor="start" class="fig-cs">/static/img/kettle.jpg</text>
+<path d="M270 164H540" class="fig-ln" marker-end="url(#a)"/>
+<text x="405" y="158" text-anchor="middle" class="fig-s">от корня сайта</text>
+<rect x="544" y="146" width="316" height="36" rx="12" class="fig-acc"/>
+<text x="558" y="169" text-anchor="start" class="fig-onacc">/static/img/kettle.jpg</text>
+<rect x="20" y="194" width="250" height="36" rx="12" class="fig-box2"/>
+<text x="34" y="217" text-anchor="start" class="fig-cs">https://pay.example/</text>
+<path d="M270 212H540" class="fig-ln" marker-end="url(#a)"/>
+<text x="405" y="206" text-anchor="middle" class="fig-s">абсолютный</text>
+<rect x="544" y="194" width="316" height="36" rx="12" class="fig-box"/>
+<text x="558" y="217" text-anchor="start" class="fig-cs">https://pay.example/</text>
+</svg>

@@ -1,0 +1,73 @@
+title: Итог под чужой колонкой
+type: exercise
+difficulty: 2
+pitfall: В короткой строке ячейки встают в первые колонки — подпись нужно растянуть colspan.
+statement: |
+  В строке «Итого» сумма 3270 встала под колонкой «Цена», а справа пустота. Вынесите итог в подвал таблицы и растяните подпись так, чтобы сумма оказалась под колонкой «Сумма».
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Заказ №1042</title>
+    </head>
+    <body>
+      <table>
+        <thead>
+          <tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Чайник Steel</td><td>2490</td><td>1</td><td>2490</td></tr>
+          <tr><td>Кружка «Код»</td><td>390</td><td>2</td><td>780</td></tr>
+          <tr><td>Итого</td><td>3270</td></tr>
+        </tbody>
+      </table>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: tbody tr
+      count: 2
+      fail: В tbody — только позиции заказа, итог — отдельно.
+    - selector: tfoot tr
+      count: 1
+      fail: Итог — строка в tfoot.
+    - selector: 'tfoot td[colspan="3"]'
+      count: 1
+      text: '^Итого$'
+      fail: Подпись «Итого» растягивается на три колонки — colspan="3".
+    - selector: tfoot td
+      count: 2
+      fail: В строке итога две ячейки — подпись и сумма.
+    - selector: 'tfoot td:last-child'
+      text: '^3270$'
+      fail: Последняя ячейка итога — сумма 3270.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Заказ №1042</title>
+    </head>
+    <body>
+      <table>
+        <thead>
+          <tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Чайник Steel</td><td>2490</td><td>1</td><td>2490</td></tr>
+          <tr><td>Кружка «Код»</td><td>390</td><td>2</td><td>780</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td colspan="3">Итого</td><td>3270</td></tr>
+        </tfoot>
+      </table>
+    </body>
+    </html>
+hints:
+  - Сколько колонок должна занять подпись, чтобы сумма встала четвёртой?
+explanation: |
+  Ячейки строки занимают колонки слева направо, поэтому вторая ячейка всегда встаёт во вторую колонку. `colspan="3"` растягивает подпись на три колонки, и сумма становится четвёртой. `tfoot` отделяет итог от данных по смыслу.

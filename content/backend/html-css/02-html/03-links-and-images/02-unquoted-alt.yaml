@@ -1,0 +1,54 @@
+title: Половина alt
+type: exercise
+difficulty: 1
+pitfall: Значение атрибута без кавычек обрывается на первом пробеле.
+statement: |
+  Экранный доступ читает описание фото как «Чайник» вместо «Чайник Steel на 1,7 литра». Исправьте разметку картинки.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <h1>Чайник Steel</h1>
+      <img src=/static/img/kettle-steel.jpg alt=Чайник Steel на 1,7 литра width=400 height=300>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: img
+      count: 1
+      fail: На странице одна картинка.
+    - selector: img
+      attr:
+        alt: '^Чайник Steel на 1,7 литра$'
+      fail: alt должен целиком содержать «Чайник Steel на 1,7 литра».
+    - selector: img
+      attr:
+        src: '^/static/img/kettle-steel\.jpg$'
+        width: '^400$'
+        height: '^300$'
+      fail: src, width и height должны остаться прежними.
+    - must_not_match: '=[^"\s>]'
+      fail: Значения всех атрибутов — в кавычках.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <h1>Чайник Steel</h1>
+      <img src="/static/img/kettle-steel.jpg" alt="Чайник Steel на 1,7 литра" width="400" height="300">
+    </body>
+    </html>
+hints:
+  - В Elements посмотрите, какие атрибуты получились у img.
+explanation: |
+  Без кавычек значение атрибута кончается на первом пробеле. `alt` получил только «Чайник», а `Steel`, `на`, `1,7` и `литра` браузер принял за отдельные пустые атрибуты. С кавычками пробелы внутри значения безопасны.

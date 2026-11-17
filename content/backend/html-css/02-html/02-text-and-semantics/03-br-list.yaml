@@ -1,0 +1,58 @@
+title: Список через br
+type: exercise
+difficulty: 1
+pitfall: Строки с «—» через <br> — для программ это один абзац, а не список.
+statement: |
+  Преимущества магазина свёрстаны строчками через `<br>`. Сделайте из них настоящий список без нумерации, сохранив текст пунктов (без «—» в начале).
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Почему мы</title>
+    </head>
+    <body>
+      <h1>Почему мы</h1>
+      <p class="benefits">
+        — Доставка за 1 день<br>
+        — Возврат 30 дней<br>
+        — Оплата при получении
+      </p>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: ul > li
+      count: 3
+      fail: Нужен список ul с тремя пунктами li.
+    - selector: ol
+      exists: false
+      fail: Порядка у преимуществ нет — это ul, а не ol.
+    - selector: li
+      text: '^[А-ЯЁ]'
+      fail: Текст пункта начинается с буквы — маркер ставит сам список, «—» не нужно.
+    - must_not_match: '<br'
+      fail: Переносы <br> больше не нужны — пункты разделяет сам список.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Почему мы</title>
+    </head>
+    <body>
+      <h1>Почему мы</h1>
+      <ul class="benefits">
+        <li>Доставка за 1 день</li>
+        <li>Возврат 30 дней</li>
+        <li>Оплата при получении</li>
+      </ul>
+    </body>
+    </html>
+hints:
+  - Список без нумерации — ul, каждый пункт — li.
+explanation: |
+  `<br>` — просто перенос строки, все пункты остаются одним абзацем. В `<ul>` каждый `<li>` — отдельный пункт. Экранный доступ скажет «список, 3 пункта», а маркеры и отступы нарисует CSS.

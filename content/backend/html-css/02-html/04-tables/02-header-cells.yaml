@@ -1,0 +1,61 @@
+title: Шапка из жирных ячеек
+type: exercise
+difficulty: 1
+pitfall: Заголовок колонки — th в thead, а не жирный текст в обычной ячейке.
+statement: |
+  Шапка таблицы заказа свёрстана обычными ячейками с жирным текстом. Сделайте из первой строки настоящую шапку, а позиции заказа положите в тело таблицы.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Заказ №1042</title>
+    </head>
+    <body>
+      <table>
+        <tr><td><b>Товар</b></td><td><b>Цена</b></td><td><b>Кол-во</b></td><td><b>Сумма</b></td></tr>
+        <tr><td>Чайник Steel</td><td>2490</td><td>1</td><td>2490</td></tr>
+        <tr><td>Кружка «Код»</td><td>390</td><td>2</td><td>780</td></tr>
+      </table>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: table thead tr th
+      count: 4
+      fail: Шапка — строка в thead с четырьмя ячейками th.
+    - selector: table tbody tr
+      count: 2
+      fail: В tbody — две строки с позициями заказа.
+    - selector: table b
+      exists: false
+      fail: Жирный <b> больше не нужен — th выделяется сам.
+    - selector: tbody th
+      exists: false
+      fail: В строках с данными — ячейки td.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Заказ №1042</title>
+    </head>
+    <body>
+      <table>
+        <thead>
+          <tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Чайник Steel</td><td>2490</td><td>1</td><td>2490</td></tr>
+          <tr><td>Кружка «Код»</td><td>390</td><td>2</td><td>780</td></tr>
+        </tbody>
+      </table>
+    </body>
+    </html>
+hints:
+  - Шапка таблицы — thead, заголовочная ячейка — th.
+explanation: |
+  `th` в `thead` сообщает, что это заголовки колонок. Экранный доступ свяжет с ними каждое значение, а браузер по умолчанию сделает их жирными и выровняет по центру. `<b>` в `td` — только начертание.

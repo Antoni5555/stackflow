@@ -1,0 +1,49 @@
+title: Рубль на новой строке
+type: exercise
+difficulty: 1
+pitfall: Обычный пробел разрешает перенос — число и «₽» разъезжаются на разные строки.
+statement: |
+  В узкой карточке цена переносится: «2490» в одной строке, «₽» — в следующей. Сделайте так, чтобы число и знак рубля никогда не разрывались.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+    </head>
+    <body>
+      <article>
+        <h2>Кружка «Код»</h2>
+        <p class="price">2490 ₽</p>
+      </article>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: .price
+      count: 1
+      fail: Цена — один элемент с классом price.
+    - selector: .price
+      text: '^2490 ₽$'
+      fail: Между числом и ₽ нужен неразрывный пробел.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+    </head>
+    <body>
+      <article>
+        <h2>Кружка «Код»</h2>
+        <p class="price">2490&nbsp;₽</p>
+      </article>
+    </body>
+    </html>
+hints:
+  - Есть пробел, на котором браузер не переносит строку.
+explanation: |
+  На обычном пробеле браузер может перенести строку. `&nbsp;` выглядит как пробел, но переноса не допускает, поэтому «2490 ₽» всегда остаётся целым. То же — между инициалами, в «10 %» и «1,7 л».

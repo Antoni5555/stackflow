@@ -1,0 +1,49 @@
+title: Название вкладки
+type: exercise
+difficulty: 1
+pitfall: Служебные теги работают только в <head> — <title> в <body> не меняет название вкладки.
+statement: |
+  Во вкладке браузера у страницы товара вместо названия виден адрес. Исправьте разметку так, чтобы вкладка называлась «Чайник Steel — магазин».
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+    </head>
+    <body>
+      <title>Чайник Steel — магазин</title>
+      <h1>Чайник Steel</h1>
+      <p>Стальной чайник на 1,7 литра.</p>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: head > title
+      count: 1
+      fail: Заголовок вкладки — элемент <title> внутри <head>.
+    - selector: body title
+      exists: false
+      fail: В <body> не должно остаться <title>.
+    - selector: head > title
+      text: '^Чайник Steel — магазин$'
+      fail: Текст <title> — «Чайник Steel — магазин».
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel — магазин</title>
+    </head>
+    <body>
+      <h1>Чайник Steel</h1>
+      <p>Стальной чайник на 1,7 литра.</p>
+    </body>
+    </html>
+hints:
+  - Откройте вкладку Elements в DevTools — где оказался <title>?
+  - Название вкладки берётся только из <title> внутри <head>.
+explanation: |
+  `<title>` — служебный элемент: браузер читает его только в `<head>`. В `<body>` он остаётся обычным невидимым элементом, а вкладка показывает адрес. Видимый заголовок на странице — это `<h1>`.

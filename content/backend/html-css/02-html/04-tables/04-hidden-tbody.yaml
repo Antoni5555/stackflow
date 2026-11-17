@@ -1,0 +1,23 @@
+title: Стиль не цепляет строки
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Браузер сам вставляет tbody — у table не бывает прямых потомков tr.
+statement: |
+  В таблице нет `thead` и `tbody`, строки написаны прямо в `table`:
+  ```html
+  <table>
+    <tr><td>Чайник Steel</td><td>2490</td></tr>
+  </table>
+  ```
+  Правило CSS `table > tr { background: #f5f5f5; }` не красит строки. Почему?
+options:
+  - Цвет #f5f5f5 браузер не поддерживает
+  - Браузер сам обернул строки в tbody, и tr больше не прямой потомок table
+  - Свойство background не работает у строк таблицы
+  - Нужно писать tr > table
+answer: [1]
+hints:
+  - Посмотрите дерево таблицы во вкладке Elements.
+explanation: |
+  По стандарту HTML строки вне `thead`/`tfoot` всегда лежат в `tbody`. Если его нет в коде, браузер добавит его сам. Поэтому селектор «прямой потомок» `table > tr` ничего не находит. Подойдёт `table tr` или явный `tbody tr`.

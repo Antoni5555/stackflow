@@ -1,0 +1,59 @@
+title: Описание вместо имени файла
+type: exercise
+difficulty: 1
+pitfall: alt описывает, что на картинке; имя файла и пустота — не описание, а декоративной картинке нужен alt="".
+statement: |
+  На карточке два изображения: фото товара и декоративная волна-разделитель. У фото `alt` — имя файла, у волны `alt` нет вовсе. Напишите фото содержательное описание (оно должно упоминать «чайник»), а разделителю — пустой `alt`, чтобы экранный доступ его пропускал.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <article>
+        <img class="photo" src="/static/img/IMG_2041.jpg" alt="IMG_2041.jpg" width="400" height="300">
+        <h2>Чайник Steel</h2>
+        <img class="divider" src="/static/img/wave.svg" width="400" height="20">
+        <p>2490 ₽</p>
+      </article>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: img.photo
+      attr:
+        alt: '[Чч]айник'
+      fail: Описание фото должно сказать, что на нём — чайник.
+    - selector: img.photo
+      attr:
+        alt: '^[^.]*$'
+      fail: В alt не нужно имя файла с расширением.
+    - selector: img.divider
+      attr:
+        alt: '^$'
+      fail: У декоративного разделителя — пустой alt="", а не отсутствующий.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <article>
+        <img class="photo" src="/static/img/IMG_2041.jpg" alt="Стальной чайник Steel на 1,7 литра" width="400" height="300">
+        <h2>Чайник Steel</h2>
+        <img class="divider" src="/static/img/wave.svg" alt="" width="400" height="20">
+        <p>2490 ₽</p>
+      </article>
+    </body>
+    </html>
+hints:
+  - Чем отличается отсутствующий alt от alt=""?
+explanation: |
+  Без `alt` экранный доступ зачитает имя файла или скажет «изображение». `alt=""` прямо говорит: картинка декоративная, пропусти. У содержательного фото `alt` описывает, что на нём, как если бы вы рассказывали покупателю по телефону.

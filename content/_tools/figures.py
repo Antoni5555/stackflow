@@ -714,6 +714,94 @@ def https_visibility():
     f.text(20, 236, "При HTTPS посредник видит только домен и IP (и объём трафика). Путь, cookies и данные формы скрыты.", "s")
     f.save(out(HC1 / "07-https" / "img" / "https-visibility.svg"))
 
+
+# ---------- HTML/CSS 2.01: дерево документа ----------
+HC2 = ROOT / "html-css" / "02-html"
+
+
+def document_tree():
+    f = Figure(880, 300, "HTML-документ — дерево: html содержит head и body, внутри них — остальные элементы")
+    f.raw('<rect x="20" y="20" width="360" height="260" rx="14" class="fig-term"/>')
+    lines = ['<!doctype html>', '<html lang="ru">', '<head>', '  <meta charset="utf-8">', '  <title>Чайник Steel</title>',
+             '</head>', '<body>', '  <h1>Чайник Steel</h1>', '  <p>Цена: <b>2490 ₽</b></p>', '</body>', '</html>']
+    for i, s in enumerate(lines):
+        f.text(36, 44 + i * 22, s, "tt")
+    f.box(560, 20, 120, 36, "html", "acc", "onacc")
+    f.box(450, 100, 120, 36, "head", "box2", "c"); f.box(680, 100, 120, 36, "body", "box2", "c")
+    f.arrow("M600 56L520 96"); f.arrow("M640 56L730 96")
+    f.box(410, 180, 90, 36, "meta", "box", "cs"); f.box(510, 180, 90, 36, "title", "box", "cs")
+    f.arrow("M495 136L460 176"); f.arrow("M525 136L550 176")
+    f.box(650, 180, 80, 36, "h1", "box", "cs"); f.box(750, 180, 80, 36, "p", "box", "cs")
+    f.arrow("M720 136L695 176"); f.arrow("M760 136L785 176")
+    f.box(750, 246, 80, 34, "b", "box", "cs"); f.arrow("M790 216V242")
+    f.text(410, 268, "head — для браузера,", "s"); f.text(410, 286, "body — то, что видно", "s")
+    f.save(out(HC2 / "01-html-document" / "img" / "document-tree.svg"))
+
+
+# ---------- HTML/CSS 2.02: семантическая разметка страницы ----------
+def semantic_layout():
+    f = Figure(880, 330, "Семантические области страницы магазина: header с nav, main с article и section, aside, footer")
+    f.box(20, 20, 840, 60, "", "box2"); f.text(36, 44, "<header>", "c"); f.text(36, 66, "логотип, поиск", "s")
+    f.box(440, 32, 400, 36, "<nav>  Каталог · Доставка · Корзина", "acc", "onacc", rx=8)
+    f.box(20, 92, 600, 170, "", "box"); f.text(36, 116, "<main>  — главное содержимое, одно на странице", "c")
+    f.box(36, 128, 568, 60, "", "box2"); f.text(52, 152, "<article>", "c"); f.text(52, 174, "карточка товара: имеет смысл и отдельно", "s")
+    f.box(36, 196, 568, 54, "", "box2"); f.text(52, 220, "<section>", "c"); f.text(52, 240, "раздел «Отзывы» с заголовком h2", "s")
+    f.box(632, 92, 228, 170, "", "box"); f.text(648, 116, "<aside>", "c"); f.text(648, 140, "побочное: «С этим", "s"); f.text(648, 158, "покупают»", "s")
+    f.box(20, 274, 840, 40, "", "box2"); f.text(36, 299, "<footer>", "c"); f.text(140, 299, "контакты, оферта, политика", "s")
+    f.save(out(HC2 / "02-text-and-semantics" / "img" / "semantic-layout.svg"))
+
+
+# ---------- HTML/CSS 2.03: куда ведёт путь ----------
+def path_resolution():
+    f = Figure(880, 250, "Куда ведут разные пути, если открыта страница https://shop.example/products/17/")
+    f.text(20, 24, "Открыта страница:  https://shop.example/products/17/", "c")
+    rows = [("img/kettle.jpg", "относительный", "/products/17/img/kettle.jpg"),
+            ("../18/", "относительный, на уровень вверх", "/products/18/"),
+            ("/static/img/kettle.jpg", "от корня сайта", "/static/img/kettle.jpg"),
+            ("https://pay.example/", "абсолютный", "https://pay.example/")]
+    for i, (src, kind, result) in enumerate(rows):
+        y = 50 + i * 48
+        f.box(20, y, 250, 36, "", "box2"); f.text(34, y + 23, src, "cs")
+        f.arrow(f"M270 {y + 18}H540"); f.text(405, y + 12, kind, "s", "middle")
+        f.box(544, y, 316, 36, "", "acc" if i == 2 else "box"); f.text(558, y + 23, result, "onacc" if i == 2 else "cs")
+    f.save(out(HC2 / "03-links-and-images" / "img" / "path-resolution.svg"))
+
+
+# ---------- HTML/CSS 2.04: устройство таблицы ----------
+def table_anatomy():
+    f = Figure(880, 250, "Таблица позиций заказа: thead с ячейками th, tbody со строками tr и ячейками td, tfoot с ячейкой на три колонки")
+    x0, widths = 20, [300, 140, 100, 140]
+    heads = ["Товар", "Цена", "Кол-во", "Сумма"]
+    body = [["Чайник Steel", "2490", "1", "2490"], ["Кружка «Код»", "390", "2", "780"]]
+    def row(y, cells, cls, tcls):
+        x = x0
+        for w, s in zip(widths, cells):
+            f.box(x, y, w, 34, "", cls, rx=0); f.text(x + 12, y + 22, s, tcls)
+            x += w
+    row(30, heads, "box2", "t")
+    for i, r in enumerate(body):
+        row(64 + i * 34, r, "box", "cs")
+    f.box(x0, 132, sum(widths[:3]), 34, "", "acc", rx=0); f.text(x0 + 12, 154, 'Итого  (td colspan="3")', "onacc")
+    f.box(x0 + sum(widths[:3]), 132, widths[3], 34, "", "box", rx=0); f.text(x0 + sum(widths[:3]) + 12, 154, "3270", "cs")
+    for y, label in [(47, "<thead> — th"), (98, "<tbody> — td"), (149, "<tfoot>")]:
+        f.line(f"M{x0 + sum(widths) + 6} {y}H724", "lnd"); f.text(732, y + 5, label, "c")
+    f.text(20, 200, "Каждая строка — <tr>. Заголовки колонок — <th>, данные — <td>.", "t")
+    f.text(20, 224, "colspan объединяет ячейку на несколько колонок — строка «Итого» остаётся ровной.", "s")
+    f.save(out(HC2 / "04-tables" / "img" / "table-anatomy.svg"))
+
+
+# ---------- HTML/CSS 2.05: экранирование ----------
+def escaping_flow():
+    f = Figure(880, 230, "Текст отзыва без экранирования становится HTML и выполняется, с экранированием — показывается как текст")
+    f.box(20, 80, 220, 70, "отзыв покупателя:|<script>…</script>", "box2", "cs")
+    f.arrow("M240 100L360 50"); f.arrow("M240 130L360 180")
+    f.box(364, 20, 250, 60, "вставили как есть", "err", "errt")
+    f.box(364, 150, 250, 60, "экранировали:|&lt;script&gt;…", "ok", "cs")
+    f.arrow("M614 50H650"); f.arrow("M614 180H650")
+    f.box(654, 20, 206, 60, "браузер выполнит|скрипт — XSS", "err", "errt")
+    f.box(654, 150, 206, 60, "браузер покажет|текст <script>…", "ok", "cs")
+    f.save(out(HC2 / "05-escaping" / "img" / "escaping-flow.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -723,6 +811,7 @@ if __name__ == "__main__":
                   attribute_lookup, inheritance_mro, shop_errors,
                   is_a_has_a, with_flow,
                   client_server, url_anatomy, dns_lookup, http_message,
-                  post_redirect_get, session_cookie, https_visibility):
+                  post_redirect_get, session_cookie, https_visibility,
+                  document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow):
         build()
     print("ok")

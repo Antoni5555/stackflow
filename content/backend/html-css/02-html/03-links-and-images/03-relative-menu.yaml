@@ -1,0 +1,77 @@
+title: Меню ведёт не туда
+type: exercise
+difficulty: 2
+pitfall: Относительный путь отсчитывается от текущей страницы — в общем меню нужны пути от корня.
+statement: |
+  Это шапка страницы товара `/products/17/`. С главной меню работает, а отсюда «Каталог» ведёт на `/products/17/catalog/`, и так же остальные пункты. Исправьте ссылки меню, чтобы они вели на `/`, `/catalog/` и `/cart/` с любой страницы. Ссылку на внешний сайт оплаты не трогайте.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <header>
+        <nav>
+          <a href="index.html">Главная</a>
+          <a href="catalog/">Каталог</a>
+          <a href="cart/">Корзина</a>
+        </nav>
+      </header>
+      <main>
+        <h1>Чайник Steel</h1>
+        <a href="https://pay.example/terms/">Условия оплаты</a>
+      </main>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: nav a
+      count: 3
+      fail: В меню по-прежнему три ссылки.
+    - selector: nav a
+      attr:
+        href: '^/'
+      fail: Ссылки меню — от корня сайта, то есть начинаются с «/».
+    - selector: 'nav a[href="/"]'
+      count: 1
+      fail: «Главная» ведёт на корень сайта — «/».
+    - selector: 'nav a[href="/catalog/"]'
+      count: 1
+      fail: «Каталог» — /catalog/.
+    - selector: 'nav a[href="/cart/"]'
+      count: 1
+      fail: «Корзина» — /cart/.
+    - selector: 'main a[href="https://pay.example/terms/"]'
+      count: 1
+      fail: Ссылку на внешний сайт оплаты менять не нужно — она уже абсолютная.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <header>
+        <nav>
+          <a href="/">Главная</a>
+          <a href="/catalog/">Каталог</a>
+          <a href="/cart/">Корзина</a>
+        </nav>
+      </header>
+      <main>
+        <h1>Чайник Steel</h1>
+        <a href="https://pay.example/terms/">Условия оплаты</a>
+      </main>
+    </body>
+    </html>
+hints:
+  - От чего браузер отсчитывает `catalog/`, если открыта страница `/products/17/`?
+  - Путь от корня начинается со слэша.
+explanation: |
+  `catalog/` браузер достраивает от папки текущей страницы, поэтому на `/products/17/` выходит `/products/17/catalog/`. `/catalog/` отсчитывается от домена и одинаков везде. Меню повторяется на всех страницах, поэтому пути в нём — только от корня. В Django их строит `{% url %}`.

@@ -1,0 +1,52 @@
+title: Цена выпала из абзаца
+type: exercise
+difficulty: 2
+pitfall: Абзац <p> не может содержать блок <div> — браузер разрывает абзац и выносит блок наружу.
+statement: |
+  Цена должна быть частью абзаца `.info`, но стили, рассчитанные на `.info .price`, к ней не применяются. Посмотрите, как браузер построил дерево, и исправьте разметку. Цена должна остаться в элементе с классом `price`.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <h1>Чайник Steel</h1>
+      <p class="info">Цена: <div class="price">2490 ₽</div></p>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: .price
+      count: 1
+      fail: Цена — один элемент с классом price.
+    - selector: .info .price
+      count: 1
+      fail: Цена должна оказаться внутри абзаца .info — проверьте дерево во вкладке Elements.
+    - selector: .price
+      text: '^2490 ₽$'
+      fail: Текст цены — «2490 ₽».
+    - selector: p:empty
+      exists: false
+      fail: На странице не должно быть пустых абзацев.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <h1>Чайник Steel</h1>
+      <p class="info">Цена: <span class="price">2490 ₽</span></p>
+    </body>
+    </html>
+hints:
+  - Во вкладке Elements цена стоит рядом с абзацем, а не внутри.
+  - Для куска текста внутри абзаца нужен строчный элемент, а не блок.
+explanation: |
+  `<div>` — блочный элемент, а внутри `<p>` разрешены только строчные. Встретив `<div>`, браузер закрывает абзац, ставит `div` после него, а лишний `</p>` превращает в ещё один пустой абзац. Строчный `<span>` остаётся внутри `<p>`, и селектор `.info .price` его находит.

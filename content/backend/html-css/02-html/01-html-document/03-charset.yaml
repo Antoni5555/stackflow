@@ -1,0 +1,44 @@
+title: Кракозябры в каталоге
+type: exercise
+difficulty: 1
+pitfall: Без <meta charset="utf-8"> браузер может прочитать кириллицу в неверной кодировке.
+statement: |
+  У части покупателей заголовок страницы выглядит как «РљР°С‚Р°Р»РѕРі» вместо «Каталог». Сервер не всегда присылает кодировку в заголовке ответа. Добавьте в страницу указание кодировки UTF-8 так, как это принято.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <title>Каталог</title>
+    </head>
+    <body>
+      <h1>Каталог</h1>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - must_match: '<meta\s+charset="?[Uu][Tt][Ff]-8"?\s*/?>'
+      fail: Кодировку задаёт тег <meta charset="utf-8">.
+    - must_match: '<head>\s*<meta\s+charset'
+      fail: <meta charset> ставят первым в <head> — до <title> и любого текста.
+    - selector: head meta[charset]
+      count: 1
+      fail: <meta charset> должен быть внутри <head>, один раз.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+    </head>
+    <body>
+      <h1>Каталог</h1>
+    </body>
+    </html>
+hints:
+  - Кодировка — служебная информация. В какой части документа такие теги?
+  - "Нужен пустой элемент <meta> с атрибутом charset."
+explanation: |
+  Когда сервер не прислал кодировку, браузер ищет `<meta charset>` в начале документа, а не найдя — угадывает. Угадывает часто неверно, отсюда «кракозябры». Тег ставят первым в `<head>`: до него браузер уже мог прочитать текст `<title>` в неверной кодировке.
