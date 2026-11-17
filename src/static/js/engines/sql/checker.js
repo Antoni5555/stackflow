@@ -4,6 +4,7 @@
 //   result — результат последнего запроса (колонки по порядку и по имени, значения текстом);
 //   state  — таблицы из tables после решения (все колонки или перечисленные);
 //   schema — структура таблиц из tables: колонки и ограничения, без данных.
+// Таблица из tables, которой нет после эталона (DROP TABLE), не должна остаться и у ученика.
 // Работает и в воркере (страница задачи), и в Node (тест эталонов content/).
 
 import { describeSchema, resetDatabase, runScript, shortType, snapshotTables } from './session.js';
@@ -24,10 +25,13 @@ const key = (row) => JSON.stringify(row);
 /** Что получилось после текста: результат последнего запроса, таблицы, схема. */
 async function outcome(db, parsers, base, setup, code, check) {
   await resetDatabase(db, `${base}\n${setup ?? ''}`);
+  // какие таблицы из tables были до решения: «удалили лишнее» и «не создали» — разные подсказки
+  const before = check.type === 'result' ? [] : (await describeSchema(db)).map((table) => table.name);
   const log = await runScript(db, parsers, code);
   const failed = log.find((item) => item.error);
   const result = { log, error: failed?.error ?? null };
   if (failed) return result;
+  result.existed = new Set(check.tables?.map((table) => table.name).filter((name) => before.includes(name)));
   if (check.type === 'result') {
     const last = [...log].reverse().find((item) => item.columns);
     result.result = last ? { columns: last.columns, rows: last.rows } : null;
@@ -117,10 +121,22 @@ function compareResult(expected, actual, orderMatters) {
   return null;
 }
 
-function compareTables(expected, actual) {
+/** Таблицы нет у эталона или у ученика: подсказка или null (нет у обоих — так и нужно). */
+function absence(name, table, got, existed) {
+  if (!table) return got ? { message: `Таблица ${name} должна быть удалена (DROP TABLE ${name}).` } : null;
+  return existed.has(name)
+    ? { message: `Таблицы ${name} больше нет, а после решения она должна остаться — удалять её не нужно.` }
+    : { message: `Таблицы ${name} нет — её нужно создать (CREATE TABLE ${name}).` };
+}
+
+function compareTables(expected, actual, existed) {
   for (const [name, table] of Object.entries(expected)) {
     const got = actual[name];
-    if (!got) return { message: `Таблицы ${name} нет — её удалили или переименовали?` };
+    if (!table || !got) {
+      const failure = absence(name, table, got, existed);
+      if (failure) return failure;
+      continue;
+    }
     if (got.missing.length) return { message: `В таблице ${name} нет колонки ${got.missing[0]}.` };
     const { missing, extra } = rowDiff(table.rows, got.rows);
     if (!missing.length && !extra.length) continue;
@@ -147,11 +163,14 @@ const columnText = (column) => [
   column.identity ? `GENERATED ${column.identity.toUpperCase()} AS IDENTITY` : null,
 ].filter(Boolean).join(', ');
 
-function compareSchema(expected, actual) {
+function compareSchema(expected, actual, existed) {
   for (const [name, table] of Object.entries(expected)) {
     const got = actual[name];
-    if (!table) return { message: `Эталон не создаёт таблицу ${name} — сообщите об ошибке в задаче.` };
-    if (!got) return { message: `Таблицы ${name} нет — её нужно создать (CREATE TABLE ${name}).` };
+    if (!table || !got) {
+      const failure = absence(name, table, got, existed);
+      if (failure) return failure;
+      continue;
+    }
     for (const column of table.columns) {
       const mine = got.columns.find((c) => c.name === column.name);
       if (!mine) return { message: `В таблице ${name} не хватает колонки ${column.name} (${columnText(column)}).` };
@@ -194,8 +213,8 @@ export async function checkSolution(db, parsers, base, task, code, reference = n
   if (!actual.log.length) return { ok: false, message: 'Здесь пока нет ни одного запроса.', log: [] };
   const failure = task.check.type === 'result'
     ? compareResult(expected.result, actual.result, task.check.order_matters !== false)
-    : task.check.type === 'state' ? compareTables(expected.tables, actual.tables)
-      : compareSchema(expected.schema, actual.schema);
+    : task.check.type === 'state' ? compareTables(expected.tables, actual.tables, actual.existed)
+      : compareSchema(expected.schema, actual.schema, actual.existed);
   return failure ? { ok: false, ...failure, log: actual.log } : { ok: true, log: actual.log };
 }
 
@@ -206,6 +225,12 @@ export async function verifySqlTask(db, parsers, base, task) {
   try {
     const good = await checkSolution(db, parsers, base, task, task.solution, reference);
     if (!good.ok) problems.push(`эталон не проходит свою проверку: ${good.message}`);
+    // таблицы нет ни до эталона, ни после — скорее опечатка в tables, чем «должна быть удалена»
+    const expected = [...reference.values()][0];
+    for (const { name } of task.check.tables ?? []) {
+      const after = expected.tables?.[name] ?? expected.schema?.[name];
+      if (!after && !expected.existed.has(name)) problems.push(`таблицы ${name} из tables нет ни до эталона, ни после — опечатка?`);
+    }
     // без заготовки — запрос, который ничего не меняет: так видно задачу,
     // где эталон оставляет базу как была (проверка state или schema прошла бы сама)
     const starter = await checkSolution(db, parsers, base, task, task.starter_code || 'SELECT 1;', reference);

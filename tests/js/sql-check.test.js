@@ -25,6 +25,14 @@ ALTER TABLE wishlist ADD COLUMN added_at timestamptz NOT NULL DEFAULT now();`,
   check: { type: 'schema', tables: [{ name: 'wishlist', columns: null }] },
 };
 
+// таблица, которой нет после эталона, должна быть удалена и у ученика
+const DROP_BATCHES = {
+  setup: `CREATE TABLE import_batches (id integer PRIMARY KEY);
+CREATE TABLE import_rows (id integer PRIMARY KEY, batch_id integer NOT NULL REFERENCES import_batches (id));`,
+  solution: 'DROP TABLE import_batches CASCADE;',
+  check: { type: 'schema', tables: [{ name: 'import_rows', columns: null }, { name: 'import_batches', columns: null }] },
+};
+
 const CANCEL = {
   solution: "UPDATE orders SET status = 'cancelled' WHERE status = 'new' AND created_at < '2026-03-01';",
   check: { type: 'state', tables: [{ name: 'orders', columns: null }] },
@@ -101,6 +109,21 @@ describe('проверка SQL-задач', () => {
     assert.equal((await check(WISHLIST, `ALTER TABLE wishlist ADD CONSTRAINT wl_pk PRIMARY KEY (user_id, product_id);
       ALTER TABLE wishlist ADD COLUMN added_at timestamptz NOT NULL DEFAULT now();
       INSERT INTO wishlist VALUES (1, 1);`)).ok, true);
+  });
+
+  it('schema: удалённая таблица — должна быть удалена; лишний DROP — своя подсказка', async () => {
+    assert.equal((await check(DROP_BATCHES, DROP_BATCHES.solution)).ok, true);
+    assert.equal((await check(DROP_BATCHES, 'DROP TABLE import_batches, import_rows;')).ok, false);
+    const onlyKey = await check(DROP_BATCHES, 'ALTER TABLE import_rows DROP CONSTRAINT import_rows_batch_id_fkey;');
+    assert.equal(onlyKey.message, 'Таблица import_batches должна быть удалена (DROP TABLE import_batches).');
+    const both = await check(DROP_BATCHES, 'DROP TABLE import_rows, import_batches;');
+    assert.equal(both.message,
+      'Таблицы import_rows больше нет, а после решения она должна остаться — удалять её не нужно.');
+    const created = await check(WISHLIST, 'DROP TABLE wishlist;');
+    assert.match(created.message, /^Таблицы wishlist больше нет/);
+    const typo = { ...DROP_BATCHES, check: { type: 'schema', tables: [{ name: 'import_row', columns: null }] } };
+    assert.equal((await verifySqlTask(db, parsers, BASE, typo))[0],
+      'таблицы import_row из tables нет ни до эталона, ни после — опечатка?');
   });
 
   it('тест эталонов: эталон проходит, заготовка — нет', async () => {
