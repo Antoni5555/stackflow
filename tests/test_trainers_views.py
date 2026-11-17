@@ -162,8 +162,8 @@ def test_playground_has_practice_card(client, loaded_content):
         r'<details class="side-card"[^>]*data-practice>(.*?)</details>', html, re.S,
     )
     assert card and ' open ' in card.group(0)
-    assert f'<option value="{PRACTICE_URL}">' in card.group(1)
-    assert '<optgroup label="Основы">' in card.group(1)
+    assert f'data-practice-topic="{PRACTICE_URL}"' in card.group(1)
+    assert '<p class="picker__group">Основы</p>' in card.group(1)
     assert 'second' not in card.group(1)                  # у второй темы задачника нет
     assert 'js/practice.js' in html
 

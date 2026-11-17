@@ -6,7 +6,10 @@ import { drafts } from './trainer-ui.js';
 const STORAGE_KEY = 'practice:topic';
 
 const root = document.querySelector('[data-practice]');
-const select = root.querySelector('[data-practice-topic]');
+const toggle = root.querySelector('[data-picker-toggle]');
+const list = root.querySelector('[data-picker-list]');
+const current = root.querySelector('[data-picker-current]');
+const options = [...root.querySelectorAll('[data-practice-topic]')];
 const box = root.querySelector('[data-practice-tasks]');
 
 async function load(url) {
@@ -32,11 +35,48 @@ box.addEventListener('click', (event) => {
   next.hidden = false;
 });
 
-select.addEventListener('change', () => {
-  drafts.set(STORAGE_KEY, select.value);
-  load(select.value);
+// Список тем: открыть / закрыть; закрывается выбором, Esc и кликом мимо
+function setOpen(open) {
+  list.hidden = !open;
+  toggle.setAttribute('aria-expanded', String(open));
+  if (open) (options.find((option) => option.getAttribute('aria-current') === 'true') || options[0]).focus();
+}
+
+function choose(option) {
+  for (const other of options) other.removeAttribute('aria-current');
+  option.setAttribute('aria-current', 'true');
+  current.textContent = option.textContent;
+  load(option.dataset.practiceTopic);
+}
+
+toggle.addEventListener('click', () => setOpen(list.hidden));
+
+list.addEventListener('click', (event) => {
+  const option = event.target.closest('[data-practice-topic]');
+  if (!option) return;
+  drafts.set(STORAGE_KEY, option.dataset.practiceTopic);
+  choose(option);
+  setOpen(false);
+  toggle.focus();
+});
+
+root.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !list.hidden) {
+    setOpen(false);
+    toggle.focus();
+  }
+  // Стрелки — по темам списка, как в обычном выпадающем списке
+  if (!list.hidden && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+    event.preventDefault();
+    const index = options.indexOf(document.activeElement);
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    options[Math.min(Math.max(index + step, 0), options.length - 1)]?.focus();
+  }
+});
+
+document.addEventListener('click', (event) => {
+  if (!list.hidden && !event.target.closest('[data-practice-picker]')) setOpen(false);
 });
 
 const saved = drafts.get(STORAGE_KEY);
-if (saved && [...select.options].some((option) => option.value === saved)) select.value = saved;
-load(select.value);
+choose(options.find((option) => option.dataset.practiceTopic === saved) || options[0]);

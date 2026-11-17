@@ -1,5 +1,5 @@
 {% load static %}
-{% comment %} Плашка «Задачник» в тренажёре: тема из списка → её задачи (подгружает js/practice.js
+{% comment %} Плашка «Задачник» в тренажёре: тема из списка (свой, не <select>) → её задачи (подгружает js/practice.js
    с адреса trainers:practice). Ученик решает в редакторе сам; намёк и ответ скрыты в <details>.
    Параметры: practice — [(раздел, [темы с задачником])]. {% endcomment %}
 <details class="side-card" name="side-panel" open data-practice>
@@ -8,16 +8,19 @@
     <span class="side-card__meta">реши в редакторе, ответ — под задачей</span>
   </summary>
   <div class="side-card__body">
-    <label class="select practice__topic">
-      <span class="visually-hidden">Тема</span>
-      <select data-practice-topic>
+    {# Свой список вместо <select>: открытое меню <select> рисует система — не по стилю и не по месту #}
+    <div class="picker practice__topic" data-practice-picker>
+      <button type="button" class="picker__toggle" aria-expanded="false" aria-controls="practice-topics" data-picker-toggle>
+        <span class="visually-hidden">Тема:</span>
+        <span class="picker__current" data-picker-current>{{ practice.0.1.0.title }}</span>
+      </button>
+      <div class="picker__list" id="practice-topics" hidden data-picker-list>
         {% for section, topics in practice %}
-        <optgroup label="{{ section.title }}">
-          {% for topic in topics %}<option value="{% url 'trainers:practice' course.slug section.slug topic.slug %}">{{ topic.title }}</option>{% endfor %}
-        </optgroup>
+        <p class="picker__group">{{ section.title }}</p>
+        {% for topic in topics %}<button type="button" class="picker__option" data-practice-topic="{% url 'trainers:practice' course.slug section.slug topic.slug %}">{{ topic.title }}</button>{% endfor %}
         {% endfor %}
-      </select>
-    </label>
+      </div>
+    </div>
     <div data-practice-tasks aria-live="polite"><p class="muted small">Загружаем задачи…</p></div>
   </div>
 </details>

@@ -401,7 +401,49 @@ textarea.editor__code {
 .console__line--error { color: var(--error); }
 
 /* --- Задачник в правой панели тренажёра (trainers/components/_practice*.html) --- */
-.practice__topic select { width: 100%; }
+/* Выбор темы: кнопка-«таблетка» как .select, список раскрывается под ней внутри плашки */
+.picker__toggle {
+  width: 100%;
+  padding: 7px 36px 7px 14px;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  text-align: left;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 14px center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+.picker__toggle:hover { border-color: var(--text); }
+.picker__toggle:focus-visible { outline: none; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.picker__toggle[aria-expanded="true"] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 5l4-4 4 4' fill='none' stroke='%23888' stroke-width='1.5'/%3E%3C/svg%3E"); }
+.picker__current { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker__list {
+  display: grid;
+  max-height: 280px;
+  padding: var(--space-2);
+  margin-top: var(--space-2);
+  overflow-y: auto;
+  scrollbar-width: none;
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+.picker__list[hidden] { display: none; }
+.picker__list::-webkit-scrollbar { display: none; }
+.picker__group { padding: var(--space-2) var(--space-2) var(--space-1); margin: 0; font-size: var(--fs-xs); color: var(--muted); }
+.picker__group:first-child { padding-top: var(--space-1); }
+.picker__option {
+  padding: 6px var(--space-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+.picker__option:hover { background: var(--surface); }
+.picker__option:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.picker__option[aria-current="true"] { font-weight: var(--fw-bold); background: var(--surface); }
 .practice { display: grid; gap: var(--space-3); }
 .practice__nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .practice__nav .round-btn { color: inherit; background: transparent; }
