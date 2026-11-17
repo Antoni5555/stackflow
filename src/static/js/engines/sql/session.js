@@ -21,9 +21,13 @@ export async function textParsers(db) {
   return Object.fromEntries(rows.map(({ oid }) => [oid, (value) => value]));
 }
 
-/** Сессия: часовой пояс задач (заказы около полуночи не уходят в соседний месяц). */
+/**
+ * Сессия: часовой пояс задач (заказы около полуночи не уходят в соседний месяц)
+ * и чтение таблицы подряд — PGlite запускает Postgres с enable_seqscan = off,
+ * и EXPLAIN почти всегда выбирал бы индекс, не как обычный PostgreSQL.
+ */
 export async function prepareSession(db) {
-  await db.exec(`SET TimeZone TO '${TIMEZONE}'`);
+  await db.exec(`SET TimeZone TO '${TIMEZONE}'; SET enable_seqscan TO on;`);
 }
 
 /** Удалить всё, что создано в базе, и загрузить учебные данные (schema.sql + seed.sql + setup). */

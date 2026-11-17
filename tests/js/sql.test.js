@@ -139,6 +139,18 @@ describe('выполнение в PGlite', () => {
     assert.match(result.rows[0][0], /^PostgreSQL 16\./);
   });
 
+  it('планы как в обычном PostgreSQL: чтение подряд не выключено', async () => {
+    const [setting] = await run('SHOW enable_seqscan');
+    assert.equal(setting.rows[0][0], 'on');
+    // маленькая таблица: без индекса по условию Postgres читает её целиком
+    const [plan] = await run('EXPLAIN SELECT * FROM users WHERE id > 1');
+    assert.match(plan.rows[0][0], /^Seq Scan on users/);
+    // ученик выключил — после сброса базы снова как по умолчанию
+    await run('SET enable_seqscan = off');
+    await resetDatabase(db, BASE);
+    assert.equal((await run('SHOW enable_seqscan'))[0].rows[0][0], 'on');
+  });
+
   it('значения — текстом, как выводит PostgreSQL; время — московское', async () => {
     const [result] = await run(`
       SELECT 1499::numeric(10,2) AS price, true AS ok, NULL AS empty, '{"a": 1}'::jsonb AS j,
