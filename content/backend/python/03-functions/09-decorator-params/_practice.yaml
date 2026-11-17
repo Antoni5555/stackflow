@@ -1,0 +1,124 @@
+- title: Лог с префиксом
+  text: |
+    Напишите `log_call(prefix)`: декоратор печатает `[orders] Вызов create_order` перед вызовом.
+  answer: |
+    Ответ:
+    ```python
+    from functools import wraps
+
+
+    def log_call(prefix):
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                print(f"{prefix} Вызов {func.__name__}")
+                return func(*args, **kwargs)
+            return wrapper
+        return decorator
+
+
+    @log_call("[orders]")
+    def create_order(customer):
+        return f"Заказ для {customer}"
+
+
+    print(create_order("Анна"))
+    ```
+    Результат:
+    ```
+    [orders] Вызов create_order
+    Заказ для Анна
+    ```
+    Три уровня: `log_call("[orders]")` возвращает декоратор, декоратор — обёртку.
+- title: Только для менеджера
+  text: |
+    Напишите `require_role(role)`: если у пользователя (первый аргумент функции, словарь) другая роль, функция не вызывается и возвращается `Доступ запрещён`.
+    ```python
+    manager = {"name": "Ольга", "role": "manager"}
+    buyer = {"name": "Анна", "role": "buyer"}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from functools import wraps
+
+
+    def require_role(role):
+        def decorator(func):
+            @wraps(func)
+            def wrapper(user, *args, **kwargs):
+                if user["role"] != role:
+                    return "Доступ запрещён"
+                return func(user, *args, **kwargs)
+            return wrapper
+        return decorator
+
+
+    @require_role("manager")
+    def cancel_order(user, order_id):
+        return f"{user['name']} отменила заказ {order_id}"
+
+
+    print(cancel_order(manager, 1042))
+    print(cancel_order(buyer, 1042))
+    ```
+    Результат:
+    ```
+    Ольга отменила заказ 1042
+    Доступ запрещён
+    ```
+- title: Повторить три раза
+  text: |
+    Напишите `repeat(times)`: декоратор вызывает функцию `times` раз и возвращает список результатов.
+  answer: |
+    Ответ:
+    ```python
+    def repeat(times):
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                return [func(*args, **kwargs) for _ in range(times)]
+            return wrapper
+        return decorator
+
+
+    @repeat(3)
+    def ping():
+        return "ok"
+
+
+    print(ping())
+    ```
+    Результат:
+    ```
+    ['ok', 'ok', 'ok']
+    ```
+- title: Порядок декораторов
+  text: |
+    Предскажите, что напечатает код:
+    ```python
+    def bold(func):
+        def wrapper():
+            return f"<b>{func()}</b>"
+        return wrapper
+
+
+    def italic(func):
+        def wrapper():
+            return f"<i>{func()}</i>"
+        return wrapper
+
+
+    @bold
+    @italic
+    def title():
+        return "Скидки"
+
+
+    print(title())
+    ```
+  answer: |
+    Результат:
+    ```
+    <b><i>Скидки</i></b>
+    ```
+    Декораторы применяются снизу вверх: `title = bold(italic(title))`, поэтому `bold` — снаружи.

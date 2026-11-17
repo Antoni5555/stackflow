@@ -1,0 +1,104 @@
+- title: Общая валюта
+  text: |
+    Добавьте в `Product` атрибут класса `currency = "₽"` и используйте его в `label()`. Затем поменяйте валюту у класса и посмотрите, что стало с ценниками двух товаров.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        currency = "₽"
+
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        def label(self):
+            return f"{self.name}: {self.price} {self.currency}"
+
+
+    a = Product("Чайник", 2490)
+    b = Product("Кружка", 390)
+    Product.currency = "руб."
+    print(a.label(), "|", b.label())
+    ```
+    Результат:
+    ```
+    Чайник: 2490 руб. | Кружка: 390 руб.
+    ```
+    Атрибут класса один на всех: изменение через класс видят все объекты.
+- title: Атрибут объекта закрывает атрибут класса
+  text: |
+    Предскажите вывод:
+    ```python
+    class Product:
+        currency = "₽"
+
+
+    a = Product()
+    b = Product()
+    a.currency = "$"
+    print(a.currency, b.currency, Product.currency)
+    ```
+  answer: |
+    Результат:
+    ```
+    $ ₽ ₽
+    ```
+    `a.currency = "$"` не меняет класс, а создаёт атрибут у объекта `a`. Поиск идёт сначала в объекте, потом в классе.
+- title: Счётчик созданных заказов
+  text: |
+    Напишите класс `Order`, который в атрибуте класса `created` считает, сколько заказов создано, и выдаёт каждому номер `1040 + created`.
+  answer: |
+    Ответ:
+    ```python
+    class Order:
+        created = 0
+
+        def __init__(self):
+            Order.created += 1
+            self.number = 1040 + Order.created
+
+
+    first, second = Order(), Order()
+    print(first.number, second.number, Order.created)
+    ```
+    Результат:
+    ```
+    1041 1042 2
+    ```
+    Писать нужно в `Order.created`: `self.created += 1` создал бы атрибут у объекта, а счётчик класса не изменился бы.
+- title: Общий список тегов
+  text: |
+    Теги одного товара появились у всех:
+    ```python
+    class Product:
+        tags = []
+
+        def __init__(self, name):
+            self.name = name
+
+
+    a = Product("Чайник")
+    b = Product("Лейка")
+    a.tags.append("кухня")
+    print(b.tags)
+    ```
+    Исправьте класс, чтобы у каждого товара был свой список.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def __init__(self, name):
+            self.name = name
+            self.tags = []
+
+
+    a = Product("Чайник")
+    b = Product("Лейка")
+    a.tags.append("кухня")
+    print(a.tags, b.tags)
+    ```
+    Результат:
+    ```
+    ['кухня'] []
+    ```
+    Изменяемые значения создаём в `__init__` — тогда у каждого объекта своё.

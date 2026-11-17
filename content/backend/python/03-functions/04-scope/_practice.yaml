@@ -1,0 +1,117 @@
+- title: Скидка из модуля
+  text: |
+    Предскажите, что напечатает код:
+    ```python
+    discount = 10
+
+
+    def price_with_discount(price):
+        return price * (100 - discount) // 100
+
+
+    print(price_with_discount(2490))
+    discount = 20
+    print(price_with_discount(2490))
+    ```
+  answer: |
+    Результат:
+    ```
+    2241
+    1992
+    ```
+    Своей `discount` у функции нет, поэтому Python ищет имя снаружи (L → E → G) — и берёт значение на момент вызова, а не определения.
+- title: Счётчик без global
+  text: |
+    Счётчик заказов сделан через `global`:
+    ```python
+    orders_count = 0
+
+
+    def register_order():
+        global orders_count
+        orders_count += 1
+    ```
+    Перепишите так, чтобы функция получала текущее число и возвращала новое. Зарегистрируйте три заказа.
+  answer: |
+    Ответ:
+    ```python
+    def register_order(count):
+        return count + 1
+
+
+    orders_count = 0
+    for _ in range(3):
+        orders_count = register_order(orders_count)
+    print(orders_count)
+    ```
+    Результат:
+    ```
+    3
+    ```
+    Теперь видно, откуда приходит и куда уходит значение: функцию легко проверить и переиспользовать.
+- title: Остаток не уменьшился
+  text: |
+    Код падает:
+    ```python
+    stock = 5
+
+
+    def sell():
+        stock = stock - 1
+        return stock
+    ```
+    ```text
+    sell()  # UnboundLocalError
+    ```
+    Исправьте: пусть остаток приходит параметром и возвращается.
+  answer: |
+    Ответ:
+    ```python
+    def sell(stock):
+        return stock - 1
+
+
+    stock = sell(stock)
+    print(stock)
+    ```
+    Результат:
+    ```
+    4
+    ```
+    Присваивание внутри функции делает `stock` локальной во всей функции, поэтому чтение справа идёт ещё до того, как локальной что-то присвоили.
+- title: Итог через вложенную функцию
+  text: |
+    Внутри `process_orders` есть помощник `add`, который прибавляет сумму к итогу. Допишите `add`, чтобы он менял `total` внешней функции.
+    ```python
+    def process_orders(amounts):
+        total = 0
+
+        def add(amount):
+            ...
+
+        for amount in amounts:
+            add(amount)
+        return total
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def process_orders(amounts):
+        total = 0
+
+        def add(amount):
+            nonlocal total
+            total += amount
+
+        for amount in amounts:
+            add(amount)
+        return total
+
+
+    print(process_orders([2490, 390, 120]))
+    ```
+    Результат:
+    ```
+    3000
+    ```
+    `nonlocal` говорит: `total` — переменная объемлющей функции, а не новая локальная.

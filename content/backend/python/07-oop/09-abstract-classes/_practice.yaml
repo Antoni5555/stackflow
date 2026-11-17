@@ -1,0 +1,121 @@
+- title: Платёжный шлюз
+  text: |
+    Опишите абстрактный класс `PaymentGateway` с абстрактным методом `pay(amount)` и попробуйте создать его объект.
+  answer: |
+    Ответ:
+    ```python
+    from abc import ABC, abstractmethod
+
+
+    class PaymentGateway(ABC):
+        @abstractmethod
+        def pay(self, amount):
+            ...
+
+
+    PaymentGateway()
+    ```
+    Результат:
+    ```
+    TypeError: Can't instantiate abstract class PaymentGateway without an implementation for abstract method 'pay'
+    ```
+    Абстрактный класс — только контракт: объект можно создать лишь у наследника, который реализовал все абстрактные методы.
+- title: Две реализации
+  text: |
+    Для `PaymentGateway` из прошлой задачи напишите `CardGateway` и `SbpGateway`: `pay` возвращает `Карта: списано 2490 ₽` и `СБП: списано 2490 ₽`.
+    ```python
+    from abc import ABC, abstractmethod
+
+
+    class PaymentGateway(ABC):
+        @abstractmethod
+        def pay(self, amount):
+            ...
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class CardGateway(PaymentGateway):
+        def pay(self, amount):
+            return f"Карта: списано {amount} ₽"
+
+
+    class SbpGateway(PaymentGateway):
+        def pay(self, amount):
+            return f"СБП: списано {amount} ₽"
+
+
+    for gateway in [CardGateway(), SbpGateway()]:
+        print(gateway.pay(2490))
+    ```
+    Результат:
+    ```
+    Карта: списано 2490 ₽
+    СБП: списано 2490 ₽
+    ```
+- title: Забыли метод
+  text: |
+    В шлюзе два абстрактных метода. Предскажите, что будет:
+    ```python
+    from abc import ABC, abstractmethod
+
+
+    class PaymentGateway(ABC):
+        @abstractmethod
+        def pay(self, amount): ...
+
+        @abstractmethod
+        def refund(self, amount): ...
+
+
+    class CardGateway(PaymentGateway):
+        def pay(self, amount):
+            return "ok"
+    ```
+    ```text
+    CardGateway()
+    ```
+  answer: |
+    Ответ:
+    ```python
+    CardGateway()
+    ```
+    Результат:
+    ```
+    TypeError: Can't instantiate abstract class CardGateway without an implementation for abstract method 'refund'
+    ```
+    Ошибка возникает при создании объекта, а не при вызове `refund`. Поэтому забытый метод находится сразу.
+- title: Общий код в базовом классе
+  text: |
+    Добавьте в абстрактный `PaymentGateway` обычный метод `checkout(amount)`: проверяет, что сумма больше нуля (иначе `ValueError`), и вызывает `pay`. Наследник реализует только `pay`.
+  answer: |
+    Ответ:
+    ```python
+    from abc import ABC, abstractmethod
+
+
+    class PaymentGateway(ABC):
+        @abstractmethod
+        def pay(self, amount):
+            ...
+
+        def checkout(self, amount):
+            if amount <= 0:
+                raise ValueError("Сумма должна быть больше нуля")
+            return self.pay(amount)
+
+
+    class CardGateway(PaymentGateway):
+        def pay(self, amount):
+            return f"Карта: списано {amount} ₽"
+
+
+    print(CardGateway().checkout(3270))
+    CardGateway().checkout(0)
+    ```
+    Результат:
+    ```
+    Карта: списано 3270 ₽
+    ValueError: Сумма должна быть больше нуля
+    ```
+    Проверка написана один раз в базовом классе и работает для всех способов оплаты.

@@ -1,0 +1,84 @@
+- title: Записать и прочитать
+  text: |
+    Запишите в файл `orders.txt` три номера заказов — каждый на своей строке: 1040, 1041, 1042. Затем прочитайте файл и напечатайте, сколько в нём строк.
+  answer: |
+    Ответ:
+    ```python
+    with open("orders.txt", "w", encoding="utf-8") as f:
+        f.write("1040\n1041\n1042\n")
+
+    with open("orders.txt", encoding="utf-8") as f:
+        lines = f.readlines()
+    print(len(lines))
+    ```
+    Результат:
+    ```
+    3
+    ```
+    `with` сам закрывает файл — даже если внутри случится ошибка.
+- title: Сумма выгрузки
+  text: |
+    Создайте выгрузку заказов кодом ниже, затем прочитайте её построчно и посчитайте общую сумму.
+    ```python
+    with open("export.txt", "w", encoding="utf-8") as f:
+        f.write("1040;2490\n1041;390\n1042;1250\n")
+    ```
+  hint: |
+    Идите по файлу циклом `for line in f`, у каждой строки уберите `\n` и разбейте по `;`.
+  answer: |
+    Ответ:
+    ```python
+    total = 0
+    with open("export.txt", encoding="utf-8") as f:
+        for line in f:
+            order_id, amount = line.strip().split(";")
+            total += int(amount)
+    print(total)
+    ```
+    Результат:
+    ```
+    4130
+    ```
+- title: Дописать в журнал
+  text: |
+    Создайте журнал:
+    ```python
+    with open("log.txt", "w", encoding="utf-8") as f:
+        f.write("Заказ 1040 создан\n")
+    ```
+    Допишите в конец строку `Заказ 1041 создан`, не стирая первую, и напечатайте весь файл.
+  answer: |
+    Ответ:
+    ```python
+    with open("log.txt", "a", encoding="utf-8") as f:
+        f.write("Заказ 1041 создан\n")
+
+    with open("log.txt", encoding="utf-8") as f:
+        print(f.read(), end="")
+    ```
+    Результат:
+    ```
+    Заказ 1040 создан
+    Заказ 1041 создан
+    ```
+    Режим `"a"` дописывает в конец, а `"w"` стёр бы файл.
+- title: Нет файла
+  text: |
+    Напишите `read_price_list(name)`: возвращает текст файла, а если файла нет — пустую строку. Проверьте на несуществующем `prices.txt`.
+  answer: |
+    Ответ:
+    ```python
+    def read_price_list(name):
+        try:
+            with open(name, encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            return ""
+
+
+    print(repr(read_price_list("prices.txt")))
+    ```
+    Результат:
+    ```
+    ''
+    ```

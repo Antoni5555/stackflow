@@ -1,0 +1,101 @@
+- title: Класс товара
+  text: |
+    Напишите класс `Product` с атрибутами `name` и `price` и методом `label()`, который возвращает `Чайник — 2490 ₽`.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        def label(self):
+            return f"{self.name} — {self.price} ₽"
+
+
+    kettle = Product("Чайник", 2490)
+    print(kettle.label())
+    ```
+    Результат:
+    ```
+    Чайник — 2490 ₽
+    ```
+- title: Метод меняет состояние
+  text: |
+    Напишите класс `Stock(product, quantity)` с методами `add(n)` и `remove(n)`. `remove` не даёт уйти в минус: если товара мало, возвращает `False` и ничего не меняет.
+  answer: |
+    Ответ:
+    ```python
+    class Stock:
+        def __init__(self, product, quantity):
+            self.product = product
+            self.quantity = quantity
+
+        def add(self, n):
+            self.quantity += n
+
+        def remove(self, n):
+            if n > self.quantity:
+                return False
+            self.quantity -= n
+            return True
+
+
+    stock = Stock("Чайник", 3)
+    stock.add(2)
+    print(stock.remove(4), stock.quantity)
+    print(stock.remove(4), stock.quantity)
+    ```
+    Результат:
+    ```
+    True 1
+    False 1
+    ```
+- title: Корзина
+  text: |
+    Напишите класс `Cart` со списком позиций, методом `add(name, price, qty=1)` и методом `total()`. Добавьте чайник за 2490 и две кружки по 390.
+  answer: |
+    Ответ:
+    ```python
+    class Cart:
+        def __init__(self):
+            self.items = []
+
+        def add(self, name, price, qty=1):
+            self.items.append({"name": name, "price": price, "qty": qty})
+
+        def total(self):
+            return sum(item["price"] * item["qty"] for item in self.items)
+
+
+    cart = Cart()
+    cart.add("Чайник", 2490)
+    cart.add("Кружка", 390, qty=2)
+    print(len(cart.items), cart.total())
+    ```
+    Результат:
+    ```
+    2 3270
+    ```
+    Список создаётся в `__init__`, поэтому у каждой корзины он свой.
+- title: Два объекта — два состояния
+  text: |
+    Предскажите вывод:
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+
+    a = Product("Чайник", 2490)
+    b = Product("Чайник", 2490)
+    b.price = 1990
+    print(a.price, b.price, a is b, isinstance(a, Product))
+    ```
+  answer: |
+    Результат:
+    ```
+    2490 1990 False True
+    ```
+    Каждый вызов класса создаёт новый объект со своими атрибутами — даже с одинаковыми данными.

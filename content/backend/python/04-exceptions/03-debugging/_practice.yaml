@@ -1,0 +1,86 @@
+- title: Итог заказа неверный
+  text: |
+    Итог должен быть 3270, а печатается 780:
+    ```python
+    items = [{"price": 2490, "qty": 1}, {"price": 390, "qty": 2}]
+    for item in items:
+        total = 0
+        total += item["price"] * item["qty"]
+    print(total)
+    ```
+    Добавьте отладочный `print` в цикл, найдите ошибку и исправьте.
+  hint: |
+    Печатайте `total` на каждом шаге цикла — посмотрите, что с ним происходит в начале шага.
+  answer: |
+    Ответ: `total = 0` стоит внутри цикла и обнуляет сумму на каждой позиции. Выносим его перед циклом:
+    ```python
+    total = 0
+    for item in items:
+        total += item["price"] * item["qty"]
+    print(total)
+    ```
+    Результат:
+    ```
+    3270
+    ```
+- title: Проверка через assert
+  text: |
+    Добавьте в `calc_total` проверку: итог не может быть отрицательным — иначе ошибка с текстом `итог отрицательный: …`. Вызовите с позицией, где количество `-2`.
+    ```python
+    def calc_total(items):
+        return sum(item["price"] * item["qty"] for item in items)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def calc_total(items):
+        total = sum(item["price"] * item["qty"] for item in items)
+        assert total >= 0, f"итог отрицательный: {total}"
+        return total
+
+
+    calc_total([{"price": 390, "qty": -2}])
+    ```
+    Результат:
+    ```
+    AssertionError: итог отрицательный: -780
+    ```
+    `assert` — проверка «так не бывает» для разработчика. Проверять данные пользователя им нельзя: при запуске с `-O` проверки отключаются.
+- title: Где ошибка в traceback
+  text: |
+    Программа упала:
+    ```text
+    Traceback (most recent call last):
+      File "main.py", line 12, in <module>
+        print(order_total(order))
+      File "main.py", line 8, in order_total
+        return sum(item_total(i) for i in order["items"])
+      File "main.py", line 8, in <genexpr>
+        return sum(item_total(i) for i in order["items"])
+      File "main.py", line 4, in item_total
+        return item["price"] * item["quantity"]
+                               ~~~~^^^^^^^^^^^^
+    KeyError: 'quantity'
+    ```
+    В какой функции и строке ошибка и что с данными?
+  answer: |
+    Ответ: читаем снизу вверх. Ошибка `KeyError: 'quantity'` — в `item_total`, строка 4: у позиции нет ключа `quantity`. Скорее всего, в данных он называется иначе (например, `qty`). Строки выше — путь вызовов: `<module>` → `order_total` → `item_total`.
+- title: Отладочный вывод в лог
+  text: |
+    Напишите `apply_discount(price, percent)`, которая при отладке печатает входные данные и результат через `print(..., sep=" | ")`, и вызовите её для 2490 и 15.
+  answer: |
+    Ответ:
+    ```python
+    def apply_discount(price, percent):
+        result = price * (100 - percent) // 100
+        print("DEBUG", f"{price=}", f"{percent=}", f"{result=}", sep=" | ")
+        return result
+
+
+    apply_discount(2490, 15)
+    ```
+    Результат:
+    ```
+    DEBUG | price=2490 | percent=15 | result=2116
+    ```
+    `f"{price=}"` печатает и имя, и значение — удобно для быстрого отладочного вывода. После отладки такие строки удаляют.

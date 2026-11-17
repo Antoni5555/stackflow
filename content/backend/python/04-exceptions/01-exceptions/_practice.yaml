@@ -1,0 +1,116 @@
+- title: Количество не число
+  text: |
+    Количество пришло из формы:
+    ```python
+    raw = "abc"
+    ```
+    Превратите его в `int`. Если не получилось — напечатайте `Количество должно быть числом`, иначе — само количество.
+  answer: |
+    Ответ:
+    ```python
+    try:
+        quantity = int(raw)
+    except ValueError:
+        print("Количество должно быть числом")
+    else:
+        print(quantity)
+    ```
+    Результат:
+    ```
+    Количество должно быть числом
+    ```
+    В `try` — только строка, которая может упасть; то, что выполняется при успехе, — в `else`.
+- title: Нет поля в товаре
+  text: |
+    ```python
+    product = {"id": 17, "name": "Чайник"}
+    ```
+    Напечатайте цену товара, а если поля `price` нет — `Цена не указана`. Решите через `try/except`.
+  answer: |
+    Ответ:
+    ```python
+    try:
+        print(product["price"])
+    except KeyError:
+        print("Цена не указана")
+    ```
+    Результат:
+    ```
+    Цена не указана
+    ```
+    Для одного поля короче `product.get("price")`, а `try` удобен, когда в блоке несколько обращений.
+- title: Средний чек без заказов
+  text: |
+    Напишите `average_check(total, orders)`: средний чек, а при нуле заказов — `0`. Ловите конкретное исключение.
+  answer: |
+    Ответ:
+    ```python
+    def average_check(total, orders):
+        try:
+            return total / orders
+        except ZeroDivisionError:
+            return 0
+
+
+    print(average_check(9000, 3), average_check(0, 0))
+    ```
+    Результат:
+    ```
+    3000.0 0
+    ```
+- title: Порядок блоков
+  text: |
+    Предскажите, что напечатает код:
+    ```python
+    def parse(raw):
+        try:
+            value = int(raw)
+        except ValueError:
+            print("ошибка")
+            return None
+        else:
+            print("успех")
+            return value
+        finally:
+            print("готово")
+
+
+    print(parse("5"))
+    print(parse("x"))
+    ```
+  answer: |
+    Результат:
+    ```
+    успех
+    готово
+    5
+    ошибка
+    готово
+    None
+    ```
+    `finally` выполняется всегда — даже когда в `try`, `except` или `else` уже сработал `return`.
+- title: Только корректные количества
+  text: |
+    Из формы пришли количества позиций, часть — мусор:
+    ```python
+    raw_values = ["3", "abc", "", None, "2"]
+    ```
+    Сложите те, что превращаются в `int`, и напечатайте сумму и число отброшенных.
+  hint: |
+    `int(None)` падает не с `ValueError`, а с `TypeError`. Несколько исключений ловят кортежем.
+  answer: |
+    Ответ:
+    ```python
+    total = 0
+    skipped = 0
+    for raw in raw_values:
+        try:
+            total += int(raw)
+        except (ValueError, TypeError):
+            skipped += 1
+    print(total, skipped)
+    ```
+    Результат:
+    ```
+    5 3
+    ```

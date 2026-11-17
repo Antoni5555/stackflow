@@ -1,0 +1,134 @@
+- title: Лог вызова
+  text: |
+    Напишите декоратор `log_call`: перед вызовом печатает `Вызов calc_total`, затем возвращает результат функции.
+    ```python
+    def calc_total(prices):
+        return sum(prices)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def log_call(func):
+        def wrapper(*args, **kwargs):
+            print(f"Вызов {func.__name__}")
+            return func(*args, **kwargs)
+        return wrapper
+
+
+    @log_call
+    def calc_total(prices):
+        return sum(prices)
+
+
+    print(calc_total([2490, 390]))
+    ```
+    Результат:
+    ```
+    Вызов calc_total
+    2880
+    ```
+    `*args, **kwargs` в обёртке пропускают любые аргументы — декоратор подойдёт к любой функции.
+- title: Имя потерялось
+  text: |
+    После декоратора у функции чужое имя:
+    ```python
+    def log_call(func):
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+
+
+    @log_call
+    def calc_total(prices):
+        """Сумма цен."""
+        return sum(prices)
+
+
+    print(calc_total.__name__)
+    ```
+    Исправьте декоратор, чтобы имя и документация остались от `calc_total`.
+  answer: |
+    Ответ:
+    ```python
+    from functools import wraps
+
+
+    def log_call(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+
+
+    @log_call
+    def calc_total(prices):
+        """Сумма цен."""
+        return sum(prices)
+
+
+    print(calc_total.__name__, calc_total.__doc__)
+    ```
+    Результат:
+    ```
+    calc_total Сумма цен.
+    ```
+- title: Счётчик вызовов
+  text: |
+    Напишите декоратор `count_calls`, который считает вызовы и хранит число в атрибуте обёртки `calls`.
+  answer: |
+    Ответ:
+    ```python
+    from functools import wraps
+
+
+    def count_calls(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            wrapper.calls += 1
+            return func(*args, **kwargs)
+        wrapper.calls = 0
+        return wrapper
+
+
+    @count_calls
+    def get_price(product_id):
+        return 2490
+
+
+    for _ in range(3):
+        get_price(17)
+    print(get_price.calls)
+    ```
+    Результат:
+    ```
+    3
+    ```
+    Функция — объект, ей можно добавить атрибут. Счётчик живёт вместе с обёрткой, без глобальной переменной.
+- title: Результат в верхнем регистре
+  text: |
+    Напишите декоратор `upper`, который переводит строку-результат функции в верхний регистр.
+    ```python
+    def promo_code(name):
+        return f"{name}2026"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def upper(func):
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs).upper()
+        return wrapper
+
+
+    @upper
+    def promo_code(name):
+        return f"{name}2026"
+
+
+    print(promo_code("sale"))
+    ```
+    Результат:
+    ```
+    SALE2026
+    ```
+    Декоратор может менять не только то, что происходит до вызова, но и сам результат.

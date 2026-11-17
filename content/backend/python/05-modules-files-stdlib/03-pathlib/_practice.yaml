@@ -1,0 +1,78 @@
+- title: Путь к отчёту
+  text: |
+    Соберите через `Path` путь к отчёту `reports/2026-11/sales.csv` и напечатайте его, имя файла, имя без расширения и расширение.
+  answer: |
+    Ответ:
+    ```python
+    from pathlib import Path
+
+    report = Path("reports") / "2026-11" / "sales.csv"
+    print(report)
+    print(report.name, report.stem, report.suffix)
+    ```
+    Результат:
+    ```
+    reports/2026-11/sales.csv
+    sales.csv sales .csv
+    ```
+    `/` склеивает части пути с правильным разделителем для системы.
+- title: Отчёты за месяц
+  text: |
+    Создайте папку с отчётами:
+    ```python
+    from pathlib import Path
+
+    folder = Path("reports")
+    folder.mkdir()
+    for name in ["2026-11-01.csv", "2026-11-02.csv", "notes.txt", "2026-10-31.csv"]:
+        (folder / name).write_text("", encoding="utf-8")
+    ```
+    Напечатайте по алфавиту имена CSV-файлов за ноябрь 2026.
+  answer: |
+    Ответ:
+    ```python
+    names = sorted(p.name for p in folder.glob("2026-11-*.csv"))
+    print(names)
+    ```
+    Результат:
+    ```
+    ['2026-11-01.csv', '2026-11-02.csv']
+    ```
+    `glob` возвращает файлы в порядке файловой системы, поэтому сортируем сами.
+- title: Настройки по умолчанию
+  text: |
+    Если файла `config.txt` нет — создайте его с текстом `currency=RUB`. Затем прочитайте и напечатайте содержимое.
+  answer: |
+    Ответ:
+    ```python
+    from pathlib import Path
+
+    config = Path("config.txt")
+    if not config.exists():
+        config.write_text("currency=RUB", encoding="utf-8")
+    print(config.read_text(encoding="utf-8"))
+    ```
+    Результат:
+    ```
+    currency=RUB
+    ```
+- title: Папки с вложенностью
+  text: |
+    Создайте папку `exports/2026/11` одним вызовом (промежуточных папок ещё нет) и запишите в неё `orders.txt`. Напечатайте, существует ли файл.
+  hint: |
+    У `mkdir` есть параметры `parents` и `exist_ok`.
+  answer: |
+    Ответ:
+    ```python
+    from pathlib import Path
+
+    folder = Path("exports") / "2026" / "11"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "orders.txt").write_text("1040\n", encoding="utf-8")
+    print((folder / "orders.txt").exists())
+    ```
+    Результат:
+    ```
+    True
+    ```
+    `parents=True` создаёт недостающие папки, `exist_ok=True` не падает, если папка уже есть.

@@ -1,0 +1,110 @@
+- title: Сумма заказа
+  text: |
+    Напишите функцию `calc_total(items)`: она принимает список пар `(цена, количество)` и возвращает сумму заказа.
+    ```python
+    items = [(2490, 1), (390, 2)]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def calc_total(items):
+        total = 0
+        for price, quantity in items:
+            total += price * quantity
+        return total
+
+
+    print(calc_total(items))
+    ```
+    Результат:
+    ```
+    3270
+    ```
+- title: Цена со скидкой
+  text: |
+    Напишите `apply_discount(price, percent)`, которая возвращает цену со скидкой, округлённую вниз до рубля. Проверьте на 2490 ₽ и 10 %.
+  answer: |
+    Ответ:
+    ```python
+    def apply_discount(price, percent):
+        return price * (100 - percent) // 100
+
+
+    print(apply_discount(2490, 10))
+    ```
+    Результат:
+    ```
+    2241
+    ```
+- title: Бесплатная доставка
+  text: |
+    Напишите `is_free_delivery(total)`: `True`, если сумма от 3000 ₽. Напечатайте результат для 2700 и 3500.
+  answer: |
+    Ответ:
+    ```python
+    def is_free_delivery(total):
+        return total >= 3000
+
+
+    print(is_free_delivery(2700), is_free_delivery(3500))
+    ```
+    Результат:
+    ```
+    False True
+    ```
+    Сравнение уже даёт `True` или `False` — `if … return True else return False` не нужен.
+- title: Почему None
+  text: |
+    Функция считает сумму, но вместо неё печатается `None`:
+    ```python
+    def order_total(prices):
+        total = 0
+        for price in prices:
+            total += price
+        print(total)
+
+
+    result = order_total([2490, 390])
+    print(result)
+    ```
+    Исправьте функцию так, чтобы результат можно было сохранить в переменную.
+  answer: |
+    Ответ:
+    ```python
+    def order_total(prices):
+        total = 0
+        for price in prices:
+            total += price
+        return total
+
+
+    result = order_total([2490, 390])
+    print(result)
+    ```
+    Результат:
+    ```
+    2880
+    ```
+    `print` только выводит значение на экран; без `return` функция возвращает `None`.
+- title: Имя и фамилия
+  text: |
+    Напишите `split_name(full_name)` с документацией: принимает строку «Фамилия Имя» и возвращает пару `(имя, фамилия)`. Распакуйте результат и напечатайте приветствие.
+  answer: |
+    Ответ:
+    ```python
+    def split_name(full_name):
+        """Разбить «Фамилия Имя» на пару (имя, фамилия)."""
+        last, first = full_name.split()
+        return first, last
+
+
+    first, last = split_name("Иванова Анна")
+    print(f"Здравствуйте, {first} {last}!")
+    print(split_name.__doc__)
+    ```
+    Результат:
+    ```
+    Здравствуйте, Анна Иванова!
+    Разбить «Фамилия Имя» на пару (имя, фамилия).
+    ```
+    `return a, b` возвращает один кортеж — его удобно сразу распаковать.

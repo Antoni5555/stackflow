@@ -1,0 +1,124 @@
+- title: Способы доставки
+  text: |
+    Напишите классы `Courier` (500 ₽), `Pickup` (0 ₽) и `Post` (200 ₽ + 50 ₽ за каждый кг) с одинаковым методом `calc_price(weight)`. Посчитайте доставку 3 кг каждым способом одним циклом.
+  answer: |
+    Ответ:
+    ```python
+    class Courier:
+        def calc_price(self, weight):
+            return 500
+
+
+    class Pickup:
+        def calc_price(self, weight):
+            return 0
+
+
+    class Post:
+        def calc_price(self, weight):
+            return 200 + 50 * weight
+
+
+    for method in [Courier(), Pickup(), Post()]:
+        print(type(method).__name__, method.calc_price(3))
+    ```
+    Результат:
+    ```
+    Courier 500
+    Pickup 0
+    Post 350
+    ```
+    Цикл не проверяет тип: он вызывает `calc_price`, а каждый объект считает по-своему.
+- title: Самая дешёвая доставка
+  text: |
+    Для классов из прошлой задачи напишите `cheapest(methods, weight)` — возвращает способ с минимальной ценой.
+    ```python
+    class Courier:
+        def calc_price(self, weight):
+            return 500
+
+
+    class Post:
+        def calc_price(self, weight):
+            return 200 + 50 * weight
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def cheapest(methods, weight):
+        return min(methods, key=lambda m: m.calc_price(weight))
+
+
+    print(type(cheapest([Courier(), Post()], 3)).__name__)
+    print(type(cheapest([Courier(), Post()], 8)).__name__)
+    ```
+    Результат:
+    ```
+    Post
+    Courier
+    ```
+- title: Утиная типизация
+  text: |
+    Функция `print_receipt(lines)` печатает всё, что можно перебрать. Передайте ей список, кортеж и свой класс `Order` с `__iter__`.
+    ```python
+    def print_receipt(lines):
+        for line in lines:
+            print("-", line)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Order:
+        def __init__(self, *items):
+            self.items = items
+
+        def __iter__(self):
+            return iter(self.items)
+
+
+    print_receipt(["чайник"])
+    print_receipt(("кружка",))
+    print_receipt(Order("лейка", "плед"))
+    ```
+    Результат:
+    ```
+    - чайник
+    - кружка
+    - лейка
+    - плед
+    ```
+    Функции важно не «что это за класс», а «умеет ли объект перебираться».
+- title: Протокол уведомлений
+  text: |
+    Опишите `Protocol` `Notifier` с методом `send(text) -> str` и две реализации без наследования: `EmailNotifier` и `SmsNotifier`. Функция `notify_all(notifiers, text)` возвращает список результатов.
+  answer: |
+    Ответ:
+    ```python
+    from typing import Protocol
+
+
+    class Notifier(Protocol):
+        def send(self, text: str) -> str: ...
+
+
+    class EmailNotifier:
+        def send(self, text: str) -> str:
+            return f"email: {text}"
+
+
+    class SmsNotifier:
+        def send(self, text: str) -> str:
+            return f"sms: {text}"
+
+
+    def notify_all(notifiers: list[Notifier], text: str) -> list[str]:
+        return [n.send(text) for n in notifiers]
+
+
+    print(notify_all([EmailNotifier(), SmsNotifier()], "Заказ 1042 отправлен"))
+    ```
+    Результат:
+    ```
+    ['email: Заказ 1042 отправлен', 'sms: Заказ 1042 отправлен']
+    ```
+    `Protocol` — описание для аннотаций и mypy. Реализациям не нужно от него наследоваться — достаточно нужного метода.

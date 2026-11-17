@@ -1,0 +1,98 @@
+- title: Срок промокода
+  text: |
+    Промокод действует до 30 ноября 2026 года включительно. Сколько дней осталось, если сегодня 17 ноября?
+    ```python
+    from datetime import date
+
+    today = date(2026, 11, 17)
+    expires = date(2026, 11, 30)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print((expires - today).days)
+    ```
+    Результат:
+    ```
+    13
+    ```
+    Разность дат — `timedelta`, число дней в ней — `.days`.
+- title: Дата доставки
+  text: |
+    Заказ оформлен 27 ноября 2026, доставка — через 7 дней. Напечатайте дату доставки в виде `04.12.2026`.
+  answer: |
+    Ответ:
+    ```python
+    from datetime import date, timedelta
+
+    delivery = date(2026, 11, 27) + timedelta(days=7)
+    print(delivery.strftime("%d.%m.%Y"))
+    ```
+    Результат:
+    ```
+    04.12.2026
+    ```
+    `timedelta` сам переходит через конец месяца.
+- title: Время из строки
+  text: |
+    Время заказа пришло строкой:
+    ```python
+    raw = "17.11.2026 14:30"
+    ```
+    Разберите его в `datetime` и напечатайте в формате ISO и отдельно час.
+  answer: |
+    Ответ:
+    ```python
+    from datetime import datetime
+
+    created = datetime.strptime(raw, "%d.%m.%Y %H:%M")
+    print(created.isoformat(), created.hour)
+    ```
+    Результат:
+    ```
+    2026-11-17T14:30:00 14
+    ```
+- title: Заказы за 7 дней
+  text: |
+    ```python
+    from datetime import date, timedelta
+
+    today = date(2026, 11, 17)
+    orders = [
+        (1040, date(2026, 11, 5)),
+        (1041, date(2026, 11, 12)),
+        (1042, date(2026, 11, 16)),
+    ]
+    ```
+    Напечатайте номера заказов за последние 7 дней, включая сегодня.
+  answer: |
+    Ответ:
+    ```python
+    week_ago = today - timedelta(days=6)
+    print([number for number, day in orders if week_ago <= day <= today])
+    ```
+    Результат:
+    ```
+    [1041, 1042]
+    ```
+    «7 дней включая сегодня» — с 11 по 17 ноября, поэтому вычитаем 6.
+- title: Московское время
+  text: |
+    Сервер хранит время заказа в UTC: 17 ноября 2026, 21:30. Напечатайте его по Москве и дату, которую увидит покупатель.
+  answer: |
+    Ответ:
+    ```python
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    created = datetime(2026, 11, 17, 21, 30, tzinfo=ZoneInfo("UTC"))
+    moscow = created.astimezone(ZoneInfo("Europe/Moscow"))
+    print(moscow)
+    print(moscow.date())
+    ```
+    Результат:
+    ```
+    2026-11-18 00:30:00+03:00
+    2026-11-18
+    ```
+    По UTC заказ сделан 17-го, а в Москве — уже 18-го. Поэтому храним в UTC, а показываем в поясе покупателя.

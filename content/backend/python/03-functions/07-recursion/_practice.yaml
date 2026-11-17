@@ -1,0 +1,137 @@
+- title: Сколько категорий
+  text: |
+    Дерево категорий:
+    ```python
+    tree = {
+        "name": "Каталог",
+        "children": [
+            {"name": "Кухня", "children": [
+                {"name": "Посуда", "children": []},
+                {"name": "Текстиль", "children": []},
+            ]},
+            {"name": "Сад", "children": []},
+        ],
+    }
+    ```
+    Напишите рекурсивную `count_categories(node)`, которая считает все узлы дерева вместе с корнем.
+  answer: |
+    Ответ:
+    ```python
+    def count_categories(node):
+        total = 1
+        for child in node["children"]:
+            total += count_categories(child)
+        return total
+
+
+    print(count_categories(tree))
+    ```
+    Результат:
+    ```
+    5
+    ```
+    Базовый случай здесь неявный: у листа пустой `children`, цикл не выполняется, и функция возвращает 1.
+- title: Дерево с отступами
+  text: |
+    Для того же `tree` напечатайте дерево: каждый уровень вложенности — два пробела отступа.
+    ```python
+    tree = {
+        "name": "Каталог",
+        "children": [
+            {"name": "Кухня", "children": [
+                {"name": "Посуда", "children": []},
+                {"name": "Текстиль", "children": []},
+            ]},
+            {"name": "Сад", "children": []},
+        ],
+    }
+    ```
+  hint: |
+    Передавайте в рекурсивный вызов глубину на единицу больше.
+  answer: |
+    Ответ:
+    ```python
+    def print_tree(node, depth=0):
+        print("  " * depth + node["name"])
+        for child in node["children"]:
+            print_tree(child, depth + 1)
+
+
+    print_tree(tree)
+    ```
+    Результат:
+    ```
+    Каталог
+      Кухня
+        Посуда
+        Текстиль
+      Сад
+    ```
+- title: Путь к категории
+  text: |
+    Для того же `tree` напишите `find_path(node, name)`: возвращает список названий от корня до категории или `None`, если её нет.
+    ```python
+    tree = {
+        "name": "Каталог",
+        "children": [
+            {"name": "Кухня", "children": [
+                {"name": "Посуда", "children": []},
+                {"name": "Текстиль", "children": []},
+            ]},
+            {"name": "Сад", "children": []},
+        ],
+    }
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def find_path(node, name):
+        if node["name"] == name:
+            return [node["name"]]
+        for child in node["children"]:
+            path = find_path(child, name)
+            if path is not None:
+                return [node["name"]] + path
+        return None
+
+
+    print(find_path(tree, "Текстиль"))
+    print(find_path(tree, "Гараж"))
+    ```
+    Результат:
+    ```
+    ['Каталог', 'Кухня', 'Текстиль']
+    None
+    ```
+    Нашли в поддереве — добавляем текущее имя в начало пути и сразу возвращаем.
+- title: Без рекурсии
+  text: |
+    Посчитайте категории того же дерева без рекурсии — списком «что ещё обойти».
+    ```python
+    tree = {
+        "name": "Каталог",
+        "children": [
+            {"name": "Кухня", "children": [
+                {"name": "Посуда", "children": []},
+                {"name": "Текстиль", "children": []},
+            ]},
+            {"name": "Сад", "children": []},
+        ],
+    }
+    ```
+  answer: |
+    Ответ:
+    ```python
+    to_visit = [tree]
+    count = 0
+    while to_visit:
+        node = to_visit.pop()
+        count += 1
+        to_visit.extend(node["children"])
+    print(count)
+    ```
+    Результат:
+    ```
+    5
+    ```
+    Цикл со своим списком не упирается в предел глубины рекурсии (около 1000 вызовов).

@@ -1,0 +1,107 @@
+- title: Позиция заказа
+  text: |
+    Опишите `OrderItem` как dataclass: `name: str`, `price: int`, `qty: int = 1` и свойство `total`. Создайте позицию и напечатайте её и сумму.
+  answer: |
+    Ответ:
+    ```python
+    from dataclasses import dataclass
+
+
+    @dataclass
+    class OrderItem:
+        name: str
+        price: int
+        qty: int = 1
+
+        @property
+        def total(self):
+            return self.price * self.qty
+
+
+    item = OrderItem("Кружка", 390, qty=2)
+    print(item, item.total)
+    print(item == OrderItem("Кружка", 390, 2))
+    ```
+    Результат:
+    ```
+    OrderItem(name='Кружка', price=390, qty=2) 780
+    True
+    ```
+    `__init__`, `__repr__` и `__eq__` dataclass написал сам по аннотациям полей.
+- title: Список по умолчанию
+  text: |
+    Опишите dataclass `Cart` с полем `items: list`, которое по умолчанию пустое и у каждой корзины своё. Проверьте на двух корзинах.
+  hint: |
+    `items: list = []` dataclass не позволит — нужен `field`.
+  answer: |
+    Ответ:
+    ```python
+    from dataclasses import dataclass, field
+
+
+    @dataclass
+    class Cart:
+        items: list = field(default_factory=list)
+
+
+    a, b = Cart(), Cart()
+    a.items.append("чайник")
+    print(a, b)
+    ```
+    Результат:
+    ```
+    Cart(items=['чайник']) Cart(items=[])
+    ```
+    `default_factory=list` вызывает `list()` при создании каждого объекта.
+- title: Неизменяемая цена
+  text: |
+    Сделайте dataclass `Price(amount: int, currency: str = "RUB")` неизменяемым и попробуйте поменять сумму.
+  answer: |
+    Ответ:
+    ```python
+    from dataclasses import dataclass
+
+
+    @dataclass(frozen=True)
+    class Price:
+        amount: int
+        currency: str = "RUB"
+
+
+    price = Price(2490)
+    print(price)
+    price.amount = 1990
+    ```
+    Результат:
+    ```
+    Price(amount=2490, currency='RUB')
+    dataclasses.FrozenInstanceError: cannot assign to field 'amount'
+    ```
+    Замороженный объект можно положить в множество или сделать ключом словаря.
+- title: Сортировка позиций
+  text: |
+    Сделайте dataclass `Delivery(days: int, price: int, name: str)` сравнимым и выберите вариант доставки с минимальным сроком, а при равном сроке — с минимальной ценой.
+    ```python
+    options = [("Почта", 7, 200), ("Курьер", 1, 500), ("Пункт выдачи", 1, 0)]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from dataclasses import dataclass
+
+
+    @dataclass(order=True)
+    class Delivery:
+        days: int
+        price: int
+        name: str
+
+
+    deliveries = [Delivery(days, price, name) for name, days, price in options]
+    print(min(deliveries))
+    ```
+    Результат:
+    ```
+    Delivery(days=1, price=0, name='Пункт выдачи')
+    ```
+    `order=True` сравнивает объекты как кортежи полей в порядке объявления — поэтому `days` стоит первым.

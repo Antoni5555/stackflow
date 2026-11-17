@@ -1,0 +1,98 @@
+- title: Сумма по выгрузке
+  text: |
+    Создайте выгрузку заказов:
+    ```python
+    with open("orders.csv", "w", encoding="utf-8", newline="") as f:
+        f.write("id,status,total\n1040,paid,2490\n1041,new,390\n1042,paid,1250\n")
+    ```
+    Прочитайте её через `csv.DictReader` и напечатайте сумму оплаченных заказов.
+  answer: |
+    Ответ:
+    ```python
+    import csv
+
+    paid_total = 0
+    with open("orders.csv", encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            if row["status"] == "paid":
+                paid_total += int(row["total"])
+    print(paid_total)
+    ```
+    Результат:
+    ```
+    3740
+    ```
+    Все значения из CSV — строки, поэтому `int(row["total"])`.
+- title: Отчёт для менеджера
+  text: |
+    ```python
+    products = [
+        {"name": "Чайник", "price": 2490, "stock": 3},
+        {"name": "Кружка", "price": 390, "stock": 0},
+    ]
+    ```
+    Запишите товары в `report.csv` с заголовком через `csv.DictWriter`, затем напечатайте файл.
+  answer: |
+    Ответ:
+    ```python
+    import csv
+
+    with open("report.csv", "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["name", "price", "stock"])
+        writer.writeheader()
+        writer.writerows(products)
+
+    with open("report.csv", encoding="utf-8") as f:
+        print(f.read(), end="")
+    ```
+    Результат:
+    ```
+    name,price,stock
+    Чайник,2490,3
+    Кружка,390,0
+    ```
+- title: Запятая внутри значения
+  text: |
+    Запишите строку `["Набор «Чай, кофе»", 990]` через `csv.writer` в `items.csv`, затем прочитайте `csv.reader` и напечатайте разобранную строку.
+  answer: |
+    Ответ:
+    ```python
+    import csv
+
+    with open("items.csv", "w", encoding="utf-8", newline="") as f:
+        csv.writer(f).writerow(["Набор «Чай, кофе»", 990])
+
+    with open("items.csv", encoding="utf-8") as f:
+        print(f.read(), end="")
+
+    with open("items.csv", encoding="utf-8", newline="") as f:
+        for row in csv.reader(f):
+            print(row)
+    ```
+    Результат:
+    ```
+    "Набор «Чай, кофе»",990
+    ['Набор «Чай, кофе»', '990']
+    ```
+    Модуль `csv` сам берёт значение с запятой в кавычки. Ручной `split(",")` разрезал бы его на две части.
+- title: Выгрузка из русского Excel
+  text: |
+    Excel с русскими настройками сохраняет CSV через точку с запятой:
+    ```python
+    with open("excel.csv", "w", encoding="utf-8", newline="") as f:
+        f.write("товар;цена\nЧайник;2490\nКружка;390\n")
+    ```
+    Прочитайте файл и напечатайте словарь `{товар: цена}` с ценами-числами.
+  answer: |
+    Ответ:
+    ```python
+    import csv
+
+    with open("excel.csv", encoding="utf-8", newline="") as f:
+        prices = {row["товар"]: int(row["цена"]) for row in csv.DictReader(f, delimiter=";")}
+    print(prices)
+    ```
+    Результат:
+    ```
+    {'Чайник': 2490, 'Кружка': 390}
+    ```

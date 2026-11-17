@@ -1,0 +1,155 @@
+- title: Проверка количества
+  text: |
+    Напишите `validate_quantity(quantity)`: при количестве меньше 1 выбрасывает `ValueError("Количество должно быть больше нуля")`, иначе возвращает его. Вызовите с 0, поймайте ошибку и напечатайте её текст.
+  answer: |
+    Ответ:
+    ```python
+    def validate_quantity(quantity):
+        if quantity < 1:
+            raise ValueError("Количество должно быть больше нуля")
+        return quantity
+
+
+    try:
+        validate_quantity(0)
+    except ValueError as error:
+        print(error)
+    ```
+    Результат:
+    ```
+    Количество должно быть больше нуля
+    ```
+- title: Проверка заказа перед оплатой
+  text: |
+    Напишите `check_order(order)`: пустой список позиций → `ValueError("В заказе нет товаров")`, сумма больше 100 000 → `ValueError("Сумма превышает лимит")`. Проверьте три заказа и напечатайте результат каждого.
+    ```python
+    orders = [
+        {"id": 1, "items": [], "total": 0},
+        {"id": 2, "items": ["яхта"], "total": 900000},
+        {"id": 3, "items": ["чайник"], "total": 2490},
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def check_order(order):
+        if not order["items"]:
+            raise ValueError("В заказе нет товаров")
+        if order["total"] > 100000:
+            raise ValueError("Сумма превышает лимит")
+
+
+    for order in orders:
+        try:
+            check_order(order)
+        except ValueError as error:
+            print(order["id"], error)
+        else:
+            print(order["id"], "можно оплачивать")
+    ```
+    Результат:
+    ```
+    1 В заказе нет товаров
+    2 Сумма превышает лимит
+    3 можно оплачивать
+    ```
+    Функция сообщает об ошибке, а решает, что с ней делать, вызывающий код.
+- title: Понятная ошибка с причиной
+  text: |
+    Напишите `parse_quantity(raw)`: при неверной строке выбрасывает `ValueError(f"Неверное количество: {raw!r}")`, сохранив исходную ошибку как причину. Поймайте её и напечатайте текст ошибки и тип причины.
+  answer: |
+    Ответ:
+    ```python
+    def parse_quantity(raw):
+        try:
+            return int(raw)
+        except ValueError as error:
+            raise ValueError(f"Неверное количество: {raw!r}") from error
+
+
+    try:
+        parse_quantity("три")
+    except ValueError as error:
+        print(error)
+        print(type(error.__cause__).__name__, error.__cause__)
+    ```
+    Результат:
+    ```
+    Неверное количество: 'три'
+    ValueError invalid literal for int() with base 10: 'три'
+    ```
+    `from error` сохраняет исходное исключение в `__cause__` — в traceback видны обе ошибки.
+- title: Записать и пробросить
+  text: |
+    Функция оплаты должна напечатать `Оплата заказа 1042 не прошла` и пробросить ошибку дальше, не меняя её. Допишите `pay`:
+    ```python
+    def charge(order_id):
+        raise ConnectionError("платёжный шлюз недоступен")
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def pay(order_id):
+        try:
+            charge(order_id)
+        except ConnectionError:
+            print(f"Оплата заказа {order_id} не прошла")
+            raise
+
+
+    try:
+        pay(1042)
+    except ConnectionError as error:
+        print("Наверху поймали:", error)
+    ```
+    Результат:
+    ```
+    Оплата заказа 1042 не прошла
+    Наверху поймали: платёжный шлюз недоступен
+    ```
+    Голый `raise` внутри `except` пробрасывает то же исключение с исходным traceback.
+- title: Повтор запроса к платёжке
+  text: |
+    Платёжка отвечает со второй попытки на третью:
+    ```python
+    attempts = 0
+
+
+    def charge():
+        global attempts
+        attempts += 1
+        if attempts < 3:
+            raise ConnectionError("таймаут")
+        return "оплачено"
+    ```
+    Напишите декоратор `retry(times)`: повторяет вызов при `ConnectionError`, печатая `Попытка N не удалась`; после последней неудачи пробрасывает ошибку.
+  answer: |
+    Ответ:
+    ```python
+    from functools import wraps
+
+
+    def retry(times):
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                for attempt in range(1, times + 1):
+                    try:
+                        return func(*args, **kwargs)
+                    except ConnectionError:
+                        print(f"Попытка {attempt} не удалась")
+                        if attempt == times:
+                            raise
+            return wrapper
+        return decorator
+
+
+    print(retry(3)(charge)())
+    ```
+    Результат:
+    ```
+    Попытка 1 не удалась
+    Попытка 2 не удалась
+    оплачено
+    ```
+    `retry(3)(charge)` — то же, что `@retry(3)` над `def charge`.

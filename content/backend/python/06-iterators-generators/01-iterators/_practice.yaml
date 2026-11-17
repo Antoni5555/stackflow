@@ -1,0 +1,78 @@
+- title: Каталог вручную
+  text: |
+    ```python
+    catalog = ["чайник", "кружка"]
+    ```
+    Получите итератор каталога и вызовите `next` три раза. Что произойдёт на третьем вызове?
+  answer: |
+    Ответ:
+    ```python
+    items = iter(catalog)
+    print(next(items))
+    print(next(items))
+    print(next(items))
+    ```
+    Результат:
+    ```
+    чайник
+    кружка
+    StopIteration
+    ```
+    Элементы закончились — итератор сообщает об этом исключением `StopIteration`.
+- title: Значение по умолчанию
+  text: |
+    ```python
+    orders = [1040]
+    ```
+    Возьмите из итератора заказы по одному так, чтобы на втором вызове вместо ошибки получился `None`.
+  answer: |
+    Ответ:
+    ```python
+    it = iter(orders)
+    print(next(it, None), next(it, None))
+    ```
+    Результат:
+    ```
+    1040 None
+    ```
+- title: Цикл for своими руками
+  text: |
+    Обойдите список цен без `for`: через `iter`, `next` и `while True`. Посчитайте сумму.
+    ```python
+    prices = [2490, 390, 120]
+    ```
+  hint: |
+    Цикл заканчивается, когда `next` выбрасывает `StopIteration` — поймайте её и выйдите через `break`.
+  answer: |
+    Ответ:
+    ```python
+    it = iter(prices)
+    total = 0
+    while True:
+        try:
+            price = next(it)
+        except StopIteration:
+            break
+        total += price
+    print(total)
+    ```
+    Результат:
+    ```
+    3000
+    ```
+    Именно это `for` делает под капотом.
+- title: Итератор одноразовый
+  text: |
+    Предскажите вывод:
+    ```python
+    orders = iter([1040, 1041])
+    print(list(orders))
+    print(list(orders))
+    ```
+  answer: |
+    Результат:
+    ```
+    [1040, 1041]
+    []
+    ```
+    Итератор помнит позицию и обратно не перематывается. Нужен второй проход — снова вызовите `iter` у исходного списка.

@@ -1,0 +1,109 @@
+- title: Цифровой товар
+  text: |
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        def delivery_price(self):
+            return 300
+    ```
+    Напишите `DigitalProduct(Product)`: доставка бесплатна. Напечатайте стоимость доставки обычного и цифрового товара.
+  answer: |
+    Ответ:
+    ```python
+    class DigitalProduct(Product):
+        def delivery_price(self):
+            return 0
+
+
+    print(Product("Чайник", 2490).delivery_price(), DigitalProduct("Курс", 990).delivery_price())
+    ```
+    Результат:
+    ```
+    300 0
+    ```
+- title: Дополнить родительский init
+  text: |
+    Для того же `Product` напишите `DigitalProduct` с дополнительным атрибутом `download_url`. Имя и цену должен записывать конструктор родителя.
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class DigitalProduct(Product):
+        def __init__(self, name, price, download_url):
+            super().__init__(name, price)
+            self.download_url = download_url
+
+
+    course = DigitalProduct("Курс по Python", 990, "/files/python.zip")
+    print(course.name, course.price, course.download_url)
+    ```
+    Результат:
+    ```
+    Курс по Python 990 /files/python.zip
+    ```
+    Без `super().__init__` у объекта не было бы `name` и `price`.
+- title: Описание с дополнением
+  text: |
+    У `Product` есть метод `describe()`. В `GiftCard(Product)` переопределите его так, чтобы к описанию родителя добавлялось ` (подарочная карта)`.
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        def describe(self):
+            return f"{self.name}, {self.price} ₽"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class GiftCard(Product):
+        def describe(self):
+            return super().describe() + " (подарочная карта)"
+
+
+    print(GiftCard("Карта на 3000", 3000).describe())
+    ```
+    Результат:
+    ```
+    Карта на 3000, 3000 ₽ (подарочная карта)
+    ```
+- title: Где ищется метод
+  text: |
+    Предскажите вывод:
+    ```python
+    class Product:
+        def kind(self):
+            return "товар"
+
+
+    class DigitalProduct(Product):
+        pass
+
+
+    class Course(DigitalProduct):
+        def kind(self):
+            return "курс"
+
+
+    c = Course()
+    print(c.kind(), DigitalProduct().kind())
+    print([cls.__name__ for cls in Course.__mro__])
+    print(isinstance(c, Product), issubclass(Product, Course))
+    ```
+  answer: |
+    Результат:
+    ```
+    курс товар
+    ['Course', 'DigitalProduct', 'Product', 'object']
+    True False
+    ```
+    Метод ищется по MRO снизу вверх: у `DigitalProduct` своего `kind` нет, он берётся у `Product`.

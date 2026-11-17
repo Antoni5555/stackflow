@@ -1,0 +1,110 @@
+- title: Вход и выход
+  text: |
+    Напишите класс-менеджер `Section(title)`: при входе печатает `--- начало: <title>`, при выходе — `--- конец: <title>`. Внутри `with` напечатайте строку чека.
+  answer: |
+    Ответ:
+    ```python
+    class Section:
+        def __init__(self, title):
+            self.title = title
+
+        def __enter__(self):
+            print(f"--- начало: {self.title}")
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            print(f"--- конец: {self.title}")
+
+
+    with Section("чек 1042"):
+        print("Чайник — 2490 ₽")
+    ```
+    Результат:
+    ```
+    --- начало: чек 1042
+    Чайник — 2490 ₽
+    --- конец: чек 1042
+    ```
+- title: Корзина с откатом
+  text: |
+    Напишите менеджер `cart_transaction(cart)` через `contextlib.contextmanager`: если внутри `with` случилась ошибка, корзина возвращается к прежнему состоянию, а ошибка идёт дальше.
+    ```python
+    cart = ["чайник"]
+    ```
+  hint: |
+    До `yield` сохраните копию списка; в `except` верните содержимое через `cart[:] = копия` и сделайте `raise`.
+  answer: |
+    Ответ:
+    ```python
+    from contextlib import contextmanager
+
+
+    @contextmanager
+    def cart_transaction(cart):
+        backup = cart.copy()
+        try:
+            yield cart
+        except Exception:
+            cart[:] = backup
+            raise
+
+
+    try:
+        with cart_transaction(cart):
+            cart.append("кружка")
+            raise ValueError("кружки закончились")
+    except ValueError as error:
+        print(error)
+    print(cart)
+    ```
+    Результат:
+    ```
+    кружки закончились
+    ['чайник']
+    ```
+    `cart[:] = backup` меняет тот же список, а не перепривязывает имя. Поэтому откат видят все, у кого есть ссылка на корзину.
+- title: Значение из as
+  text: |
+    Напишите менеджер `opened_order(number)`, который отдаёт в `as` словарь заказа `{"number": ..., "items": []}`, а при выходе печатает `Заказ N закрыт, позиций: K`.
+  answer: |
+    Ответ:
+    ```python
+    from contextlib import contextmanager
+
+
+    @contextmanager
+    def opened_order(number):
+        order = {"number": number, "items": []}
+        yield order
+        print(f"Заказ {number} закрыт, позиций: {len(order['items'])}")
+
+
+    with opened_order(1042) as order:
+        order["items"].append("чайник")
+        order["items"].append("кружка")
+    ```
+    Результат:
+    ```
+    Заказ 1042 закрыт, позиций: 2
+    ```
+    В `as` попадает то, что отдал `yield` (или вернул `__enter__` у класса).
+- title: Подавить ошибку
+  text: |
+    Удалите из корзины товар, которого может не быть, так, чтобы `ValueError` от `remove` молча игнорировалась. Решите через `contextlib.suppress`.
+    ```python
+    cart = ["чайник"]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from contextlib import suppress
+
+    with suppress(ValueError):
+        cart.remove("кружка")
+    print(cart)
+    ```
+    Результат:
+    ```
+    ['чайник']
+    ```
+    `suppress` — короткая запись `try/except: pass` для одной ожидаемой ошибки. Шире его применять опасно: он скрывает ошибку.

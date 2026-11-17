@@ -1,0 +1,108 @@
+- title: Сумма без списка
+  text: |
+    ```python
+    items = [{"price": 2490, "qty": 1}, {"price": 390, "qty": 2}, {"price": 120, "qty": 5}]
+    ```
+    Посчитайте сумму заказа генераторным выражением, не создавая промежуточный список.
+  answer: |
+    Ответ:
+    ```python
+    print(sum(item["price"] * item["qty"] for item in items))
+    ```
+    Результат:
+    ```
+    3870
+    ```
+    Круглые скобки вызова `sum(...)` служат и скобками генераторного выражения.
+- title: Первые три из потока
+  text: |
+    ```python
+    def order_numbers(start):
+        while True:
+            start += 1
+            yield start
+    ```
+    Возьмите из бесконечного потока первые три номера с помощью `itertools.islice`.
+  answer: |
+    Ответ:
+    ```python
+    from itertools import islice
+
+    print(list(islice(order_numbers(1040), 3)))
+    ```
+    Результат:
+    ```
+    [1041, 1042, 1043]
+    ```
+    Срез `[:3]` у генератора не работает, а `islice` берёт нужное количество и останавливается.
+- title: Заказы по статусам
+  text: |
+    ```python
+    orders = [
+        {"id": 1040, "status": "paid"},
+        {"id": 1041, "status": "new"},
+        {"id": 1042, "status": "paid"},
+        {"id": 1043, "status": "new"},
+        {"id": 1044, "status": "shipped"},
+    ]
+    ```
+    С помощью `itertools.groupby` напечатайте число заказов в каждом статусе.
+  hint: |
+    `groupby` объединяет только **соседние** элементы — сначала отсортируйте по тому же ключу.
+  answer: |
+    Ответ:
+    ```python
+    from itertools import groupby
+
+    by_status = sorted(orders, key=lambda o: o["status"])
+    for status, group in groupby(by_status, key=lambda o: o["status"]):
+        print(status, len(list(group)))
+    ```
+    Результат:
+    ```
+    new 2
+    paid 2
+    shipped 1
+    ```
+- title: Склады подряд
+  text: |
+    ```python
+    moscow = ["чайник", "кружка"]
+    kazan = ["лейка"]
+    ```
+    Обойдите товары обоих складов одним циклом через `itertools.chain` и напечатайте их через запятую.
+  answer: |
+    Ответ:
+    ```python
+    from itertools import chain
+
+    print(", ".join(chain(moscow, kazan)))
+    ```
+    Результат:
+    ```
+    чайник, кружка, лейка
+    ```
+    `chain` не склеивает списки в новый, а отдаёт элементы по очереди.
+- title: Ошибки из лога
+  text: |
+    Лог заказов приходит потоком строк:
+    ```python
+    def read_log():
+        yield "INFO order=1040 created"
+        yield "ERROR order=1041 payment failed"
+        yield "INFO order=1042 created"
+        yield "ERROR order=1043 out of stock"
+    ```
+    Соберите ленивый конвейер: только строки `ERROR` → номер заказа (число после `order=`). Напечатайте список номеров.
+  answer: |
+    Ответ:
+    ```python
+    errors = (line for line in read_log() if line.startswith("ERROR"))
+    order_ids = (int(line.split()[1].removeprefix("order=")) for line in errors)
+    print(list(order_ids))
+    ```
+    Результат:
+    ```
+    [1041, 1043]
+    ```
+    Каждая ступень берёт строку у предыдущей по одной, поэтому в памяти никогда нет всего лога.

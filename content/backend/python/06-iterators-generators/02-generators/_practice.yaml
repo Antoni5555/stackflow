@@ -1,0 +1,87 @@
+- title: Страницы каталога
+  text: |
+    Напишите генератор `pages(items, size)`, который выдаёт каталог страницами по `size` товаров.
+    ```python
+    items = [1, 2, 3, 4, 5, 6, 7]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def pages(items, size):
+        for start in range(0, len(items), size):
+            yield items[start:start + size]
+
+
+    print(list(pages(items, 3)))
+    ```
+    Результат:
+    ```
+    [[1, 2, 3], [4, 5, 6], [7]]
+    ```
+- title: Бесконечные номера
+  text: |
+    Напишите генератор `order_numbers(start)`, который бесконечно выдаёт номера заказов, начиная со следующего за `start`. Возьмите первые три через `next`.
+  answer: |
+    Ответ:
+    ```python
+    def order_numbers(start):
+        number = start
+        while True:
+            number += 1
+            yield number
+
+
+    numbers = order_numbers(1040)
+    print(next(numbers), next(numbers), next(numbers))
+    ```
+    Результат:
+    ```
+    1041 1042 1043
+    ```
+    `while True` в генераторе не зависает: код выполняется только до ближайшего `yield`.
+- title: Товары всех категорий
+  text: |
+    ```python
+    catalog = {"кухня": ["чайник", "кружка"], "сад": ["лейка"]}
+    ```
+    Напишите генератор `all_products(catalog)`, который по очереди выдаёт товары всех категорий через `yield from`.
+  answer: |
+    Ответ:
+    ```python
+    def all_products(catalog):
+        for products in catalog.values():
+            yield from products
+
+
+    print(list(all_products(catalog)))
+    ```
+    Результат:
+    ```
+    ['чайник', 'кружка', 'лейка']
+    ```
+- title: Когда выполняется генератор
+  text: |
+    Предскажите вывод:
+    ```python
+    def load_orders():
+        print("загружаю 1040")
+        yield 1040
+        print("загружаю 1041")
+        yield 1041
+
+
+    orders = load_orders()
+    print("генератор создан")
+    for order in orders:
+        print("обработан", order)
+    ```
+  answer: |
+    Результат:
+    ```
+    генератор создан
+    загружаю 1040
+    обработан 1040
+    загружаю 1041
+    обработан 1041
+    ```
+    Вызов `load_orders()` ничего не выполняет — код идёт кусками, по запросу следующего значения.

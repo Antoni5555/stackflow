@@ -1,0 +1,76 @@
+- title: Сигнатура с типами
+  text: |
+    Допишите аннотации: функция принимает список словарей-позиций и возвращает целое число.
+    ```python
+    def calc_total(items):
+        return sum(item["price"] * item["qty"] for item in items)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def calc_total(items: list[dict]) -> int:
+        return sum(item["price"] * item["qty"] for item in items)
+
+
+    print(calc_total([{"price": 390, "qty": 2}]))
+    ```
+    Результат:
+    ```
+    780
+    ```
+- title: Товар может не найтись
+  text: |
+    Напишите `find_product(products: list[dict], product_id: int)`, которая возвращает товар или `None`. Укажите тип возвращаемого значения.
+    ```python
+    products = [{"id": 1, "name": "Чайник"}, {"id": 2, "name": "Кружка"}]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def find_product(products: list[dict], product_id: int) -> dict | None:
+        for product in products:
+            if product["id"] == product_id:
+                return product
+        return None
+
+
+    print(find_product(products, 2))
+    print(find_product(products, 99))
+    ```
+    Результат:
+    ```
+    {'id': 2, 'name': 'Кружка'}
+    None
+    ```
+    `dict | None` честно говорит вызывающему коду: результат надо проверить на `None`.
+- title: Аннотации не проверяются
+  text: |
+    Предскажите, что напечатает код:
+    ```python
+    def double(quantity: int) -> int:
+        return quantity * 2
+
+
+    print(double("3"))
+    ```
+  answer: |
+    Результат:
+    ```
+    33
+    ```
+    Python не проверяет аннотации при запуске: строка `"3"` прошла, и `*` повторил её дважды. Ошибку здесь нашёл бы mypy или редактор.
+- title: Аннотации переменных
+  text: |
+    Заведите с аннотациями: словарь цен `{название: цена}` и список id заказов. Напечатайте, какие аннотации записал Python, через `__annotations__` модуля.
+  answer: |
+    Ответ:
+    ```python
+    prices: dict[str, int] = {"Чайник": 2490}
+    order_ids: list[int] = [1040, 1041]
+    print(__annotations__)
+    ```
+    Результат:
+    ```
+    {'prices': dict[str, int], 'order_ids': list[int]}
+    ```
+    Аннотации — просто данные, которые Python сохраняет для инструментов; на работу кода они не влияют.

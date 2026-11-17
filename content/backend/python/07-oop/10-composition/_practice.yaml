@@ -1,0 +1,117 @@
+- title: Заказ имеет корзину
+  text: |
+    ```python
+    class Cart:
+        def __init__(self):
+            self.items = []
+
+        def add(self, name, price):
+            self.items.append((name, price))
+
+        def total(self):
+            return sum(price for _, price in self.items)
+    ```
+    Напишите `Order(number, cart)`: хранит корзину и в методе `summary()` возвращает `Заказ 1042: 2 товара на 2880 ₽`.
+  answer: |
+    Ответ:
+    ```python
+    class Order:
+        def __init__(self, number, cart):
+            self.number = number
+            self.cart = cart
+
+        def summary(self):
+            return f"Заказ {self.number}: {len(self.cart.items)} товара на {self.cart.total()} ₽"
+
+
+    cart = Cart()
+    cart.add("Чайник", 2490)
+    cart.add("Кружка", 390)
+    print(Order(1042, cart).summary())
+    ```
+    Результат:
+    ```
+    Заказ 1042: 2 товара на 2880 ₽
+    ```
+    Заказ не «является» корзиной, а «имеет» её — поэтому атрибут, а не наследование.
+- title: Уведомитель подменяется
+  text: |
+    Добавьте заказу уведомитель: `Order(number, notifier)`, метод `ship()` вызывает `notifier.send(...)`. Сделайте `EmailNotifier` и `SmsNotifier` и отправьте один заказ каждым.
+  answer: |
+    Ответ:
+    ```python
+    class EmailNotifier:
+        def send(self, text):
+            print("email:", text)
+
+
+    class SmsNotifier:
+        def send(self, text):
+            print("sms:", text)
+
+
+    class Order:
+        def __init__(self, number, notifier):
+            self.number = number
+            self.notifier = notifier
+
+        def ship(self):
+            self.notifier.send(f"Заказ {self.number} отправлен")
+
+
+    Order(1042, EmailNotifier()).ship()
+    Order(1043, SmsNotifier()).ship()
+    ```
+    Результат:
+    ```
+    email: Заказ 1042 отправлен
+    sms: Заказ 1043 отправлен
+    ```
+    Через наследование пришлось бы заводить `EmailOrder` и `SmsOrder`, а с композицией способ меняется параметром.
+- title: Тихий уведомитель для тестов
+  text: |
+    Для того же `Order` напишите `FakeNotifier`, который не печатает, а складывает сообщения в список. Проверьте, что `ship()` отправил нужный текст.
+    ```python
+    class Order:
+        def __init__(self, number, notifier):
+            self.number = number
+            self.notifier = notifier
+
+        def ship(self):
+            self.notifier.send(f"Заказ {self.number} отправлен")
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class FakeNotifier:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, text):
+            self.sent.append(text)
+
+
+    fake = FakeNotifier()
+    Order(1042, fake).ship()
+    print(fake.sent)
+    ```
+    Результат:
+    ```
+    ['Заказ 1042 отправлен']
+    ```
+    Композиция упрощает тесты: настоящую отправку подменили, не трогая `Order`.
+- title: Что выбрать
+  text: |
+    Для каждой пары решите — наследование («является») или композиция («имеет»):
+    1. `DigitalProduct` и `Product`.
+    2. `Order` и `Address` доставки.
+    3. `Manager` и `User`.
+    4. `Product` и `Price`.
+  answer: |
+    Ответ:
+    1. Наследование: цифровой товар — это товар.
+    2. Композиция: у заказа есть адрес.
+    3. Наследование: менеджер — пользователь. Если ролей много и они меняются, лучше композиция: у пользователя есть роль.
+    4. Композиция: у товара есть цена.
+
+    Если сомневаетесь — выбирайте композицию: её проще поменять.

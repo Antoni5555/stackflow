@@ -1,0 +1,86 @@
+- title: Фабрика скидок
+  text: |
+    Напишите `make_discount(percent)`, которая возвращает функцию «цена → цена со скидкой» (вниз до рубля).
+  answer: |
+    Ответ:
+    ```python
+    def make_discount(percent):
+        def apply(price):
+            return price * (100 - percent) // 100
+        return apply
+
+
+    minus_10 = make_discount(10)
+    minus_25 = make_discount(25)
+    print(minus_10(2490), minus_25(2490))
+    ```
+    Результат:
+    ```
+    2241 1867
+    ```
+    Каждая возвращённая функция помнит своё `percent` — это и есть замыкание.
+- title: Форматтер цены
+  text: |
+    Напишите `make_formatter(currency)`: возвращает функцию, которая превращает число в строку `2490 ₽` (или `27 $`).
+  answer: |
+    Ответ:
+    ```python
+    def make_formatter(currency):
+        def format_price(price):
+            return f"{price} {currency}"
+        return format_price
+
+
+    rub = make_formatter("₽")
+    usd = make_formatter("$")
+    print(rub(2490), usd(27))
+    ```
+    Результат:
+    ```
+    2490 ₽ 27 $
+    ```
+- title: Номера заказов
+  text: |
+    Напишите `make_order_counter(start)`: возвращает функцию, которая при каждом вызове выдаёт следующий номер заказа.
+  hint: |
+    Чтобы менять захваченную переменную, внутри нужен `nonlocal`.
+  answer: |
+    Ответ:
+    ```python
+    def make_order_counter(start):
+        number = start
+
+        def next_number():
+            nonlocal number
+            number += 1
+            return number
+        return next_number
+
+
+    new_order = make_order_counter(1040)
+    print(new_order(), new_order(), new_order())
+    ```
+    Результат:
+    ```
+    1041 1042 1043
+    ```
+- title: Проверка лимита
+  text: |
+    Напишите `make_limit_check(limit)`: возвращает функцию, которая по сумме заказа говорит, укладывается ли он в лимит. Создайте проверки для лимитов 5000 и 50 000 и проверьте заказ на 12 000.
+  answer: |
+    Ответ:
+    ```python
+    def make_limit_check(limit):
+        def check(total):
+            return total <= limit
+        return check
+
+
+    card_limit = make_limit_check(5000)
+    corporate_limit = make_limit_check(50000)
+    print(card_limit(12000), corporate_limit(12000))
+    ```
+    Результат:
+    ```
+    False True
+    ```

@@ -1,0 +1,127 @@
+- title: Ценник с валютой
+  text: |
+    Напишите `make_label(name, price, currency="₽")`. Напечатайте ценник чайника за 2490 в рублях и за 27 в долларах (`"$"`).
+  answer: |
+    Ответ:
+    ```python
+    def make_label(name, price, currency="₽"):
+        return f"{name}: {price} {currency}"
+
+
+    print(make_label("Чайник", 2490))
+    print(make_label("Чайник", 27, currency="$"))
+    ```
+    Результат:
+    ```
+    Чайник: 2490 ₽
+    Чайник: 27 $
+    ```
+- title: Сумма любого числа цен
+  text: |
+    Напишите `total(*prices)`, которая складывает сколько угодно цен. Проверьте на `total(2490, 390, 120)` и на `total()`.
+  answer: |
+    Ответ:
+    ```python
+    def total(*prices):
+        return sum(prices)
+
+
+    print(total(2490, 390, 120), total())
+    ```
+    Результат:
+    ```
+    3000 0
+    ```
+    Звёздочка собирает все позиционные аргументы в кортеж `prices`.
+- title: Фильтр каталога
+  text: |
+    ```python
+    products = [
+        {"name": "Чайник", "category": "кухня", "in_stock": True},
+        {"name": "Кружка", "category": "кухня", "in_stock": False},
+        {"name": "Лейка", "category": "сад", "in_stock": True},
+    ]
+    ```
+    Напишите `filter_products(products, **filters)`: возвращает названия товаров, у которых все поля из `filters` совпадают.
+  hint: |
+    `filters` — обычный словарь. Для товара проверьте `all(p[key] == value for key, value in filters.items())`.
+  answer: |
+    Ответ:
+    ```python
+    def filter_products(products, **filters):
+        return [
+            p["name"] for p in products
+            if all(p[key] == value for key, value in filters.items())
+        ]
+
+
+    print(filter_products(products, category="кухня"))
+    print(filter_products(products, category="кухня", in_stock=True))
+    ```
+    Результат:
+    ```
+    ['Чайник', 'Кружка']
+    ['Чайник']
+    ```
+- title: Только по имени
+  text: |
+    Напишите `create_order(customer, *, express=False)` — возвращает строку `Заказ для Анна: экспресс` или `…: обычная`. Параметр `express` должен передаваться только по имени.
+  answer: |
+    Ответ:
+    ```python
+    def create_order(customer, *, express=False):
+        delivery = "экспресс" if express else "обычная"
+        return f"Заказ для {customer}: {delivery}"
+
+
+    print(create_order("Анна", express=True))
+    print(create_order("Олег"))
+    ```
+    Результат:
+    ```
+    Заказ для Анна: экспресс
+    Заказ для Олег: обычная
+    ```
+    Всё после одиночной `*` — keyword-only: вызов `create_order("Анна", True)` упадёт с `TypeError`.
+- title: Аргументы из словаря
+  text: |
+    Параметры пришли из настроек:
+    ```python
+    def apply_discount(price, percent):
+        return price * (100 - percent) // 100
+
+
+    args = (2490, 15)
+    options = {"price": 890, "percent": 10}
+    ```
+    Вызовите функцию с `args` и с `options`, не доставая значения вручную.
+  answer: |
+    Ответ:
+    ```python
+    print(apply_discount(*args), apply_discount(**options))
+    ```
+    Результат:
+    ```
+    2116 801
+    ```
+    `*` раскладывает кортеж по позициям, `**` — словарь по именам параметров.
+- title: Новая корзина каждый раз
+  text: |
+    Напишите `add_item(item, cart=None)`: добавляет товар в корзину и возвращает её; без корзины создаёт новую. Два вызова без `cart` должны дать разные корзины.
+  answer: |
+    Ответ:
+    ```python
+    def add_item(item, cart=None):
+        if cart is None:
+            cart = []
+        cart.append(item)
+        return cart
+
+
+    print(add_item("чайник"), add_item("кружка"))
+    ```
+    Результат:
+    ```
+    ['чайник'] ['кружка']
+    ```
+    `cart=[]` в сигнатуре создался бы один раз на все вызовы, поэтому по умолчанию — `None`.

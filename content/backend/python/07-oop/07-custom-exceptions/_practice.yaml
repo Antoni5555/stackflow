@@ -1,0 +1,134 @@
+- title: Иерархия ошибок магазина
+  text: |
+    Создайте базовое `ShopError` и два наследника: `OutOfStockError` и `PaymentError`. Покажите, что `except ShopError` ловит обе.
+  answer: |
+    Ответ:
+    ```python
+    class ShopError(Exception):
+        pass
+
+
+    class OutOfStockError(ShopError):
+        pass
+
+
+    class PaymentError(ShopError):
+        pass
+
+
+    for error in [OutOfStockError("нет чайника"), PaymentError("карта отклонена")]:
+        try:
+            raise error
+        except ShopError as e:
+            print(type(e).__name__, "—", e)
+    ```
+    Результат:
+    ```
+    OutOfStockError — нет чайника
+    PaymentError — карта отклонена
+    ```
+- title: Данные в исключении
+  text: |
+    Сделайте `OutOfStockError(product, requested, available)`: хранит данные в атрибутах и формирует сообщение `Чайник: запрошено 5, на складе 2`.
+    ```python
+    class ShopError(Exception):
+        pass
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class OutOfStockError(ShopError):
+        def __init__(self, product, requested, available):
+            self.product = product
+            self.requested = requested
+            self.available = available
+            super().__init__(f"{product}: запрошено {requested}, на складе {available}")
+
+
+    try:
+        raise OutOfStockError("Чайник", 5, 2)
+    except OutOfStockError as e:
+        print(e)
+        print(e.requested - e.available)
+    ```
+    Результат:
+    ```
+    Чайник: запрошено 5, на складе 2
+    3
+    ```
+    Атрибуты нужны коду, который обрабатывает ошибку: из текста число пришлось бы вытаскивать разбором строки.
+- title: Списание со склада
+  text: |
+    Напишите `reserve(stock, product, qty)`: уменьшает остаток в словаре `stock` или выбрасывает `OutOfStockError` из прошлой задачи. Обработайте ошибку при заказе 5 чайников.
+    ```python
+    class ShopError(Exception):
+        pass
+
+
+    class OutOfStockError(ShopError):
+        def __init__(self, product, requested, available):
+            self.product = product
+            self.requested = requested
+            self.available = available
+            super().__init__(f"{product}: запрошено {requested}, на складе {available}")
+
+
+    stock = {"Чайник": 2, "Кружка": 10}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def reserve(stock, product, qty):
+        available = stock.get(product, 0)
+        if qty > available:
+            raise OutOfStockError(product, qty, available)
+        stock[product] = available - qty
+
+
+    reserve(stock, "Кружка", 3)
+    try:
+        reserve(stock, "Чайник", 5)
+    except OutOfStockError as e:
+        print(f"Можно заказать не больше {e.available}")
+    print(stock)
+    ```
+    Результат:
+    ```
+    Можно заказать не больше 2
+    {'Чайник': 2, 'Кружка': 7}
+    ```
+- title: Своя ошибка от чужой
+  text: |
+    Платёжный шлюз бросает `ConnectionError`. Напишите `pay(order_id)`, которая превращает её в `PaymentError` с причиной. Напечатайте текст ошибки и тип причины.
+    ```python
+    class ShopError(Exception):
+        pass
+
+
+    class PaymentError(ShopError):
+        pass
+
+
+    def charge(order_id):
+        raise ConnectionError("шлюз недоступен")
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def pay(order_id):
+        try:
+            charge(order_id)
+        except ConnectionError as error:
+            raise PaymentError(f"Заказ {order_id} не оплачен") from error
+
+
+    try:
+        pay(1042)
+    except ShopError as e:
+        print(e, "|", type(e.__cause__).__name__)
+    ```
+    Результат:
+    ```
+    Заказ 1042 не оплачен | ConnectionError
+    ```
+    Остальному коду магазина достаточно знать про `ShopError`, а не про ошибки конкретного шлюза.

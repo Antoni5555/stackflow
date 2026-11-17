@@ -1,0 +1,124 @@
+- title: Товар печатается понятно
+  text: |
+    Добавьте в `Product(name, price)` методы `__str__` (`Чайник — 2490 ₽`) и `__repr__` (`Product('Чайник', 2490)`). Напечатайте товар и список из него.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        def __str__(self):
+            return f"{self.name} — {self.price} ₽"
+
+        def __repr__(self):
+            return f"Product({self.name!r}, {self.price})"
+
+
+    p = Product("Чайник", 2490)
+    print(p)
+    print([p])
+    ```
+    Результат:
+    ```
+    Чайник — 2490 ₽
+    [Product('Чайник', 2490)]
+    ```
+    `print` берёт `__str__`, а список показывает элементы через `__repr__`.
+- title: Равенство по артикулу
+  text: |
+    Два объекта `Product` с одинаковым артикулом `sku` — один товар. Добавьте `__eq__` и проверьте, есть ли товар в списке.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def __init__(self, sku, name):
+            self.sku = sku
+            self.name = name
+
+        def __eq__(self, other):
+            if not isinstance(other, Product):
+                return NotImplemented
+            return self.sku == other.sku
+
+
+    catalog = [Product("SH-001", "Чайник"), Product("SH-002", "Кружка")]
+    print(Product("SH-001", "Чайник Steel") in catalog)
+    ```
+    Результат:
+    ```
+    True
+    ```
+    `in` для списка сравнивает элементы через `==`, а он вызывает `__eq__`.
+- title: Корзина как коллекция
+  text: |
+    Сделайте, чтобы с `Cart` работали `len(cart)` и `for item in cart`.
+    ```python
+    class Cart:
+        def __init__(self):
+            self.items = []
+
+        def add(self, name):
+            self.items.append(name)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Cart:
+        def __init__(self):
+            self.items = []
+
+        def add(self, name):
+            self.items.append(name)
+
+        def __len__(self):
+            return len(self.items)
+
+        def __iter__(self):
+            return iter(self.items)
+
+
+    cart = Cart()
+    cart.add("чайник")
+    cart.add("кружка")
+    print(len(cart))
+    for item in cart:
+        print(item)
+    ```
+    Результат:
+    ```
+    2
+    чайник
+    кружка
+    ```
+    `__iter__` достаточно вернуть итератор списка — свой класс-итератор не нужен.
+- title: Сложение денег
+  text: |
+    Напишите `Money(amount, currency)` с `__add__`: складывает суммы одной валюты, для разных — `ValueError`. Добавьте `__str__`.
+  answer: |
+    Ответ:
+    ```python
+    class Money:
+        def __init__(self, amount, currency):
+            self.amount = amount
+            self.currency = currency
+
+        def __add__(self, other):
+            if self.currency != other.currency:
+                raise ValueError("Разные валюты")
+            return Money(self.amount + other.amount, self.currency)
+
+        def __str__(self):
+            return f"{self.amount} {self.currency}"
+
+
+    print(Money(2490, "RUB") + Money(390, "RUB"))
+    Money(10, "RUB") + Money(1, "USD")
+    ```
+    Результат:
+    ```
+    2880 RUB
+    ValueError: Разные валюты
+    ```
+    `__add__` возвращает новый объект и не меняет слагаемые — как сложение чисел.

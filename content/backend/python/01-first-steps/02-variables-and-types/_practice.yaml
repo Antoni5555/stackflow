@@ -1,0 +1,76 @@
+- title: Карточка товара
+  text: |
+    Заведите переменные для карточки товара: название `Чайник Steel`, цена `2490`, наличие `True`. Напечатайте их одной командой `print`.
+  answer: |
+    Ответ:
+    ```python
+    name = "Чайник Steel"
+    price = 2490
+    in_stock = True
+    print(name, price, in_stock)
+    ```
+    Результат:
+    ```
+    Чайник Steel 2490 True
+    ```
+- title: Какого типа значения
+  text: |
+    Дано:
+    ```python
+    price = 2490
+    rating = 4.7
+    title = "Чайник Steel"
+    ```
+    Напечатайте тип каждой переменной.
+  hint: |
+    Тип значения возвращает `type()`.
+  answer: |
+    Ответ:
+    ```python
+    print(type(price))
+    print(type(rating))
+    print(type(title))
+    ```
+    Результат:
+    ```
+    <class 'int'>
+    <class 'float'>
+    <class 'str'>
+    ```
+    Целое число — `int`, с точкой — `float`, текст в кавычках — `str`.
+- title: Скидки пока нет
+  text: |
+    У товара пока не задана скидка. Заведите переменную `discount` со значением «ничего» и напечатайте её саму и её тип.
+  answer: |
+    Ответ:
+    ```python
+    discount = None
+    print(discount, type(discount))
+    ```
+    Результат:
+    ```
+    None <class 'NoneType'>
+    ```
+    `None` — отдельное значение «нет значения», это не `0` и не пустая строка.
+- title: Цены перепутаны
+  text: |
+    Старую и новую цену записали наоборот:
+    ```python
+    old_price = 2490
+    new_price = 2990
+    ```
+    Поменяйте значения местами через третью переменную и напечатайте `old_price` и `new_price`.
+  hint: |
+    Сначала сохраните одно из значений во временную переменную, иначе оно потеряется.
+  answer: |
+    Ответ:
+    ```python
+    tmp = old_price
+    old_price = new_price
+    new_price = tmp
+    print(old_price, new_price)
+    ```
+    Результат:
+    ```
+    2990 2490
+    ```

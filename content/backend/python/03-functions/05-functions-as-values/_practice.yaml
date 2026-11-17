@@ -1,0 +1,104 @@
+- title: Каталог по цене
+  text: |
+    ```python
+    products = [
+        {"name": "Чайник", "price": 2490},
+        {"name": "Кружка", "price": 390},
+        {"name": "Лейка", "price": 890},
+    ]
+    ```
+    Напечатайте названия товаров от дешёвого к дорогому.
+  answer: |
+    Ответ:
+    ```python
+    by_price = sorted(products, key=lambda p: p["price"])
+    print([p["name"] for p in by_price])
+    ```
+    Результат:
+    ```
+    ['Кружка', 'Лейка', 'Чайник']
+    ```
+    `key` получает каждый элемент и возвращает то, по чему сравнивать.
+- title: Самый дорогой товар
+  text: |
+    Для того же каталога найдите самый дорогой товар одним вызовом и напечатайте его название.
+    ```python
+    products = [
+        {"name": "Чайник", "price": 2490},
+        {"name": "Кружка", "price": 390},
+        {"name": "Лейка", "price": 890},
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print(max(products, key=lambda p: p["price"])["name"])
+    ```
+    Результат:
+    ```
+    Чайник
+    ```
+    `max` с `key` возвращает сам товар, а не его цену.
+- title: Сортировка по двум полям
+  text: |
+    ```python
+    products = [
+        {"name": "Чайник", "category": "кухня", "price": 2490},
+        {"name": "Лейка", "category": "сад", "price": 890},
+        {"name": "Кружка", "category": "кухня", "price": 390},
+    ]
+    ```
+    Отсортируйте по категории, а внутри категории — по цене. Напечатайте названия.
+  hint: |
+    `key` может вернуть кортеж: кортежи сравниваются по первому элементу, при равенстве — по второму.
+  answer: |
+    Ответ:
+    ```python
+    ordered = sorted(products, key=lambda p: (p["category"], p["price"]))
+    print([p["name"] for p in ordered])
+    ```
+    Результат:
+    ```
+    ['Кружка', 'Чайник', 'Лейка']
+    ```
+- title: map и filter
+  text: |
+    ```python
+    prices = [2490, 390, 890, 120]
+    ```
+    С помощью `filter` оставьте цены дороже 300 ₽, а `map` добавьте к ним 50 ₽ за упаковку.
+  answer: |
+    Ответ:
+    ```python
+    expensive = filter(lambda p: p > 300, prices)
+    packed = list(map(lambda p: p + 50, expensive))
+    print(packed)
+    ```
+    Результат:
+    ```
+    [2540, 440, 940]
+    ```
+    `map` и `filter` возвращают ленивые объекты — `list()` собирает результат. То же comprehension: `[p + 50 for p in prices if p > 300]`.
+- title: Функция как параметр
+  text: |
+    Напишите `apply_to_all(prices, rule)`, которая применяет функцию `rule` к каждой цене и возвращает список. Проверьте с готовой функцией `round_to_hundred` и с `lambda` наценки 10 %.
+    ```python
+    def round_to_hundred(price):
+        return round(price, -2)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def apply_to_all(prices, rule):
+        return [rule(price) for price in prices]
+
+
+    print(apply_to_all([2490, 390], round_to_hundred))
+    print(apply_to_all([2490, 390], lambda p: p * 110 // 100))
+    ```
+    Результат:
+    ```
+    [2500, 400]
+    [2739, 429]
+    ```
+    Функцию передают по имени без скобок: `round_to_hundred`, а не `round_to_hundred()`.

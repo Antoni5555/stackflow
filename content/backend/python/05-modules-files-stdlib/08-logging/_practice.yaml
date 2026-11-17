@@ -1,0 +1,102 @@
+- title: Первый лог
+  text: |
+    Настройте логирование так, чтобы `INFO` и выше выводились в формате `INFO: текст`, и запишите `Заказ 1042 оформлен`.
+  answer: |
+    Ответ:
+    ```python
+    import logging
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logging.info("Заказ 1042 оформлен")
+    ```
+    Результат:
+    ```
+    INFO: Заказ 1042 оформлен
+    ```
+- title: Что попадёт в лог
+  text: |
+    Предскажите вывод и проверьте:
+    ```python
+    import logging
+
+    logging.basicConfig(format="%(levelname)s: %(message)s")
+    logging.debug("корзина пересчитана")
+    logging.info("заказ создан")
+    logging.warning("товар заканчивается")
+    logging.error("оплата не прошла")
+    ```
+  answer: |
+    Результат:
+    ```
+    WARNING: товар заканчивается
+    ERROR: оплата не прошла
+    ```
+    Без `level` порог — `WARNING`: `debug` и `info` отбрасываются.
+- title: Логгер модуля
+  text: |
+    Заведите логгер `shop.orders` и формат `имя - уровень - сообщение`. Запишите предупреждение `Промокод SALE10 истёк`.
+  answer: |
+    Ответ:
+    ```python
+    import logging
+
+    logging.basicConfig(format="%(name)s - %(levelname)s - %(message)s")
+    logger = logging.getLogger("shop.orders")
+    logger.warning("Промокод SALE10 истёк")
+    ```
+    Результат:
+    ```
+    shop.orders - WARNING - Промокод SALE10 истёк
+    ```
+    Имя логгера показывает, из какой части приложения запись. Обычно его берут как `getLogger(__name__)`.
+- title: Данные в сообщении
+  text: |
+    Запишите в лог `INFO` строку `Заказ 1042 на сумму 3270 ₽`, передав номер и сумму аргументами логгера, а не f-строкой.
+  answer: |
+    Ответ:
+    ```python
+    import logging
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logger = logging.getLogger("shop")
+    order_id, total = 1042, 3270
+    logger.info("Заказ %s на сумму %s ₽", order_id, total)
+    ```
+    Результат:
+    ```
+    Заказ 1042 на сумму 3270 ₽
+    ```
+    Логгер подставит значения, только если запись пройдёт по уровню, — на отключённых `debug` строка не собирается зря.
+- title: Ошибка с traceback
+  text: |
+    Функция `average_check(total, orders)` делит сумму на число заказов и падает при нуле заказов. Запишите в лог ошибку так, чтобы в лог попал и traceback, а программа продолжила работу. Формат — только сообщение.
+  answer: |
+    Ответ:
+    ```python
+    import logging
+
+
+    def average_check(total, orders):
+        return total / orders
+
+
+    logging.basicConfig(format="%(message)s")
+    try:
+        average_check(9000, 0)
+    except ZeroDivisionError:
+        logging.exception("Не удалось посчитать средний чек")
+    print("Программа продолжает работу")
+    ```
+    Результат:
+    ```
+    Не удалось посчитать средний чек
+    Traceback (most recent call last):
+      File "main.py", line 10, in <module>
+        average_check(9000, 0)
+      File "main.py", line 5, in average_check
+        return total / orders
+               ~~~~~~^~~~~~~~
+    ZeroDivisionError: division by zero
+    Программа продолжает работу
+    ```
+    `logging.exception` пишется на уровне `ERROR` и добавляет traceback текущего исключения.

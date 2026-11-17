@@ -1,0 +1,124 @@
+- title: Цена не может быть отрицательной
+  text: |
+    Сделайте у `Product` свойство `price`: при записи отрицательного значения — `ValueError("Цена не может быть отрицательной")`. Проверка должна работать и в `__init__`.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        @property
+        def price(self):
+            return self._price
+
+        @price.setter
+        def price(self, value):
+            if value < 0:
+                raise ValueError("Цена не может быть отрицательной")
+            self._price = value
+
+
+    p = Product("Чайник", 2490)
+    p.price = 1990
+    print(p.price)
+    p.price = -1
+    ```
+    Результат:
+    ```
+    1990
+    ValueError: Цена не может быть отрицательной
+    ```
+    В `__init__` присваиваем `self.price`, а не `self._price`, — так проверка срабатывает и при создании.
+- title: Итог только для чтения
+  text: |
+    Добавьте в `Cart` свойство `total`, которое считается из позиций, без сеттера. Попробуйте присвоить его.
+    ```python
+    class Cart:
+        def __init__(self, items):
+            self.items = items
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Cart:
+        def __init__(self, items):
+            self.items = items
+
+        @property
+        def total(self):
+            return sum(price * qty for price, qty in self.items)
+
+
+    cart = Cart([(2490, 1), (390, 2)])
+    print(cart.total)
+    cart.total = 0
+    ```
+    Результат:
+    ```
+    3270
+    AttributeError: property 'total' of 'Cart' object has no setter
+    ```
+    Свойство вызывается без скобок, как атрибут, и всегда считается заново по текущим позициям.
+- title: Скидка в процентах
+  text: |
+    Сделайте свойство `discount` у `Product`: принимает только целое от 0 до 90 (иначе `ValueError`), а свойство `final_price` возвращает цену со скидкой.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def __init__(self, price):
+            self.price = price
+            self.discount = 0
+
+        @property
+        def discount(self):
+            return self._discount
+
+        @discount.setter
+        def discount(self, value):
+            if not 0 <= value <= 90:
+                raise ValueError("Скидка — от 0 до 90 %")
+            self._discount = value
+
+        @property
+        def final_price(self):
+            return self.price * (100 - self.discount) // 100
+
+
+    p = Product(2490)
+    p.discount = 15
+    print(p.final_price)
+    try:
+        p.discount = 95
+    except ValueError as error:
+        print(error, p.discount)
+    ```
+    Результат:
+    ```
+    2116
+    Скидка — от 0 до 90 % 15
+    ```
+    Неверное значение не записалось — объект остался в корректном состоянии.
+- title: Два подчёркивания
+  text: |
+    Предскажите вывод:
+    ```python
+    class Account:
+        def __init__(self):
+            self._bonus = 100
+            self.__token = "secret"
+
+
+    acc = Account()
+    print(acc._bonus)
+    print([name for name in vars(acc)])
+    ```
+  answer: |
+    Результат:
+    ```
+    100
+    ['_bonus', '_Account__token']
+    ```
+    Одно подчёркивание — только договорённость «не трогай». Два — Python переименовывает атрибут в `_Account__token`, чтобы наследник случайно его не перезаписал.

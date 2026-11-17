@@ -1,0 +1,103 @@
+- title: Тело запроса
+  text: |
+    API получил тело запроса:
+    ```python
+    body = '{"product_id": 17, "quantity": 2, "gift": true, "comment": null}'
+    ```
+    Разберите его и напечатайте получившийся словарь и количество, умноженное на 2.
+  answer: |
+    Ответ:
+    ```python
+    import json
+
+    data = json.loads(body)
+    print(data)
+    print(data["quantity"] * 2)
+    ```
+    Результат:
+    ```
+    {'product_id': 17, 'quantity': 2, 'gift': True, 'comment': None}
+    4
+    ```
+    `true` → `True`, `null` → `None`, числа сразу становятся `int`.
+- title: Кириллица в ответе
+  text: |
+    Превратите `{"name": "Чайник", "price": 2490}` в JSON-строку так, чтобы русские буквы остались буквами, а не `Ч…`.
+  answer: |
+    Ответ:
+    ```python
+    import json
+
+    product = {"name": "Чайник", "price": 2490}
+    print(json.dumps(product, ensure_ascii=False))
+    ```
+    Результат:
+    ```
+    {"name": "Чайник", "price": 2490}
+    ```
+- title: Decimal и дата в JSON
+  text: |
+    ```python
+    from datetime import date
+    from decimal import Decimal
+
+    order = {"id": 1042, "total": Decimal("3270.50"), "created": date(2026, 11, 17)}
+    ```
+    `json.dumps(order)` падает с `TypeError`. Сериализуйте заказ, превращая такие значения в строки.
+  answer: |
+    Ответ:
+    ```python
+    import json
+
+    print(json.dumps(order, default=str))
+    ```
+    Результат:
+    ```
+    {"id": 1042, "total": "3270.50", "created": "2026-11-17"}
+    ```
+    `default` вызывается для каждого значения, которое JSON не знает. Деньги — строкой, чтобы не потерять точность.
+- title: Невалидный JSON
+  text: |
+    Напишите `parse_body(body)`: возвращает словарь или `None`, если пришёл не JSON. Проверьте на `'{"quantity": 2}'` и на `'quantity=2'`.
+  answer: |
+    Ответ:
+    ```python
+    import json
+
+
+    def parse_body(body):
+        try:
+            return json.loads(body)
+        except json.JSONDecodeError:
+            return None
+
+
+    print(parse_body('{"quantity": 2}'), parse_body("quantity=2"))
+    ```
+    Результат:
+    ```
+    {'quantity': 2} None
+    ```
+- title: Сохранить корзину в файл
+  text: |
+    Сохраните корзину в `cart.json` с отступами в 2 пробела, затем прочитайте файл обратно и напечатайте число позиций.
+    ```python
+    cart = [{"id": 17, "qty": 1}, {"id": 3, "qty": 2}]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import json
+
+    with open("cart.json", "w", encoding="utf-8") as f:
+        json.dump(cart, f, indent=2)
+
+    with open("cart.json", encoding="utf-8") as f:
+        loaded = json.load(f)
+    print(len(loaded), loaded == cart)
+    ```
+    Результат:
+    ```
+    2 True
+    ```
+    `dump`/`load` работают с файлом, `dumps`/`loads` (с `s` — string) — со строкой.

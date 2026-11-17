@@ -1,0 +1,119 @@
+- title: Имя покупателя
+  text: |
+    Заказ пришёл от API:
+    ```python
+    order = {
+        "id": 1042,
+        "customer": {"name": "Анна", "email": "anna@mail.ru"},
+        "items": [
+            {"name": "Чайник", "price": 2490, "qty": 1},
+            {"name": "Кружка", "price": 390, "qty": 2},
+        ],
+    }
+    ```
+    Напечатайте имя покупателя и email.
+  answer: |
+    Ответ:
+    ```python
+    print(order["customer"]["name"], order["customer"]["email"])
+    ```
+    Результат:
+    ```
+    Анна anna@mail.ru
+    ```
+- title: Вторая позиция
+  text: |
+    Для того же `order` напечатайте название и количество второй позиции.
+    ```python
+    order = {
+        "id": 1042,
+        "customer": {"name": "Анна", "email": "anna@mail.ru"},
+        "items": [
+            {"name": "Чайник", "price": 2490, "qty": 1},
+            {"name": "Кружка", "price": 390, "qty": 2},
+        ],
+    }
+    ```
+  answer: |
+    Ответ:
+    ```python
+    second = order["items"][1]
+    print(second["name"], second["qty"])
+    ```
+    Результат:
+    ```
+    Кружка 2
+    ```
+    Цепочку читаем слева направо: словарь → список позиций → элемент с индексом 1 → его поле.
+- title: Строки чека
+  text: |
+    ```python
+    items = [
+        {"name": "Чайник", "price": 2490, "qty": 1},
+        {"name": "Кружка", "price": 390, "qty": 2},
+    ]
+    ```
+    Напечатайте по строке на позицию в виде `Кружка × 2 = 780 ₽`, а последней строкой — итог заказа.
+  answer: |
+    Ответ:
+    ```python
+    total = 0
+    for item in items:
+        line_total = item["price"] * item["qty"]
+        total += line_total
+        print(f"{item['name']} × {item['qty']} = {line_total} ₽")
+    print(f"Итого: {total} ₽")
+    ```
+    Результат:
+    ```
+    Чайник × 1 = 2490 ₽
+    Кружка × 2 = 780 ₽
+    Итого: 3270 ₽
+    ```
+    Внутри f-строки в двойных кавычках ключи пишем в одинарных.
+- title: Товары по категориям
+  text: |
+    ```python
+    by_category = {"кухня": ["чайник", "кружка"], "сад": ["лейка"]}
+    ```
+    Добавьте `"сковорода"` в кухню, а новую категорию `"дом"` с товаром `"плед"`. Напечатайте, сколько товаров в каждой категории.
+  answer: |
+    Ответ:
+    ```python
+    by_category["кухня"].append("сковорода")
+    by_category["дом"] = ["плед"]
+    for category, products in by_category.items():
+        print(category, len(products))
+    ```
+    Результат:
+    ```
+    кухня 3
+    сад 1
+    дом 1
+    ```
+    `by_category["кухня"]` — сам список, поэтому `append` меняет его прямо внутри словаря.
+- title: Email всех покупателей
+  text: |
+    ```python
+    orders = [
+        {"id": 1040, "customer": {"email": "anna@mail.ru"}},
+        {"id": 1041, "customer": {"email": "oleg@mail.ru"}},
+        {"id": 1042, "customer": {"email": "anna@mail.ru"}},
+    ]
+    ```
+    Соберите список email без повторов в порядке первого появления и напечатайте его.
+  answer: |
+    Ответ:
+    ```python
+    emails = []
+    for order in orders:
+        email = order["customer"]["email"]
+        if email not in emails:
+            emails.append(email)
+    print(emails)
+    ```
+    Результат:
+    ```
+    ['anna@mail.ru', 'oleg@mail.ru']
+    ```
+    Множество убрало бы повторы, но не сохранило бы порядок — поэтому здесь список с проверкой `in`.

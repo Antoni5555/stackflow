@@ -1,0 +1,103 @@
+- title: Заказ из словаря
+  text: |
+    Напишите `Order` с атрибутами `id` и `total` и альтернативным конструктором `from_dict(data)`.
+    ```python
+    data = {"id": 1042, "total": "3270"}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Order:
+        def __init__(self, id, total):
+            self.id = id
+            self.total = total
+
+        @classmethod
+        def from_dict(cls, data):
+            return cls(data["id"], int(data["total"]))
+
+
+    order = Order.from_dict(data)
+    print(order.id, order.total + 1)
+    ```
+    Результат:
+    ```
+    1042 3271
+    ```
+    `cls` — сам класс, поэтому `from_dict` работает и у наследников, создавая объект наследника.
+- title: Товар из строки
+  text: |
+    Добавьте в `Product(name, price)` конструктор `from_line(line)`, который разбирает строку `Чайник;2490`.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        @classmethod
+        def from_line(cls, line):
+            name, price = line.split(";")
+            return cls(name, int(price))
+
+
+    p = Product.from_line("Чайник;2490")
+    print(p.name, p.price)
+    ```
+    Результат:
+    ```
+    Чайник 2490
+    ```
+- title: Проверка без объекта
+  text: |
+    Добавьте в класс `Cart` статический метод `is_valid_qty(qty)`: количество — целое от 1 до 99. Вызовите его через класс, не создавая корзину.
+  answer: |
+    Ответ:
+    ```python
+    class Cart:
+        @staticmethod
+        def is_valid_qty(qty):
+            return 1 <= qty <= 99
+
+
+    print(Cart.is_valid_qty(3), Cart.is_valid_qty(0), Cart.is_valid_qty(150))
+    ```
+    Результат:
+    ```
+    True False False
+    ```
+    Статическому методу не нужны ни `self`, ни `cls` — это обычная функция, положенная в класс по смыслу.
+- title: Какой метод выбрать
+  text: |
+    В классе `Product` нужны три метода. Решите, каким должен быть каждый (обычный, `@classmethod` или `@staticmethod`), и напишите их:
+    - `price_with_vat()` — цена товара с НДС 20 %;
+    - `free()` — создать бесплатный образец с именем `Образец` и ценой 0;
+    - `round_price(price)` — округлить любую цену до десятков.
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        def price_with_vat(self):
+            return self.price * 120 // 100
+
+        @classmethod
+        def free(cls):
+            return cls("Образец", 0)
+
+        @staticmethod
+        def round_price(price):
+            return round(price, -1)
+
+
+    print(Product("Чайник", 2490).price_with_vat(), Product.free().name, Product.round_price(2487))
+    ```
+    Результат:
+    ```
+    2988 Образец 2490
+    ```
+    Нужны данные объекта — обычный метод; создаём объект — `classmethod`; ни то ни другое — `staticmethod`.

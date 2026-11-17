@@ -1,0 +1,107 @@
+- title: Статусы заказа
+  text: |
+    Опишите `OrderStatus` с вариантами `NEW = "new"`, `PAID = "paid"`, `SHIPPED = "shipped"`. Напечатайте имя и значение `PAID` и все статусы по порядку.
+  answer: |
+    Ответ:
+    ```python
+    from enum import Enum
+
+
+    class OrderStatus(Enum):
+        NEW = "new"
+        PAID = "paid"
+        SHIPPED = "shipped"
+
+
+    print(OrderStatus.PAID.name, OrderStatus.PAID.value)
+    print([status.value for status in OrderStatus])
+    ```
+    Результат:
+    ```
+    PAID paid
+    ['new', 'paid', 'shipped']
+    ```
+- title: Статус из базы
+  text: |
+    Из базы пришла строка статуса. Превратите её в `OrderStatus`, а для неизвестного значения напечатайте ошибку.
+    ```python
+    from enum import Enum
+
+
+    class OrderStatus(Enum):
+        NEW = "new"
+        PAID = "paid"
+        SHIPPED = "shipped"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print(OrderStatus("paid"))
+    try:
+        OrderStatus("lost")
+    except ValueError as error:
+        print(error)
+    ```
+    Результат:
+    ```
+    OrderStatus.PAID
+    'lost' is not a valid OrderStatus
+    ```
+    Вызов класса со значением находит вариант. Опечатка в строке сразу даёт ошибку, а не тихий неверный статус.
+- title: Сравнение со строкой
+  text: |
+    Предскажите вывод и объясните разницу:
+    ```python
+    from enum import Enum, StrEnum
+
+
+    class Status(Enum):
+        PAID = "paid"
+
+
+    class StrStatus(StrEnum):
+        PAID = "paid"
+
+
+    print(Status.PAID == "paid", StrStatus.PAID == "paid")
+    print(f"статус: {StrStatus.PAID}")
+    ```
+  answer: |
+    Результат:
+    ```
+    False True
+    статус: paid
+    ```
+    Обычный `Enum` не равен своему значению. `StrEnum` — ещё и строка, поэтому его удобно сравнивать с данными из JSON и вставлять в текст.
+- title: Следующий статус
+  text: |
+    Напишите `next_status(status)` для `OrderStatus` из первой задачи: `NEW` → `PAID` → `SHIPPED`, у `SHIPPED` следующего нет (`None`). Используйте `match`.
+    ```python
+    from enum import Enum
+
+
+    class OrderStatus(Enum):
+        NEW = "new"
+        PAID = "paid"
+        SHIPPED = "shipped"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def next_status(status):
+        match status:
+            case OrderStatus.NEW:
+                return OrderStatus.PAID
+            case OrderStatus.PAID:
+                return OrderStatus.SHIPPED
+            case _:
+                return None
+
+
+    print(next_status(OrderStatus.NEW), next_status(OrderStatus.SHIPPED))
+    ```
+    Результат:
+    ```
+    OrderStatus.PAID None
+    ```
+    В `case` пишем `OrderStatus.NEW` с точкой — так `match` сравнивает со значением, а не создаёт переменную.
