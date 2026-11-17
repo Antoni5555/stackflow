@@ -1,0 +1,66 @@
+title: Цена в значении
+type: exercise
+difficulty: 2
+pitfall: У option без value на сервер уходит видимый текст пункта.
+statement: |
+  Сервер получает `delivery=Курьером (300 ₽)` и разбирает это строкой. Когда цену доставки подняли до 350 ₽, код сломался. Сделайте так, чтобы на сервер уходили короткие коды: `courier`, `pickup`, `post`. Текст пунктов не меняйте.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Доставка</title>
+    </head>
+    <body>
+      <form action="/checkout/" method="post">
+        <label for="delivery">Доставка</label>
+        <select id="delivery" name="delivery">
+          <option>Курьером (300 ₽)</option>
+          <option>Самовывоз (бесплатно)</option>
+          <option>Почтой (200 ₽)</option>
+        </select>
+        <button>Дальше</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: 'select[name="delivery"] option'
+      count: 3
+      fail: В списке три способа доставки.
+    - selector: 'select[name="delivery"] option'
+      attr:
+        value: '^(courier|pickup|post)$'
+      fail: У каждого пункта — value с кодом courier, pickup или post.
+    - selector: 'option[value="courier"]'
+      text: '^Курьером'
+      fail: Код courier — у пункта «Курьером».
+    - selector: 'option[value="pickup"]'
+      text: '^Самовывоз'
+      fail: Код pickup — у пункта «Самовывоз».
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Доставка</title>
+    </head>
+    <body>
+      <form action="/checkout/" method="post">
+        <label for="delivery">Доставка</label>
+        <select id="delivery" name="delivery">
+          <option value="courier">Курьером (300 ₽)</option>
+          <option value="pickup">Самовывоз (бесплатно)</option>
+          <option value="post">Почтой (200 ₽)</option>
+        </select>
+        <button>Дальше</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - Что отправляет option, у которого нет атрибута value?
+explanation: |
+  Без `value` браузер отправляет текст пункта — вместе с ценой и скобками. С `value` подпись для покупателя и код для сервера независимы: текст можно менять, а сервер всё так же получает `courier`. Цену доставки сервер берёт из своих данных, а не из формы.

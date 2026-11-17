@@ -1,0 +1,61 @@
+title: Поиск ничего не ищет
+type: exercise
+difficulty: 1
+pitfall: Поле без атрибута name не попадает в запрос — сервер получает пустой поиск.
+statement: |
+  Покупатель вводит «чайник» и нажимает «Найти», а сервер получает `/search/` без параметров. Исправьте форму, чтобы текст поиска уходил параметром `q`, а сортировка — параметром `sort`.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+    </head>
+    <body>
+      <form action="/search/" method="get">
+        <input id="search" placeholder="Что ищем?">
+        <select id="sort">
+          <option value="price">Сначала дешёвые</option>
+          <option value="-price">Сначала дорогие</option>
+        </select>
+        <button>Найти</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: 'form input[name="q"]'
+      count: 1
+      fail: Поле поиска уходит на сервер, только если у него есть name — здесь name="q".
+    - selector: 'form select[name="sort"]'
+      count: 1
+      fail: Сортировке тоже нужен name — name="sort".
+    - selector: 'form[action="/search/"]'
+      attr:
+        method: '^[Gg][Ee][Tt]$'
+      fail: Поиск остаётся GET-формой на /search/.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+    </head>
+    <body>
+      <form action="/search/" method="get">
+        <input id="search" name="q" placeholder="Что ищем?">
+        <select id="sort" name="sort">
+          <option value="price">Сначала дешёвые</option>
+          <option value="-price">Сначала дорогие</option>
+        </select>
+        <button>Найти</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - По какому атрибуту браузер решает, отправлять ли поле и под каким ключом?
+explanation: |
+  Ключом в запросе служит `name`, а не `id`. Поле без `name` браузер пропускает целиком. С `name="q"` запрос станет `/search/?q=…&sort=price`, и в Django значение будет в `request.GET["q"]`.

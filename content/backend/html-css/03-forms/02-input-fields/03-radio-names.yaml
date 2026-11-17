@@ -1,0 +1,57 @@
+title: Три доставки сразу
+type: exercise
+difficulty: 1
+pitfall: Радиокнопки с разными name — разные группы, и отметить можно все.
+statement: |
+  В форме заказа покупатель может отметить сразу все способы доставки. Исправьте группу так, чтобы выбрать можно было только один, а на сервер уходил параметр `delivery` со значением `courier`, `pickup` или `post`.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Доставка</title>
+    </head>
+    <body>
+      <form action="/checkout/" method="post">
+        <label><input type="radio" name="courier" value="courier"> Курьером</label>
+        <label><input type="radio" name="pickup" value="pickup"> Самовывоз</label>
+        <label><input type="radio" name="post" value="post"> Почтой</label>
+        <button>Дальше</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: 'input[type="radio"]'
+      count: 3
+      fail: В группе три радиокнопки.
+    - selector: 'input[type="radio"]'
+      attr:
+        name: '^delivery$'
+      fail: У радиокнопок одной группы один name — delivery.
+    - selector: 'input[value="courier"], input[value="pickup"], input[value="post"]'
+      count: 3
+      fail: Значения кнопок — courier, pickup и post.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Доставка</title>
+    </head>
+    <body>
+      <form action="/checkout/" method="post">
+        <label><input type="radio" name="delivery" value="courier"> Курьером</label>
+        <label><input type="radio" name="delivery" value="pickup"> Самовывоз</label>
+        <label><input type="radio" name="delivery" value="post"> Почтой</label>
+        <button>Дальше</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - По какому атрибуту браузер объединяет радиокнопки в группу?
+explanation: |
+  Группу радиокнопок задаёт общий `name`: в группе отмечена максимум одна, и уходит `delivery=<value выбранной>`. С разными `name` каждая кнопка — отдельная группа из одного варианта.

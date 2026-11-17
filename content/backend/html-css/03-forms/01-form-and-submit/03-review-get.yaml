@@ -1,0 +1,63 @@
+title: Отзыв в адресной строке
+type: exercise
+difficulty: 1
+pitfall: Без method форма отправляется GET — данные отзыва оказываются в URL и повторяются по ссылке.
+statement: |
+  После отправки отзыва адрес страницы стал `/products/17/reviews/?rating=5&text=…`, а каждое обновление страницы добавляет отзыв заново. Исправьте форму.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Отзыв о товаре</title>
+    </head>
+    <body>
+      <form action="/products/17/reviews/">
+        <select name="rating">
+          <option value="5">5</option>
+          <option value="4">4</option>
+          <option value="3">3</option>
+        </select>
+        <textarea name="text"></textarea>
+        <button>Отправить отзыв</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: form
+      count: 1
+      fail: На странице одна форма.
+    - selector: form
+      attr:
+        method: '^[Pp][Oo][Ss][Tt]$'
+      fail: Отзыв меняет данные — форма отправляется методом post.
+    - selector: 'form[action="/products/17/reviews/"]'
+      count: 1
+      fail: Адрес отправки менять не нужно.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Отзыв о товаре</title>
+    </head>
+    <body>
+      <form action="/products/17/reviews/" method="post">
+        <select name="rating">
+          <option value="5">5</option>
+          <option value="4">4</option>
+          <option value="3">3</option>
+        </select>
+        <textarea name="text"></textarea>
+        <button>Отправить отзыв</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - Какой метод у формы, если его не указать?
+explanation: |
+  `method` по умолчанию — `get`, поэтому поля ушли в URL. Повтор GET-адреса из истории или F5 отправляет их снова. С `method="post"` данные идут в теле, а после сохранения сервер ответит редиректом.

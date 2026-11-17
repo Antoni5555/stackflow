@@ -1,0 +1,60 @@
+title: Сто тысяч чайников
+type: exercise
+difficulty: 1
+pitfall: Без min и max поле количества принимает 0, отрицательные и огромные числа.
+statement: |
+  Покупатели ставят в корзину 0, −5 и 100 000 штук. Ограничьте поле количества прямо в браузере: обязательное целое число от 1 до 99. (Сервер проверит то же самое отдельно.)
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <form action="/cart/add/17/" method="post">
+        <label for="qty">Количество</label>
+        <input id="qty" name="quantity" value="1">
+        <button>В корзину</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: '#qty'
+      attr:
+        type: '^number$'
+      fail: Количество — числовое поле, type="number".
+    - selector: '#qty'
+      attr:
+        min: '^1$'
+        max: '^99$'
+      fail: Границы — от 1 до 99 (атрибуты min и max).
+    - selector: '#qty[required]'
+      count: 1
+      fail: Поле обязательное — атрибут required.
+    - selector: '#qty[name="quantity"]'
+      count: 1
+      fail: name поля менять нельзя — по нему сервер читает количество.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+    </head>
+    <body>
+      <form action="/cart/add/17/" method="post">
+        <label for="qty">Количество</label>
+        <input type="number" id="qty" name="quantity" value="1" min="1" max="99" required>
+        <button>В корзину</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - Числовому полю нужны тип и две границы.
+explanation: |
+  `type="number"` с `min` и `max` не даст отправить форму со значением вне диапазона, а `required` — с пустым полем. Это подсказка для честного покупателя. Сервер всё равно проверяет количество сам.

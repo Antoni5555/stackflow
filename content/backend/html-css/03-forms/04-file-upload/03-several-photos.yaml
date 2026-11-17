@@ -1,0 +1,57 @@
+title: До трёх фото
+type: exercise
+difficulty: 1
+pitfall: Без multiple можно выбрать только один файл, а accept лишь фильтрует окно выбора.
+statement: |
+  К отзыву хотят прикладывать несколько фотографий, и в окне выбора должны быть видны только картинки. Доработайте поле `photos`.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Отзыв с фото</title>
+    </head>
+    <body>
+      <form action="/products/17/reviews/" method="post" enctype="multipart/form-data">
+        <textarea name="text"></textarea>
+        <label for="photos">Фото</label>
+        <input type="file" id="photos" name="photos">
+        <button>Отправить</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: '#photos[multiple]'
+      count: 1
+      fail: Несколько файлов в одном поле разрешает атрибут multiple.
+    - selector: '#photos'
+      attr:
+        accept: '^image/'
+      fail: Только картинки в окне выбора — accept="image/*".
+    - selector: 'input[type="file"][name="photos"]'
+      count: 1
+      fail: Тип и name поля остаются прежними.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Отзыв с фото</title>
+    </head>
+    <body>
+      <form action="/products/17/reviews/" method="post" enctype="multipart/form-data">
+        <textarea name="text"></textarea>
+        <label for="photos">Фото</label>
+        <input type="file" id="photos" name="photos" accept="image/*" multiple>
+        <button>Отправить</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - Два атрибута — один разрешает несколько файлов, второй фильтрует типы.
+explanation: |
+  `multiple` разрешает выбрать несколько файлов, все уйдут под именем `photos`. В Django их читают `request.FILES.getlist("photos")`. `accept="image/*"` показывает в окне только картинки, но не защищает: сервер проверяет тип сам. Лимит «до трёх» тоже проверяет сервер — в HTML такого атрибута нет.

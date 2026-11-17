@@ -1,0 +1,15 @@
+title: Галочка не отмечена
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Неотмеченный checkbox не отправляется — ключа нет в данных формы.
+statement: |
+  В форме есть `<input type="checkbox" name="gift" value="1">`. Покупатель не отметил галочку. Что вернёт `request.POST.get("gift")` в Django?
+options:
+  - "`\"0\"`"
+  - "`\"\"` (пустая строка)"
+  - "`None` — ключа gift в данных нет"
+  - "`False`"
+answer: [2]
+explanation: |
+  Браузер отправляет галочку, только если она отмечена. Неотмеченной нет в теле запроса вовсе, поэтому `get` вернёт `None`. Проверяют наличие ключа: `"gift" in request.POST`. Django-форма с `BooleanField` превращает отсутствие в `False` сама.

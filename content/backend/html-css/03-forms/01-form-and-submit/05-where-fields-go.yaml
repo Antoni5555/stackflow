@@ -1,0 +1,22 @@
+title: Куда ушли поля
+type: quiz
+kind: single
+difficulty: 1
+pitfall: У GET-формы поля уходят в URL, у POST — в тело; в Django это разные словари.
+statement: |
+  Форма фильтра каталога:
+  ```html
+  <form action="/catalog/">
+    <input name="max_price" value="3000">
+    <button>Показать</button>
+  </form>
+  ```
+  Где view Django найдёт значение `3000`?
+options:
+  - "`request.POST[\"max_price\"]`"
+  - "`request.GET[\"max_price\"]`"
+  - "`request.body`"
+  - "`request.COOKIES[\"max_price\"]`"
+answer: [1]
+explanation: |
+  `method` не указан — значит, GET, и поля ушли в URL: `/catalog/?max_price=3000`. Query-параметры Django кладёт в `request.GET`, и значение там — строка `"3000"`.

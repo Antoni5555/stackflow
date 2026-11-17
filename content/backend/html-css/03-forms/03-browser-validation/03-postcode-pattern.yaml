@@ -1,0 +1,60 @@
+title: Индекс с ведущим нулём
+type: exercise
+difficulty: 2
+pitfall: Код — не число — type="number" срезает ведущие нули; формат задают pattern.
+statement: |
+  Поле индекса сделано числовым, и индекс `010000` уходит на сервер как `10000`. Сделайте поле текстовым, проверяйте формат «ровно 6 цифр» через `pattern`, оставьте его обязательным и откройте на телефоне цифровую клавиатуру.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Адрес доставки</title>
+    </head>
+    <body>
+      <form action="/checkout/" method="post">
+        <label for="postcode">Индекс</label>
+        <input type="number" id="postcode" name="postcode" required>
+        <button>Дальше</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: '#postcode[type="number"]'
+      exists: false
+      fail: type="number" срезает ведущие нули — индекс должен быть текстовым полем.
+    - selector: '#postcode'
+      attr:
+        pattern: '^\^?(\\d|\[0-9\])\{6\}\$?$'
+      fail: 'Формат «ровно 6 цифр» — pattern="\d{6}".'
+    - selector: '#postcode[required]'
+      count: 1
+      fail: Поле остаётся обязательным.
+    - selector: '#postcode'
+      attr:
+        inputmode: '^numeric$'
+      fail: Цифровую клавиатуру на телефоне открывает inputmode="numeric".
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Адрес доставки</title>
+    </head>
+    <body>
+      <form action="/checkout/" method="post">
+        <label for="postcode">Индекс</label>
+        <input id="postcode" name="postcode" pattern="\d{6}" inputmode="numeric" required>
+        <button>Дальше</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - Уберите type="number" — без type поле текстовое.
+  - "Шесть цифр в регулярном выражении — \\d{6}."
+explanation: |
+  Индекс — строка из цифр, а не число: с ним не считают, и ноль в начале важен. Текстовое поле хранит значение как есть. `pattern="\d{6}"` требует ровно шесть цифр во всём значении, а `inputmode="numeric"` даёт удобную клавиатуру.

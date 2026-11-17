@@ -1,0 +1,58 @@
+title: Подпись сама по себе
+type: exercise
+difficulty: 1
+pitfall: label рядом с полем не связан с ним — нужен for с id поля или поле внутри label.
+statement: |
+  Клик по подписям «Email» и «Телефон» не ставит курсор в поля, а экранный доступ читает поля без названий. Свяжите каждую подпись со своим полем.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Оформление заказа</title>
+    </head>
+    <body>
+      <form action="/checkout/" method="post">
+        <label>Email</label>
+        <input type="email" id="email" name="email">
+        <label>Телефон</label>
+        <input type="tel" id="phone" name="phone">
+        <button>Оформить</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: 'label[for="email"], label #email'
+      count: 1
+      fail: Подпись «Email» связывается с полем через for="email" (или поле кладут внутрь label).
+    - selector: 'label[for="phone"], label #phone'
+      count: 1
+      fail: Подпись «Телефон» связывается с полем через for="phone".
+    - selector: '#email[name="email"], #phone[name="phone"]'
+      count: 2
+      fail: id и name у полей должны остаться.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Оформление заказа</title>
+    </head>
+    <body>
+      <form action="/checkout/" method="post">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email">
+        <label for="phone">Телефон</label>
+        <input type="tel" id="phone" name="phone">
+        <button>Оформить</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - Какой атрибут label указывает на id поля?
+explanation: |
+  `label` без `for` и без вложенного поля — просто текст рядом. `for="email"` указывает на элемент с `id="email"`. Клик по подписи фокусирует поле, и у поля появляется имя для экранного доступа.

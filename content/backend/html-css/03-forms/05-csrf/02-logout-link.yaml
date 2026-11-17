@@ -1,0 +1,63 @@
+title: Выход по ссылке
+type: exercise
+difficulty: 2
+pitfall: Действие, доступное по GET-ссылке, чужой сайт вызовет картинкой — CSRF-токен GET не защищает.
+statement: |
+  Кнопка «Выйти» сделана ссылкой на `/logout/`. Переделайте её в форму, которая отправляется методом POST на `/logout/` и содержит скрытое поле CSRF-токена. Имя поля такое, как в Django, значение — `TOKEN`: в шаблоне его подставит `{% csrf_token %}`. Кнопка «Выйти» должна остаться.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Личный кабинет</title>
+    </head>
+    <body>
+      <header>
+        <span>Анна</span>
+        <a href="/logout/">Выйти</a>
+      </header>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: 'a[href="/logout/"]'
+      exists: false
+      fail: Выход по ссылке — это GET, его вызовет любая чужая страница. Нужна форма.
+    - selector: 'form[action="/logout/"]'
+      count: 1
+      fail: Нужна форма с action="/logout/".
+    - selector: 'form[action="/logout/"]'
+      attr:
+        method: '^[Pp][Oo][Ss][Tt]$'
+      fail: Выход меняет состояние — форма отправляется методом post.
+    - selector: 'form[action="/logout/"] input[type="hidden"][name="csrfmiddlewaretoken"]'
+      count: 1
+      fail: В форме — скрытое поле csrfmiddlewaretoken.
+    - selector: 'form[action="/logout/"] button'
+      text: '^Выйти$'
+      fail: Отправляет форму кнопка «Выйти».
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Личный кабинет</title>
+    </head>
+    <body>
+      <header>
+        <span>Анна</span>
+        <form action="/logout/" method="post">
+          <input type="hidden" name="csrfmiddlewaretoken" value="TOKEN">
+          <button>Выйти</button>
+        </form>
+      </header>
+    </body>
+    </html>
+hints:
+  - Какое скрытое поле вставляет тег {% csrf_token %}?
+  - Форма с method="post", внутри — input type="hidden" и кнопка.
+explanation: |
+  Переход по ссылке — GET, а GET токеном не защищён: `<img src="https://shop.example/logout/">` на чужом сайте выкинет покупателя из аккаунта. Форма с POST и скрытым токеном выполнится только со страниц самого магазина. В шаблоне Django вместо поля пишут `{% csrf_token %}`.

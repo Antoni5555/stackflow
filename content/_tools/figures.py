@@ -802,6 +802,67 @@ def escaping_flow():
     f.box(654, 150, 206, 60, "браузер покажет|текст <script>…", "ok", "cs")
     f.save(out(HC2 / "05-escaping" / "img" / "escaping-flow.svg"))
 
+
+# ---------- HTML/CSS 3.01: форма → запрос ----------
+HC3 = ROOT / "html-css" / "03-forms"
+
+
+def form_to_request():
+    f = Figure(880, 330, "GET-форма кладёт поля в query-параметры URL, POST-форма — в тело запроса")
+    for c, (title, form, req) in enumerate([
+        ("GET — поиск", ['<form action="/search/"', '      method="get">', '  <input name="q">', '  <input name="sort">'],
+         ["GET /search/?q=%D1%87%D0%B0…&sort=price", "Host: shop.example", "", "(тела нет)"]),
+        ("POST — отзыв", ['<form action="/reviews/"', '      method="post">', '  <input name="rating">', '  <textarea name="text">'],
+         ["POST /reviews/ HTTP/1.1", "Host: shop.example", "", "rating=5&text=%D0%9E%D1%82…"]),
+    ]):
+        x = 20 + c * 440
+        f.text(x, 24, title, "h")
+        f.box(x, 36, 420, 118, "", "box2")
+        for i, s in enumerate(form):
+            f.text(x + 16, 62 + i * 24, s, "cs")
+        f.arrow(f"M{x + 210} 154V184")
+        f.raw(f'<rect x="{x}" y="188" width="420" height="112" rx="14" class="fig-term"/>')
+        for i, s in enumerate(req):
+            f.text(x + 16, 214 + i * 24, s, "tt")
+    f.text(20, 322, "В запрос попадают только поля с атрибутом name: name=значение.", "s")
+    f.save(out(HC3 / "01-form-and-submit" / "img" / "form-to-request.svg"))
+
+
+# ---------- HTML/CSS 3.03: два уровня проверки ----------
+def validation_layers():
+    f = Figure(880, 240, "Проверка в браузере — подсказка для покупателя, настоящая проверка — на сервере")
+    f.box(20, 70, 170, 70, "Покупатель|заполняет форму", "box")
+    f.arrow("M190 105H250")
+    f.box(254, 50, 250, 110, "", "box2")
+    f.text(270, 76, "Браузер: required, min, max,", "t"); f.text(270, 98, "pattern, type=\"email\"", "c")
+    f.text(270, 128, "быстро, но обходится", "errt"); f.text(270, 148, "за секунды", "errt")
+    f.arrow("M504 105H564")
+    f.box(568, 50, 292, 110, "", "ok")
+    f.text(584, 76, "Сервер (Django-форма):", "t"); f.text(584, 98, "те же правила + остатки, цены,", "s")
+    f.text(584, 118, "права — то, чего браузер не знает", "s"); f.text(584, 148, "обязательна всегда", "t")
+    f.arrow("M105 140V200H714V164", "lnd")
+    f.text(120, 222, "curl, DevTools, свой скрипт — запрос в обход браузера всё равно придёт на сервер", "s")
+    f.save(out(HC3 / "03-browser-validation" / "img" / "validation-layers.svg"))
+
+
+# ---------- HTML/CSS 3.05: CSRF-атака ----------
+def csrf_attack():
+    f = Figure(880, 300, "Чужой сайт отправляет форму в магазин, браузер прикладывает cookie сессии; токен CSRF такую форму отсекает")
+    f.box(20, 20, 200, 60, "evil.example|скрытая форма", "err", "errt")
+    f.box(340, 110, 200, 70, "Браузер покупателя|cookie: sessionid=k3x9", "box", "cs")
+    f.box(660, 20, 200, 60, "shop.example", "box2")
+    f.arrow("M120 80L340 130"); f.text(150, 128, "1. страница сама", "s"); f.text(150, 146, "отправляет форму", "s")
+    f.arrow("M540 130L700 80"); f.text(580, 120, "2. POST /orders/", "cs")
+    f.text(580, 140, "+ Cookie: sessionid", "cs")
+    f.box(560, 200, 300, 80, "", "ok")
+    f.text(576, 226, "3. Django: где csrf-токен?", "t")
+    f.text(576, 248, "у чужого сайта его нет → 403", "s")
+    f.text(576, 268, "своя форма содержит токен → OK", "s")
+    f.arrow("M760 80V196")
+    f.text(20, 230, "Cookie браузер прикладывает", "s"); f.text(20, 248, "к любому запросу в магазин —", "s")
+    f.text(20, 266, "даже начатому с чужого сайта.", "s")
+    f.save(out(HC3 / "05-csrf" / "img" / "csrf-attack.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -812,6 +873,7 @@ if __name__ == "__main__":
                   is_a_has_a, with_flow,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
-                  document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow):
+                  document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,
+                  form_to_request, validation_layers, csrf_attack):
         build()
     print("ok")

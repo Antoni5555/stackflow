@@ -1,0 +1,15 @@
+title: Форма получает 403
+type: quiz
+kind: single
+difficulty: 1
+pitfall: 403 «CSRF token missing» лечится тегом {% csrf_token %}, а не отключением проверки.
+statement: |
+  Новая форма смены адреса доставки отвечает `403 Forbidden — CSRF token missing`. Как исправить правильно?
+options:
+  - Повесить на view декоратор @csrf_exempt
+  - Добавить в форму шаблона тег {% csrf_token %}
+  - Сменить метод формы на GET
+  - Удалить CsrfViewMiddleware из настроек
+answer: [1]
+explanation: |
+  Django не нашёл в POST скрытого поля с токеном — его вставляет `{% csrf_token %}`. `@csrf_exempt` и удаление middleware отключают защиту и открывают форму для атаки. GET уберёт ошибку, но сделает изменение данных доступным для любой чужой ссылки.

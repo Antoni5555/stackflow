@@ -1,0 +1,58 @@
+title: Фото не доходит
+type: exercise
+difficulty: 1
+pitfall: Без enctype="multipart/form-data" форма отправляет только имя файла, а не содержимое.
+statement: |
+  Покупатель прикрепляет фото к отзыву, а на сервере в `request.FILES` пусто, а в `request.POST["photo"]` — только `kettle.jpg`. Исправьте форму.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Отзыв с фото</title>
+    </head>
+    <body>
+      <form action="/products/17/reviews/" method="post">
+        <textarea name="text"></textarea>
+        <label for="photo">Фото</label>
+        <input type="file" id="photo" name="photo">
+        <button>Отправить</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: form
+      attr:
+        enctype: '^multipart/form-data$'
+      fail: Чтобы отправить содержимое файла, форме нужен enctype="multipart/form-data".
+    - selector: form
+      attr:
+        method: '^[Pp][Oo][Ss][Tt]$'
+      fail: Файлы отправляются только методом post.
+    - selector: 'input[type="file"][name="photo"]'
+      count: 1
+      fail: Поле файла с name="photo" остаётся.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Отзыв с фото</title>
+    </head>
+    <body>
+      <form action="/products/17/reviews/" method="post" enctype="multipart/form-data">
+        <textarea name="text"></textarea>
+        <label for="photo">Фото</label>
+        <input type="file" id="photo" name="photo">
+        <button>Отправить</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - Какой формат тела у формы по умолчанию и помещается ли в него файл?
+explanation: |
+  По умолчанию тело формы — строка `name=value&…`, в ней есть место только для имени файла. `multipart/form-data` делит тело на части, и содержимое файла едет отдельной частью. Django кладёт его в `request.FILES`.

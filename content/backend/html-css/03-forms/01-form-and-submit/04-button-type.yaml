@@ -1,0 +1,57 @@
+title: Кнопка отправляет форму
+type: exercise
+difficulty: 2
+pitfall: Любой <button> внутри формы по умолчанию отправляет её.
+statement: |
+  На форме входа кнопка «Показать пароль» вместо показа пароля отправляет форму. Сделайте так, чтобы форму отправляла только кнопка «Войти».
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Вход</title>
+    </head>
+    <body>
+      <form action="/login/" method="post">
+        <input type="email" name="email">
+        <input type="password" name="password">
+        <button class="toggle">Показать пароль</button>
+        <button class="submit">Войти</button>
+      </form>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: button.toggle
+      attr:
+        type: '^button$'
+      fail: Вспомогательная кнопка не должна отправлять форму — у неё тип button.
+    - selector: button.submit
+      count: 1
+      fail: Кнопка «Войти» остаётся.
+    - selector: 'button.submit:not([type]), button.submit[type="submit"]'
+      count: 1
+      fail: «Войти» по-прежнему отправляет форму — тип submit (или без типа).
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Вход</title>
+    </head>
+    <body>
+      <form action="/login/" method="post">
+        <input type="email" name="email">
+        <input type="password" name="password">
+        <button type="button" class="toggle">Показать пароль</button>
+        <button type="submit" class="submit">Войти</button>
+      </form>
+    </body>
+    </html>
+hints:
+  - Какой type у <button>, если его не указать?
+explanation: |
+  У `<button>` внутри формы тип по умолчанию — `submit`. Кнопке, которая должна только выполнить действие на странице, нужен `type="button"`. «Войти» лучше тоже пометить явно `type="submit"` — так намерение видно из кода.
