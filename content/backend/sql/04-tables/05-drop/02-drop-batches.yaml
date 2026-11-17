@@ -26,7 +26,7 @@ solution: |
   DROP TABLE import_batches CASCADE;
 check:
   type: schema
-  tables: [import_rows]
+  tables: [import_rows, import_batches]
 hints:
   - Что зависит от `import_batches`, судя по строке DETAIL?
   - "HINT предлагает `CASCADE`. Что именно он удалит — таблицу `import_rows` или только ограничение?"

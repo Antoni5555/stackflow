@@ -1,0 +1,30 @@
+title: Состав заказа 1
+type: exercise
+difficulty: 2
+pitfall: Цена в составе заказа — из order_items (на момент покупки), а не текущая из products.
+statement: |
+  Покупательница Анна просит распечатать свой первый заказ (`id` 1). Выведите название товара в колонке `product`, название категории в колонке `category`, количество `quantity` и цену, по которой товар **купили**, в колонке `price`. Порядок — по названию товара.
+
+  Запрос из заготовки выполняется, но у двух позиций цены не те. Исправьте его.
+starter_code: |
+  SELECT p.name AS product, c.name AS category, oi.quantity, p.price
+  FROM order_items oi
+  JOIN products p ON p.id = oi.product_id
+  JOIN categories c ON c.id = p.category_id
+  WHERE oi.order_id = 1
+  ORDER BY p.name;
+solution: |
+  SELECT p.name AS product, c.name AS category, oi.quantity, oi.price
+  FROM order_items oi
+  JOIN products p ON p.id = oi.product_id
+  JOIN categories c ON c.id = p.category_id
+  WHERE oi.order_id = 1
+  ORDER BY p.name;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "Столбец `price` есть в двух таблицах. Чем они отличаются?"
+  - "Цена на момент покупки хранится в связке `order_items`."
+explanation: |
+  `products.price` — цена сейчас; ноутбук подорожал до 64990.00, мышь — до 1499.00. Заказ 1 оформлен в «чёрную пятницу», и заплатили 59990.00 и 1290.00 — это записано в `order_items.price`. Поэтому цену фиксируют в позиции при покупке: чек и отчёты не должны меняться вместе с прайсом.

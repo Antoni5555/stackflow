@@ -1,0 +1,30 @@
+title: Покупки по городам
+type: exercise
+difficulty: 2
+pitfall: Обычный JOIN после LEFT JOIN снова выбрасывает строки без пары.
+statement: |
+  Выведите покупателей из Екатеринбурга и Краснодара (`name`) и названия купленных ими товаров в колонке `product`. Покупатели, которые ничего не покупали, тоже должны быть в списке — с пустым `product`. Порядок строк не важен.
+
+  В заготовке пропал один покупатель. Исправьте её.
+starter_code: |
+  SELECT u.name, p.name AS product
+  FROM users u
+  LEFT JOIN orders o ON o.user_id = u.id
+  JOIN order_items oi ON oi.order_id = o.id
+  JOIN products p ON p.id = oi.product_id
+  WHERE u.city IN ('Екатеринбург', 'Краснодар');
+solution: |
+  SELECT u.name, p.name AS product
+  FROM users u
+  LEFT JOIN orders o ON o.user_id = u.id
+  LEFT JOIN order_items oi ON oi.order_id = o.id
+  LEFT JOIN products p ON p.id = oi.product_id
+  WHERE u.city IN ('Екатеринбург', 'Краснодар');
+check:
+  type: result
+  order_matters: false
+hints:
+  - "У Нины из Краснодара нет заказов: чему равен `o.id` в её строке после первого `LEFT JOIN`?"
+  - Какой будет пара для `oi.order_id = NULL` во втором соединении?
+explanation: |
+  Первый `LEFT JOIN` сохраняет Нину с `o.id` = NULL. Следующий обычный `JOIN` ищет позиции с `oi.order_id = NULL`, не находит и выбрасывает строку — потеря, от которой защищал `LEFT`. Все соединения, идущие от правой таблицы внешнего соединения, тоже должны быть `LEFT JOIN`.

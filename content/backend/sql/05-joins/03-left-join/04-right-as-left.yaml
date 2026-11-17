@@ -1,0 +1,20 @@
+title: RIGHT наоборот
+type: quiz
+kind: single
+difficulty: 1
+pitfall: RIGHT JOIN — это LEFT JOIN с переставленными таблицами.
+statement: |
+  Какой запрос вернёт те же строки, что этот?
+  ```sql
+  SELECT u.name, o.id
+  FROM orders o
+  RIGHT JOIN users u ON u.id = o.user_id;
+  ```
+options:
+  - "`FROM users u LEFT JOIN orders o ON u.id = o.user_id`"
+  - "`FROM orders o LEFT JOIN users u ON u.id = o.user_id`"
+  - "`FROM users u JOIN orders o ON u.id = o.user_id`"
+  - "`FROM orders o FULL JOIN users u ON u.id = o.user_id`"
+answer: [0]
+explanation: |
+  `RIGHT JOIN` сохраняет все строки правой таблицы — `users`. Тот же результат даёт `LEFT JOIN`, если `users` поставить слева. `orders LEFT JOIN users` сохранил бы все заказы (а у каждого заказа покупатель есть — это был бы INNER по смыслу), `JOIN` потерял бы покупателей без заказов, а `FULL JOIN` сохранил бы и то и другое.

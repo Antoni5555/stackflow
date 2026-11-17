@@ -1,0 +1,26 @@
+title: Новые заказы и почта
+type: exercise
+difficulty: 1
+pitfall: Столбец с одним именем в двух таблицах нужно уточнить — иначе ошибка ambiguous.
+statement: |
+  Выведите `id` новых заказов (статус `new`) и `email` их покупателей, по возрастанию `id` заказа. Запрос из заготовки падает — исправьте его.
+starter_code: |
+  SELECT id, email
+  FROM orders
+  JOIN users ON users.id = orders.user_id
+  WHERE status = 'new'
+  ORDER BY id;
+solution: |
+  SELECT o.id, u.email
+  FROM orders o
+  JOIN users u ON u.id = o.user_id
+  WHERE o.status = 'new'
+  ORDER BY o.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - В каких таблицах есть столбец `id`?
+  - "Уточните: `orders.id` — номер заказа, `users.id` — номер покупателя."
+explanation: |
+  `id` есть и в `orders`, и в `users`, и PostgreSQL не угадывает, какой нужен: `column reference "id" is ambiguous`. Номер заказа — `orders.id` (или `o.id` с псевдонимом), причём и в `SELECT`, и в `ORDER BY`. `email` и `status` есть только в одной таблице, но уточнять их тоже полезно: запрос читается без знания схемы.

@@ -1,0 +1,21 @@
+title: Сколько вариантов
+type: quiz
+kind: single
+difficulty: 1
+pitfall: CROSS JOIN даёт произведение числа строк; пустая таблица даёт ноль сочетаний.
+statement: |
+  В таблице `sizes` 4 строки, в `colors` — 5, в `materials` — 0. Сколько строк вернёт запрос?
+  ```sql
+  SELECT *
+  FROM sizes
+  CROSS JOIN colors
+  CROSS JOIN materials;
+  ```
+options:
+  - "20"
+  - "9"
+  - "0"
+  - "Ошибка — нельзя соединять пустую таблицу"
+answer: [2]
+explanation: |
+  `CROSS JOIN` — каждая строка с каждой: 4 × 5 × 0 = 0. Сочетаний с пустой таблицей нет, ошибки при этом нет. Без последнего соединения было бы 20 строк.

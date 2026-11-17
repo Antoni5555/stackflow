@@ -1,0 +1,25 @@
+title: Каждый заказ — каждого покупателя
+type: exercise
+difficulty: 1
+pitfall: Таблицы через запятую без условия связи дают декартово произведение.
+statement: |
+  Выведите `id` новых заказов (статус `new`) и имя покупателя `name`, по возрастанию `id` заказа. Запрос из заготовки возвращает 39 строк вместо трёх. Исправьте его — лучше через `JOIN … ON`.
+starter_code: |
+  SELECT o.id, u.name
+  FROM orders o, users u
+  WHERE o.status = 'new'
+  ORDER BY o.id;
+solution: |
+  SELECT o.id, u.name
+  FROM orders o
+  JOIN users u ON u.id = o.user_id
+  WHERE o.status = 'new'
+  ORDER BY o.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Где в заготовке сказано, какой покупатель относится к какому заказу?
+  - "`3 × 13 = 39`."
+explanation: |
+  Запятая в `FROM` — соединение, условие которого пишут в `WHERE`. Условия связи `u.id = o.user_id` нет, поэтому каждый из трёх новых заказов соединился с каждым из 13 покупателей. Можно дописать условие в `WHERE`, но явный `JOIN … ON` надёжнее: без `ON` он просто не выполнится, и забыть связь не получится.

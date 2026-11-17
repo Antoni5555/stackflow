@@ -1,0 +1,21 @@
+title: Сколько строк
+type: quiz
+kind: single
+difficulty: 2
+pitfall: INNER JOIN повторяет строку для каждой пары и выбрасывает строки без пары.
+statement: |
+  У Анны (`users.id` 1) шесть заказов, у Ирины (`users.id` 9) — ни одного. Сколько строк вернёт запрос?
+  ```sql
+  SELECT u.name, o.id
+  FROM users u
+  JOIN orders o ON o.user_id = u.id
+  WHERE u.id IN (1, 9);
+  ```
+options:
+  - "2"
+  - "6"
+  - "7"
+  - "8"
+answer: [1]
+explanation: |
+  Анна даёт по строке на каждый заказ — 6. У Ирины пар нет, и `INNER JOIN` её строку отбрасывает. Чтобы Ирина попала в результат с пустым `o.id`, нужен `LEFT JOIN` — тогда строк будет 7.

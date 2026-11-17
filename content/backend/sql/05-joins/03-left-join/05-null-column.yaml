@@ -1,0 +1,22 @@
+title: Какой столбец проверять
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: Признак «пары нет» — NULL в столбце, который в самой таблице NULL не бывает.
+statement: |
+  Ищем покупателей без заказов:
+  ```sql
+  SELECT u.id
+  FROM users u
+  LEFT JOIN orders o ON o.user_id = u.id
+  WHERE ??? IS NULL;
+  ```
+  Что можно подставить вместо `???`, чтобы результат был верным?
+options:
+  - "`o.id`"
+  - "`o.user_id`"
+  - "`o.promo_code_id`"
+  - "`u.city`"
+answer: [0, 1]
+explanation: |
+  `o.id` (первичный ключ) и `o.user_id` (`NOT NULL`) в самих заказах не бывают NULL, поэтому NULL в них означает «пары нет». `o.promo_code_id` пуст у многих настоящих заказов — в ответ попали бы покупатели, у которых есть заказ без промокода. `u.city` — столбец левой таблицы, к наличию заказов отношения не имеет.

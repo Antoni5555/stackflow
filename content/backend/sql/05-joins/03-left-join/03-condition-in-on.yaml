@@ -1,0 +1,28 @@
+title: Оплаченные заказы по городам
+type: exercise
+difficulty: 2
+pitfall: Условие на правую таблицу в WHERE отбрасывает строки без пары — LEFT JOIN превращается в INNER.
+statement: |
+  Для покупателей из Казани и Санкт-Петербурга выведите `id` и `name` покупателя и номер его оплаченного заказа (статус `paid`) в колонке `order_id`. Покупатели без оплаченных заказов тоже должны быть в списке — с пустым `order_id`. Порядок — по `id` покупателя, затем по `order_id`.
+
+  Заготовка возвращает одного покупателя. Исправьте её.
+starter_code: |
+  SELECT u.id, u.name, o.id AS order_id
+  FROM users u
+  LEFT JOIN orders o ON o.user_id = u.id
+  WHERE u.city IN ('Казань', 'Санкт-Петербург') AND o.status = 'paid'
+  ORDER BY u.id, o.id;
+solution: |
+  SELECT u.id, u.name, o.id AS order_id
+  FROM users u
+  LEFT JOIN orders o ON o.user_id = u.id AND o.status = 'paid'
+  WHERE u.city IN ('Казань', 'Санкт-Петербург')
+  ORDER BY u.id, o.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "Чему равно `o.status = 'paid'` для покупателя, у которого пары не нашлось?"
+  - Условие, которое выбирает пару из `orders`, перенесите в `ON`.
+explanation: |
+  `WHERE` выполняется после соединения. У покупателей без подходящих заказов `o.status` — NULL, сравнение даёт «неизвестно», и строка отбрасывается вместе с покупателем. В `ON` условие решает, какой заказ считать парой: заказы с другим статусом парами не становятся, а покупатели остаются все. Условие на город относится к левой таблице и остаётся в `WHERE`.

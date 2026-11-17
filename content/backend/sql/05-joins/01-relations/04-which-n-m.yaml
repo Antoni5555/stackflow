@@ -1,0 +1,16 @@
+title: Где многие ко многим
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: N:M узнают по таблице-связке с двумя внешними ключами.
+statement: |
+  Какие пары таблиц учебной базы связаны «многие ко многим»?
+options:
+  - "`orders` и `products`"
+  - "`products` и `tags`"
+  - "`users` и `orders`"
+  - "`users` и `profiles`"
+  - "`categories` и `products`"
+answer: [0, 1]
+explanation: |
+  Заказы и товары связаны через `order_items`, товары и теги — через `product_tags`: у каждой связки по два внешних ключа. Покупатель — заказы и категория — товары — это 1:N (ключи `orders.user_id`, `products.category_id`), покупатель — профиль — 1:1.

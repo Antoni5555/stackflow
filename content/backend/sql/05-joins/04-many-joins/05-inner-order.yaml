@@ -1,0 +1,26 @@
+title: Порядок соединений
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Порядок INNER JOIN на набор строк не влияет; на результат влияют только условия.
+statement: |
+  Чем отличаются результаты двух запросов (столбцы в `SELECT` одинаковые)?
+  ```sql
+  -- A
+  FROM order_items oi
+  JOIN products p ON p.id = oi.product_id
+  JOIN orders o ON o.id = oi.order_id
+
+  -- B
+  FROM orders o
+  JOIN order_items oi ON oi.order_id = o.id
+  JOIN products p ON p.id = oi.product_id
+  ```
+options:
+  - Ничем — набор строк одинаковый
+  - В B больше строк — заказы идут первыми
+  - В A больше строк — позиции идут первыми
+  - B быстрее, потому что начинается с главной таблицы
+answer: [0]
+explanation: |
+  Условия соединения одинаковые, и для `INNER JOIN` порядок записи не важен: в результате те же пары. Порядок строк без `ORDER BY` не гарантирован ни там, ни там. Скорость тоже не зависит от порядка записи — планировщик сам выбирает, с какой таблицы начинать. С `LEFT JOIN` порядок уже важен.

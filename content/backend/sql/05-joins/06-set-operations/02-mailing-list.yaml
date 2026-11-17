@@ -1,0 +1,24 @@
+title: Рассылка без повторов
+type: exercise
+difficulty: 1
+pitfall: UNION ALL сохраняет повторы — один человек попадёт в список несколько раз.
+statement: |
+  Для рассылки нужен список `user_id` всех, кто делал заказы или писал отзывы, — каждый по одному разу, по возрастанию. Заготовка возвращает 55 строк. Исправьте её.
+starter_code: |
+  SELECT user_id FROM orders
+  UNION ALL
+  SELECT user_id FROM reviews
+  ORDER BY user_id;
+solution: |
+  SELECT user_id FROM orders
+  UNION
+  SELECT user_id FROM reviews
+  ORDER BY user_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Сколько раз в заготовке встречается покупательница Анна (1)?
+  - Какая операция убирает повторы?
+explanation: |
+  `UNION ALL` складывает 34 строки заказов и 21 строку отзывов как есть: Анна с шестью заказами и четырьмя отзывами встречается 10 раз. `UNION` убирает повторяющиеся строки — остаются 10 разных пользователей.

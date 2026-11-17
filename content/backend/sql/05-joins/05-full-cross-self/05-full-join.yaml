@@ -1,0 +1,21 @@
+title: Сверка с банком
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: FULL JOIN сохраняет строки без пары с обеих сторон — по NULL видно, с какой стороны пары нет.
+statement: |
+  Таблица `bank_payments (order_id, amount)` пришла из банка, внешнего ключа на `orders` у неё нет. Сверяем:
+  ```sql
+  SELECT o.id, b.order_id, b.amount
+  FROM orders o
+  FULL JOIN bank_payments b ON b.order_id = o.id;
+  ```
+  Что верно про результат?
+options:
+  - Строка с пустым `o.id` — платёж за заказ, которого нет в магазине
+  - Строка с пустым `b.order_id` — заказ, за который не пришёл платёж
+  - Заказы без платежа в результат не попадут
+  - "Тот же результат дал бы `orders LEFT JOIN bank_payments`"
+answer: [0, 1]
+explanation: |
+  `FULL JOIN` сохраняет обе стороны: заказ без платежа (NULL в столбцах банка) и платёж без заказа (NULL в столбцах `orders`). `LEFT JOIN` от `orders` потерял бы платежи без заказа — а для сверки они самые интересные. Внешнего ключа нет, поэтому платёж «в никуда» здесь возможен.

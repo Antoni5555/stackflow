@@ -1,0 +1,26 @@
+title: Нет ни одного отзыва
+type: exercise
+difficulty: 1
+pitfall: INNER JOIN не оставляет строк без пары — проверка IS NULL после него ничего не найдёт.
+statement: |
+  Менеджер хочет попросить покупателей оставить отзывы на товары, у которых их ещё нет. Выведите `id` и `name` таких товаров по возрастанию `id`. Запрос из заготовки возвращает пустой результат — исправьте его.
+starter_code: |
+  SELECT p.id, p.name
+  FROM products p
+  JOIN reviews r ON r.product_id = p.id
+  WHERE r.id IS NULL
+  ORDER BY p.id;
+solution: |
+  SELECT p.id, p.name
+  FROM products p
+  LEFT JOIN reviews r ON r.product_id = p.id
+  WHERE r.id IS NULL
+  ORDER BY p.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - Может ли после `INNER JOIN` у строки быть `r.id IS NULL`?
+  - Какое соединение сохраняет товары без пары?
+explanation: |
+  `INNER JOIN` оставляет только товары с отзывами, а у них `r.id` всегда заполнен — условие `r.id IS NULL` не проходит ни одна строка. `LEFT JOIN` сохраняет и товары без отзывов, с NULL во всех столбцах `reviews`, и `WHERE r.id IS NULL` оставляет именно их — 9 товаров.

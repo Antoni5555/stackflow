@@ -1,0 +1,23 @@
+title: Почему профиль один
+type: quiz
+kind: single
+difficulty: 2
+pitfall: 1:1 — это внешний ключ, который одновременно уникален.
+statement: |
+  Таблица профилей объявлена так:
+  ```sql
+  CREATE TABLE profiles (
+      user_id    integer PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+      phone      text UNIQUE,
+      birth_date date
+  );
+  ```
+  Что не даёт завести покупателю второй профиль?
+options:
+  - "`REFERENCES users (id)`"
+  - "`PRIMARY KEY` на `user_id`"
+  - "`ON DELETE CASCADE`"
+  - "`UNIQUE` на `phone`"
+answer: [1]
+explanation: |
+  `user_id` — первичный ключ `profiles`, значит, значение не повторяется: на каждого покупателя не больше одной строки. Внешний ключ лишь требует, чтобы покупатель существовал, `CASCADE` говорит, что делать при удалении, а `UNIQUE` на `phone` запрещает два профиля с одним телефоном, но не два профиля у одного покупателя.

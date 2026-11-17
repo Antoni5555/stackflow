@@ -1,0 +1,26 @@
+title: Отзывы не к тем товарам
+type: exercise
+difficulty: 2
+pitfall: Неверное условие в ON не вызывает ошибку — JOIN просто соединяет не те строки.
+statement: |
+  Выведите отзывы с оценкой 3: `id` отзыва, название товара в колонке `product` и оценку `rating`, по возрастанию `id` отзыва. Запрос из заготовки работает без ошибок, но товары у отзывов не те. Исправьте его.
+starter_code: |
+  SELECT r.id, p.name AS product, r.rating
+  FROM reviews r
+  JOIN products p ON p.id = r.id
+  WHERE r.rating = 3
+  ORDER BY r.id;
+solution: |
+  SELECT r.id, p.name AS product, r.rating
+  FROM reviews r
+  JOIN products p ON p.id = r.product_id
+  WHERE r.rating = 3
+  ORDER BY r.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "Какой столбец `reviews` ссылается на товар?"
+  - "`r.id` — номер отзыва, а не товара."
+explanation: |
+  `ON p.id = r.id` сравнивает номер товара с номером **отзыва**: отзыв 4 соединяется с товаром 4, хотя написан о чехле (товар 13). Ошибки нет — оба столбца целые, и пары находятся. Связь задаёт внешний ключ: `r.product_id` ссылается на `p.id`. Проверяйте `ON` по схеме: «ссылка = ключ».

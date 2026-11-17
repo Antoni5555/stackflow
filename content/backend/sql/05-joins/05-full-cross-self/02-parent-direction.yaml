@@ -1,0 +1,26 @@
+title: Родитель, а не дети
+type: exercise
+difficulty: 2
+pitfall: В самосвязи направление условия решает, что найдётся — родитель или дети.
+statement: |
+  Для каждой категории выведите `id`, название в колонке `category` и название родительской категории в колонке `parent`; у корневых категорий `parent` пустой. Порядок — по `id`.
+
+  Запрос из заготовки выдаёт лишние строки и не тех родителей. Исправьте его.
+starter_code: |
+  SELECT c.id, c.name AS category, p.name AS parent
+  FROM categories c
+  LEFT JOIN categories p ON c.id = p.parent_id
+  ORDER BY c.id;
+solution: |
+  SELECT c.id, c.name AS category, p.name AS parent
+  FROM categories c
+  LEFT JOIN categories p ON p.id = c.parent_id
+  ORDER BY c.id;
+check:
+  type: result
+  order_matters: false
+hints:
+  - "Чья ссылка `parent_id` должна указывать на чей `id`: категории `c` на родителя `p` или наоборот?"
+  - "Родитель категории `c` — строка, у которой `id` равен `c.parent_id`."
+explanation: |
+  `c.id = p.parent_id` ищет строки `p`, родитель которых — `c`, то есть **детей** категории: у «Электроники» два ребёнка — две строки. Родитель — строка `p`, на которую указывает ссылка категории: `p.id = c.parent_id`. У каждой категории не больше одного родителя, поэтому строк столько же, сколько категорий; `LEFT` сохраняет корневые. Порядок строк проверка не сравнивает: в заготовке у одной категории несколько строк, и их порядок между собой не определён.

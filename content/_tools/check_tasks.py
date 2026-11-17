@@ -765,6 +765,13 @@ def check_lesson(path):
 def _check_lesson(path):
     text = path.read_text()
     problems = []
+    # шапку читает load_content через YAML: title: NULL (true, no…) — не строка, и урок не загрузится
+    if m := re.match(r"---\n(.*?)\n---\n", text, re.S):
+        head = yaml.safe_load(m.group(1)) or {}
+        if not isinstance(head.get("title"), str) or not head["title"].strip():
+            problems.append(f"title в шапке не читается как строка ({head.get('title')!r}) — возьмите в кавычки")
+    else:
+        problems.append("нет шапки --- … --- с title")
     h2 = re.findall(r"^## (.+)$", text, flags=re.M)
     if [h for h in h2 if h not in H2_ORDER]:
         problems.append(f"лишние заголовки H2: {[h for h in h2 if h not in H2_ORDER]}")
@@ -842,12 +849,24 @@ def _check_practice(path):
 SEEDS = 16
 
 
+def check_meta(path):
+    """Название направления, курса, раздела, темы: YAML прочитает title: NULL (true, no…) не строкой."""
+    data = yaml.safe_load(path.read_text()) or {}
+    title = data.get("title")
+    if not isinstance(title, str) or not title.strip():
+        return [f"title не читается как строка ({title!r}) — возьмите в кавычки"]
+    return []
+
+
 def collect(base):
     """{файл: [проблемы]} для одного запуска интерпретатора."""
     results = {}
     for path in sorted(base.rglob("*")):
         if path.name == "_practice.yaml":
             results[str(path.relative_to(base) if path.is_relative_to(base) else path)] = check_practice(path)
+            continue
+        if path.name in ("_track.yaml", "_course.yaml", "_section.yaml", "_topic.yaml"):
+            results[str(path.relative_to(base) if path.is_relative_to(base) else path)] = check_meta(path)
             continue
         if path.name.startswith("_") or path.parent.name == "img":
             continue

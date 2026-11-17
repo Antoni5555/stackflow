@@ -1296,6 +1296,135 @@ def drop_order():
     f.save(out(SQ4 / "05-drop" / "img" / "drop-order.svg"))
 
 
+# ---------- SQL 5.01: виды связей ----------
+SQ5 = ROOT / "sql" / "05-joins"
+
+
+def relation_types():
+    f = Figure(880, 300, "Один ко многим, один к одному и многие ко многим в базе магазина")
+
+    def tab(x, y, name, w=150, acc=False):
+        f.box(x, y, w, 40, name, "acc" if acc else "box2", "onacc" if acc else "c", rx=8)
+
+    f.text(20, 24, "1:N", "h")
+    tab(20, 40, "users"); tab(20, 140, "orders")
+    f.arrow("M95 140V80")
+    f.text(105, 116, "orders.user_id", "cs")
+    f.text(20, 210, "у покупателя много заказов;", "s")
+    f.text(20, 228, "ключ — на стороне «многих»", "s")
+    f.text(300, 24, "1:1", "h")
+    tab(300, 40, "users"); tab(300, 140, "profiles")
+    f.arrow("M375 140V80")
+    f.text(385, 116, "user_id — PK", "cs")
+    f.text(300, 210, "внешний ключ ещё и уникален —", "s")
+    f.text(300, 228, "второго профиля не будет", "s")
+    f.text(570, 24, "N:M", "h")
+    tab(570, 40, "orders", 130); tab(730, 40, "products", 130)
+    tab(625, 140, "order_items", 180, True)
+    f.arrow("M670 140L635 80"); f.arrow("M760 140L795 80")
+    f.text(570, 210, "связка: пара «заказ — товар»", "s")
+    f.text(570, 228, "+ quantity, price", "s")
+    f.text(20, 280, "Стрелка — внешний ключ: от таблицы, где он хранится, к таблице, на которую ссылается.", "s")
+    f.save(out(SQ5 / "01-relations" / "img" / "relation-types.svg"))
+
+
+def _cells(f, x, y, cols, rows, colors=None):
+    """Таблица ячейками: cols — [(имя, ширина)], rows — кортежи значений, colors — {номер строки: класс}."""
+    cx = x
+    for name, w in cols:
+        f.box(cx, y, w, 30, name, "box2", "c", rx=4)
+        cx += w
+    for k, row in enumerate(rows):
+        cx = x
+        for (_, w), v in zip(cols, row):
+            f.box(cx, y + 30 + k * 30, w, 30, v, (colors or {}).get(k, "box"), "c", rx=4)
+            cx += w
+
+
+# ---------- SQL 5.02: INNER JOIN ----------
+def inner_join():
+    f = Figure(880, 280, "INNER JOIN: в результат попадают только пары, для которых выполнено ON")
+    f.text(20, 22, "users", "h")
+    _cells(f, 20, 30, [("id", 50), ("name", 120)], [("1", "Анна"), ("2", "Борис"), ("9", "Ирина")], {0: "m1", 1: "m2"})
+    f.text(260, 22, "orders", "h")
+    _cells(f, 260, 30, [("id", 50), ("user_id", 100)], [("1", "1"), ("2", "2"), ("6", "1")], {0: "m1", 1: "m2", 2: "m1"})
+    f.text(480, 22, "результат", "h")
+    _cells(f, 480, 30, [("name", 120), ("order_id", 100)], [("Анна", "1"), ("Борис", "2"), ("Анна", "6")], {0: "m1", 1: "m2", 2: "m1"})
+    f.arrow("M410 105H476")
+    f.text(20, 186, "ON u.id = o.user_id: пары одного цвета.", "s")
+    f.text(20, 206, "У Анны два заказа — две строки результата.", "s")
+    f.text(20, 226, "У Ирины заказов нет — в результате её нет.", "s")
+    f.save(out(SQ5 / "02-inner-join" / "img" / "inner-join.svg"))
+
+
+# ---------- SQL 5.03: LEFT JOIN ----------
+def left_join():
+    f = Figure(880, 280, "LEFT JOIN сохраняет все строки левой таблицы; без пары — NULL справа")
+    f.text(20, 22, "users (левая)", "h")
+    _cells(f, 20, 30, [("id", 50), ("name", 120)], [("1", "Анна"), ("2", "Борис"), ("9", "Ирина")], {0: "m1", 1: "m2", 2: "m3"})
+    f.text(260, 22, "orders", "h")
+    _cells(f, 260, 30, [("id", 50), ("user_id", 100)], [("1", "1"), ("2", "2"), ("6", "1")], {0: "m1", 1: "m2", 2: "m1"})
+    f.text(480, 22, "результат", "h")
+    _cells(f, 480, 30, [("name", 120), ("order_id", 100)], [("Анна", "1"), ("Анна", "6"), ("Борис", "2"), ("Ирина", "NULL")],
+           {0: "m1", 1: "m1", 2: "m2", 3: "m3"})
+    f.arrow("M410 105H476")
+    f.text(20, 186, "Ирина без заказов осталась: столбцы orders — NULL.", "s")
+    f.text(20, 206, "WHERE o.id IS NULL оставит только таких — «покупатели без заказов».", "s")
+    f.text(20, 226, "Условие на orders в WHERE выбросило бы Ирину — его пишут в ON.", "s")
+    f.save(out(SQ5 / "03-left-join" / "img" / "left-join.svg"))
+
+
+# ---------- SQL 5.04: цепочка JOIN ----------
+def join_chain():
+    f = Figure(880, 200, "Каждое соединение идёт по внешнему ключу и присоединяет таблицу к уже собранному результату")
+    names = [("users", 20), ("orders", 200), ("order_items", 380), ("products", 580), ("categories", 740)]
+    for name, x in names:
+        f.box(x, 50, 140 if name != "order_items" else 160, 44, name, "acc" if name == "order_items" else "box2",
+              "onacc" if name == "order_items" else "c", rx=8)
+    f.arrow("M200 72H164"); f.text(170, 120, "o.user_id", "cs")
+    f.arrow("M380 72H344"); f.text(340, 120, "oi.order_id", "cs")
+    f.arrow("M540 72H576"); f.text(530, 120, "oi.product_id", "cs")
+    f.arrow("M720 72H736"); f.text(700, 120, "p.category_id", "cs")
+    f.text(20, 170, "к одному (заказ → покупатель, позиция → товар) — строк не прибавляется;", "s")
+    f.text(20, 188, "ко многим (заказ → позиции) — строка заказа повторяется для каждой позиции.", "s")
+    f.save(out(SQ5 / "04-many-joins" / "img" / "join-chain.svg"))
+
+
+# ---------- SQL 5.05: самосвязь ----------
+def self_join():
+    f = Figure(880, 250, "Самосвязь: таблица categories участвует в запросе дважды — как c и как p")
+    f.text(20, 22, "categories c", "h")
+    _cells(f, 20, 30, [("id", 50), ("name", 140), ("parent_id", 100)],
+           [("2", "Компьютеры", "1"), ("3", "Ноутбуки", "2"), ("9", "Книги", "NULL")], {0: "m1", 1: "m2", 2: "m3"})
+    f.text(470, 22, "categories p", "h")
+    _cells(f, 470, 30, [("id", 50), ("name", 150)], [("1", "Электроника"), ("2", "Компьютеры")], {0: "m1", 1: "m2"})
+    f.arrow("M310 75H466"); f.arrow("M310 105H466")
+    f.text(320, 56, "p.id = c.parent_id", "cs")
+    f.text(20, 190, "Ноутбуки → родитель Компьютеры, Компьютеры → Электроника.", "s")
+    f.text(20, 210, "У Книг parent_id — NULL: пары нет, поэтому LEFT JOIN, иначе корни пропадут.", "s")
+    f.text(20, 230, "ON c.id = p.parent_id искал бы наоборот — детей категории.", "s")
+    f.save(out(SQ5 / "05-full-cross-self" / "img" / "self-join.svg"))
+
+
+# ---------- SQL 5.06: UNION, INTERSECT, EXCEPT ----------
+def set_operations():
+    f = Figure(880, 250, "UNION, INTERSECT и EXCEPT: что остаётся от двух наборов строк")
+    f.raw('<defs><clipPath id="so-a"><circle cx="370" cy="110" r="60"/></clipPath></defs>')
+    for k, (title, op) in enumerate((("A UNION B", "union"), ("A INTERSECT B", "intersect"), ("A EXCEPT B", "except"))):
+        ax, bx = 90 + k * 280, 160 + k * 280
+        if op == "union":
+            f.raw(f'<circle cx="{ax}" cy="110" r="60" class="fig-acc"/><circle cx="{bx}" cy="110" r="60" class="fig-acc"/>')
+        elif op == "intersect":
+            f.raw(f'<circle cx="{bx}" cy="110" r="60" class="fig-acc" clip-path="url(#so-a)"/>')
+        else:
+            f.raw(f'<circle cx="{ax}" cy="110" r="60" class="fig-acc"/><circle cx="{bx}" cy="110" r="60" class="fig-box"/>')
+        f.raw(f'<circle cx="{ax}" cy="110" r="60" class="fig-ln"/><circle cx="{bx}" cy="110" r="60" class="fig-ln"/>')
+        f.text(ax - 30, 114, "A", "c", "middle"); f.text(bx + 30, 114, "B", "c", "middle")
+        f.text((ax + bx) / 2, 204, title, "c", "middle")
+    f.text(20, 236, "Запросы — с одинаковым числом столбцов; строки сравниваются целиком; UNION ALL — как UNION, но с повторами.", "s")
+    f.save(out(SQ5 / "06-set-operations" / "img" / "set-operations.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1313,6 +1442,7 @@ if __name__ == "__main__":
                   app_dbms, table_keys, shop_schema,
                   select_where, null_compare, limit_offset,
                   insert_defaults, fk_actions, upsert_flow,
-                  type_choice, wishlist_fk, drop_order):
+                  type_choice, wishlist_fk, drop_order,
+                  relation_types, inner_join, left_join, join_chain, self_join, set_operations):
         build()
     print("ok")

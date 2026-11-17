@@ -1,0 +1,24 @@
+title: Купили, но не оценили
+type: exercise
+difficulty: 2
+pitfall: EXCEPT не симметричен — порядок запросов определяет, что из чего вычитается.
+statement: |
+  Выведите `product_id` товаров, которые покупали (есть в `order_items`), но на которые нет ни одного отзыва, по возрастанию. Заготовка возвращает пустой результат. Исправьте её.
+starter_code: |
+  SELECT product_id FROM reviews
+  EXCEPT
+  SELECT product_id FROM order_items
+  ORDER BY product_id;
+solution: |
+  SELECT product_id FROM order_items
+  EXCEPT
+  SELECT product_id FROM reviews
+  ORDER BY product_id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "Прочитайте заготовку словами: «товары из … , которых нет в …»."
+  - "`A EXCEPT B` — строки A без строк B."
+explanation: |
+  `A EXCEPT B` — строки первого запроса, которых нет во втором. Заготовка ищет товары с отзывами, которых никто не покупал, — таких нет. Нужно наоборот: купленные (`order_items`) минус оценённые (`reviews`) — товары 2, 11 и 14.
