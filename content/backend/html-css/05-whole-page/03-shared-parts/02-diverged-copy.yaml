@@ -59,16 +59,16 @@ files:
 check:
   type: dom
   rules:
-    - must_match: '<meta name="viewport" content="width=device-width, initial-scale=1">'
+    - must_match: '<meta(?=[^>]*\bname=["'']?viewport)(?=[^>]*\bwidth=device-width)'
       file: about.html
       fail: В <head> страницы «О нас» нет meta viewport — поэтому на телефоне она мелкая. Сравните с index.html.
-    - must_match: '<a href="/delivery/">Доставка</a>'
+    - must_match: '<a(?=[^>]*\bhref=["'']?/delivery/)[^>]*>\s*Доставка\s*</a>'
       file: about.html
       fail: В меню «О нас» нет ссылки «Доставка» — сравните шапки двух файлов.
-    - must_match: '(?:Каталог</a>\s*<a href="/delivery/">Доставка</a>\s*<a href="/cart/">)'
+    - must_match: 'Каталог\s*</a>\s*<a[^>]*/delivery/[^>]*>\s*Доставка\s*</a>\s*<a[^>]*/cart/'
       file: about.html
       fail: Порядок ссылок в меню — как на главной — Каталог, Доставка, Корзина.
-    - must_match: '<h1>О нас</h1>\s*<p>Продаём чайники с 2015 года\.</p>'
+    - must_match: '<h1>\s*О нас\s*</h1>\s*<p>\s*Продаём чайники с 2015 года\.\s*</p>'
       file: about.html
       fail: Середину страницы «О нас» менять не нужно.
     - must_match: '<title>О нас — Чайник\.ру</title>'
