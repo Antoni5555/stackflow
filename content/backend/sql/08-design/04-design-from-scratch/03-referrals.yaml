@@ -1,0 +1,34 @@
+title: Пригласи друга
+type: exercise
+difficulty: 3
+pitfall: Правила описания — «один раз» и «не себя» — переводятся в ключ и CHECK, а не остаются в коде.
+statement: |
+  Покупатели приглашают друзей. Создайте таблицу `referrals`:
+  - `inviter_id` — кто пригласил, `invitee_id` — кого; обе — обязательные ссылки на `users (id)` с `ON DELETE CASCADE`;
+  - каждого покупателя можно пригласить только один раз — первичный ключ `invitee_id`;
+  - пригласить себя нельзя — проверка `inviter_id <> invitee_id`;
+  - `created_at` — `timestamptz`, обязательное, по умолчанию `now()`.
+
+  Заготовка разрешает пригласить одного человека двум разным покупателям и пригласить самого себя. Исправьте её.
+starter_code: |
+  CREATE TABLE referrals (
+      inviter_id integer     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      invitee_id integer     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (inviter_id, invitee_id)
+  );
+solution: |
+  CREATE TABLE referrals (
+      inviter_id integer     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      invitee_id integer     PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      CHECK (inviter_id <> invitee_id)
+  );
+check:
+  type: schema
+  tables: [referrals]
+hints:
+  - "Ключ `(inviter_id, invitee_id)` запрещает повтор пары. Запрещает ли он двух пригласивших одного человека?"
+  - "«Один раз» относится к приглашённому — ключ только `invitee_id`; «не себя» — `CHECK`."
+explanation: |
+  Ключ из пары запрещает только повтор той же пары: Анна → Нина и Борис → Нина — разные пары и обе пройдут. Правило «пригласить можно один раз» говорит о приглашённом, поэтому ключ — `invitee_id`. Приглашение себя ключ не ловит вовсе — для этого `CHECK (inviter_id <> invitee_id)`. Это самосвязь: обе колонки ссылаются на `users`.

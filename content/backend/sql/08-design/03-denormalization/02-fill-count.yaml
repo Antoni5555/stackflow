@@ -1,0 +1,27 @@
+title: Число штук в заказе
+type: exercise
+difficulty: 2
+pitfall: Для заполнения копии подзапрос должен быть связан с обновляемой строкой — иначе у всех строк одно значение.
+statement: |
+  В базе задачи у `orders` добавлен денормализованный столбец `items_count` — сколько штук товаров в заказе (сумма `quantity` его позиций). Заполните его для всех заказов. Заготовка записывает всем заказам одно и то же число. Исправьте её.
+setup: |
+  ALTER TABLE orders ADD COLUMN items_count integer NOT NULL DEFAULT 0;
+starter_code: |
+  UPDATE orders
+  SET items_count = (SELECT sum(quantity) FROM order_items);
+solution: |
+  UPDATE orders o
+  SET items_count = (
+      SELECT sum(oi.quantity)
+      FROM order_items oi
+      WHERE oi.order_id = o.id
+  );
+check:
+  type: state
+  tables:
+    orders: [id, items_count]
+hints:
+  - По каким позициям считает сумму подзапрос заготовки?
+  - "Свяжите подзапрос с обновляемым заказом: `WHERE oi.order_id = o.id`."
+explanation: |
+  Без условия подзапрос суммирует штуки во всех позициях всех заказов — 68, и это число получает каждый заказ. Коррелированный подзапрос с `oi.order_id = o.id` считает для каждого заказа свои позиции. У каждого заказа в учебных данных есть позиции; если бы были пустые заказы, `sum` дал бы NULL, и `NOT NULL` отклонил бы команду — тогда `COALESCE(sum(…), 0)`.

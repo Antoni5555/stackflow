@@ -1,0 +1,48 @@
+title: Телефоны в строки
+type: exercise
+difficulty: 3
+pitfall: При раскладке повторяющихся столбцов в строки пустые значения нужно отфильтровать.
+statement: |
+  В базе задачи у покупателей телефоны лежат в столбцах `customers.phone1`, `phone2`, `phone3`, а таблица `customer_phones (customer_id, phone)` уже создана (`phone` — `NOT NULL`). Перенесите в неё все телефоны: строка на каждый непустой номер.
+
+  Запрос из заготовки падает. Исправьте его.
+setup: |
+  CREATE TABLE customers (
+      id     integer PRIMARY KEY,
+      name   text NOT NULL,
+      phone1 text,
+      phone2 text,
+      phone3 text
+  );
+  INSERT INTO customers VALUES
+      (1, 'Анна', '+79001112233', '+79005550001', NULL),
+      (2, 'Борис', '+79002223344', NULL, NULL),
+      (3, 'Вера', NULL, NULL, NULL),
+      (4, 'Глеб', '+79004445566', '+79004440000', '+79004441111');
+  CREATE TABLE customer_phones (
+      customer_id integer NOT NULL REFERENCES customers (id) ON DELETE CASCADE,
+      phone       text    NOT NULL,
+      PRIMARY KEY (customer_id, phone)
+  );
+starter_code: |
+  INSERT INTO customer_phones (customer_id, phone)
+  SELECT id, phone1 FROM customers
+  UNION ALL
+  SELECT id, phone2 FROM customers
+  UNION ALL
+  SELECT id, phone3 FROM customers;
+solution: |
+  INSERT INTO customer_phones (customer_id, phone)
+  SELECT id, phone1 FROM customers WHERE phone1 IS NOT NULL
+  UNION ALL
+  SELECT id, phone2 FROM customers WHERE phone2 IS NOT NULL
+  UNION ALL
+  SELECT id, phone3 FROM customers WHERE phone3 IS NOT NULL;
+check:
+  type: state
+  tables: [customer_phones]
+hints:
+  - Что лежит в `phone2` у Бориса и во всех столбцах у Веры?
+  - "Каждую часть `UNION ALL` ограничьте `WHERE phoneN IS NOT NULL`."
+explanation: |
+  Повторяющиеся столбцы почти всегда наполовину пусты: у Бориса один телефон, у Веры — ни одного. Без фильтра в `customer_phones` пошли бы строки с NULL, и `NOT NULL` отклоняет всю команду. С `WHERE … IS NOT NULL` в каждой части получается шесть строк — по строке на номер. После переноса столбцы `phone1–3` удаляют `ALTER TABLE … DROP COLUMN`.

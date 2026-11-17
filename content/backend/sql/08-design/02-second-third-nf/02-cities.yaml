@@ -1,0 +1,48 @@
+title: Справочник городов
+type: exercise
+difficulty: 3
+pitfall: Перенос в справочник через SELECT DISTINCT тащит и расхождения — их исправляют до переноса.
+statement: |
+  В базе задачи покупатели (`customers`) хранят `city` и `region`, а справочник `cities (id, name UNIQUE, region)` уже создан и пуст. Заполните его из `customers`: город — строка, регион — его регион.
+
+  Запрос из заготовки падает: у Казани в данных два варианта региона. Верный — «Татарстан». Исправьте данные покупателей, а потом заполните справочник.
+setup: |
+  CREATE TABLE customers (
+      id     integer PRIMARY KEY,
+      name   text NOT NULL,
+      city   text NOT NULL,
+      region text NOT NULL
+  );
+  INSERT INTO customers VALUES
+      (1, 'Анна', 'Москва', 'Москва'),
+      (2, 'Глеб', 'Казань', 'Татарстан'),
+      (3, 'Лидия', 'Казань', 'Республика Татарстан'),
+      (4, 'Захар', 'Екатеринбург', 'Свердловская область'),
+      (5, 'Нина', 'Москва', 'Москва');
+  CREATE TABLE cities (
+      id     integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      name   text NOT NULL UNIQUE,
+      region text NOT NULL
+  );
+starter_code: |
+  INSERT INTO cities (name, region)
+  SELECT DISTINCT city, region
+  FROM customers;
+solution: |
+  UPDATE customers
+  SET region = 'Татарстан'
+  WHERE city = 'Казань';
+
+  INSERT INTO cities (name, region)
+  SELECT DISTINCT city, region
+  FROM customers;
+check:
+  type: state
+  tables:
+    cities: [name, region]
+    customers: [id, city, region]
+hints:
+  - "Выполните `SELECT DISTINCT city, region FROM customers` — сколько строк у Казани?"
+  - "Сначала `UPDATE customers SET region = …` для Казани, потом `INSERT … SELECT DISTINCT`."
+explanation: |
+  `DISTINCT` убирает только полностью одинаковые пары, и «Казань — Татарстан» и «Казань — Республика Татарстан» остаются двумя строками. `UNIQUE` на `cities.name` не пускает вторую Казань — и это хорошо: справочник не принял противоречие. Сначала данные приводят к одному варианту, потом переносят. Проверка сравнивает и справочник, и исправленные регионы покупателей; номера городов — нет: их выдаёт счётчик.

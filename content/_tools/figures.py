@@ -1636,6 +1636,80 @@ def view_kinds():
     f.save(out(SQ7 / "08-views" / "img" / "view-kinds.svg"))
 
 
+# ---------- SQL 8: проектирование ----------
+SQ8 = ROOT / "sql" / "08-design"
+
+
+def flat_to_tables():
+    f = Figure(880, 300, "Плоская таблица повторяет покупателя и склеивает товары; после нормализации каждый факт хранится один раз")
+    f.text(20, 22, "orders_flat", "h")
+    _cells(f, 20, 30, [("order_id", 80), ("customer", 150), ("products", 250)],
+           [("1", "Анна Смирнова", "Ноутбук, Мышь, Коврик"), ("6", "Анна Смирнова", "Книга, Книга"),
+            ("8", "Егор Лебедев", "Веб-камера, Мышь, Мышь")], {0: "m1", 1: "m1", 2: "m2"})
+    f.text(20, 180, "Покупатель повторяется в каждом заказе, товары — текстом через запятую.", "s")
+    f.arrow("M520 90H560")
+    for k, (name, cols) in enumerate((("users", "id, name, email"), ("orders", "id, user_id → users"),
+                                      ("order_items", "order_id, product_id, quantity"))):
+        y = 30 + k * 70
+        f.box(570, y, 290, 56, f"{name}|{cols}", "acc" if name == "order_items" else "box2",
+              "onacc" if name == "order_items" else "cs", rx=8)
+    f.text(20, 260, "Имя меняется в одном месте, покупатель существует без заказов, количество и ссылка на товар — у позиции.", "s")
+    f.save(out(SQ8 / "01-first-nf" / "img" / "flat-to-tables.svg"))
+
+
+def dependencies():
+    f = Figure(880, 260, "2НФ: столбец зависит от всего ключа; 3НФ: неключевые столбцы не зависят друг от друга")
+    f.text(20, 22, "order_items_wide — ключ (order_id, product_id)", "h")
+    for k, (c, cls) in enumerate((("order_id", "acc"), ("product_id", "acc"), ("product_name", "err"), ("quantity", "box"))):
+        f.box(20 + k * 140, 32, 130, 40, c, cls, "onacc" if cls == "acc" else ("errt" if cls == "err" else "c"), rx=6)
+    f.arrow("M230 72Q260 100 330 76", "lnd")
+    f.text(590, 50, "product_name — только от product_id:", "s")
+    f.text(590, 68, "частичная зависимость (2НФ)", "s")
+    f.text(20, 142, "customers — ключ id", "h")
+    for k, (c, cls) in enumerate((("id", "acc"), ("name", "box"), ("city", "box"), ("region", "err"))):
+        f.box(20 + k * 140, 152, 130, 40, c, cls, "onacc" if cls == "acc" else ("errt" if cls == "err" else "c"), rx=6)
+    f.arrow("M370 192Q400 220 470 196", "lnd")
+    f.text(590, 170, "region — от city, а не от id:", "s")
+    f.text(590, 188, "транзитивная зависимость (3НФ)", "s")
+    f.text(20, 246, "Исправление: product_name — в products, region — в справочник cities.", "s")
+    f.save(out(SQ8 / "02-second-third-nf" / "img" / "dependencies.svg"))
+
+
+def denormalization():
+    f = Figure(880, 240, "orders.total — копия суммы позиций: читается без JOIN, но обновляется вместе с позициями")
+    f.box(20, 30, 260, 70, "order_items|quantity × price", "box2", "c", rx=10)
+    f.arrow("M280 65H356")
+    f.text(290, 54, "sum", "cs")
+    f.box(360, 30, 220, 70, "orders.total|копия", "acc", "onacc", rx=10)
+    f.box(620, 30, 240, 70, "изменили позицию —|обновить total", "err", "errt", rx=10)
+    f.arrow("M580 65H616")
+    f.box(20, 140, 260, 60, "order_items.price", "box", "c", rx=10)
+    f.box(360, 140, 500, 60, "цена на момент покупки — факт, не копия;|с products.price не синхронизируют", "ok", "t", rx=10)
+    f.arrow("M280 170H356")
+    f.save(out(SQ8 / "03-denormalization" / "img" / "denormalization.svg"))
+
+
+def reviews_design():
+    f = Figure(880, 320, "Фото — 1:N к отзыву, лайки — связка покупатель ↔ отзыв с ключом из пары")
+
+    def tab(key, x, y, cols, acc=False, w=250):
+        f.box(x, y, w, 30 + 22 * len(cols), "", "box")
+        f.raw(f'<rect x="{x}" y="{y}" width="{w}" height="30" rx="12" class="fig-{"acc" if acc else "box2"}"/>')
+        f.text(x + 12, y + 20, key, "onacc" if acc else "c")
+        for k, c in enumerate(cols):
+            f.text(x + 12, y + 48 + k * 22, c, "cs")
+
+    tab("users", 20, 20, ["id"], w=160)
+    tab("reviews", 20, 140, ["id", "product_id", "rating, text"], w=160)
+    tab("review_likes", 300, 20, ["user_id → users", "review_id → reviews", "created_at", "PK (user_id, review_id)"], True)
+    tab("review_photos", 300, 150, ["id", "review_id → reviews", "url", "position 1–5", "UNIQUE (review_id, position)"], True, w=300)
+    f.arrow("M300 70H180"); f.arrow("M300 92H240V170H180"); f.arrow("M300 210H180")
+    f.text(640, 60, "лайк — один раз:", "s"); f.text(640, 78, "ключ из пары", "s")
+    f.text(640, 190, "до пяти фото:", "s"); f.text(640, 208, "CHECK + UNIQUE", "s")
+    f.text(640, 250, "удалили отзыв — CASCADE", "s")
+    f.save(out(SQ8 / "04-design-from-scratch" / "img" / "reviews-design.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1657,6 +1731,7 @@ if __name__ == "__main__":
                   relation_types, inner_join, left_join, join_chain, self_join, set_operations,
                   count_null, group_by, where_having, join_count, query_order,
                   subquery_kinds, correlated, cte_steps, recursive_steps, ranking, lag_running,
-                  jsonb_operators, view_kinds):
+                  jsonb_operators, view_kinds,
+                  flat_to_tables, dependencies, denormalization, reviews_design):
         build()
     print("ok")

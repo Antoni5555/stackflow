@@ -1,0 +1,33 @@
+title: Сообщить о поступлении
+type: exercise
+difficulty: 3
+pitfall: Своя колонка id не запрещает повтор пары — уникальность связи задаёт ключ из пары.
+statement: |
+  Новая функция: покупатель нажимает «Сообщить о поступлении» на товаре, которого нет в наличии. Создайте таблицу `stock_alerts`:
+  - `user_id` — обязательная ссылка на `users (id)`, `product_id` — на `products (id)`; удалили покупателя или товар — его подписки удаляются;
+  - `created_at` — `timestamptz`, обязательное, по умолчанию `now()`;
+  - один покупатель подписывается на один товар один раз — ключ таблицы пара `(user_id, product_id)`, отдельного `id` нет.
+
+  В заготовке покупатель может нажать кнопку сколько угодно раз — и получить столько же писем. Исправьте её.
+starter_code: |
+  CREATE TABLE stock_alerts (
+      id         integer     GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id    integer     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      product_id integer     NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+      created_at timestamptz NOT NULL DEFAULT now()
+  );
+solution: |
+  CREATE TABLE stock_alerts (
+      user_id    integer     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      product_id integer     NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, product_id)
+  );
+check:
+  type: schema
+  tables: [stock_alerts]
+hints:
+  - Что в заготовке мешает вставить пару `(1, 3)` дважды?
+  - "Ключ из пары пишут отдельной строкой: `PRIMARY KEY (user_id, product_id)`."
+explanation: |
+  Собственный `id` уникален всегда — даже у двух одинаковых подписок, поэтому повтор пары ничто не запрещает. Связь «покупатель — товар» однозначно задаёт сама пара, и её делают первичным ключом: вторая подписка того же покупателя на тот же товар — ошибка `duplicate key`, а приложение может ответить «вы уже подписаны». Так же устроены `product_tags` и избранное.

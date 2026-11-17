@@ -1,0 +1,42 @@
+title: Где копия разошлась
+type: exercise
+difficulty: 3
+pitfall: Сравнение через <> не находит строки, где копия — NULL; нужен IS DISTINCT FROM.
+statement: |
+  В базе задачи у заказов есть денормализованная сумма `orders.total`. Часть сумм устарела, а у некоторых заказов её забыли заполнить. Выведите заказы, у которых `total` не совпадает с суммой позиций (`quantity * price`): `id`, `total` и вычисленную сумму `actual`, по возрастанию `id`.
+
+  Заготовка находит не все такие заказы. Исправьте её.
+setup: |
+  ALTER TABLE orders ADD COLUMN total numeric(10,2);
+  UPDATE orders o
+  SET total = (SELECT sum(oi.quantity * oi.price) FROM order_items oi WHERE oi.order_id = o.id)
+  WHERE o.id NOT IN (33, 34);
+  UPDATE order_items SET quantity = 2 WHERE id IN (1, 13);
+starter_code: |
+  SELECT o.id, o.total, s.actual
+  FROM orders o
+  JOIN (
+      SELECT order_id, sum(quantity * price) AS actual
+      FROM order_items
+      GROUP BY order_id
+  ) s ON s.order_id = o.id
+  WHERE o.total <> s.actual
+  ORDER BY o.id;
+solution: |
+  SELECT o.id, o.total, s.actual
+  FROM orders o
+  JOIN (
+      SELECT order_id, sum(quantity * price) AS actual
+      FROM order_items
+      GROUP BY order_id
+  ) s ON s.order_id = o.id
+  WHERE o.total IS DISTINCT FROM s.actual
+  ORDER BY o.id;
+check:
+  type: result
+  order_matters: true
+hints:
+  - "Чему равно `NULL <> 39990.00`? Пройдёт ли такая строка `WHERE`?"
+  - Нужно сравнение, для которого NULL — обычное значение.
+explanation: |
+  У заказов 33 и 34 `total` не заполнен, и `NULL <> s.actual` — «неизвестно»: `WHERE` их отбрасывает, хотя это тоже расхождение. `IS DISTINCT FROM` сравнивает, считая NULL значением: NULL отличается от любого числа. Поэтому в ответе и устаревшие суммы (1 и 7), и незаполненные (33 и 34).
