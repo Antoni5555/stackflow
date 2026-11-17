@@ -1,0 +1,88 @@
+title: Покупатель увеличил шрифт
+type: exercise
+difficulty: 1
+pitfall: Размеры текста в px не растут, когда пользователь увеличивает шрифт в настройках браузера.
+statement: |
+  Покупатель со слабым зрением увеличил шрифт в настройках браузера, а текст магазина остался мелким: размеры заданы в `px`. Переведите все `font-size` в `rem` так, чтобы при обычных настройках (16px) размеры не изменились: заголовок 20px, цена 18px, кнопка 14px.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2 class="card-title">Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+        <a class="buy" href="/cart/add/7/">В корзину</a>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card-title {
+      font-size: 20px;
+    }
+
+    .price {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .buy {
+      font-size: 14px;
+    }
+check:
+  type: dom
+  rules:
+    - must_not_match: 'font-size\s*:\s*[\d.]+px'
+      file: style.css
+      fail: В font-size ещё остались px — переведите в rem (1rem = 16px).
+    - selector: .card-title
+      style:
+        font-size: 20px
+      fail: Заголовок должен остаться 20px при обычных настройках — 20 / 16 = 1.25rem.
+    - selector: .price
+      style:
+        font-size: 18px
+      fail: Цена должна остаться 18px — сколько это в rem?
+    - selector: .buy
+      style:
+        font-size: 14px
+      fail: Кнопка должна остаться 14px — 14 / 16 = 0.875rem.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2 class="card-title">Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+        <a class="buy" href="/cart/add/7/">В корзину</a>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card-title {
+      font-size: 1.25rem;
+    }
+
+    .price {
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .buy {
+      font-size: 0.875rem;
+    }
+hints:
+  - "rem — доля шрифта корня страницы, по умолчанию 16px: размер в px делим на 16."
+explanation: |
+  `1.25rem` при обычных настройках — те же 20px, но если покупатель поставит в браузере шрифт 20px, заголовок станет 25px. Браузер всё равно хранит итог в `px` — поэтому проверка видит `20px`, а в файле стоит `rem`.

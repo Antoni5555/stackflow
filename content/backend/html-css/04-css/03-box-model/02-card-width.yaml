@@ -1,0 +1,97 @@
+title: Карточка шире, чем задано
+type: exercise
+difficulty: 2
+pitfall: По умолчанию width — ширина только содержимого; padding и рамка прибавляются сверху.
+statement: |
+  Дизайнер дал ширину карточки — ровно 240px вместе с рамкой. В стилях написано `width: 240px`, но в DevTools карточка занимает 274px. Сделайте так, чтобы `width` у всех элементов страницы включал padding и рамку. Значения `width` и `padding` у карточки не меняйте.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружки</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">
+          <h2>Кружка «Код»</h2>
+          <p class="price">499 ₽</p>
+          <a class="buy" href="/cart/add/7/">В корзину</a>
+        </article>
+        <article class="card">
+          <h2>Кружка «Баг»</h2>
+          <p class="price">449 ₽</p>
+          <a class="buy" href="/cart/add/8/">В корзину</a>
+        </article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .card {
+      width: 240px;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+check:
+  type: dom
+  rules:
+    - selector: .card
+      style:
+        width: 240px
+        padding-left: 16px
+      fail: Ширину и padding карточки менять не нужно — 240px и 16px.
+    - selector: .card
+      style:
+        box-sizing: border-box
+      fail: Карточка всё ещё 274px — нужен другой способ считать ширину (box-sizing).
+    - selector: .buy
+      style:
+        box-sizing: border-box
+      fail: Правило должно действовать на все элементы страницы, а не только на карточку — селектор *.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружки</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">
+          <h2>Кружка «Код»</h2>
+          <p class="price">499 ₽</p>
+          <a class="buy" href="/cart/add/7/">В корзину</a>
+        </article>
+        <article class="card">
+          <h2>Кружка «Баг»</h2>
+          <p class="price">449 ₽</p>
+          <a class="buy" href="/cart/add/8/">В корзину</a>
+        </article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    .card {
+      width: 240px;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+hints:
+  - Свойство, которое решает, что входит в width, — box-sizing.
+  - "Для всех элементов сразу — селектор `*` (и `*::before`, `*::after`)."
+explanation: |
+  При `box-sizing: content-box` (по умолчанию) карточка занимает 240 + 2·16 + 2·1 = 274px. С `border-box` padding и рамка входят в `width`, и карточка ровно 240px. Правило ставят на все элементы в начале файла стилей — тогда любые размеры на сайте считаются одинаково.

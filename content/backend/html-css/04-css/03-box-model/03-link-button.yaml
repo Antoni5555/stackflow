@@ -1,0 +1,93 @@
+title: Кнопка из ссылки
+type: exercise
+difficulty: 2
+pitfall: У строчного элемента (ссылки) вертикальный padding не раздвигает соседей, а width и height не работают.
+statement: |
+  Ссылка «В корзину» должна выглядеть кнопкой-«таблеткой» с отступами 8px сверху и снизу. Padding задан, но кнопка наезжает на цену над ней, а отступ над кнопкой не работает. Поправьте стиль ссылки так, чтобы она стояла в строке, но размеры и отступы работали как у блока.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружки</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">
+          <h2>Кружка «Код»</h2>
+          <p class="price">499 ₽</p>
+          <a class="buy" href="/cart/add/7/">В корзину</a>
+        </article>
+        <article class="card">
+          <h2>Кружка «Баг»</h2>
+          <p class="price">449 ₽</p>
+          <a class="buy" href="/cart/add/8/">В корзину</a>
+        </article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .buy {
+      padding: 8px 16px;
+      margin-top: 12px;
+      border-radius: 999px;
+      background-color: #2e7d32;
+      color: #ffffff;
+      text-decoration: none;
+    }
+check:
+  type: dom
+  rules:
+    - selector: .buy
+      style:
+        display: inline-block
+      fail: Ссылка — строчный элемент (inline). Нужен display, при котором она остаётся в строке, но отступы работают.
+    - selector: .buy
+      style:
+        padding-top: 8px
+        padding-left: 16px
+        margin-top: 12px
+      fail: Отступы кнопки менять не нужно.
+    - selector: .card a.buy
+      min: 2
+      fail: Кнопка должна остаться ссылкой a с классом buy.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружки</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">
+          <h2>Кружка «Код»</h2>
+          <p class="price">499 ₽</p>
+          <a class="buy" href="/cart/add/7/">В корзину</a>
+        </article>
+        <article class="card">
+          <h2>Кружка «Баг»</h2>
+          <p class="price">449 ₽</p>
+          <a class="buy" href="/cart/add/8/">В корзину</a>
+        </article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .buy {
+      display: inline-block;
+      padding: 8px 16px;
+      margin-top: 12px;
+      border-radius: 999px;
+      background-color: #2e7d32;
+      color: #ffffff;
+      text-decoration: none;
+    }
+hints:
+  - "`a` по умолчанию `display: inline`. Какое значение display оставляет элемент в строке, но с размерами блока?"
+explanation: |
+  У `inline`-элемента вертикальные padding и margin не раздвигают строки: фон кнопки рисуется поверх соседей, а `margin-top` не действует. `inline-block` оставляет ссылку в строке текста, но внутри она ведёт себя как блок. `display: block` тоже убрал бы наезд, но растянул бы кнопку на всю ширину карточки.

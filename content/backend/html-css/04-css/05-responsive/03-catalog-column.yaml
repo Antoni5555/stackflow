@@ -1,0 +1,95 @@
+title: Каталог на телефоне
+type: exercise
+difficulty: 2
+pitfall: Стили для узких экранов пишут в медиазапросе — иначе они меняют и вид на ПК.
+statement: |
+  На ПК карточки каталога стоят в ряд, а на телефоне их сжимает до нечитаемых полосок. Допишите медиазапрос: при ширине окна до 600px карточки должны идти колонкой, друг под другом. На ПК ряд должен остаться. Проверьте оба вида переключателем «ПК / Телефон 375».
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">Кружка «Код»</article>
+        <article class="card">Кружка «Баг»</article>
+        <article class="card">Чайник Steel</article>
+        <article class="card">Чайник Glass</article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .catalog {
+      display: flex;
+      gap: 16px;
+    }
+
+    .card {
+      flex: 1;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+check:
+  type: dom
+  rules:
+    - must_match: '@media\s*\(\s*max-width\s*:\s*600px\s*\)'
+      file: style.css
+      fail: "Нужен медиазапрос для узких экранов: @media (max-width: 600px) { … }."
+    - selector: .catalog
+      width: 375
+      style:
+        flex-direction: column
+      fail: На телефоне (375px) карточки всё ещё в ряд — внутри медиазапроса поменяйте направление .catalog.
+    - selector: .catalog
+      style:
+        flex-direction: row
+        display: flex
+      fail: На ПК карточки должны остаться в ряд — колонка нужна только внутри медиазапроса.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">Кружка «Код»</article>
+        <article class="card">Кружка «Баг»</article>
+        <article class="card">Чайник Steel</article>
+        <article class="card">Чайник Glass</article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .catalog {
+      display: flex;
+      gap: 16px;
+    }
+
+    .card {
+      flex: 1;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .catalog {
+        flex-direction: column;
+      }
+    }
+hints:
+  - Внутри `@media (max-width: 600px) { }` пишут обычные правила.
+  - "Колонка во Flexbox — `flex-direction: column`."
+explanation: |
+  Правила внутри медиазапроса действуют, только пока окно не шире 600px. На телефоне `.catalog` получает `flex-direction: column`, и карточки встают друг под другом во всю ширину. На ПК медиазапрос не срабатывает, и остаётся ряд из основного правила. Медиазапрос стоит ниже основного правила — при равной специфичности он побеждает.

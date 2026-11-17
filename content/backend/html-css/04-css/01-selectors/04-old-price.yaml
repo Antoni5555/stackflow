@@ -1,0 +1,92 @@
+title: Старая цена не сереет
+type: exercise
+difficulty: 2
+pitfall: Правило ниже побеждает только при равной специфичности; более специфичное правило выше всё равно сильнее.
+statement: |
+  Старая цена должна быть серой (`#6e6e6a`) и зачёркнутой. Правило `.price-old` стоит в самом низу файла, но цена остаётся зелёной. Почините стили. Не используйте `!important` и атрибут `style`, текущая цена должна остаться зелёной.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2>Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+        <p class="price-old">699 ₽</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card p {
+      color: #2e7d32;
+    }
+
+    .price {
+      font-weight: 700;
+    }
+
+    .price-old {
+      color: #6e6e6a;
+      text-decoration: line-through;
+    }
+check:
+  type: dom
+  rules:
+    - must_not_match: '!important'
+      file: style.css
+      fail: Без !important — поднимите специфичность селектора.
+    - must_not_match: '\sstyle='
+      fail: Без атрибута style — стили только в style.css.
+    - selector: .price-old
+      style:
+        color: rgb(110, 110, 106)
+      fail: Старая цена всё ещё зелёная — правило .card p специфичнее, чем .price-old.
+    - selector: .price-old
+      style:
+        text-decoration-line: line-through
+      fail: Старая цена должна быть зачёркнутой.
+    - selector: .price
+      style:
+        color: rgb(46, 125, 50)
+        font-weight: "700"
+      fail: Текущая цена должна остаться жирной и зелёной.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2>Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+        <p class="price-old">699 ₽</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card p {
+      color: #2e7d32;
+    }
+
+    .price {
+      font-weight: 700;
+    }
+
+    .card .price-old {
+      color: #6e6e6a;
+      text-decoration: line-through;
+    }
+hints:
+  - Посчитайте специфичность `.card p` и `.price-old`.
+  - "`.card p` — 0-1-1, `.price-old` — 0-1-0: один лишний тег решает спор."
+explanation: |
+  `.card p` (класс + тег, 0-1-1) сильнее `.price-old` (один класс, 0-1-0), и порядок правил тут уже не важен. Селектор `.card .price-old` (0-2-0) сильнее, и серый цвет применяется. `!important` тоже «сработал» бы, но тогда старую цену уже не перекрасить никаким правилом — каскад сломан.

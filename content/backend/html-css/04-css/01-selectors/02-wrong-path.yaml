@@ -1,0 +1,62 @@
+title: Стили не доехали
+type: exercise
+difficulty: 1
+pitfall: Ошибка в пути к файлу стилей не видна на странице — просто нет стилей, а в Network у файла 404.
+statement: |
+  Цена на карточке должна быть жирной и зелёной. Правило в `style.css` написано верно, тег `<link>` в `<head>` есть, но страница выглядит без стилей. Найдите и исправьте ошибку.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2>Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card .price {
+      font-weight: 700;
+      color: #2e7d32;
+    }
+check:
+  type: dom
+  rules:
+    - must_match: '<link[^>]+href="style\.css"'
+      fail: Браузер ищет файл по пути из href — сравните его с именем файла стилей.
+    - selector: .card .price
+      style:
+        font-weight: "700"
+        color: rgb(46, 125, 50)
+      fail: Цена должна стать жирной и зелёной — правило в style.css менять не нужно.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2>Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card .price {
+      font-weight: 700;
+      color: #2e7d32;
+    }
+hints:
+  - Сравните буква в букву href и имя вкладки с файлом стилей.
+explanation: |
+  В `href` стояло `styles.css`, а файл называется `style.css`. Браузер запросил несуществующий файл, получил 404 и молча показал страницу без стилей. Такие ошибки ищут в DevTools на вкладке Network: у файла стилей будет красный статус.

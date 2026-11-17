@@ -1,0 +1,91 @@
+title: Текст прилип к рамке
+type: exercise
+difficulty: 1
+pitfall: margin — снаружи рамки и прозрачный; отступ текста от рамки — padding.
+statement: |
+  В карточке текст прилип к рамке. Разработчик добавил `margin: 16px`, но карточки только раздвинулись, а текст так и остался у рамки. Сделайте внутренний отступ 16px со всех сторон, а между карточками оставьте 24px снизу.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружки</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">
+          <h2>Кружка «Код»</h2>
+          <p class="price">499 ₽</p>
+          <a class="buy" href="/cart/add/7/">В корзину</a>
+        </article>
+        <article class="card">
+          <h2>Кружка «Баг»</h2>
+          <p class="price">449 ₽</p>
+          <a class="buy" href="/cart/add/8/">В корзину</a>
+        </article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .card {
+      width: 240px;
+      margin: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+check:
+  type: dom
+  rules:
+    - selector: .card
+      style:
+        padding-top: 16px
+        padding-right: 16px
+        padding-bottom: 16px
+        padding-left: 16px
+      fail: Отступ текста от рамки — внутренний, 16px со всех сторон.
+    - selector: .card
+      style:
+        margin-bottom: 24px
+      fail: Между карточками — внешний отступ 24px снизу.
+    - selector: .card
+      style:
+        margin-left: 0px
+      fail: Слева у карточки внешнего отступа быть не должно — только снизу 24px.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружки</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">
+          <h2>Кружка «Код»</h2>
+          <p class="price">499 ₽</p>
+          <a class="buy" href="/cart/add/7/">В корзину</a>
+        </article>
+        <article class="card">
+          <h2>Кружка «Баг»</h2>
+          <p class="price">449 ₽</p>
+          <a class="buy" href="/cart/add/8/">В корзину</a>
+        </article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .card {
+      width: 240px;
+      padding: 16px;
+      margin-bottom: 24px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+hints:
+  - Внутри рамки — padding, снаружи — margin.
+explanation: |
+  `margin` находится за рамкой и прозрачен: он двигает карточку относительно соседей, но не отодвигает текст от рамки. Внутренний отступ — `padding`; фон и рамка карточки его охватывают. Здесь `margin-left: 0px` — значение по умолчанию у `article`.

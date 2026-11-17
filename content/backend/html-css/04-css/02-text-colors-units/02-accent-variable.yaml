@@ -1,0 +1,98 @@
+title: Фирменный цвет в одном месте
+type: exercise
+difficulty: 2
+pitfall: Один и тот же цвет, повторённый в нескольких правилах, при смене дизайна правят везде — и где-нибудь забывают.
+statement: |
+  Зелёный `#2e7d32` повторяется в трёх правилах. Магазин собирается сменить фирменный цвет. Вынесите его в переменную `--accent` в `:root` и используйте её во всех трёх правилах. Сам код цвета должен остаться в файле один раз.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2 class="card-title">Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+        <a class="buy" href="/cart/add/7/">В корзину</a>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card-title {
+      color: #2e7d32;
+    }
+
+    .price {
+      color: #2e7d32;
+      font-weight: 700;
+    }
+
+    .buy {
+      background-color: #2e7d32;
+      color: #ffffff;
+    }
+check:
+  type: dom
+  rules:
+    - must_match: ':root\s*\{[^}]*--accent\s*:\s*#2e7d32'
+      file: style.css
+      fail: "Объявите переменную --accent со значением #2e7d32 в правиле :root."
+    - must_not_match: '#2e7d32[\s\S]*#2e7d32'
+      file: style.css
+      fail: Код цвета встречается в файле больше одного раза — в правилах используйте var(--accent).
+    - selector: .card-title
+      style:
+        color: rgb(46, 125, 50)
+      fail: Заголовок карточки должен остаться зелёным.
+    - selector: .price
+      style:
+        color: rgb(46, 125, 50)
+      fail: Цена должна остаться зелёной.
+    - selector: .buy
+      style:
+        background-color: rgb(46, 125, 50)
+      fail: Фон кнопки должен остаться зелёным.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2 class="card-title">Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+        <a class="buy" href="/cart/add/7/">В корзину</a>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    :root {
+      --accent: #2e7d32;
+    }
+
+    .card-title {
+      color: var(--accent);
+    }
+
+    .price {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .buy {
+      background-color: var(--accent);
+      color: #ffffff;
+    }
+hints:
+  - "Переменная объявляется так: `--accent: #2e7d32;` внутри `:root { }`."
+  - "Используется через функцию: `color: var(--accent);`."
+explanation: |
+  Теперь цвет задан в одном месте: замена значения в `:root` перекрасит заголовок, цену и кнопку сразу. Переменные наследуются от `:root` (корня страницы) всеми элементами. Браузер подставляет значение, и в DevTools в Computed видно обычный `rgb(46, 125, 50)`.

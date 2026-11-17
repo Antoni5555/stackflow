@@ -1,0 +1,26 @@
+title: Колонка и justify-content
+type: quiz
+kind: single
+difficulty: 2
+pitfall: При flex-direction column главная ось вертикальная — justify-content и align-items меняются ролями.
+statement: |
+  Боковое меню каталога:
+
+  ```css
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 600px;
+    justify-content: center;
+  }
+  ```
+
+  Где окажутся ссылки меню?
+options:
+  - По центру по горизонтали, сверху
+  - По центру по вертикали, у левого края
+  - Ровно в центре блока по обеим осям
+  - Сверху слева — justify-content в колонке не работает
+answer: [1]
+explanation: |
+  `flex-direction: column` делает главную ось вертикальной, и `justify-content: center` сдвигает ссылки к середине высоты. По горизонтали отвечает `align-items`; по умолчанию это `stretch` — ссылки растянуты на всю ширину, а текст в них у левого края. Чтобы центрировать по обеим осям, нужно ещё `align-items: center`.

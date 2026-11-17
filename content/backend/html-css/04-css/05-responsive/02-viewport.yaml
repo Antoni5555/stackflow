@@ -1,0 +1,79 @@
+title: Мелкий каталог на телефоне
+type: exercise
+difficulty: 1
+pitfall: Без meta viewport телефон рисует страницу на ширине ~980px и уменьшает её — медиазапросы для узких экранов не срабатывают.
+statement: |
+  На телефоне каталог выглядит как уменьшенная версия для ПК: текст мелкий, а стили из `@media (max-width: 600px)` не включаются. В CSS всё верно. Добавьте в страницу то, без чего телефон не считает её адаптивной.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">Кружка «Код»</article>
+        <article class="card">Чайник Steel</article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .catalog {
+      display: flex;
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .catalog {
+        flex-direction: column;
+      }
+    }
+check:
+  type: dom
+  rules:
+    - selector: head meta[name="viewport"]
+      count: 1
+      fail: В <head> нужен тег meta с name="viewport".
+    - selector: meta[name="viewport"]
+      attr:
+        content: 'width=device-width'
+      fail: "Ширина страницы должна равняться ширине экрана: content=\"width=device-width, initial-scale=1\"."
+    - selector: meta[name="viewport"]
+      attr:
+        content: 'initial-scale=1'
+      fail: Добавьте initial-scale=1 — страница открывается без масштабирования.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">Кружка «Код»</article>
+        <article class="card">Чайник Steel</article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    .catalog {
+      display: flex;
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .catalog {
+        flex-direction: column;
+      }
+    }
+hints:
+  - Это тег meta в <head> с name="viewport".
+explanation: |
+  Без `viewport` мобильный браузер притворяется экраном шириной около 980px и уменьшает страницу. Для медиазапросов ширина остаётся 980px, и `max-width: 600px` не срабатывает. `width=device-width` приравнивает ширину страницы к ширине телефона, `initial-scale=1` — открывает её без уменьшения. В Django этот тег пишут один раз, в базовом шаблоне.

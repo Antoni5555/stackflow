@@ -1,0 +1,86 @@
+title: Лишний отступ справа
+type: exercise
+difficulty: 2
+pitfall: Отступы margin у каждого элемента дают лишнее поле после последнего; расстояния между флекс-элементами задаёт gap.
+statement: |
+  Ссылки в навигации разделены `margin-right: 16px`, поэтому после «Корзины» остаётся лишний отступ, и она не прижата к краю шапки. Сделайте `.header-nav` флекс-контейнером с расстоянием 16px между ссылками, а `margin-right` уберите.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="logo" href="/">Чайник.ру</a>
+        <nav class="header-nav">
+          <a href="/search/">Поиск</a>
+          <a href="/cart/">Корзина (2)</a>
+        </nav>
+      </header>
+    </body>
+    </html>
+  style.css: |
+    .site-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+    }
+
+    .header-nav a {
+      margin-right: 16px;
+    }
+check:
+  type: dom
+  rules:
+    - must_not_match: 'margin-right'
+      file: style.css
+      fail: Уберите margin-right у ссылок — расстояние задаст сам контейнер.
+    - selector: .header-nav
+      style:
+        display: flex
+        column-gap: 16px
+      fail: Навигация — флекс-контейнер с gap 16px.
+    - selector: .header-nav a
+      style:
+        margin-right: 0px
+      fail: У ссылок не должно остаться внешнего отступа справа.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="logo" href="/">Чайник.ру</a>
+        <nav class="header-nav">
+          <a href="/search/">Поиск</a>
+          <a href="/cart/">Корзина (2)</a>
+        </nav>
+      </header>
+    </body>
+    </html>
+  style.css: |
+    .site-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 16px;
+    }
+hints:
+  - "`gap` работает у флекс-контейнера: `display: flex` нужен самому `.header-nav`."
+explanation: |
+  `gap` ставит расстояние только между элементами — по краям ничего не добавляется, и «Корзина» прижимается к краю. Шапка уже флекс-контейнер, но её раскладка касается только прямых детей — логотипа и `<nav>`. Ссылки внутри `<nav>` расставляет его собственный `display: flex`.

@@ -611,6 +611,30 @@ def check_django(task):
     return problems
 
 
+def strings_in(value):
+    if isinstance(value, dict):
+        for v in value.values():
+            yield from strings_in(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from strings_in(v)
+    elif isinstance(value, str):
+        yield value
+
+
+def cut_by_comment(text, data):
+    """« #» в значении без кавычек YAML считает началом комментария и молча
+    обрезает текст: «Цвет #f5f5f5» превращается в «Цвет». Ищем такие строки."""
+    strings = list(strings_in(data))
+    for line in text.splitlines():
+        value = line.strip().removeprefix("- ")
+        if key := re.match(r"[\w-]+: ", value):
+            value = value[key.end():]
+        if (value[:1] not in ("", "'", '"', "|", ">") and re.search(r"\s#", value)
+                and not any(value in s for s in strings)):
+            yield f"« #» обрезал значение (возьмите его в кавычки): {line.strip()[:60]}"
+
+
 def check_task(path):
     with sandbox():
         return _check_task(path)
@@ -618,22 +642,12 @@ def check_task(path):
 
 def _check_task(path):
     try:
-        task = yaml.safe_load(path.read_text())
+        text = path.read_text()
+        task = yaml.safe_load(text)
     except yaml.YAMLError as e:
         return [f"YAML не читается: {e}"]
-    problems = []
-
-    def walk(value):
-        if isinstance(value, dict):
-            for v in value.values():
-                yield from walk(v)
-        elif isinstance(value, list):
-            for v in value:
-                yield from walk(v)
-        elif isinstance(value, str):
-            yield value
-
-    for value in walk({k: v for k, v in task.items() if k not in ("starter_code", "solution", "code", "inputs")}):
+    problems = list(cut_by_comment(text, task))
+    for value in strings_in({k: v for k, v in task.items() if k not in ("starter_code", "solution", "code", "inputs")}):
         if '\\"' in value and "assert" not in value:
             problems.append(f"буквальный \\\" в тексте (нужны кавычки в YAML): {value[:60]!r}")
     for key in ("title", "type", "difficulty", "pitfall", "statement", "explanation"):
@@ -797,12 +811,13 @@ def _check_practice(path):
     """Задачник темы: список {title, text, answer, hint?}. Код условия и ответа
     выполняется как одна программа: ответ может опираться на данные из условия."""
     try:
-        items = yaml.safe_load(path.read_text())
+        text = path.read_text()
+        items = yaml.safe_load(text)
     except yaml.YAMLError as e:
         return [f"YAML не читается: {e}"]
     if not isinstance(items, list) or not items:
         return ["задачник — непустой список задач"]
-    problems = []
+    problems = list(cut_by_comment(text, items))
     for n, item in enumerate(items, 1):
         if not isinstance(item, dict):
             problems.append(f"задача {n}: нужен словарь title/text/answer")

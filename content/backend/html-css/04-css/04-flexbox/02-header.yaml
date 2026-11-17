@@ -1,0 +1,86 @@
+title: Шапка магазина
+type: exercise
+difficulty: 1
+pitfall: Flexbox включают родителю — расставляются его прямые дети.
+statement: |
+  Логотип и навигация стоят друг под другом. Сделайте шапку по макету: логотип прижат влево, навигация вправо, оба по центру высоты шапки. Разметку не меняйте.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="logo" href="/">Чайник.ру</a>
+        <nav class="header-nav">
+          <a href="/search/">Поиск</a>
+          <a href="/cart/">Корзина (2)</a>
+        </nav>
+      </header>
+    </body>
+    </html>
+  style.css: |
+    .site-header {
+      padding: 12px 24px;
+      border-bottom: 1px solid #e0e0dc;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+check:
+  type: dom
+  rules:
+    - selector: .site-header
+      style:
+        display: flex
+      fail: Шапка должна стать флекс-контейнером — тогда логотип и навигация встанут в ряд.
+    - selector: .site-header
+      style:
+        justify-content: space-between
+      fail: Логотип — к левому краю, навигация — к правому. Какое значение justify-content так делает?
+    - selector: .site-header
+      style:
+        align-items: center
+      fail: Выровняйте логотип и навигацию по центру высоты шапки (поперечная ось).
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="logo" href="/">Чайник.ру</a>
+        <nav class="header-nav">
+          <a href="/search/">Поиск</a>
+          <a href="/cart/">Корзина (2)</a>
+        </nav>
+      </header>
+    </body>
+    </html>
+  style.css: |
+    .site-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      border-bottom: 1px solid #e0e0dc;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+hints:
+  - Три свойства контейнера — display, justify-content, align-items.
+explanation: |
+  `display: flex` ставит прямых детей шапки — логотип и `<nav>` — в ряд. `justify-content: space-between` раздвигает их к краям по главной оси, `align-items: center` выравнивает по поперечной, поэтому крупный логотип и мелкие ссылки стоят на одной середине.

@@ -1,0 +1,103 @@
+title: Сплющенные карточки
+type: exercise
+difficulty: 2
+pitfall: Без flex-wrap флекс-элементы сжимаются в одну строку, даже если у них задана ширина.
+statement: |
+  В каталоге шесть карточек шириной 240px, но все они стоят в одну строку и сплющены. Сделайте так, чтобы карточки сохраняли ширину 240px и переносились на новую строку, когда не помещаются. Расстояние между карточками — 16px по горизонтали и по вертикали.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">Кружка «Код»</article>
+        <article class="card">Кружка «Баг»</article>
+        <article class="card">Чайник Steel</article>
+        <article class="card">Чайник Glass</article>
+        <article class="card">Термос 0,5 л</article>
+        <article class="card">Френч-пресс</article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    .catalog {
+      display: flex;
+    }
+
+    .card {
+      width: 240px;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+check:
+  type: dom
+  rules:
+    - selector: .catalog
+      style:
+        flex-wrap: wrap
+      fail: Карточки должны переноситься на новую строку — свойство flex-wrap.
+    - selector: .card
+      style:
+        width: 240px
+      fail: Карточки всё ещё сжимаются — ширина каждой должна быть 240px.
+    - selector: .catalog
+      style:
+        column-gap: 16px
+        row-gap: 16px
+      fail: Расстояние между карточками — 16px по горизонтали и вертикали (gap).
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">Кружка «Код»</article>
+        <article class="card">Кружка «Баг»</article>
+        <article class="card">Чайник Steel</article>
+        <article class="card">Чайник Glass</article>
+        <article class="card">Термос 0,5 л</article>
+        <article class="card">Френч-пресс</article>
+      </section>
+    </body>
+    </html>
+  style.css: |
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    .catalog {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .card {
+      width: 240px;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+hints:
+  - По умолчанию `flex-wrap: nowrap` — все элементы в одной строке.
+  - "`gap: 16px` задаёт оба расстояния сразу."
+explanation: |
+  Без переноса флекс-контейнер втискивает всех детей в одну строку и сжимает их — `width` для флекс-элемента лишь желаемая ширина. С `flex-wrap: wrap` карточки, которые не помещаются, уходят на следующую строку и сохраняют свои 240px. `gap` работает и между колонками, и между строками.

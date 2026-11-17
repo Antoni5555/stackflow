@@ -1,0 +1,84 @@
+title: Баннер не прячется
+type: exercise
+difficulty: 2
+pitfall: У медиазапроса нет особой силы — при равной специфичности побеждает правило ниже.
+statement: |
+  На телефоне рекламный баннер занимает пол-экрана, поэтому его решили скрыть при ширине до 600px. Медиазапрос написан, на ширине 375px он срабатывает, но баннер всё равно виден. Почините стили, не меняя селекторы и значения свойств.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <aside class="promo">Скидка 10% на все чайники до воскресенья</aside>
+      <main>
+        <h1>Каталог</h1>
+      </main>
+    </body>
+    </html>
+  style.css: |
+    @media (max-width: 600px) {
+      .promo {
+        display: none;
+      }
+    }
+
+    .promo {
+      display: block;
+      padding: 16px;
+      background-color: #dcf25c;
+    }
+check:
+  type: dom
+  rules:
+    - must_not_match: '!important'
+      file: style.css
+      fail: Без !important — дело в порядке правил.
+    - selector: .promo
+      width: 375
+      style:
+        display: none
+      fail: На телефоне баннер всё ещё виден — правило .promo ниже медиазапроса и перебивает его.
+    - selector: .promo
+      style:
+        display: block
+        padding-top: 16px
+      fail: На ПК баннер должен остаться на месте.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <aside class="promo">Скидка 10% на все чайники до воскресенья</aside>
+      <main>
+        <h1>Каталог</h1>
+      </main>
+    </body>
+    </html>
+  style.css: |
+    .promo {
+      display: block;
+      padding: 16px;
+      background-color: #dcf25c;
+    }
+
+    @media (max-width: 600px) {
+      .promo {
+        display: none;
+      }
+    }
+hints:
+  - Специфичность у обоих правил `.promo` одинаковая. Что тогда решает?
+explanation: |
+  Медиазапрос только включает или выключает свои правила, но не делает их сильнее. На 375px оба правила `.promo` действуют, специфичность равна, и побеждает то, что ниже, — с `display: block`. Поэтому медиазапросы пишут после основных стилей.

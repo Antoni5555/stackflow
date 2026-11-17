@@ -1,0 +1,82 @@
+title: Артикул мельче и серее
+type: exercise
+difficulty: 1
+pitfall: Цвет и шрифт наследуются от родителя — менять их нужно у самого элемента, а не у соседей.
+statement: |
+  На карточке под ценой — артикул товара. Он должен быть второстепенным: цвет `#6e6e6a`, размер `0.875rem`. Цвет текста остальной карточки задан у `body`, его не меняйте. Допишите правило для артикула.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2 class="card-title">Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+        <p class="sku">Артикул: MUG-0007</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    body {
+      font-family: Arial, sans-serif;
+      color: #1b1b1b;
+    }
+
+    .price {
+      font-weight: 700;
+    }
+check:
+  type: dom
+  rules:
+    - selector: .sku
+      style:
+        color: rgb(110, 110, 106)
+      fail: Артикул должен быть серым (#6e6e6a) — правило для класса sku.
+    - selector: .sku
+      style:
+        font-size: 14px
+      fail: Размер артикула — 0.875rem (14px).
+    - selector: .card-title
+      style:
+        color: rgb(27, 27, 27)
+      fail: Цвет остального текста менять не нужно — только у артикула.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2 class="card-title">Кружка «Код»</h2>
+        <p class="price">499 ₽</p>
+        <p class="sku">Артикул: MUG-0007</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    body {
+      font-family: Arial, sans-serif;
+      color: #1b1b1b;
+    }
+
+    .price {
+      font-weight: 700;
+    }
+
+    .sku {
+      color: #6e6e6a;
+      font-size: 0.875rem;
+    }
+hints:
+  - Нужно новое правило с селектором `.sku`.
+explanation: |
+  Цвет, заданный `body`, наследуют все элементы. Собственное правило `.sku` перекрывает унаследованный цвет только у артикула. Наследованное значение всегда слабее любого правила, которое подходит самому элементу.

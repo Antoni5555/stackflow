@@ -863,6 +863,89 @@ def csrf_attack():
     f.text(20, 266, "даже начатому с чужого сайта.", "s")
     f.save(out(HC3 / "05-csrf" / "img" / "csrf-attack.svg"))
 
+
+# ---------- HTML/CSS 4.01: каскад и специфичность ----------
+HC4 = ROOT / "html-css" / "04-css"
+
+
+def css_specificity():
+    f = Figure(880, 250, "Три правила задают цвет одной цене; побеждает правило с большей специфичностью, при равной — то, что ниже")
+    f.text(20, 30, "<p class=\"price\" id=\"main-price\">", "c")
+    rows = [("p { color: gray; }", "0-0-1", "box"),
+            (".card .price { color: green; }", "0-2-0", "box"),
+            ("#main-price { color: red; }", "1-0-0", "acc")]
+    for k, (rule, spec, cls) in enumerate(rows):
+        y = 52 + k * 56
+        f.box(20, y, 380, 44, "", cls)
+        f.text(36, y + 27, rule, "onacc" if cls == "acc" else "c")
+        f.box(420, y, 100, 44, spec, "box2", "c")
+    f.text(420, 230, "id - классы - теги", "s")
+    f.arrow("M520 186H580")
+    f.box(584, 160, 276, 52, "Итог: color: red", "ok")
+    f.text(584, 66, "Сравниваем слева направо:", "t")
+    f.text(584, 90, "один id сильнее любых классов,", "s")
+    f.text(584, 110, "один класс сильнее любых тегов.", "s")
+    f.text(584, 134, "Равны — побеждает правило ниже.", "s")
+    f.save(out(HC4 / "01-selectors" / "img" / "specificity.svg"))
+
+
+# ---------- HTML/CSS 4.03: блоковая модель ----------
+def box_model():
+    f = Figure(880, 280, "Блоковая модель: содержимое, внутренний отступ, рамка и внешний отступ")
+    f.raw('<rect x="20" y="20" width="520" height="240" rx="6" class="fig-dash"/>')
+    f.text(32, 42, "margin — снаружи, прозрачный", "s")
+    f.raw('<rect x="60" y="56" width="440" height="168" rx="6" class="fig-box2" style="stroke-width:6"/>')
+    f.text(76, 82, "border", "s")
+    f.raw('<rect x="66" y="62" width="428" height="156" rx="4" class="fig-box"/>')
+    f.text(90, 100, "padding — внутри рамки, фон карточки", "s")
+    f.box(140, 114, 280, 70, "содержимое|Кружка «Код», 499 ₽", "acc", "onacc")
+    f.text(570, 60, "width при box-sizing: content-box", "t")
+    f.text(570, 84, "= только содержимое;", "s")
+    f.text(570, 104, "рамка и padding прибавляются сверху", "s")
+    f.text(570, 150, "width при box-sizing: border-box", "t")
+    f.text(570, 174, "= содержимое + padding + border;", "s")
+    f.text(570, 194, "карточка ровно той ширины, что задана", "s")
+    f.text(570, 240, "margin в ширину не входит никогда", "s")
+    f.save(out(HC4 / "03-box-model" / "img" / "box-model.svg"))
+
+
+# ---------- HTML/CSS 4.04: оси Flexbox ----------
+def flex_axes():
+    f = Figure(880, 250, "Flexbox: главная ось и поперечная; justify-content двигает по главной, align-items — по поперечной")
+    f.box(20, 40, 640, 120, "", "box2")
+    f.text(32, 26, "<header> — display: flex", "c")
+    f.box(40, 70, 130, 60, "логотип", "box")
+    f.raw('<rect x="386" y="56" width="264" height="88" rx="10" class="fig-dash"/>')
+    f.text(396, 52, "<nav> — второй элемент", "cs")
+    f.box(400, 70, 110, 60, "поиск", "box")
+    f.box(530, 70, 110, 60, "корзина", "acc", "onacc")
+    f.arrow("M40 190H640"); f.text(40, 212, "главная ось (flex-direction: row) → justify-content", "s")
+    f.arrow("M690 40V160"); f.text(700, 100, "поперечная ось", "s")
+    f.text(700, 120, "→ align-items", "s")
+    f.text(40, 238, "space-between: логотип к левому краю, <nav> к правому; gap — расстояние между поиском и корзиной", "s")
+    f.save(out(HC4 / "04-flexbox" / "img" / "flex-axes.svg"))
+
+
+# ---------- HTML/CSS 4.05: адаптивный каталог ----------
+def responsive_grid():
+    f = Figure(880, 260, "Один и тот же каталог: четыре карточки в ряд на ПК и одна на телефоне — меняет @media")
+    f.box(20, 30, 520, 200, "", "box2")
+    f.text(32, 22, "ПК, 1024 px", "h")
+    for k in range(4):
+        f.box(40 + k * 124, 60, 108, 140, f"товар {k + 1}", "box")
+    f.box(600, 30, 150, 220, "", "box2")
+    f.text(612, 22, "телефон, 375 px", "h")
+    for k in range(3):
+        f.box(616, 46 + k * 66, 118, 56, f"товар {k + 1}", "box")
+    f.text(770, 60, "@media", "c")
+    f.text(770, 82, "(max-width:", "c")
+    f.text(770, 104, "600px)", "c")
+    f.text(770, 134, "карточка", "s")
+    f.text(770, 152, "во всю", "s")
+    f.text(770, 170, "ширину", "s")
+    f.save(out(HC4 / "05-responsive" / "img" / "responsive-grid.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -874,6 +957,7 @@ if __name__ == "__main__":
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,
-                  form_to_request, validation_layers, csrf_attack):
+                  form_to_request, validation_layers, csrf_attack,
+                  css_specificity, box_model, flex_axes, responsive_grid):
         build()
     print("ok")

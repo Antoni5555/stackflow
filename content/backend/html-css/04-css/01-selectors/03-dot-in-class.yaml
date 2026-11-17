@@ -1,0 +1,63 @@
+title: Точка в атрибуте
+type: exercise
+difficulty: 1
+pitfall: Точка нужна только в селекторе CSS; в атрибуте class пишут просто имя.
+statement: |
+  Стили подключены, правило `.price` написано, но цена на карточке обычная. Исправьте разметку, не трогая `style.css`.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2>Чайник Steel</h2>
+        <p class=".price">2 490 ₽</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .price {
+      font-weight: 700;
+      color: #2e7d32;
+    }
+check:
+  type: dom
+  rules:
+    - selector: .card p.price
+      count: 1
+      fail: У абзаца с ценой должен быть класс price — без точки в атрибуте.
+    - selector: .price
+      style:
+        font-weight: "700"
+        color: rgb(46, 125, 50)
+      fail: Цена должна стать жирной и зелёной.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Чайник Steel</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h2>Чайник Steel</h2>
+        <p class="price">2 490 ₽</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .price {
+      font-weight: 700;
+      color: #2e7d32;
+    }
+hints:
+  - Селектор `.price` ищет элементы с классом `price`. Какой класс у абзаца сейчас?
+explanation: |
+  В селекторе точка означает «класс», а в атрибуте `class` пишут само имя. С `class=".price"` у абзаца класс с точкой в имени, и селектор `.price` его не находит.
