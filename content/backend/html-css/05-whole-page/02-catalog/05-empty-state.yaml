@@ -1,0 +1,55 @@
+title: Пустой поиск
+type: exercise
+difficulty: 1
+pitfall: Пустой список без сообщения выглядит как сломанная страница.
+statement: |
+  По запросу «самовар» ничего не нашлось, и под заголовком пусто — покупатель думает, что сайт сломался. Вместо пустого списка покажите абзац с классом `catalog-empty`: текст «По запросу «самовар» ничего нет» и ссылку «Весь каталог» на `/catalog/`.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Поиск: самовар</title>
+    </head>
+    <body>
+      <h1>Результаты поиска</h1>
+      <ul class="catalog">
+      </ul>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: p.catalog-empty
+      count: 1
+      fail: Нужен абзац с классом catalog-empty.
+    - selector: .catalog-empty
+      text: 'ничего нет'
+      fail: Сообщение должно объяснять, что произошло, — «По запросу «самовар» ничего нет».
+    - selector: '.catalog-empty a[href="/catalog/"]'
+      count: 1
+      fail: Дайте покупателю выход — ссылку на /catalog/ внутри сообщения.
+    - selector: ul.catalog
+      exists: false
+      fail: Пустой список не нужен — вместо него сообщение.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Поиск: самовар</title>
+    </head>
+    <body>
+      <h1>Результаты поиска</h1>
+      <p class="catalog-empty">
+        По запросу «самовар» ничего нет.
+        <a href="/catalog/">Весь каталог</a>
+      </p>
+    </body>
+    </html>
+hints:
+  - Хорошее пустое состояние объясняет, что случилось, и предлагает, куда идти дальше.
+explanation: |
+  Сообщение показывает, что поиск отработал, просто товаров нет, а ссылка даёт следующий шаг. В Django список и сообщение живут в одном шаблоне: `{% for product in products %}…{% empty %}<p class="catalog-empty">…</p>{% endfor %}`.

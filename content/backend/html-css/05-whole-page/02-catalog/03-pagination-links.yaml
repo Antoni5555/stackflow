@@ -1,0 +1,63 @@
+title: Страницу нельзя отправить
+type: exercise
+difficulty: 2
+pitfall: Пагинация кнопками со скриптом не даёт адреса страницы — её не открыть в новой вкладке и не отправить ссылкой.
+statement: |
+  Покупатель хочет отправить другу вторую страницу каталога, но адрес не меняется: переходы сделаны кнопками со скриптом. Переделайте пагинацию на ссылки с номером страницы в query-параметре (`?page=1`, `?page=2`, `?page=3`). Текущая страница — вторая: отметьте её атрибутом `aria-current="page"`.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог — страница 2</title>
+    </head>
+    <body>
+      <h1>Чайники</h1>
+      <nav class="pagination" aria-label="Страницы каталога">
+        <button onclick="loadPage(1)">1</button>
+        <button onclick="loadPage(2)">2</button>
+        <button onclick="loadPage(3)">3</button>
+      </nav>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: .pagination button
+      exists: false
+      fail: Переходы по страницам — ссылки, а не кнопки.
+    - selector: .pagination a
+      count: 3
+      fail: Нужны три ссылки — на страницы 1, 2 и 3.
+    - selector: .pagination a
+      attr:
+        href: '^\?page=\d$'
+      fail: Адрес ссылки — номер страницы в query-параметре, например href="?page=3".
+    - selector: '.pagination a[href="?page=2"][aria-current="page"]'
+      count: 1
+      fail: Ссылка на текущую, вторую страницу отмечается aria-current="page".
+    - selector: '.pagination [aria-current]'
+      count: 1
+      fail: Текущая страница одна — aria-current только у второй ссылки.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог — страница 2</title>
+    </head>
+    <body>
+      <h1>Чайники</h1>
+      <nav class="pagination" aria-label="Страницы каталога">
+        <a href="?page=1">1</a>
+        <a href="?page=2" aria-current="page">2</a>
+        <a href="?page=3">3</a>
+      </nav>
+    </body>
+    </html>
+hints:
+  - "Ссылка, которая меняет только query-параметр: `<a href=\"?page=3\">`."
+explanation: |
+  Ссылка `?page=2` меняет адрес: страницу можно открыть в новой вкладке, сохранить, отправить, её найдёт поисковик. Переход — обычный GET-запрос, сервер достаёт номер из `request.GET`. `aria-current="page"` сообщает экранному чтению, где покупатель сейчас, и по нему же текущую страницу выделяют в CSS.

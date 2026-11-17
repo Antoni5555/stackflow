@@ -1,0 +1,137 @@
+title: Шапка разъехалась
+type: exercise
+difficulty: 2
+pitfall: Общие части, скопированные в каждый файл, расходятся — правку в одной копии забывают внести в другую.
+statement: |
+  Сайт магазина пока собран из статических файлов, шапка скопирована в каждый. На главной (`index.html`) всё в порядке, а «О нас» (`about.html`) на телефоне выглядит мелкой копией страницы для ПК, и в меню нет ссылки «Доставка». Сравните `<head>` и шапку двух файлов и приведите `about.html` к главной. Середину страницы «О нас» не меняйте.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="logo" href="/">Чайник.ру</a>
+        <nav>
+          <a href="/catalog/">Каталог</a>
+          <a href="/delivery/">Доставка</a>
+          <a href="/cart/">Корзина</a>
+        </nav>
+      </header>
+      <main>
+        <h1>Чайники для дома и офиса</h1>
+      </main>
+    </body>
+    </html>
+  about.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>О нас — Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="logo" href="/">Чайник.ру</a>
+        <nav>
+          <a href="/catalog/">Каталог</a>
+          <a href="/cart/">Корзина</a>
+        </nav>
+      </header>
+      <main>
+        <h1>О нас</h1>
+        <p>Продаём чайники с 2015 года.</p>
+      </main>
+    </body>
+    </html>
+  style.css: |
+    .site-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+check:
+  type: dom
+  rules:
+    - must_match: '<meta name="viewport" content="width=device-width, initial-scale=1">'
+      file: about.html
+      fail: В <head> страницы «О нас» нет meta viewport — поэтому на телефоне она мелкая. Сравните с index.html.
+    - must_match: '<a href="/delivery/">Доставка</a>'
+      file: about.html
+      fail: В меню «О нас» нет ссылки «Доставка» — сравните шапки двух файлов.
+    - must_match: '(?:Каталог</a>\s*<a href="/delivery/">Доставка</a>\s*<a href="/cart/">)'
+      file: about.html
+      fail: Порядок ссылок в меню — как на главной — Каталог, Доставка, Корзина.
+    - must_match: '<h1>О нас</h1>\s*<p>Продаём чайники с 2015 года\.</p>'
+      file: about.html
+      fail: Середину страницы «О нас» менять не нужно.
+    - must_match: '<title>О нас — Чайник\.ру</title>'
+      file: about.html
+      fail: Заголовок вкладки у «О нас» свой — его оставьте.
+    - selector: .site-header nav a
+      count: 3
+      fail: Главную менять не нужно — в её меню три ссылки.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="logo" href="/">Чайник.ру</a>
+        <nav>
+          <a href="/catalog/">Каталог</a>
+          <a href="/delivery/">Доставка</a>
+          <a href="/cart/">Корзина</a>
+        </nav>
+      </header>
+      <main>
+        <h1>Чайники для дома и офиса</h1>
+      </main>
+    </body>
+    </html>
+  about.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>О нас — Чайник.ру</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="logo" href="/">Чайник.ру</a>
+        <nav>
+          <a href="/catalog/">Каталог</a>
+          <a href="/delivery/">Доставка</a>
+          <a href="/cart/">Корзина</a>
+        </nav>
+      </header>
+      <main>
+        <h1>О нас</h1>
+        <p>Продаём чайники с 2015 года.</p>
+      </main>
+    </body>
+    </html>
+  style.css: |
+    .site-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+hints:
+  - Отличий два — одно в <head>, другое в меню.
+explanation: |
+  Шапку и `<head>` правили в `index.html`, а в `about.html` забыли — копии разошлись. Пока страниц две, это можно поймать глазами, но не когда их сорок. В Django каркас страницы живёт в одном `base.html`, а страницы подключают его через `{% extends "base.html" %}`: правка шапки сразу действует везде.

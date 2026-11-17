@@ -946,6 +946,71 @@ def responsive_grid():
     f.save(out(HC4 / "05-responsive" / "img" / "responsive-grid.svg"))
 
 
+# ---------- HTML/CSS 5.01: карточка товара как компонент ----------
+HC5 = ROOT / "html-css" / "05-whole-page"
+
+
+def card_anatomy():
+    f = Figure(880, 320, "Карточка товара: блок card и его части с именами card__…, вариант card--sale")
+    f.box(20, 20, 260, 260, "", "box")
+    f.box(36, 36, 228, 110, "фото", "box2")
+    f.text(36, 172, "Кружка «Код»", "t")
+    f.text(36, 200, "499 ₽", "t"); f.text(100, 200, "699 ₽", "s")
+    f.box(36, 222, 120, 40, "В корзину", "acc", "onacc")
+    labels = [(272, ".card — блок, рамка карточки", 20), (91, ".card__image", 36),
+              (167, ".card__title", 160), (195, ".card__price, .card__price--old", 190),
+              (242, ".card__buy", 222)]
+    for y, name, _ in labels:
+        f.line(f"M{284 if y < 260 else 280} {y}H420", "lnd")
+        f.text(430, y + 5, name, "c")
+    f.text(430, 40, "блок = компонент: свои классы, без id", "s")
+    f.text(430, 306, "<article class=\"card card--sale\"> — вариант блока", "cs")
+    f.save(out(HC5 / "01-product-card" / "img" / "card-anatomy.svg"))
+
+
+# ---------- HTML/CSS 5.02: состояния каталога ----------
+def catalog_states():
+    f = Figure(880, 250, "Каталог: список карточек, пустое состояние и пагинация обычными ссылками")
+    f.text(20, 24, "товары есть", "h")
+    f.box(20, 36, 400, 150, "", "box2")
+    for k in range(3):
+        f.box(36 + k * 128, 52, 112, 80, f"карточка {k + 1}", "box")
+    f.box(36, 146, 80, 28, "← назад", "box", "cs")
+    f.text(176, 165, "стр. 2 из 5", "s")
+    f.box(324, 146, 80, 28, "дальше →", "box", "cs")
+    f.text(460, 24, "товаров нет", "h")
+    f.box(460, 36, 400, 150, "", "box2")
+    f.text(660, 100, "По запросу «самовар» ничего нет", "t", "middle")
+    f.text(660, 126, "ссылка: «Весь каталог»", "s", "middle")
+    f.text(20, 214, "Пагинация — ссылки <a href=\"?page=3\">: номер страницы уходит на сервер в query-параметре.", "s")
+    f.text(20, 236, "Пустой список — отдельное сообщение, а не пустая страница.", "s")
+    f.save(out(HC5 / "02-catalog" / "img" / "catalog-states.svg"))
+
+
+# ---------- HTML/CSS 5.03: общие части страниц ----------
+def shared_layout():
+    f = Figure(880, 280, "Три страницы с одной шапкой и подвалом: копии расходятся, шаблон хранит их в одном месте")
+    f.text(20, 24, "копии в каждом файле", "h")
+    for k, name in enumerate(("index.html", "catalog.html", "about.html")):
+        x = 20 + k * 136
+        f.box(x, 36, 124, 200, "", "box2")
+        f.box(x + 8, 44, 108, 32, "шапка", "err" if k == 2 else "box", "errt" if k == 2 else "t")
+        f.text(x + 62, 140, name, "cs", "middle")
+        f.box(x + 8, 196, 108, 32, "подвал", "box")
+    f.text(20, 262, "about.html: забыли добавить новую ссылку в шапку", "errt")
+    f.arrow("M440 136H500")
+    f.text(520, 24, "один шаблон + страницы", "h")
+    f.box(520, 36, 340, 84, "", "ok")
+    f.text(536, 62, "base.html: шапка, подвал,", "t")
+    f.text(536, 86, "место для содержимого", "t")
+    f.text(536, 108, "{% block content %}", "cs")
+    for k, name in enumerate(("index", "catalog", "about")):
+        f.box(520 + k * 116, 170, 108, 50, name + "|extends base", "box", "cs")
+        f.arrow(f"M{574 + k * 116} 170V124")
+    f.text(520, 254, "шапку правят в одном файле — меняются все страницы", "s")
+    f.save(out(HC5 / "03-shared-parts" / "img" / "shared-layout.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -958,6 +1023,7 @@ if __name__ == "__main__":
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,
                   form_to_request, validation_layers, csrf_attack,
-                  css_specificity, box_model, flex_axes, responsive_grid):
+                  css_specificity, box_model, flex_axes, responsive_grid,
+                  card_anatomy, catalog_states, shared_layout):
         build()
     print("ok")

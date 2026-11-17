@@ -1,0 +1,97 @@
+title: Карточка в корзине без стилей
+type: exercise
+difficulty: 2
+pitfall: Селектор, привязанный к месту (.catalog …), перестаёт работать, когда компонент ставят в другое место.
+statement: |
+  Карточку товара поставили в блок «С этим покупают», и там у неё пропали стили: названия обычные, цена не жирная. Стили написаны через каталог и теги. Перепишите их на классы элементов карточки (`card__title`, `card__price`), чтобы карточка выглядела одинаково везде. Разметка уже с классами.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Корзина</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">
+          <h3 class="card__title">Кружка «Код»</h3>
+          <p class="card__price">499 ₽</p>
+        </article>
+      </section>
+      <aside class="related">
+        <h2>С этим покупают</h2>
+        <article class="card">
+          <h3 class="card__title">Подставка под кружку</h3>
+          <p class="card__price">199 ₽</p>
+        </article>
+      </aside>
+    </body>
+    </html>
+  style.css: |
+    .catalog article h3 {
+      font-size: 1rem;
+      color: #2e7d32;
+    }
+
+    .catalog article p {
+      font-weight: 700;
+    }
+check:
+  type: dom
+  rules:
+    - must_not_match: '\.catalog'
+      file: style.css
+      fail: Стили карточки не должны зависеть от каталога — уберите .catalog из селекторов.
+    - selector: .card__title
+      style:
+        font-size: 16px
+        color: rgb(46, 125, 50)
+      fail: Названия во всех карточках — 1rem и зелёные. Селектор — класс card__title.
+    - selector: .card__price
+      style:
+        font-weight: "700"
+      fail: Цена во всех карточках жирная. Селектор — класс card__price.
+    - selector: .related h2
+      style:
+        color: rgb(0, 0, 0)
+      fail: Заголовок блока «С этим покупают» не карточка — его стили не меняются.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Корзина</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <section class="catalog">
+        <article class="card">
+          <h3 class="card__title">Кружка «Код»</h3>
+          <p class="card__price">499 ₽</p>
+        </article>
+      </section>
+      <aside class="related">
+        <h2>С этим покупают</h2>
+        <article class="card">
+          <h3 class="card__title">Подставка под кружку</h3>
+          <p class="card__price">199 ₽</p>
+        </article>
+      </aside>
+    </body>
+    </html>
+  style.css: |
+    .card__title {
+      font-size: 1rem;
+      color: #2e7d32;
+    }
+
+    .card__price {
+      font-weight: 700;
+    }
+hints:
+  - Каждый селектор — один класс элемента карточки.
+explanation: |
+  `.catalog article h3` работает только внутри каталога и только с тегом `h3`. Селектор `.card__title` не зависит ни от места, ни от тега: карточка выглядит одинаково в каталоге, в корзине и в рекомендациях. Заодно специфичность упала до одного класса — такие стили легко дополнять модификаторами.

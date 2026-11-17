@@ -1,0 +1,118 @@
+title: Карточка со скидкой развалилась
+type: exercise
+difficulty: 2
+pitfall: Модификатор описывает только отличия — без основного класса блок теряет все базовые стили.
+statement: |
+  Для товара со скидкой карточке поставили класс `card--sale` — и у неё пропали рамка, отступы и раскладка, осталась только красная рамка. Почините разметку второй карточки, не трогая стили.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h3 class="card__title">Кружка «Код»</h3>
+        <p class="card__price">499 ₽</p>
+      </article>
+      <article class="card--sale">
+        <h3 class="card__title">Чайник Steel</h3>
+        <p class="card__price">1 990 ₽</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+
+    .card__title {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .card__price {
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .card__buy {
+      color: #2e7d32;
+    }
+
+    .card--sale {
+      border-color: #d93025;
+    }
+check:
+  type: dom
+  rules:
+    - selector: article.card
+      count: 2
+      fail: Обе карточки — блок card. У второй не хватает основного класса.
+    - selector: article.card.card--sale
+      count: 1
+      fail: Вторая карточка должна остаться со скидкой — модификатор card--sale рядом с card.
+    - selector: .card--sale
+      style:
+        padding-top: 16px
+        border-top-color: rgb(217, 48, 37)
+      fail: У карточки со скидкой — обычные отступы и красная рамка.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h3 class="card__title">Кружка «Код»</h3>
+        <p class="card__price">499 ₽</p>
+      </article>
+      <article class="card card--sale">
+        <h3 class="card__title">Чайник Steel</h3>
+        <p class="card__price">1 990 ₽</p>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+
+    .card__title {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .card__price {
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .card__buy {
+      color: #2e7d32;
+    }
+
+    .card--sale {
+      border-color: #d93025;
+    }
+hints:
+  - "Модификатор — не замена класса, а дополнение: у элемента может быть несколько классов через пробел."
+explanation: |
+  Правило `.card--sale` меняет только цвет рамки. Всё остальное — отступы, рамку, колонку — даёт `.card`. С `class="card card--sale"` карточка получает оба правила: базовый вид и отличие.

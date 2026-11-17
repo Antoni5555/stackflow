@@ -1,0 +1,90 @@
+title: Каталог из div
+type: exercise
+difficulty: 1
+pitfall: Список однотипных карточек — это список; ul/li передают смысл, а маркеры и отступы убираются в CSS.
+statement: |
+  Каталог свёрстан из `div`, и экранное чтение не понимает, что это список из трёх товаров. Переделайте контейнер в `ul` с классом `catalog`, каждую карточку оберните в `li`. Маркеры и отступ слева, которые браузер даёт спискам, уберите в `style.css`.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <h1>Кружки</h1>
+      <div class="catalog">
+        <article class="card">Кружка «Код»</article>
+        <article class="card">Кружка «Баг»</article>
+        <article class="card">Кружка «Деплой»</article>
+      </div>
+    </body>
+    </html>
+  style.css: |
+    .catalog {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+check:
+  type: dom
+  rules:
+    - selector: ul.catalog
+      count: 1
+      fail: Контейнер каталога — список ul с классом catalog.
+    - selector: ul.catalog > li > .card
+      count: 3
+      fail: Каждая карточка — внутри своего li, прямого потомка списка.
+    - selector: ul.catalog
+      style:
+        list-style-type: none
+      fail: У списка остались маркеры — уберите их (list-style).
+    - selector: ul.catalog
+      style:
+        padding-left: 0px
+        display: grid
+      fail: Уберите отступ слева, который браузер даёт спискам; сетка должна остаться.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Каталог</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <h1>Кружки</h1>
+      <ul class="catalog">
+        <li><article class="card">Кружка «Код»</article></li>
+        <li><article class="card">Кружка «Баг»</article></li>
+        <li><article class="card">Кружка «Деплой»</article></li>
+      </ul>
+    </body>
+    </html>
+  style.css: |
+    .catalog {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      list-style: none;
+      padding: 0;
+    }
+
+    .card {
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+hints:
+  - "Маркеры убирает `list-style: none`, отступ слева — `padding: 0`."
+explanation: |
+  Для экранного чтения `ul` — «список, 3 элемента»: покупатель сразу знает, сколько товаров и где конец списка. Вид списка полностью задаётся в CSS: без маркеров и отступа он ничем не отличается от сетки из `div`. В Django каждый `li` выведет цикл `{% for %}`.

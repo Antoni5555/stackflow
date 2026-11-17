@@ -1,0 +1,113 @@
+title: Классы для карточки
+type: exercise
+difficulty: 1
+pitfall: Стили компонента привязаны к его классам — разметка без классов-элементов стилей не получит.
+statement: |
+  Стили карточки уже написаны по схеме блок / элемент: `.card`, `.card__title`, `.card__price`, `.card__buy`. Разметка карточки пришла от коллеги без классов. Расставьте классы так, чтобы стили применились. Теги не меняйте.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article>
+        <h3>Кружка «Код»</h3>
+        <p>499 ₽</p>
+        <a href="/cart/add/7/">В корзину</a>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+
+    .card__title {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .card__price {
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .card__buy {
+      color: #2e7d32;
+    }
+check:
+  type: dom
+  rules:
+    - selector: article.card
+      count: 1
+      fail: Карточка — блок card, класс ставится на article.
+    - selector: .card > h3.card__title
+      count: 1
+      fail: Заголовок — элемент блока, класс card__title (два подчёркивания).
+    - selector: .card > p.card__price
+      count: 1
+      fail: Цена — элемент card__price.
+    - selector: .card > a.card__buy
+      count: 1
+      fail: Ссылка «В корзину» — элемент card__buy.
+    - selector: .card__price
+      style:
+        font-weight: "700"
+      fail: Цена должна стать жирной — проверьте написание класса.
+    - selector: .card
+      style:
+        padding-top: 16px
+      fail: У карточки должен появиться внутренний отступ — проверьте класс блока.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Кружка «Код»</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <article class="card">
+        <h3 class="card__title">Кружка «Код»</h3>
+        <p class="card__price">499 ₽</p>
+        <a class="card__buy" href="/cart/add/7/">В корзину</a>
+      </article>
+    </body>
+    </html>
+  style.css: |
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px;
+      border: 1px solid #e0e0dc;
+      border-radius: 12px;
+    }
+
+    .card__title {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .card__price {
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .card__buy {
+      color: #2e7d32;
+    }
+hints:
+  - Имена классов уже есть в style.css — без точки они идут в атрибут class.
+explanation: |
+  Каждая часть карточки получила свой класс, и стили к ней привязаны напрямую — не к тегу и не к месту на странице. Такую карточку можно поставить в каталог, корзину или блок рекомендаций: она выглядит одинаково.

@@ -1,0 +1,61 @@
+title: Вторая страница поиска
+type: exercise
+difficulty: 2
+pitfall: Ссылка пагинации, в которой нет остальных параметров запроса, сбрасывает поиск и фильтры.
+statement: |
+  Покупатель ищет «чайник» (адрес `/catalog/?q=чайник`) и переходит на вторую страницу результатов, а там — весь каталог вперемешку. Почините ссылки пагинации так, чтобы поиск сохранялся: в каждой ссылке — и `q`, и номер страницы.
+files:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Поиск: чайник</title>
+    </head>
+    <body>
+      <h1>Результаты поиска «чайник»</h1>
+      <nav class="pagination" aria-label="Страницы результатов">
+        <a href="?page=1" aria-current="page">1</a>
+        <a href="?page=2">2</a>
+        <a href="?page=3">3</a>
+      </nav>
+    </body>
+    </html>
+check:
+  type: dom
+  rules:
+    - selector: .pagination a
+      count: 3
+      fail: Ссылок на страницы по-прежнему три.
+    - selector: .pagination a
+      attr:
+        href: 'q=чайник'
+      fail: В ссылке на страницу пропал поиск — добавьте параметр q=чайник.
+    - selector: .pagination a
+      attr:
+        href: '^\?q=чайник&page=\d$'
+      fail: Параметры query-строки соединяются через & — например ?q=чайник&page=2.
+    - selector: '.pagination a[aria-current="page"]'
+      text: '^1$'
+      fail: Текущей остаётся первая страница.
+solution:
+  index.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>Поиск: чайник</title>
+    </head>
+    <body>
+      <h1>Результаты поиска «чайник»</h1>
+      <nav class="pagination" aria-label="Страницы результатов">
+        <a href="?q=чайник&page=1" aria-current="page">1</a>
+        <a href="?q=чайник&page=2">2</a>
+        <a href="?q=чайник&page=3">3</a>
+      </nav>
+    </body>
+    </html>
+hints:
+  - Ссылка `?page=2` заменяет всю query-строку адреса, а не только номер страницы.
+explanation: |
+  Адрес вида `?page=2` заменяет всю query-строку, и `q` теряется: сервер получает запрос без поиска и отдаёт весь каталог. Ссылка `?q=чайник&page=2` несёт оба параметра. В Django ссылки пагинации собирают из текущего `request.GET`, меняя только `page`, — так сохраняются и поиск, и фильтры.
