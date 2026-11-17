@@ -1,0 +1,15 @@
+title: Какие индексы уже есть
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: PRIMARY KEY и UNIQUE создают индекс сами, внешний ключ — нет.
+statement: |
+  В `users` есть `id … PRIMARY KEY` и `email … UNIQUE`, в `orders` — `user_id … REFERENCES users (id)`. Для каких столбцов индекс уже существует, хотя `CREATE INDEX` никто не писал?
+options:
+  - "`users.id`"
+  - "`users.email`"
+  - "`orders.user_id`"
+  - "`orders.id`"
+answer: [0, 1, 3]
+explanation: |
+  Первичные ключи (`users.id`, `orders.id`) и `UNIQUE` (`users.email`) получают уникальный индекс автоматически: без него база не могла бы быстро проверять уникальность. Внешний ключ `orders.user_id` индекса не создаёт — его добавляют вручную, если по нему ищут или если удаляют покупателей.

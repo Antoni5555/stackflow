@@ -1,0 +1,24 @@
+title: Что сохранит SAVEPOINT
+type: quiz
+kind: single
+difficulty: 3
+pitfall: ROLLBACK TO SAVEPOINT отменяет только изменения после точки — остальная транзакция продолжается.
+statement: |
+  Что будет в базе после скрипта (A, B, C — три вставки без ошибок)?
+  ```sql
+  BEGIN;
+  INSERT … ;  -- A
+  SAVEPOINT s;
+  INSERT … ;  -- B
+  ROLLBACK TO SAVEPOINT s;
+  INSERT … ;  -- C
+  COMMIT;
+  ```
+options:
+  - A, B и C
+  - A и C
+  - Только A
+  - Ничего — ROLLBACK отменил транзакцию
+answer: [1]
+explanation: |
+  `ROLLBACK TO SAVEPOINT s` отменяет только то, что сделано после точки, — вставку B. Транзакция продолжается: C выполняется, и `COMMIT` фиксирует A и C. Обычный `ROLLBACK` без `TO SAVEPOINT` отменил бы всю транзакцию.

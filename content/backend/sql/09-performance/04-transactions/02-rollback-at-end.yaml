@@ -1,0 +1,31 @@
+title: Заказ пропал
+type: exercise
+difficulty: 1
+pitfall: ROLLBACK отменяет все изменения транзакции, включая выполненные без ошибок.
+statement: |
+  Скрипт оформления заказа скопировали из теста: заказ покупательницы Нины (`users.id` 13), позиция — книга 20 за 1590.00, 1 штука, и списание остатка книги. Все запросы выполняются без ошибок, но после скрипта в базе нет ни заказа, ни списания. Исправьте скрипт, чтобы заказ сохранился.
+starter_code: |
+  BEGIN;
+  INSERT INTO orders (user_id) VALUES (13);
+  INSERT INTO order_items (order_id, product_id, quantity, price)
+  VALUES (35, 20, 1, 1590.00);
+  UPDATE products SET stock = stock - 1 WHERE id = 20;
+  ROLLBACK;
+solution: |
+  BEGIN;
+  INSERT INTO orders (user_id) VALUES (13);
+  INSERT INTO order_items (order_id, product_id, quantity, price)
+  VALUES (35, 20, 1, 1590.00);
+  UPDATE products SET stock = stock - 1 WHERE id = 20;
+  COMMIT;
+check:
+  type: state
+  tables:
+    orders: [id, user_id, status]
+    order_items: [order_id, product_id, quantity, price]
+    products: [id, stock]
+hints:
+  - Чем заканчивается транзакция в скрипте?
+  - Какая команда фиксирует изменения?
+explanation: |
+  В тестах транзакцию часто заканчивают `ROLLBACK`, чтобы не оставлять данных, — и он отменил все три изменения, хотя ошибок не было. `COMMIT` фиксирует их вместе. Заказ, позиция и списание связаны: в одной транзакции они либо появятся все, либо ни одно.

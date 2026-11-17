@@ -1,0 +1,19 @@
+title: Просто посмотреть план
+type: quiz
+kind: single
+difficulty: 2
+pitfall: EXPLAIN ANALYZE выполняет запрос — изменяющий запрос действительно изменит данные.
+statement: |
+  Разработчик хочет посмотреть, как быстро удалятся старые отменённые заказы, и выполняет:
+  ```sql
+  EXPLAIN ANALYZE DELETE FROM orders WHERE status = 'cancelled';
+  ```
+  Что произойдёт с заказами?
+options:
+  - Ничего — EXPLAIN никогда не выполняет запрос
+  - Отменённые заказы будут удалены
+  - Удаление будет выполнено и автоматически отменено
+  - Ошибка — EXPLAIN нельзя применять к DELETE
+answer: [1]
+explanation: |
+  `ANALYZE` в `EXPLAIN` означает «выполни и покажи факт», и `DELETE` выполняется по-настоящему. Чтобы только измерить, запрос оборачивают в транзакцию: `BEGIN; EXPLAIN ANALYZE DELETE …; ROLLBACK;`. Обычный `EXPLAIN` без `ANALYZE` запрос не выполняет.

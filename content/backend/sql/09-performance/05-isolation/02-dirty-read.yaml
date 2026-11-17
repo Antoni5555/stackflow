@@ -1,0 +1,15 @@
+title: Грязное чтение
+type: quiz
+kind: single
+difficulty: 2
+pitfall: В PostgreSQL грязного чтения нет ни на одном уровне — Read Uncommitted работает как Read Committed.
+statement: |
+  Сессия A выполнила `BEGIN; UPDATE products SET price = 1 WHERE id = 2;` и ещё не сделала `COMMIT`. Сессия B выполняет `BEGIN ISOLATION LEVEL READ UNCOMMITTED; SELECT price FROM products WHERE id = 2;`. Что она увидит?
+options:
+  - "`1.00` — на Read Uncommitted видны чужие незафиксированные изменения"
+  - "`89990.00` — незафиксированные изменения в PostgreSQL не видны ни на каком уровне"
+  - Запрос будет ждать, пока сессия A завершится
+  - Ошибку — Read Uncommitted в PostgreSQL не поддерживается
+answer: [1]
+explanation: |
+  PostgreSQL принимает `READ UNCOMMITTED`, но выполняет транзакцию как Read Committed: снимок содержит только зафиксированные версии строк. Сессия B видит прежнюю цену, и не ждёт: благодаря MVCC чтение не блокируется записью. В стандарте SQL и в некоторых СУБД Read Uncommitted действительно допускает грязное чтение.

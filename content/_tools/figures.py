@@ -1710,6 +1710,101 @@ def reviews_design():
     f.save(out(SQ8 / "04-design-from-scratch" / "img" / "reviews-design.svg"))
 
 
+# ---------- SQL 9: производительность и транзакции ----------
+SQ9 = ROOT / "sql" / "09-performance"
+
+
+def btree():
+    f = Figure(880, 280, "Без индекса база читает все строки; B-tree приводит к нужным строкам за несколько шагов")
+    f.text(20, 22, "Seq Scan", "h")
+    for k in range(10):
+        f.box(20 + k * 38, 32, 34, 34, "", "m1" if k == 6 else "box2", rx=3)
+    f.text(20, 90, "200 000 строк — каждая проверяется условием", "s")
+    f.text(460, 22, "B-tree по user_id", "h")
+    f.box(600, 34, 140, 36, "1 … 2500 … 5000", "box2", "cs", rx=6)
+    f.box(470, 110, 140, 36, "1 … 40 … 1250", "box2", "cs", rx=6)
+    f.box(730, 110, 140, 36, "2500 … 5000", "box", "cs", rx=6)
+    f.box(470, 186, 140, 36, "41, 42, 43", "acc", "onacc", rx=6)
+    f.arrow("M640 70L560 106"); f.arrow("M700 70L780 106"); f.arrow("M540 146V182")
+    f.arrow("M610 204H690", "lnd")
+    f.box(694, 186, 176, 36, "40 строк таблицы", "m1", "c", rx=6)
+    f.text(20, 260, "Корень → страница диапазона → лист со значением 42 и адресами строк. Шагов — единицы даже для миллионов строк.", "s")
+    f.save(out(SQ9 / "01-indexes" / "img" / "btree.svg"))
+
+
+def composite():
+    f = Figure(880, 280, "Индекс (user_id, viewed_at DESC): строки покупателя идут подряд, внутри — новые первыми")
+    _cells(f, 20, 20, [("user_id", 110), ("viewed_at", 200)],
+           [("41", "2026-05-10 …"), ("42", "2026-05-11 09:12"), ("42", "2026-04-02 18:40"), ("42", "2026-03-07 07:05"),
+            ("43", "2026-05-11 …"), ("43", "2026-04-29 …")], {1: "m1", 2: "m1", 3: "m1"})
+    f.text(380, 60, "WHERE user_id = 42 ORDER BY viewed_at DESC LIMIT 5", "cs")
+    f.text(380, 80, "строки 42 подряд и уже отсортированы — без Sort", "s")
+    f.text(380, 140, "WHERE viewed_at > '2026-04-01'", "cs")
+    f.text(380, 160, "даты разбросаны по всему индексу —", "s")
+    f.text(380, 178, "левого префикса (user_id) нет", "s")
+    f.save(out(SQ9 / "02-index-kinds" / "img" / "composite.svg"))
+
+
+def explain_node():
+    f = Figure(880, 230, "Строка плана: узел, оценки планировщика и вложенные узлы, которые выполняются раньше")
+    f.box(20, 30, 230, 40, "Bitmap Heap Scan", "acc", "onacc", rx=6)
+    f.box(258, 30, 160, 40, "on page_views", "box2", "cs", rx=6)
+    f.box(426, 30, 200, 40, "cost=4.60..143.84", "box", "cs", rx=6)
+    f.box(634, 30, 110, 40, "rows=40", "box", "cs", rx=6)
+    f.box(752, 30, 108, 40, "width=24", "box", "cs", rx=6)
+    f.text(20, 92, "тип узла", "s"); f.text(258, 92, "таблица", "s"); f.text(426, 92, "оценка: начало..конец, не мс", "s")
+    f.text(634, 92, "ожидаемые строки", "s")
+    f.box(60, 120, 520, 40, "->  Bitmap Index Scan on page_views_user_id_idx", "box2", "cs", rx=6)
+    f.text(600, 145, "вложенный — выполняется первым", "s")
+    f.box(100, 170, 300, 36, "Index Cond: (user_id = 42)", "box", "cs", rx=6)
+    f.text(420, 193, "поиск по индексу; Filter — проверка каждой строки", "s")
+    f.save(out(SQ9 / "03-explain" / "img" / "explain-node.svg"))
+
+
+def transaction():
+    f = Figure(880, 240, "Изменения транзакции фиксируются вместе по COMMIT или отменяются вместе")
+    steps = ["BEGIN", "INSERT заказ", "INSERT позиция", "UPDATE остаток"]
+    for k, st in enumerate(steps):
+        f.box(20 + k * 150, 90, 136, 44, st, "box2" if k == 0 else "box", "cs", rx=8)
+        if k:
+            f.arrow(f"M{20 + k * 150 - 14} 112H{20 + k * 150 - 2}")
+    f.arrow("M606 100L660 60"); f.arrow("M606 124L660 166")
+    f.box(664, 34, 196, 50, "COMMIT —|все три в базе", "ok", "t", rx=8)
+    f.box(664, 144, 196, 50, "ROLLBACK или ошибка —|ни одного", "err", "errt", rx=8)
+    f.text(20, 226, "До COMMIT изменения видит только сама транзакция; после ошибки работает лишь ROLLBACK (или ROLLBACK TO SAVEPOINT).", "s")
+    f.save(out(SQ9 / "04-transactions" / "img" / "transaction.svg"))
+
+
+def mvcc():
+    f = Figure(880, 250, "UPDATE создаёт новую версию строки; транзакция видит версии из своего снимка")
+    f.text(20, 22, "строка товара 1", "h")
+    f.box(20, 32, 240, 44, "версия 1: stock = 5", "box2", "c", rx=8)
+    f.box(20, 92, 240, 44, "версия 2: stock = 4", "acc", "onacc", rx=8)
+    f.arrow("M140 76V88")
+    f.text(20, 154, "версию 2 создал UPDATE транзакции A", "s")
+    f.box(520, 32, 340, 44, "B (снимок до COMMIT A) → 5", "m2", "c", rx=8)
+    f.box(520, 92, 340, 44, "A и все после COMMIT A → 4", "m1", "c", rx=8)
+    f.arrow("M516 54H264", "lnd"); f.arrow("M516 114H264", "lnd")
+    f.text(20, 186, "Читатели не ждут писателей: B читает старую версию, пока A не зафиксирована.", "s")
+    f.text(20, 206, "Старые версии, которые больше никто не видит, удаляет VACUUM.", "s")
+    f.save(out(SQ9 / "05-isolation" / "img" / "mvcc.svg"))
+
+
+def deadlock():
+    f = Figure(880, 250, "Взаимная блокировка: каждая транзакция держит строку, которую ждёт другая")
+    f.box(20, 40, 220, 60, "транзакция A", "m1", "c", rx=10)
+    f.box(640, 40, 220, 60, "транзакция B", "m2", "c", rx=10)
+    f.box(330, 10, 220, 50, "товар 1", "box2", "c", rx=8)
+    f.box(330, 130, 220, 50, "товар 2", "box2", "c", rx=8)
+    f.line("M240 60L330 35"); f.text(250, 36, "держит", "s")
+    f.arrow("M240 85L326 150", "lnd"); f.text(250, 140, "ждёт", "s")
+    f.line("M640 85L550 155"); f.text(590, 166, "держит", "s")
+    f.arrow("M640 60L554 40", "lnd"); f.text(600, 34, "ждёт", "s")
+    f.text(20, 216, "PostgreSQL находит цикл (deadlock_timeout, 1 с) и прерывает одну транзакцию: «deadlock detected».", "s")
+    f.text(20, 236, "Защита — блокировать строки в одном порядке (по id) и уметь повторить транзакцию.", "s")
+    f.save(out(SQ9 / "06-locks" / "img" / "deadlock.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1732,6 +1827,7 @@ if __name__ == "__main__":
                   count_null, group_by, where_having, join_count, query_order,
                   subquery_kinds, correlated, cte_steps, recursive_steps, ranking, lag_running,
                   jsonb_operators, view_kinds,
-                  flat_to_tables, dependencies, denormalization, reviews_design):
+                  flat_to_tables, dependencies, denormalization, reviews_design,
+                  btree, composite, explain_node, transaction, mvcc, deadlock):
         build()
     print("ok")

@@ -1,0 +1,24 @@
+title: Новые заказы сверху
+type: exercise
+difficulty: 3
+pitfall: В составном индексе первым идёт столбец с условием =, потом столбец сортировки.
+statement: |
+  «Мои заказы» показывают заказы покупателя, новые сверху: `WHERE user_id = … ORDER BY created_at DESC`. Создайте составной индекс `orders_user_created_idx`, который обслужит и условие, и сортировку. Последней строкой оставьте запрос из заготовки — он показывает определение индекса.
+
+  Порядок столбцов в заготовке не подходит. Исправьте индекс.
+starter_code: |
+  CREATE INDEX orders_user_created_idx ON orders (created_at DESC, user_id);
+
+  SELECT indexdef FROM pg_indexes WHERE indexname = 'orders_user_created_idx';
+solution: |
+  CREATE INDEX orders_user_created_idx ON orders (user_id, created_at DESC);
+
+  SELECT indexdef FROM pg_indexes WHERE indexname = 'orders_user_created_idx';
+check:
+  type: result
+  order_matters: true
+hints:
+  - Строки одного покупателя должны лежать в индексе подряд. По какому столбцу индекс упорядочен в первую очередь?
+  - "Сначала столбец с `=`, потом столбец сортировки — с тем же направлением."
+explanation: |
+  Индекс `(created_at DESC, user_id)` упорядочен прежде всего по времени, и заказы покупателя разбросаны по всему индексу — найти их можно только чтением целиком. В `(user_id, created_at DESC)` заказы покупателя идут подряд и уже отсортированы новые первыми: база находит покупателя и отдаёт строки без сортировки, а с `LIMIT` останавливается на нужном числе.

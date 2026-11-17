@@ -1,0 +1,22 @@
+title: После ошибки
+type: quiz
+kind: single
+difficulty: 2
+pitfall: После ошибки транзакция PostgreSQL прервана — все команды отклоняются до ROLLBACK.
+statement: |
+  ```sql
+  BEGIN;
+  INSERT INTO orders (user_id) VALUES (13);
+  INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (35, 99, 1, 100);  -- ошибка: товара 99 нет
+  UPDATE products SET stock = stock - 1 WHERE id = 20;
+  COMMIT;
+  ```
+  Что окажется в базе после скрипта?
+options:
+  - Заказ и списание остатка, без позиции
+  - Только заказ
+  - Ничего из трёх изменений
+  - Заказ, позиция и списание — ошибка игнорируется
+answer: [2]
+explanation: |
+  После ошибки транзакция прервана: `UPDATE` отклоняется с `current transaction is aborted`, а `COMMIT` в таком состоянии выполняет откат. В базе не остаётся ни заказа, ни списания. Если нужно продолжить после ожидаемой ошибки, перед рискованным запросом ставят `SAVEPOINT`.

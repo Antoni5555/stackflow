@@ -1,0 +1,16 @@
+title: Какое условие найдёт индекс
+type: quiz
+kind: multiple
+difficulty: 3
+pitfall: Функция или приведение над столбцом мешают использовать обычный индекс по нему.
+statement: |
+  На `orders` есть индекс B-tree по `created_at`, на `users` — по `email` и по `id`. Какие условия могут использовать эти индексы?
+options:
+  - "`orders.created_at >= '2026-04-01' AND orders.created_at < '2026-05-01'`"
+  - "`orders.created_at::date = '2026-04-15'`"
+  - "`date_trunc('month', orders.created_at) = '2026-04-01'`"
+  - "`users.id = '5'`"
+  - "`lower(users.email) = 'anna.smirnova@example.com'`"
+answer: [0, 3]
+explanation: |
+  Диапазон по самому столбцу ищется по индексу напрямую. `'5'` — литерал без типа: PostgreSQL сразу превращает его в число, и индекс по `id` работает. Приведение `::date`, `date_trunc` и `lower` вычисляются над столбцом — индекс по исходным значениям им не подходит; нужен диапазон или индекс по такому же выражению.

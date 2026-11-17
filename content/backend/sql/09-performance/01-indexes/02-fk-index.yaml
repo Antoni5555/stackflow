@@ -1,0 +1,24 @@
+title: Заказы покупателя
+type: exercise
+difficulty: 2
+pitfall: Индекс строят по столбцу из условия запроса, который нужно ускорить.
+statement: |
+  Страница «Мои заказы» выполняет `SELECT … FROM orders WHERE user_id = …`. Внешний ключ `orders.user_id` индекса не создаёт. Создайте индекс `orders_user_id_idx`, который ускорит этот запрос, а последней строкой оставьте запрос из заготовки — он показывает определение индекса.
+
+  Индекс в заготовке не поможет этому запросу. Исправьте его.
+starter_code: |
+  CREATE INDEX orders_user_id_idx ON orders (id);
+
+  SELECT indexdef FROM pg_indexes WHERE indexname = 'orders_user_id_idx';
+solution: |
+  CREATE INDEX orders_user_id_idx ON orders (user_id);
+
+  SELECT indexdef FROM pg_indexes WHERE indexname = 'orders_user_id_idx';
+check:
+  type: result
+  order_matters: true
+hints:
+  - По какому столбцу фильтрует запрос страницы?
+  - "`id` уже проиндексирован первичным ключом."
+explanation: |
+  Индекс помогает условию по своему столбцу. Запрос ищет по `user_id`, а индекс заготовки — по `id`, у которого индекс и так есть (`orders_pkey`). `CREATE INDEX orders_user_id_idx ON orders (user_id)` позволяет найти заказы покупателя без чтения всей таблицы. На учебных 34 заказах разница не видна — индекс понадобится, когда заказов станет сотни тысяч.

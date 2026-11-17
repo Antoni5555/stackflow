@@ -1,0 +1,15 @@
+title: Частичный индекс
+type: quiz
+kind: single
+difficulty: 3
+pitfall: Частичный индекс используется, только если условие запроса гарантирует условие индекса.
+statement: |
+  Создан индекс `CREATE INDEX orders_active_idx ON orders (user_id) WHERE status <> 'cancelled'`. Какому запросу он может помочь?
+options:
+  - "`SELECT * FROM orders WHERE user_id = 1`"
+  - "`SELECT * FROM orders WHERE user_id = 1 AND status <> 'cancelled'`"
+  - "`SELECT * FROM orders WHERE status = 'cancelled'`"
+  - "Любому запросу к `orders` — индекс используется автоматически"
+answer: [1]
+explanation: |
+  В частичном индексе нет отменённых заказов. Запрос без условия на статус может нуждаться и в них, поэтому индекс ему не подходит. Запрос с `status <> 'cancelled'` ищет только среди строк индекса — его и ускоряет. Для отменённых заказов этот индекс бесполезен совсем.

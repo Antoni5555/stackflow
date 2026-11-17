@@ -1,0 +1,16 @@
+title: Кто будет ждать
+type: quiz
+kind: multiple
+difficulty: 3
+pitfall: Блокировка строки задерживает только другие изменения и блокирующие чтения, обычный SELECT — нет.
+statement: |
+  Сессия A выполнила `BEGIN; UPDATE products SET price = 59990 WHERE id = 1;` и пока не завершила транзакцию. Какие команды других сессий будут ждать её окончания?
+options:
+  - "`SELECT price FROM products WHERE id = 1;`"
+  - "`UPDATE products SET stock = stock - 1 WHERE id = 1;`"
+  - "`SELECT * FROM products WHERE id = 1 FOR UPDATE;`"
+  - "`UPDATE products SET stock = stock - 1 WHERE id = 2;`"
+  - "`DELETE FROM products WHERE id = 1;`"
+answer: [1, 2, 4]
+explanation: |
+  `UPDATE` заблокировал строку товара 1 до конца транзакции. Ждут все, кто хочет её изменить или заблокировать: другой `UPDATE`, `DELETE`, `SELECT … FOR UPDATE`. Обычный `SELECT` не ждёт — он читает старую цену из своего снимка. Строка товара 2 не заблокирована, её изменение выполняется сразу.

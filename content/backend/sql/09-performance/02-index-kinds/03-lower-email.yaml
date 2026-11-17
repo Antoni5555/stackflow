@@ -1,0 +1,24 @@
+title: Почта в разном регистре
+type: exercise
+difficulty: 3
+pitfall: Уникальность без учёта регистра задаёт уникальный индекс по выражению lower(email), а не UNIQUE на столбце.
+statement: |
+  Покупатель зарегистрировался как `anna.smirnova@example.com`, а потом — как `Anna.Smirnova@example.com`: `UNIQUE` на `users.email` считает это разными адресами. Создайте уникальный индекс `users_email_lower_key`, который запретит такой повтор. Последней строкой оставьте запрос из заготовки.
+
+  Индекс в заготовке повтор не запрещает. Исправьте его.
+starter_code: |
+  CREATE UNIQUE INDEX users_email_lower_key ON users (email);
+
+  SELECT indexdef FROM pg_indexes WHERE indexname = 'users_email_lower_key';
+solution: |
+  CREATE UNIQUE INDEX users_email_lower_key ON users (lower(email));
+
+  SELECT indexdef FROM pg_indexes WHERE indexname = 'users_email_lower_key';
+check:
+  type: result
+  order_matters: true
+hints:
+  - Чем `Anna.Smirnova@…` отличается от `anna.smirnova@…` для сравнения `=`?
+  - Индексировать можно результат функции.
+explanation: |
+  Уникальный индекс по `email` сравнивает строки как есть, и адреса в разном регистре для него разные — он повторяет уже существующее ограничение `UNIQUE`. Индекс по выражению `lower(email)` хранит адреса в нижнем регистре, и второй вариант той же почты нарушает уникальность. Заодно он ускоряет вход: `WHERE lower(email) = lower(…)`.
