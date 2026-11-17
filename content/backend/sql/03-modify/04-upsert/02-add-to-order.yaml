@@ -1,0 +1,27 @@
+title: Ещё одну футболку
+type: exercise
+difficulty: 2
+pitfall: EXCLUDED — новая строка; чтобы прибавить к тому, что уже в базе, нужно старое значение через имя таблицы.
+statement: |
+  В заказе 33 уже есть белая футболка (товар 15, 1 шт.). Покупатель кладёт в корзину ещё одну белую футболку и беспроводную мышь (товар 4, 1499.00). Позиция с тем же товаром не дублируется — в ней растёт количество.
+
+  Запрос из заготовки выполняется без ошибок, но футболок в заказе по-прежнему одна. Исправьте его, чтобы стало две.
+starter_code: |
+  INSERT INTO order_items (order_id, product_id, quantity, price)
+  VALUES (33, 15, 1, 1290.00), (33, 4, 1, 1499.00)
+  ON CONFLICT (order_id, product_id)
+  DO UPDATE SET quantity = EXCLUDED.quantity;
+solution: |
+  INSERT INTO order_items (order_id, product_id, quantity, price)
+  VALUES (33, 15, 1, 1290.00), (33, 4, 1, 1499.00)
+  ON CONFLICT (order_id, product_id)
+  DO UPDATE SET quantity = order_items.quantity + EXCLUDED.quantity;
+check:
+  type: state
+  tables:
+    order_items: [order_id, product_id, quantity, price]
+hints:
+  - "`EXCLUDED.quantity` — это количество из `VALUES` или из базы?"
+  - "Старое значение — `order_items.quantity`."
+explanation: |
+  `EXCLUDED` — строка, которую пытались вставить: в ней `quantity` = 1. `SET quantity = EXCLUDED.quantity` записывает 1 поверх 1 — ничего не меняется. Прибавить к старому: `SET quantity = order_items.quantity + EXCLUDED.quantity`. Мыши в заказе ещё не было — для неё конфликта нет, и она вставлена как новая позиция в обоих вариантах.

@@ -1,0 +1,22 @@
+title: Включить VIP15
+type: exercise
+difficulty: 1
+pitfall: В SET столбцы разделяются запятой; AND превращает присваивания в одно логическое выражение.
+statement: |
+  Маркетинг возвращает промокод VIP15: его нужно включить (`is_active`) и поднять скидку до 20 %. Запрос из заготовки падает — исправьте его.
+starter_code: |
+  UPDATE promo_codes
+  SET discount_percent = 20 AND is_active = true
+  WHERE code = 'VIP15';
+solution: |
+  UPDATE promo_codes
+  SET discount_percent = 20, is_active = true
+  WHERE code = 'VIP15';
+check:
+  type: state
+  tables: [promo_codes]
+hints:
+  - Ошибка говорит, что у `AND` аргумент не того типа. Что PostgreSQL считает аргументами `AND`?
+  - Несколько столбцов в `SET` перечисляют так же, как в `SELECT`.
+explanation: |
+  `SET discount_percent = 20 AND is_active = true` читается как одно присваивание: `discount_percent = (20 AND (is_active = true))`. У `AND` слева число, отсюда `argument of AND must be type boolean, not type integer`. Столбцы в `SET` разделяют запятой: `SET discount_percent = 20, is_active = true`. Хорошо, что PostgreSQL падает: MySQL в такой ситуации выполнил бы запрос и записал в скидку 0 или 1.

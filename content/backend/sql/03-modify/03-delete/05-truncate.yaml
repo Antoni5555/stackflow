@@ -1,0 +1,16 @@
+title: DELETE или TRUNCATE
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "TRUNCATE — не «быстрый DELETE»: без условия, без RETURNING и с ошибкой на таблице, на которую ссылаются внешние ключи."
+statement: |
+  Что верно про `TRUNCATE` в PostgreSQL?
+options:
+  - Очищает таблицу целиком; условия `WHERE` у него нет
+  - На большой таблице работает намного быстрее, чем `DELETE` без `WHERE`
+  - "`TRUNCATE products` в базе магазина удалит товары, а ссылки на них обработает по `ON DELETE`"
+  - Его можно отменить, если он выполнен внутри транзакции
+  - С `RESTART IDENTITY` сбрасывает счётчики `id`
+answer: [0, 1, 3, 4]
+explanation: |
+  `TRUNCATE` очищает таблицу целиком без перебора строк, поэтому быстрый; `RESTART IDENTITY` сбрасывает счётчики, а в PostgreSQL его можно откатить в транзакции. Неверен третий вариант: правила `ON DELETE` срабатывают только при `DELETE`. На `products` ссылаются другие таблицы, и `TRUNCATE products` падает с `cannot truncate a table referenced in a foreign key constraint`. `TRUNCATE products CASCADE` очистил бы ссылающиеся таблицы — `order_items`, `product_tags`, `reviews` — целиком.

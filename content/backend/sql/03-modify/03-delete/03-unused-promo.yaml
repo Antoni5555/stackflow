@@ -1,0 +1,24 @@
+title: Неиспользованные промокоды
+type: exercise
+difficulty: 2
+pitfall: NOT IN по списку, в котором есть NULL, не даёт TRUE ни для одной строки — DELETE удаляет ноль строк без ошибки.
+statement: |
+  Удалите промокоды, которые ни разу не применяли в заказах. Запрос из заготовки выполняется без ошибок, но отвечает `DELETE 0` — а такие промокоды в базе есть. Найдите причину и исправьте запрос.
+starter_code: |
+  DELETE FROM promo_codes
+  WHERE id NOT IN (SELECT promo_code_id FROM orders);
+solution: |
+  DELETE FROM promo_codes
+  WHERE id NOT IN (
+      SELECT promo_code_id
+      FROM orders
+      WHERE promo_code_id IS NOT NULL
+  );
+check:
+  type: state
+  tables: [promo_codes]
+hints:
+  - "Выполните подзапрос отдельно: `SELECT promo_code_id FROM orders`. Что в нём кроме номеров промокодов?"
+  - "`2 NOT IN (1, 5, NULL)` — это `2 <> 1 AND 2 <> 5 AND 2 <> NULL`. Чему равно последнее сравнение?"
+explanation: |
+  У большинства заказов `promo_code_id` — NULL, и подзапрос возвращает их вместе с номерами. `id NOT IN (1, 5, NULL, …)` разворачивается в `id <> 1 AND id <> 5 AND id <> NULL …`; последнее сравнение — «неизвестно», и всё условие для неиспользованных промокодов тоже «неизвестно». `DELETE` удаляет только строки с TRUE — то есть ни одной. После `WHERE promo_code_id IS NOT NULL` в подзапросе условие работает: удаляются SUMMER25 и VIP15. Ещё надёжнее — `NOT EXISTS`, он к NULL не чувствителен; его разберём вместе с подзапросами.

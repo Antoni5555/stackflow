@@ -1165,6 +1165,74 @@ def limit_offset():
     f.save(out(SQ2 / "05-order-limit" / "img" / "limit-offset.svg"))
 
 
+# ---------- SQL 3.01: откуда значения новой строки ----------
+SQ3 = ROOT / "sql" / "03-modify"
+
+
+def insert_defaults():
+    f = Figure(880, 290, "INSERT: столбцы из списка берут значения из VALUES, остальные — из DEFAULT")
+    f.box(20, 20, 840, 44, "INSERT INTO products (category_id, name, price) VALUES (9, 'Книга', 2290)", "box2", "c", rx=8)
+    cols = [("id", 70, "24", "счётчик"), ("category_id", 120, "9", "VALUES"), ("name", 120, "Книга", "VALUES"),
+            ("price", 110, "2290.00", "VALUES"), ("stock", 80, "0", "DEFAULT"), ("attributes", 120, "{}", "DEFAULT"),
+            ("created_at", 220, "now()", "DEFAULT")]
+    cx = 20
+    for name, w, v, src in cols:
+        given = src == "VALUES"
+        f.box(cx, 110, w, 32, name, "acc" if given else "box2", "onacc" if given else "c", rx=4)
+        f.box(cx, 142, w, 32, v, "box", "c", rx=4)
+        f.text(cx + w / 2, 196, src, "s", "middle")
+        cx += w
+    f.arrow("M300 64V106")
+    f.text(20, 98, "products — новая строка", "h")
+    f.text(20, 236, "лайм — столбцы из списка INSERT: значения из VALUES по порядку;", "s")
+    f.text(20, 256, "id выдаёт счётчик GENERATED ALWAYS AS IDENTITY; stock, attributes, created_at — DEFAULT из CREATE TABLE.", "s")
+    f.text(20, 276, "Столбец без DEFAULT получил бы NULL, а с NOT NULL и без DEFAULT — ошибку.", "s")
+    f.save(out(SQ3 / "01-insert" / "img" / "insert-defaults.svg"))
+
+
+# ---------- SQL 3.03: ON DELETE ----------
+def fk_actions():
+    f = Figure(880, 330, "Что делает внешний ключ, когда удаляют строку, на которую он ссылается")
+    rows = [
+        ("RESTRICT", "DELETE FROM users|WHERE id = 4", "orders.user_id", "ошибка: на покупателя|ссылаются заказы", "err", "errt"),
+        ("CASCADE", "DELETE FROM orders|WHERE id = 3", "order_items.order_id", "позиции заказа|удалены вместе с ним", "box2", "t"),
+        ("SET NULL", "DELETE FROM promo_codes|WHERE id = 4", "orders.promo_code_id", "заказы остались,|promo_code_id = NULL", "ok", "t"),
+    ]
+    f.text(20, 24, "ON DELETE", "h")
+    f.text(160, 24, "запрос", "h")
+    f.text(410, 24, "кто ссылается", "h")
+    f.text(626, 24, "результат", "h")
+    for k, (rule, query, ref, result, cls, tcls) in enumerate(rows):
+        y = 36 + k * 90
+        f.box(20, y, 120, 70, rule, "acc", "onacc")
+        f.box(160, y, 220, 70, query, "box", "c")
+        f.arrow(f"M380 {y + 35}H406")
+        f.box(410, y, 190, 70, ref, "box2", "cs")
+        f.arrow(f"M600 {y + 35}H622")
+        f.box(626, y, 234, 70, result, cls, tcls)
+    f.text(20, 318, "RESTRICT отменяет весь DELETE целиком; CASCADE и SET NULL срабатывают для каждой удалённой строки.", "s")
+    f.save(out(SQ3 / "03-delete" / "img" / "fk-actions.svg"))
+
+
+# ---------- SQL 3.04: INSERT … ON CONFLICT ----------
+def upsert_flow():
+    f = Figure(880, 300, "INSERT … ON CONFLICT: для каждой строки из VALUES база ищет строку с тем же уникальным ключом")
+    f.box(20, 110, 200, 60, "строка из VALUES|= EXCLUDED", "box2", "c")
+    f.arrow("M220 140H270")
+    f.diamond(360, 140, 180, 80, "ключ уже есть?")
+    f.arrow("M360 100V60H446")
+    f.text(368, 52, "нет", "s")
+    f.box(450, 30, 410, 60, "INSERT — новая строка", "ok")
+    f.arrow("M450 140H500")
+    f.text(458, 132, "да", "s")
+    f.box(504, 110, 356, 60, "DO NOTHING — строка пропущена,|в RETURNING её нет", "box")
+    f.arrow("M360 180V230H446")
+    f.text(368, 214, "да", "s")
+    f.box(450, 200, 410, 60, "DO UPDATE SET qty = t.qty + EXCLUDED.qty|t.qty — из базы, EXCLUDED.qty — новая", "acc", "onacc")
+    f.text(20, 290, "Ключ — PRIMARY KEY или UNIQUE из ON CONFLICT (…); без такого ограничения запрос падает.", "s")
+    f.save(out(SQ3 / "04-upsert" / "img" / "upsert-flow.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1180,6 +1248,7 @@ if __name__ == "__main__":
                   css_specificity, box_model, flex_axes, responsive_grid,
                   card_anatomy, catalog_states, shared_layout,
                   app_dbms, table_keys, shop_schema,
-                  select_where, null_compare, limit_offset):
+                  select_where, null_compare, limit_offset,
+                  insert_defaults, fk_actions, upsert_flow):
         build()
     print("ok")

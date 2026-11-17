@@ -1,0 +1,22 @@
+title: Распродажа задела лишнее
+type: exercise
+difficulty: 1
+pitfall: AND выполняется раньше OR — без скобок UPDATE меняет лишние строки, и на экране этого не видно.
+statement: |
+  Распродажа: товарам из «Аксессуаров» (категория 4) и «Футболок» (категория 7), которые стоят меньше 1500 ₽, снизьте цену на 20 %. Запрос из заготовки выполняется без ошибок, но меняет цену не только им. Исправьте его.
+starter_code: |
+  UPDATE products
+  SET price = price * 0.8
+  WHERE category_id = 4 OR category_id = 7 AND price < 1500;
+solution: |
+  UPDATE products
+  SET price = price * 0.8
+  WHERE category_id IN (4, 7) AND price < 1500;
+check:
+  type: state
+  tables: [products]
+hints:
+  - "Замените `UPDATE … SET …` на `SELECT id, name, price FROM products` с тем же `WHERE`: какие строки попали?"
+  - "`AND` связывает сильнее `OR`. Нужны скобки или `IN`."
+explanation: |
+  `AND` выполняется раньше `OR`, и условие читается как `category_id = 4 OR (category_id = 7 AND price < 1500)`: подешевели все аксессуары, включая клавиатуру за 5490 и веб-камеру за 3990. Правильно — `category_id IN (4, 7) AND price < 1500` или скобки вокруг `OR`. Такую ошибку легче поймать до запуска: тот же `WHERE` в `SELECT` показал бы лишние строки.

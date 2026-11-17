@@ -1,0 +1,19 @@
+title: Чего нет в списке
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Столбец, которого нет в списке INSERT, получает значение по умолчанию, а не NULL и не ошибку.
+statement: |
+  В `products` столбцы объявлены так: `stock integer NOT NULL DEFAULT 0`, `attributes jsonb NOT NULL DEFAULT '{}'`. Что окажется в `stock` и `attributes` после запроса?
+  ```sql
+  INSERT INTO products (category_id, name, price)
+  VALUES (9, 'Книга «Django изнутри»', 2290);
+  ```
+options:
+  - "`0` и `{}`"
+  - NULL и NULL
+  - Ошибка — нарушение `NOT NULL`
+  - "`0` и NULL"
+answer: [0]
+explanation: |
+  Столбец, которого нет в списке, получает свой `DEFAULT`: `stock` — `0`, `attributes` — `{}`. NULL достаётся только столбцам без `DEFAULT`, а ошибка `NOT NULL` — тем, у кого нет ни значения в запросе, ни `DEFAULT`. Здесь оба столбца со значением по умолчанию, поэтому запрос проходит.

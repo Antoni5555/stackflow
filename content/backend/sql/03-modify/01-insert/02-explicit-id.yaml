@@ -1,0 +1,20 @@
+title: Свой номер категории
+type: exercise
+difficulty: 1
+pitfall: "`id` объявлен `GENERATED ALWAYS AS IDENTITY` — его выдаёт база, задать вручную нельзя."
+statement: |
+  В магазин приходят кроссовки. Добавьте подкатегорию «Кроссовки» в категорию «Обувь» (`id` 8). Запрос в заготовке падает с ошибкой — прочитайте её и исправьте запрос.
+starter_code: |
+  INSERT INTO categories (id, name, parent_id)
+  VALUES (10, 'Кроссовки', 8);
+solution: |
+  INSERT INTO categories (name, parent_id)
+  VALUES ('Кроссовки', 8);
+check:
+  type: state
+  tables: [categories]
+hints:
+  - Что говорят строки DETAIL и HINT под ошибкой?
+  - "Номер новой строки выдаёт счётчик — уберите `id` из списка столбцов и из `VALUES`."
+explanation: |
+  Ошибка `cannot insert a non-DEFAULT value into column "id"`: столбец `id` объявлен `GENERATED ALWAYS AS IDENTITY`, и номер выдаёт только счётчик базы. Без `id` в списке категория получает следующий свободный номер — здесь как раз 10. Подсказка `OVERRIDING SYSTEM VALUE` из текста ошибки — для переноса данных с готовыми `id`, а не для обычной вставки.

@@ -1,0 +1,34 @@
+title: Импорт промокодов
+type: exercise
+difficulty: 2
+pitfall: DO NOTHING молча пропускает существующие строки — импорт «прошёл», а старые значения не обновились.
+statement: |
+  Маркетинг прислал список промокодов:
+
+  | code | discount_percent | valid_until |
+  |---|---|---|
+  | WELCOME10 | 15 | 2031-12-31 |
+  | SPRING30 | 30 | 2026-05-31 |
+
+  Новые промокоды нужно добавить, у существующих — обновить скидку и срок действия. Запрос из заготовки выполняется без ошибок, но WELCOME10 остаётся со скидкой 10 %. Исправьте его.
+starter_code: |
+  INSERT INTO promo_codes (code, discount_percent, valid_until)
+  VALUES ('WELCOME10', 15, '2031-12-31'),
+         ('SPRING30', 30, '2026-05-31')
+  ON CONFLICT (code) DO NOTHING;
+solution: |
+  INSERT INTO promo_codes (code, discount_percent, valid_until)
+  VALUES ('WELCOME10', 15, '2031-12-31'),
+         ('SPRING30', 30, '2026-05-31')
+  ON CONFLICT (code) DO UPDATE
+  SET discount_percent = EXCLUDED.discount_percent,
+      valid_until = EXCLUDED.valid_until;
+check:
+  type: state
+  tables:
+    promo_codes: [code, discount_percent, valid_until, is_active]
+hints:
+  - Что делает `DO NOTHING` со строкой, у которой `code` уже есть в таблице?
+  - "Нужен `DO UPDATE SET …`, значения — из `EXCLUDED`."
+explanation: |
+  `DO NOTHING` пропускает строку с конфликтом без ошибки — WELCOME10 остался прежним, добавился только SPRING30. Чтобы обновить существующий промокод, нужен `DO UPDATE SET discount_percent = EXCLUDED.discount_percent, valid_until = EXCLUDED.valid_until`. `is_active` в `SET` нет, поэтому у существующего промокода он не меняется. Проверка не сравнивает `id`: номер SPRING30 зависит от того, сколько номеров счётчик потратил на конфликты.

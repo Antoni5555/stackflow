@@ -1,0 +1,21 @@
+title: Что такое EXCLUDED
+type: quiz
+kind: single
+difficulty: 2
+pitfall: EXCLUDED — строка из VALUES, а не строка из таблицы.
+statement: |
+  В профиле Анны (`user_id` 1) телефон `+79001112233`. Что окажется в `phone` после запроса?
+  ```sql
+  INSERT INTO profiles (user_id, phone)
+  VALUES (1, '+79005556677')
+  ON CONFLICT (user_id)
+  DO UPDATE SET phone = profiles.phone;
+  ```
+options:
+  - "`+79005556677`"
+  - "`+79001112233`"
+  - NULL
+  - Ошибка — у Анны уже есть профиль
+answer: [1]
+explanation: |
+  `profiles.phone` в `DO UPDATE` — значение, которое уже лежит в базе, поэтому телефон переписывается сам собой и остаётся старым. Новый телефон из `VALUES` — это `EXCLUDED.phone`. Ошибки нет: конфликт по `user_id` как раз и обрабатывает `ON CONFLICT`.

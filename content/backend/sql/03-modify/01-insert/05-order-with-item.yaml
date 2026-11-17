@@ -1,0 +1,31 @@
+title: Заказ и его позиция
+type: exercise
+difficulty: 2
+pitfall: Номер новой строки не угадывают по «последнему id» — его возвращает RETURNING.
+statement: |
+  Покупательница Нина (`users.id` 13) оформила первый заказ: книга «SQL на практике» (товар 20), 2 штуки по текущей цене 1590.00. Создайте заказ со статусом по умолчанию и без промокода, а потом позицию этого заказа в `order_items`.
+
+  В заготовке позиция попала не в тот заказ. Выполните первый запрос с `RETURNING id`, чтобы увидеть номер нового заказа, и исправьте второй.
+starter_code: |
+  INSERT INTO orders (user_id)
+  VALUES (13);
+
+  INSERT INTO order_items (order_id, product_id, quantity, price)
+  VALUES (34, 20, 2, 1590.00);
+solution: |
+  INSERT INTO orders (user_id)
+  VALUES (13)
+  RETURNING id;
+
+  INSERT INTO order_items (order_id, product_id, quantity, price)
+  VALUES (35, 20, 2, 1590.00);
+check:
+  type: state
+  tables:
+    orders: [id, user_id, promo_code_id, status]
+    order_items: [order_id, product_id, quantity, price]
+hints:
+  - Последний заказ в учебных данных — 34. Какой номер получит новый?
+  - "Добавьте `RETURNING id` к первому `INSERT` и подставьте этот номер во второй."
+explanation: |
+  Заготовка добавила книгу в заказ 34 — последний из тех, что были в базе, но чужой: он принадлежит покупательнице Анне. `RETURNING id` показывает номер нового заказа — 35, его и пишем в `order_id`. В приложении номер не подставляют руками: код берёт `id` из ответа первого запроса и передаёт во второй. Время заказа (`created_at`) проверка не сравнивает — оно заполняется через `now()`.
