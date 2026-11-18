@@ -11,12 +11,15 @@ export class FileEditor {
   /**
    * @param {Element} root — где искать вкладки [data-file] и .editor
    * @param {object} options — { initial: {имя: текст}, names: порядок файлов,
-   *   draftPrefix, onChange(files), onRun, onOpen(имя) — открыта другая вкладка }
+   *   draftPrefix, onChange(files), onRun, onOpen(имя) — открыта другая вкладка,
+   *   readOnly — файлы, которые ученик только читает (код задачи «напишите тесты») }
    */
   constructor(root, {
     initial, names, draftPrefix, onChange = () => {}, onRun = () => {}, onOpen = () => {},
+    readOnly = [],
   }) {
     this.onOpen = onOpen;
+    this.readOnly = new Set(readOnly);
     this.initial = initial;
     this.names = names;
     this.draftKey = (name) => `${draftPrefix}${name}`;
@@ -36,6 +39,7 @@ export class FileEditor {
       },
     });
     this.editor.value = this.files[this.current];
+    this.editor.textarea.readOnly = this.readOnly.has(this.current);
     for (const tab of this.tabs) tab.addEventListener('click', () => this.open(tab.dataset.file));
   }
 
@@ -44,6 +48,7 @@ export class FileEditor {
     this.current = name;
     this.editor.setHighlight(highlighterFor(name));
     this.editor.value = this.files[name];
+    this.editor.textarea.readOnly = this.readOnly.has(name);
     for (const tab of this.tabs) {
       const active = tab.dataset.file === name;
       tab.classList.toggle('tab--active', active);

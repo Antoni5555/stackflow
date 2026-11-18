@@ -1,5 +1,6 @@
 // Песочница Python: свободный код, «Запустить», вывод. Код хранится в localStorage.
 // Поле «Ввод» видно, только когда в коде есть input(): строки из него input() берёт по порядку.
+// Кнопка «Запустить тесты» — только когда в коде есть def test_…: pytest запускает код как test_main.py.
 
 import { CodeEditor } from '../editor.js';
 import { PythonEngine } from '../engines/python/engine.js';
@@ -9,6 +10,7 @@ import { drafts, showConsole, showEngineStatus } from '../trainer-ui.js';
 const root = document.querySelector('[data-playground]');
 const consoleEl = root.querySelector('[data-console]');
 const runButton = root.querySelector('[data-action="run"]');
+const testsButton = root.querySelector('[data-action="tests"]');
 const badge = root.querySelector('[data-engine-status]');
 const textarea = root.querySelector('textarea.editor__code');
 
@@ -24,7 +26,7 @@ const DEFAULT_CODE = textarea.value;
 
 const engine = new PythonEngine(
   { worker: root.dataset.worker, runner: root.dataset.runner, pyodide: root.dataset.pyodide },
-  (state) => showEngineStatus(badge, [runButton], state),
+  (state) => showEngineStatus(badge, [runButton, testsButton], state),
 );
 
 /** В коде есть вызов input() (не в комментарии)? */
@@ -32,8 +34,14 @@ function usesInput(code) {
   return code.split('\n').some((line) => /\binput\s*\(/.test(line.split('#')[0]));
 }
 
-function toggleStdin(code) {
+/** В коде есть тесты pytest — функции test_… (не в комментарии)? */
+function hasTests(code) {
+  return code.split('\n').some((line) => /^\s*(async\s+)?def\s+test_\w*\s*\(/.test(line.split('#')[0]));
+}
+
+function toggleByCode(code) {
   stdinField.hidden = !usesInput(code);
+  testsButton.hidden = !hasTests(code);
 }
 
 /** Вывод с введёнными значениями: они — серым, как набранное с клавиатуры. */
@@ -54,6 +62,11 @@ function showInputs(output) {
   target.replaceChildren(...parts);
 }
 
+async function runTests() {
+  const result = await engine.runTests(editor.value);
+  showConsole(consoleEl, result.aborted ? { error: result.aborted } : result, '$ pytest -v test_main.py');
+}
+
 async function run() {
   // пустые строки в конце — не значения: лишний Enter ничего не ломает
   const stdin = stdinField.hidden ? null : stdinEditor.value.replace(/\n+$/, '');
@@ -67,7 +80,7 @@ const editor = new CodeEditor(textarea.closest('.editor'), {
   highlight: highlightPython,
   onChange: (value) => {
     drafts.set(DRAFT_KEY, value);
-    toggleStdin(value);
+    toggleByCode(value);
   },
 });
 const saved = drafts.get(DRAFT_KEY);
@@ -89,9 +102,10 @@ function fitStdin() {
 
 stdinEditor.value = drafts.get(STDIN_KEY) ?? '';
 fitStdin();
-toggleStdin(editor.value);
+toggleByCode(editor.value);
 
 runButton.addEventListener('click', run);
+testsButton.addEventListener('click', runTests);
 root.querySelector('[data-action="clear"]').addEventListener('click', () => {
   consoleEl.replaceChildren();
 });
@@ -101,7 +115,7 @@ document.querySelector('[data-action="restart"]').addEventListener('click', () =
   stdinEditor.value = '';
   fitStdin();
   drafts.remove(STDIN_KEY);
-  toggleStdin(DEFAULT_CODE);
+  toggleByCode(DEFAULT_CODE);
   consoleEl.replaceChildren();
   engine.reset();
 });

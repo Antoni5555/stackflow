@@ -240,6 +240,79 @@ def check_exercise(code, task):
     }
 
 
+# --- pytest: тесты ученика (песочница и задачи «напишите тесты») ---
+# В браузере pytest грузится по требованию (worker.js); в обычном Python — из окружения.
+
+SANDBOX_TEST_FILE = 'test_main.py'
+# Как в терминале: pytest -v — по строке на тест; без шапки с путями временной папки
+PYTEST_ARGS = [
+    '-v', '--no-header', '--color=no', '-p', 'no:cacheprovider', '--capture=sys',
+]
+NO_TESTS = 'В {file} нет ни одного теста: функций с именем test_….'
+WRONG_TESTS = 'Ваши тесты не проходят на правильном коде задачи — ошибка в тестах.'
+# коды выхода pytest.main: 0 — всё прошло, 1 — есть упавшие, 5 — тестов не нашлось
+PYTEST_OK, PYTEST_NO_TESTS = 0, 5
+
+
+def run_pytest(files, test_file, guard=contextlib.nullcontext):
+    """files — в пустую рабочую папку, pytest на test_file → (код выхода, вывод).
+
+    Сторонние плагины окружения (pytest-django в тестах сайта) не подключаются:
+    у всех тот же голый pytest, что в браузере.
+    """
+    import pytest
+
+    saved = os.environ.get('PYTEST_DISABLE_PLUGIN_AUTOLOAD')
+    os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+    buffer = io.StringIO()
+    try:
+        with workdir() as path:
+            for name, text in files.items():
+                os.makedirs(os.path.dirname(name) or '.', exist_ok=True)
+                with open(name, 'w', encoding='utf-8') as file:
+                    file.write(text)
+            reset_logging()
+            with guard(), contextlib.redirect_stdout(buffer), \
+                    contextlib.redirect_stderr(buffer):
+                code = pytest.main([*PYTEST_ARGS, f'--rootdir={path}', test_file])
+    except TimeoutError:
+        return None, TIMEOUT_MESSAGE
+    finally:
+        if saved is None:
+            os.environ.pop('PYTEST_DISABLE_PLUGIN_AUTOLOAD', None)
+        else:
+            os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = saved
+    return int(code), buffer.getvalue()
+
+
+def run_sandbox_tests(code):
+    """Кнопка «Запустить тесты» в песочнице: код — файл test_main.py, вывод pytest."""
+    _, output = run_pytest({SANDBOX_TEST_FILE: code}, SANDBOX_TEST_FILE)
+    return {'output': output, 'error': ''}
+
+
+def check_tests(files, test_file, mutants=(), guard=contextlib.nullcontext):
+    """Задача «напишите тесты»: файл тестов ученика test_file — в files.
+
+    Тесты должны пройти на коде задачи (files) и упасть на каждой «сломанной»
+    версии (mutant: {files — заменённые модули, fail}). Сломанная версия, которая
+    даже не импортируется, тоже считается пойманной.
+    → {'failed', 'total' (число сломанных версий), 'output' (pytest на коде задачи)}.
+    """
+    code, output = run_pytest(files, test_file, guard)
+    result = {'failed': [], 'total': len(mutants), 'output': output}
+    if code == PYTEST_NO_TESTS:
+        result['failed'].append(NO_TESTS.format(file=test_file))
+    elif code != PYTEST_OK:
+        result['failed'].append(WRONG_TESTS)
+    else:
+        for mutant in mutants:
+            code, _ = run_pytest({**files, **mutant['files']}, test_file, guard)
+            if code == PYTEST_OK:
+                result['failed'].append(mutant['fail'])
+    return result
+
+
 def normalize_output(text):
     """Вывод для сравнения в predict.
 

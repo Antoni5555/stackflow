@@ -25,6 +25,8 @@ for name, quantity in counts.most_common():
       </div>
       <div class="toolbar">
         <button type="button" class="btn btn--accent" data-action="run" disabled>Запустить <kbd>Ctrl ↵</kbd></button>
+        {# Только когда в коде есть функции test_…: код запускается pytest как test_main.py #}
+        <button type="button" class="btn btn--ink" data-action="tests" disabled hidden>Запустить тесты</button>
         <button type="button" class="btn btn--ghost" data-action="clear">Очистить вывод</button>
       </div>
     </div>

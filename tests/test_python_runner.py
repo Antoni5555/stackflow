@@ -256,3 +256,85 @@ def test_input_without_lines_is_eof():
     assert result['error'].endswith(f'EOFError: {runner.STDIN_EOF}')
     # после запуска input() снова прежний
     assert builtins.input is ORIGINAL_INPUT
+
+
+# --- pytest: тесты ученика (песочница и задачи «напишите тесты») ---
+
+CART = {
+    'cart.py': 'def total(prices, discount=0):\n'
+               '    return sum(prices) * (100 - discount) // 100\n',
+}
+GOOD_TESTS = ('from cart import total\n\n'
+              'def test_total():\n    assert total([100, 200]) == 300\n\n'
+              'def test_discount():\n    assert total([100], 10) == 90\n')
+MUTANTS = [
+    {'files': {'cart.py': 'def total(prices, discount=0):\n    return sum(prices)\n'},
+     'fail': 'Скидка не учитывается.'},
+    {'files': {'cart.py': 'def total(:\n'}, 'fail': 'Не импортируется.'},
+]
+
+
+def check(tests):
+    return runner.check_tests({**CART, 'test_cart.py': tests}, 'test_cart.py', MUTANTS)
+
+
+def test_student_tests_pass_and_catch_every_mutant():
+    result = check(GOOD_TESTS)
+
+    assert result['failed'] == [] and result['total'] == 2
+    assert 'test_cart.py::test_discount PASSED' in result['output']
+    assert '2 passed' in result['output']
+
+
+def test_student_tests_messages():
+    weak = 'from cart import total\n\ndef test_total():\n    assert total([1]) == 1\n'
+    # не импортирующаяся версия поймана, а без скидки — нет
+    assert check(weak)['failed'] == ['Скидка не учитывается.']
+    assert check('x = 1\n')['failed'] == [runner.NO_TESTS.format(file='test_cart.py')]
+    wrong = check('def test_a():\n    assert 1 == 2\n')
+    assert wrong['failed'] == [runner.WRONG_TESTS]
+    assert 'assert 1 == 2' in wrong['output']
+    # ошибка в самом файле тестов — тоже «не проходят на правильном коде»
+    assert check('def test_a(:\n')['failed'] == [runner.WRONG_TESTS]
+
+
+def test_sandbox_tests_output_like_terminal():
+    code = ('def add(a, b):\n    return a + b\n\n'
+            'def test_add():\n    assert add(2, 2) == 5\n')
+    output = runner.run_sandbox_tests(code)['output']
+
+    assert 'test_main.py::test_add FAILED' in output
+    assert 'E       assert 4 == 5' in output and '+  where 4 = add(2, 2)' in output
+    assert '1 failed' in output
+
+
+def pytest_tasks():
+    """Задачи «напишите тесты» (check.type: pytest) из content/."""
+    tasks = []
+    for path in sorted(Path(settings.CONTENT_DIR).rglob('*.yaml')):
+        if path.name.startswith('_'):
+            continue
+        task = yaml.safe_load(path.read_text(encoding='utf-8'))
+        check_type = task.get('check', {}).get('type')
+        if task.get('type') == 'exercise' and check_type == 'pytest':
+            name = str(path.relative_to(settings.CONTENT_DIR))
+            tasks.append(pytest.param(task, id=name))
+    return tasks or [pytest.param(None, marks=pytest.mark.skip('нет задач с pytest'))]
+
+
+@pytest.mark.parametrize('task', pytest_tasks())
+def test_content_pytest_task(task):
+    """Эталонные тесты проходят на коде задачи и ловят каждую сломанную версию,
+    заготовка ловит не все; сломанная версия — рабочий Python (ловится по поведению)."""
+    test_file = next(iter(task['solution']))
+    mutants = task['check']['mutants']
+    for number, mutant in enumerate(mutants, start=1):
+        for name, text in mutant['files'].items():
+            # SyntaxError — «сломанная версия» не собирается, а не ловится тестами
+            compile(text, name, 'exec')
+    reference = runner.check_tests(
+        {**task['files'], **task['solution']}, test_file, mutants, guard=timeout_guard)
+    assert reference['failed'] == [], reference['output']
+    starter = runner.check_tests(
+        {test_file: '', **task['files']}, test_file, mutants, guard=timeout_guard)
+    assert starter['failed'], 'заготовка тестов ловит все сломанные версии'

@@ -9,6 +9,10 @@
 
 const RUN_TIMEOUT = 2500;      // 2 секунды на программу + запас на передачу данных
 const CHECK_TIMEOUT = 8000;    // проверка запускает код несколько раз (тесты с run())
+// тесты ученика: первый раз ещё и загрузка pytest (~0,6 с), проверка — по прогону на версию
+const TESTS_TIMEOUT = 8000;
+const TESTS_CHECK_TIMEOUT = 15000;
+const TESTS_TIMEOUT_MESSAGE = 'Тесты не завершились вовремя — возможно, бесконечный цикл в тесте или в коде.';
 
 const TIMEOUT_MESSAGE = 'Программа не завершилась за 2 секунды — возможно, бесконечный цикл.';
 const CRASH_MESSAGE = 'RecursionError: программа ушла в слишком глубокую рекурсию — '
@@ -94,6 +98,16 @@ export class PythonEngine {
   /** Запустить программу: { output, error }. stdin — строки для input() (поле «Ввод»). */
   run(code, inputs = '', stdin = null) {
     return this.request('run', { code, inputs, stdin }, RUN_TIMEOUT);
+  }
+
+  /** Песочница: код как файл test_main.py под pytest → { output, error }. */
+  runTests(code) {
+    return this.request('tests', { code }, TESTS_TIMEOUT, TESTS_TIMEOUT_MESSAGE);
+  }
+
+  /** Задача «напишите тесты» → { failed, total, output }. */
+  checkTests(files, testFile, mutants = []) {
+    return this.request('pytestCheck', { files, testFile, mutants }, TESTS_CHECK_TIMEOUT, TESTS_TIMEOUT_MESSAGE);
   }
 
   /** Проверить решение задачи по её типу (exercise — тесты, predict — ответ). */

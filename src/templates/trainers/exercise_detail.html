@@ -6,6 +6,7 @@
 {# Python (exercise, predict) грузится только там, где он нужен; quiz и fix проверяются без движка #}
 {% block scripts %}{% if is_sql %}<script type="module" src="{% static 'js/pages/sql-exercise.js' %}"></script>
 {% elif is_django %}<script type="module" src="{% static 'js/pages/django-exercise.js' %}"></script>
+{% elif is_pytest %}<script type="module" src="{% static 'js/pages/pytest-exercise.js' %}"></script>
 {% elif check_type == 'dom' %}<script type="module" src="{% static 'js/pages/html-exercise.js' %}"></script>
 {% elif check_type == 'state' and course.engine == 'git' %}<script type="module" src="{% static 'js/pages/git-exercise.js' %}"></script>
 {% elif check_type == 'state' %}<script type="module" src="{% static 'js/pages/linux-exercise.js' %}"></script>
@@ -31,6 +32,8 @@
         {% include 'trainers/components/_sql_task.html' %}
       {% elif is_django %}
         {% include 'trainers/components/_django_task.html' %}
+      {% elif is_pytest %}
+        {% include 'trainers/components/_pytest_task.html' %}
       {% elif check_type == 'state' %}
         {% include 'trainers/components/_linux_task.html' %}
       {% elif check_type == 'dom' %}

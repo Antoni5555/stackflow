@@ -474,6 +474,47 @@ def django_spec(data, path):
     return spec
 
 
+# Python «напишите тесты» (check.type: pytest): files — код задачи и заготовка тестов,
+# solution — эталонный файл тестов, mutants — сломанные версии кода. Как у Django,
+# но тесты ученика запускает pytest (js/engines/python/runner.py, check_tests)
+PYTEST_FIELDS = ['files', 'solution', 'check']
+
+
+def pytest_spec(data, path):
+    """Задача «напишите тесты» на Python: файлы, эталон тестов, сломанные версии."""
+    require(data, path, *PYTEST_FIELDS)
+    files = django_files(data['files'], path, 'files')
+    solution = django_files(data['solution'], path, 'solution')
+    if len(solution) != 1:
+        raise ContentError(path, 'solution — один файл: эталонные тесты test_….py')
+    test_file = next(iter(solution))
+    if not (test_file.split('/')[-1].startswith('test_') and test_file.endswith('.py')):
+        raise ContentError(path, f'solution: {test_file} — нужен файл test_….py')
+    check = data['check']
+    if set(check) != {'type', 'mutants'}:
+        raise ContentError(path, 'check: type pytest и mutants')
+    mutants = check['mutants']
+    if not isinstance(mutants, list) or not mutants:
+        raise ContentError(path, 'check.mutants — непустой список')
+    for number, mutant in enumerate(mutants, start=1):
+        if not isinstance(mutant, dict) or set(mutant) != {'files', 'fail'}:
+            raise ContentError(path, f'mutants, {number}: нужны files и fail')
+        broken = django_files(mutant['files'], path, f'mutants, {number}: files')
+        if extra := sorted(set(broken) - set(files) | ({test_file} & set(broken))):
+            raise ContentError(
+                path, f'mutants, {number}: {", ".join(extra)} — не код задачи из files',
+            )
+    return {
+        'files': files,
+        'solution': solution,
+        'check': {'type': 'pytest', 'mutants': mutants},
+        'test_file': test_file,
+        # файл тестов ученика — последней вкладкой; его нет в files — пустая заготовка
+        'file_names': [name for name in files if name != test_file] + [test_file],
+        'hints': [render_inline(str(hint)) for hint in data.get('hints') or []],
+    }
+
+
 PRACTICE_FIELDS = {'title', 'text', 'hint', 'answer'}
 
 
@@ -519,6 +560,8 @@ def exercise_spec(data, path, engine=''):
         return django_spec(data, path)
     check = data.get('check')
     check_type = check.get('type') if isinstance(check, dict) else None
+    if data['type'] == 'exercise' and check_type == 'pytest':
+        return pytest_spec(data, path)
     is_dom = data['type'] == 'exercise' and check_type == 'dom'
     is_state = data['type'] == 'exercise' and check_type == 'state'
     if is_dom:

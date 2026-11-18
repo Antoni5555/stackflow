@@ -1,7 +1,7 @@
 // Web Worker с Python (Pyodide), на страницах Django — ещё и Django. Код ученика выполняется здесь, а не на странице:
 // даже бесконечный цикл не замораживает интерфейс — страница просто перезапустит воркер.
 //
-// Сообщения от страницы: { id, action: 'run' | 'check' | 'predict', ...данные }
+// Сообщения от страницы: { id, action: 'run' | 'tests' | 'check' | 'pytestCheck' | 'predict' | …, ...данные }
 // Ответ:                 { id, ok: true, result } или { id, ok: false, error }
 // После загрузки:        { type: 'ready' } или { type: 'failed', error }
 
@@ -74,12 +74,20 @@ function toJs(proxy) {
 
 // База часовых поясов для zoneinfo (~200 КБ) — грузим, только если код её использует
 let tzdataLoaded = false;
+// pytest с зависимостями (~1,4 МБ) — для запуска тестов ученика или если код его импортирует
+const PYTEST_ACTIONS = new Set(['tests', 'pytestCheck']);
+let pytestLoaded = false;
 
 async function loadExtraPackages(data) {
-  const text = [data.code, data.inputs, JSON.stringify(data.task || '')].join('\n');
+  const text = [data.code, data.inputs, JSON.stringify(data.task || ''), JSON.stringify(data.files || '')]
+    .join('\n');
   if (!tzdataLoaded && text.includes('zoneinfo')) {
     await self.pyodide.loadPackage('tzdata');
     tzdataLoaded = true;
+  }
+  if (!pytestLoaded && (PYTEST_ACTIONS.has(data.action) || text.includes('pytest'))) {
+    await self.pyodide.loadPackage('pytest');
+    pytestLoaded = true;
   }
 }
 
@@ -94,6 +102,19 @@ const actions = {
     }
   },
   predict: ({ code, answer }) => toJs(runner.check_predict(code, answer)),
+  /** Песочница, «Запустить тесты»: код — test_main.py, вывод pytest. */
+  tests: ({ code }) => toJs(runner.run_sandbox_tests(code)),
+  /** Задача «напишите тесты»: файл тестов ученика на коде задачи и на сломанных версиях. */
+  pytestCheck: ({ files, testFile, mutants }) => {
+    const pyFiles = self.pyodide.toPy(files);
+    const pyMutants = self.pyodide.toPy(mutants);
+    try {
+      return toJs(runner.check_tests(pyFiles, testFile, pyMutants));
+    } finally {
+      pyFiles.destroy();
+      pyMutants.destroy();
+    }
+  },
   /** Django: { files, setup, requests, orm } → ответы, SQL, модели (engines/django/runner.py). */
   django: ({ files, setup, requests, orm, strictSetup = true, settings = null }) => {
     const pyFiles = self.pyodide.toPy(files);

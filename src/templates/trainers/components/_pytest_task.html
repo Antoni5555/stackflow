@@ -1,0 +1,22 @@
+{% comment %} Python «напишите тесты» (check.type: pytest): код задачи на вкладках — только
+   чтение, ученик пишет файл тестов (последняя вкладка). «Запустить тесты» — pytest на коде
+   задачи, «Проверить» — ещё и на «сломанных» версиях. Черновик тестов — в localStorage.
+   JS — pages/pytest-exercise.js. {% endcomment %}
+<div class="workspace">
+  <div class="tabs" role="tablist">
+    {% for name in exercise.spec.file_names %}
+      <button type="button" class="tab tab--static{% if forloop.last %} tab--active{% endif %}" role="tab" data-file="{{ name }}"{% if not forloop.last %} title="Код задачи — только для чтения"{% endif %}>{{ name }}</button>
+    {% endfor %}
+    {% include 'trainers/components/_engine_status.html' %}
+  </div>
+  <div class="editor">
+    <div class="editor__gutter" aria-hidden="true"></div>
+    <textarea class="editor__code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Текст файла"></textarea>
+  </div>
+  <div class="toolbar">
+    <button type="button" class="btn btn--accent" data-action="run" disabled>Запустить тесты <kbd>Ctrl ↵</kbd></button>
+    <button type="button" class="btn btn--ink" data-action="check" disabled>Проверить</button>
+    <button type="button" class="btn btn--ghost" data-action="reset">Сбросить</button>
+  </div>
+</div>
+<p class="muted small">Тесты запускает pytest на коде задачи. Код задачи менять нельзя — пишите только {{ exercise.spec.test_file }}.</p>

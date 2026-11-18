@@ -544,3 +544,48 @@ def test_invalid_django_exercise_is_reported(content_dir, rest, message):
 
     with pytest.raises(ContentError, match=message):
         ContentLoader(content_dir).load()
+
+
+PYTEST_TASK = {
+    'type': 'exercise',
+    'files': {
+        'cart.py': 'def total(p):\n    return sum(p)\n',
+        'test_cart.py': 'from cart import total\n',
+    },
+    'solution': {'test_cart.py': 'def test_total():\n    assert total([1]) == 1\n'},
+    'check': {'type': 'pytest', 'mutants': [
+        {'files': {'cart.py': 'def total(p):\n    return 0\n'}, 'fail': 'F'},
+    ]},
+    'hints': ['Проверьте **пустую** корзину'],
+}
+
+
+def test_pytest_exercise_spec():
+    from apps.courses.services.content_loader import exercise_spec
+
+    spec = exercise_spec(PYTEST_TASK, 'task.yaml', engine='python')
+
+    assert spec['test_file'] == 'test_cart.py'
+    # файл тестов ученика — последней вкладкой
+    assert spec['file_names'] == ['cart.py', 'test_cart.py']
+    assert spec['check'] == PYTEST_TASK['check']
+    assert spec['hints'] == ['Проверьте <strong>пустую</strong> корзину']
+
+
+@pytest.mark.parametrize('change, message', [
+    ({'solution': {'cart_test.py': 'x'}}, 'нужен файл test_….py'),
+    ({'solution': {'test_a.py': 'x', 'test_b.py': 'y'}}, 'один файл'),
+    ({'check': {'type': 'pytest'}}, 'type pytest и mutants'),
+    ({'check': {'type': 'pytest', 'mutants': []}}, 'непустой список'),
+    ({'check': {'type': 'pytest',
+                'mutants': [{'files': {'other.py': 'x'}, 'fail': 'F'}]}},
+     'other.py — не код задачи'),
+    ({'check': {'type': 'pytest',
+                'mutants': [{'files': {'test_cart.py': 'x'}, 'fail': 'F'}]}},
+     'test_cart.py — не код задачи'),
+])
+def test_invalid_pytest_exercise_is_reported(change, message):
+    from apps.courses.services.content_loader import exercise_spec
+
+    with pytest.raises(ContentError, match=message):
+        exercise_spec({**PYTEST_TASK, **change}, 'task.yaml', engine='python')
