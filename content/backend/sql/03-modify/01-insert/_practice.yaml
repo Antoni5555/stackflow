@@ -1,0 +1,95 @@
+- title: "Новый тег"
+  text: |
+    Добавьте тег «эко» и выведите его `id` и `name`. Изменения сохраняются в базе песочницы; вернуть учебные данные — кнопка «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    INSERT INTO tags (name)
+    VALUES ('эко')
+    RETURNING id, name;
+    ```
+    Результат:
+    ```
+     id | name
+    ----+------
+      7 | эко
+    (1 row)
+
+    INSERT 0 1
+    ```
+    `id` выдала база — следующий номер счётчика.
+- title: "Товар со значениями по умолчанию"
+  text: |
+    Добавьте в категорию «Книги» (9) товар «Книга «Django изнутри»» по цене 2290, не указывая остаток. Выведите `id`, `stock` и `attributes` новой строки.
+  answer: |
+    Ответ:
+    ```sql
+    INSERT INTO products (category_id, name, price)
+    VALUES (9, 'Книга «Django изнутри»', 2290)
+    RETURNING id, stock, attributes;
+    ```
+    Результат:
+    ```
+     id | stock | attributes
+    ----+-------+------------
+     23 |     0 | {}
+    (1 row)
+
+    INSERT 0 1
+    ```
+    Пропущенные столбцы получили `DEFAULT`: остаток 0, характеристики — пустой объект.
+- title: "Несколько строк"
+  text: |
+    Добавьте одной командой двух покупателей: `oleg@example.com` (Олег, Сочи) и `maria@example.com` (Мария, без города). Выведите их `id`, `email` и `city`.
+  answer: |
+    Ответ:
+    ```sql
+    INSERT INTO users (email, name, city)
+    VALUES ('oleg@example.com', 'Олег', 'Сочи'),
+           ('maria@example.com', 'Мария', NULL)
+    RETURNING id, email, city;
+    ```
+    Результат:
+    ```
+     id |       email       | city
+    ----+-------------------+------
+     14 | oleg@example.com  | Сочи
+     15 | maria@example.com |
+    (2 rows)
+
+    INSERT 0 2
+    ```
+    Строки — через запятую после `VALUES`; NULL пишется без кавычек.
+- title: "Заказ и позиция"
+  text: |
+    Создайте заказ покупателя 13 (статус и время — по умолчанию) и позицию в нём: товар 20, 1 шт., цена 1590.00. Номер заказа узнайте через `RETURNING`.
+  hint: |
+    Сначала заказ с `RETURNING id`, потом позиция с этим номером.
+  answer: |
+    Ответ:
+    ```sql
+    INSERT INTO orders (user_id)
+    VALUES (13)
+    RETURNING id, status;
+
+    INSERT INTO order_items
+        (order_id, product_id, quantity, price)
+    VALUES (35, 20, 1, 1590.00)
+    RETURNING id, order_id;
+    ```
+    Результат:
+    ```
+     id | status
+    ----+--------
+     35 | new
+    (1 row)
+
+    INSERT 0 1
+     id | order_id
+    ----+----------
+     59 |       35
+    (1 row)
+
+    INSERT 0 1
+    ```
+    Номер нового заказа — 35 на учебных данных; если вы уже добавляли заказы в песочнице, он будет больше.

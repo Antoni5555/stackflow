@@ -1,0 +1,73 @@
+- title: "Сертификаты с проверками"
+  text: |
+    Создайте таблицу `gift_cards`: `id` — ключ; `code` — обязательный и уникальный; `amount` — обязательный номинал больше нуля. Добавьте сертификат `GIFT-1000` на 1000 ₽ и попробуйте добавить сертификат с нулевым номиналом. Таблица остаётся в базе песочницы; убрать её — `DROP TABLE`, вернуть всё как было — «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE gift_cards (
+        id     integer GENERATED ALWAYS AS IDENTITY
+               PRIMARY KEY,
+        code   text NOT NULL UNIQUE,
+        amount numeric(10,2) NOT NULL
+               CHECK (amount > 0)
+    );
+
+    INSERT INTO gift_cards (code, amount)
+    VALUES ('GIFT-1000', 1000);
+
+    INSERT INTO gift_cards (code, amount)
+    VALUES ('GIFT-0', 0);
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    INSERT 0 1
+    ERROR:  new row for relation "gift_cards" violates check constraint "gift_cards_amount_check"
+    DETAIL:  Failing row contains (2, GIFT-0, 0.00).
+    ```
+    Ошибка называет нарушенное ограничение: `gift_cards_amount_check`.
+- title: "Пара уникальна"
+  text: |
+    Создайте таблицу `wishlist` (`user_id`, `product_id` — обязательные целые, ключ — пара). Добавьте пару (1, 4), потом ещё раз её же.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE wishlist (
+        user_id    integer NOT NULL,
+        product_id integer NOT NULL,
+        PRIMARY KEY (user_id, product_id)
+    );
+
+    INSERT INTO wishlist VALUES (1, 4);
+    INSERT INTO wishlist VALUES (1, 4);
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    INSERT 0 1
+    ERROR:  duplicate key value violates unique constraint "wishlist_pkey"
+    DETAIL:  Key (user_id, product_id)=(1, 4) already exists.
+    ```
+    Составной ключ запрещает повтор пары, но не повтор `user_id` с другим товаром.
+- title: "Проверка двух столбцов"
+  text: |
+    Создайте таблицу `cards` с номиналом `amount` и остатком `balance` (оба `numeric(10,2)`, обязательные) и именованной проверкой `cards_balance_le_amount`: остаток не больше номинала. Добавьте карту с остатком больше номинала.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE cards (
+        amount  numeric(10,2) NOT NULL,
+        balance numeric(10,2) NOT NULL,
+        CONSTRAINT cards_balance_le_amount
+            CHECK (balance <= amount)
+    );
+
+    INSERT INTO cards VALUES (1000, 1200);
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    ERROR:  new row for relation "cards" violates check constraint "cards_balance_le_amount"
+    DETAIL:  Failing row contains (1000.00, 1200.00).
+    ```
+    Своё имя ограничения в ошибке объясняет, что не так, лучше, чем `cards_check`.

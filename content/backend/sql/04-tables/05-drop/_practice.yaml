@@ -1,0 +1,70 @@
+- title: "Временная таблица"
+  text: |
+    Создайте таблицу `import_log` с одним текстовым столбцом `line`, удалите её, а потом выполните удаление ещё раз так, чтобы не было ошибки.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE import_log (line text);
+    DROP TABLE import_log;
+    DROP TABLE IF EXISTS import_log;
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    DROP TABLE
+    NOTICE:  table "import_log" does not exist, skipping
+    DROP TABLE
+    ```
+    `IF EXISTS` превращает ошибку об отсутствующей таблице в замечание.
+- title: "Связанные таблицы"
+  text: |
+    Создайте `brands` (`id` — ключ, `name`) и `brand_items` (`brand_id` — ссылка на `brands`, `title`). Удалите обе таблицы одной командой.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE brands (
+        id   integer GENERATED ALWAYS AS IDENTITY
+             PRIMARY KEY,
+        name text NOT NULL
+    );
+    CREATE TABLE brand_items (
+        brand_id integer REFERENCES brands (id),
+        title    text
+    );
+
+    DROP TABLE brand_items, brands;
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    CREATE TABLE
+    DROP TABLE
+    ```
+    Одной командой порядок не важен; по отдельности — сначала `brand_items`.
+- title: "Не в том порядке"
+  text: |
+    Снова создайте `brands` и `brand_items` и попробуйте удалить сначала `brands`.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE brands (
+        id   integer GENERATED ALWAYS AS IDENTITY
+             PRIMARY KEY,
+        name text NOT NULL
+    );
+    CREATE TABLE brand_items (
+        brand_id integer REFERENCES brands (id),
+        title    text
+    );
+
+    DROP TABLE brands;
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    CREATE TABLE
+    ERROR:  cannot drop table brands because other objects depend on it
+    DETAIL:  constraint brand_items_brand_id_fkey on table brand_items depends on table brands
+    HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+    ```
+    На `brands` ссылается внешний ключ — удалите сначала `brand_items` или используйте `CASCADE`, помня, что он удаляет внешние ключи.

@@ -1,0 +1,84 @@
+- title: "Избранное со ссылками"
+  text: |
+    Создайте `favorites`: `user_id` ссылается на `users`, `product_id` — на `products`, оба обязательные, при удалении покупателя или товара строки удаляются; ключ — пара. Добавьте (1, 4) и (1, 999). Таблица остаётся в базе песочницы; убрать её — `DROP TABLE`, вернуть всё как было — «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE favorites (
+        user_id    integer NOT NULL
+            REFERENCES users (id) ON DELETE CASCADE,
+        product_id integer NOT NULL
+            REFERENCES products (id) ON DELETE CASCADE,
+        PRIMARY KEY (user_id, product_id)
+    );
+
+    INSERT INTO favorites VALUES (1, 4);
+    INSERT INTO favorites VALUES (1, 999);
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    INSERT 0 1
+    ERROR:  insert or update on table "favorites" violates foreign key constraint "favorites_product_id_fkey"
+    DETAIL:  Key (product_id)=(999) is not present in table "products".
+    ```
+    Товара 999 нет — внешний ключ не пускает ссылку в никуда.
+- title: "Адреса доставки"
+  text: |
+    Создайте `addresses`: `id` — ключ, `user_id` — обязательная ссылка на `users` с каскадным удалением, `address` — текст. Добавьте адрес покупателю 13, удалите покупателя 13 и проверьте, сколько адресов осталось.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE addresses (
+        id      integer GENERATED ALWAYS AS IDENTITY
+                PRIMARY KEY,
+        user_id integer NOT NULL
+                REFERENCES users (id) ON DELETE CASCADE,
+        address text NOT NULL
+    );
+
+    INSERT INTO addresses (user_id, address)
+    VALUES (13, 'Краснодар, ул. Красная, 1');
+
+    DELETE FROM users WHERE id = 13;
+
+    SELECT count(*) AS left_rows
+    FROM addresses;
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    INSERT 0 1
+    DELETE 1
+     left_rows
+    -----------
+             0
+    (1 row)
+    ```
+    У Нины нет заказов, поэтому её можно удалить, а `CASCADE` убрал и адрес.
+- title: "Порядок создания"
+  text: |
+    Создайте поставщиков `suppliers` (`id`, `name`) и поставки `supplies` (`id`, `supplier_id` — ссылка на поставщика, `quantity`). В каком порядке создавать?
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE suppliers (
+        id   integer GENERATED ALWAYS AS IDENTITY
+             PRIMARY KEY,
+        name text NOT NULL
+    );
+
+    CREATE TABLE supplies (
+        id          integer GENERATED ALWAYS AS IDENTITY
+                    PRIMARY KEY,
+        supplier_id integer NOT NULL
+                    REFERENCES suppliers (id),
+        quantity    integer NOT NULL
+    );
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    CREATE TABLE
+    ```
+    Сначала таблица, на которую ссылаются, потом ссылающаяся.

@@ -1,0 +1,82 @@
+- title: "Зоны доставки"
+  text: |
+    Создайте таблицу `delivery_zones`: `id` — ключ, номера выдаёт база; `city` — текст; `price` — цена доставки в рублях с копейками; `days` — срок в днях. Все поля обязательные. Добавьте зону «Казань», 350 ₽, 3 дня и выведите её. Таблица остаётся в базе песочницы; убрать её — `DROP TABLE`, вернуть всё как было — «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE delivery_zones (
+        id    integer GENERATED ALWAYS AS IDENTITY
+              PRIMARY KEY,
+        city  text          NOT NULL,
+        price numeric(10,2) NOT NULL,
+        days  integer       NOT NULL
+    );
+
+    INSERT INTO delivery_zones (city, price, days)
+    VALUES ('Казань', 350, 3)
+    RETURNING id, city, price, days;
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+     id |  city  | price  | days
+    ----+--------+--------+------
+      1 | Казань | 350.00 |    3
+    (1 row)
+
+    INSERT 0 1
+    ```
+    Деньги — `numeric(10,2)`, целые дни — `integer`.
+- title: "Подписка на рассылку"
+  text: |
+    Создайте таблицу `newsletter`: `id` — ключ; `email` — обязательный текст; `subscribed_at` — момент подписки, по умолчанию текущий; `is_active` — флаг, по умолчанию `true`. Добавьте адрес `buyer@example.com` и выведите `id`, `email`, `is_active`.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE newsletter (
+        id            integer GENERATED ALWAYS AS IDENTITY
+                      PRIMARY KEY,
+        email         text        NOT NULL,
+        subscribed_at timestamptz NOT NULL DEFAULT now(),
+        is_active     boolean     NOT NULL DEFAULT true
+    );
+
+    INSERT INTO newsletter (email)
+    VALUES ('buyer@example.com')
+    RETURNING id, email, is_active;
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+     id |       email       | is_active
+    ----+-------------------+-----------
+      1 | buyer@example.com | t
+    (1 row)
+
+    INSERT 0 1
+    ```
+    Момент события — `timestamptz`; `DEFAULT` заполнил поля, которых нет в `INSERT`.
+- title: "Коды стран"
+  text: |
+    Создайте таблицу `countries` с ключом `code` — ровно два символа максимум (`RU`, `KZ`) — и обязательным названием `name`. Добавьте Россию и Казахстан, затем попробуйте добавить код `RUS`.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE countries (
+        code varchar(2) PRIMARY KEY,
+        name text       NOT NULL
+    );
+
+    INSERT INTO countries (code, name)
+    VALUES ('RU', 'Россия'), ('KZ', 'Казахстан');
+
+    INSERT INTO countries (code, name)
+    VALUES ('RUS', 'Россия');
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    INSERT 0 2
+    ERROR:  value too long for type character varying(2)
+    ```
+    `varchar(n)` не обрезает длинную строку, а отклоняет её. Ключом может быть и текст, если он по смыслу уникален.

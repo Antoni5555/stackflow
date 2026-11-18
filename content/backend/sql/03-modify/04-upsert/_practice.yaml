@@ -1,0 +1,67 @@
+- title: "Тег без дубля"
+  text: |
+    Добавьте товару 4 теги «хит» (1) и «скидка» (3) так, чтобы уже существующая пара не вызвала ошибку. Выведите добавленные строки. Изменения сохраняются в базе песочницы; вернуть учебные данные — кнопка «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    INSERT INTO product_tags (product_id, tag_id)
+    VALUES (4, 1), (4, 3)
+    ON CONFLICT DO NOTHING
+    RETURNING product_id, tag_id;
+    ```
+    Результат:
+    ```
+     product_id | tag_id
+    ------------+--------
+              4 |      3
+    (1 row)
+
+    INSERT 0 1
+    ```
+    Пара (4, 1) уже была — она пропущена, добавилась только (4, 3).
+- title: "Телефон в профиле"
+  text: |
+    Запишите покупателю 8 телефон `+79008881111`: профиль у него есть, телефон заменяется. Выведите `user_id` и `phone`.
+  answer: |
+    Ответ:
+    ```sql
+    INSERT INTO profiles (user_id, phone)
+    VALUES (8, '+79008881111')
+    ON CONFLICT (user_id)
+    DO UPDATE SET phone = EXCLUDED.phone
+    RETURNING user_id, phone;
+    ```
+    Результат:
+    ```
+     user_id |    phone
+    ---------+--------------
+           8 | +79008881111
+    (1 row)
+
+    INSERT 0 1
+    ```
+    `EXCLUDED.phone` — значение из `VALUES`.
+- title: "Ещё один в корзину"
+  text: |
+    Добавьте в заказ 34 ещё один смартфон (товар 10, цена 39990.00): если позиция уже есть, количество должно увеличиться. Выведите `order_id`, `product_id` и `quantity`.
+  answer: |
+    Ответ:
+    ```sql
+    INSERT INTO order_items
+        (order_id, product_id, quantity, price)
+    VALUES (34, 10, 1, 39990.00)
+    ON CONFLICT (order_id, product_id)
+    DO UPDATE SET quantity =
+        order_items.quantity + EXCLUDED.quantity
+    RETURNING order_id, product_id, quantity;
+    ```
+    Результат:
+    ```
+     order_id | product_id | quantity
+    ----------+------------+----------
+           34 |         10 |        2
+    (1 row)
+
+    INSERT 0 1
+    ```
+    Старое значение — `order_items.quantity`, новое — `EXCLUDED.quantity`.

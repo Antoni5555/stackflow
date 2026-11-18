@@ -1,0 +1,110 @@
+- title: "Коды строчными"
+  text: |
+    Выведите коды промокодов строчными буквами в колонке `code_lower`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT lower(code) AS code_lower
+    FROM promo_codes;
+    ```
+    Результат:
+    ```
+     code_lower
+    -------------
+     welcome10
+     summer25
+     vip15
+     blackfriday
+     newyear20
+    (5 rows)
+    ```
+    `lower` меняет только результат, в таблице коды остаются заглавными.
+- title: "Длина названия"
+  text: |
+    Выведите `name` и длину названия `name_length` для тегов.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT name, length(name) AS name_length
+    FROM tags;
+    ```
+    Результат:
+    ```
+         name     | name_length
+    --------------+-------------
+     хит          |           3
+     новинка      |           7
+     скидка       |           6
+     подарок      |           7
+     беспроводное |          12
+     распродажа   |          10
+    (6 rows)
+    ```
+    `length` считает символы, а не байты: кириллица — по одному.
+- title: "Цена в тысячах"
+  text: |
+    Выведите `name` и цену в тысячах рублей, округлённую до одного знака, в колонке `price_k` для товаров категории 3.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT name, round(price / 1000, 1) AS price_k
+    FROM products
+    WHERE category_id = 3;
+    ```
+    Результат:
+    ```
+             name         | price_k
+    ----------------------+---------
+     Ноутбук Aster 14     |    65.0
+     Ноутбук Aster 16 Pro |    90.0
+     Ноутбук Nimbus Air   |    55.0
+    (3 rows)
+    ```
+    `price` — `numeric`, поэтому деление дробное; целочисленным оно было бы у двух целых чисел.
+- title: "Размер скидки словами"
+  text: |
+    Выведите `code` промокодов и колонку `size`: `большая` для скидки от 20 %, иначе `обычная`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT code,
+           CASE
+               WHEN discount_percent >= 20 THEN 'большая'
+               ELSE 'обычная'
+           END AS size
+    FROM promo_codes;
+    ```
+    Результат:
+    ```
+        code     |  size
+    -------------+---------
+     WELCOME10   | обычная
+     SUMMER25    | большая
+     VIP15       | обычная
+     BLACKFRIDAY | большая
+     NEWYEAR20   | большая
+    (5 rows)
+    ```
+    `CASE` проверяет ветки по порядку; `ELSE` — всё остальное.
+- title: "Месяц регистрации"
+  text: |
+    Выведите `id` покупателей и месяц регистрации (первый день месяца, датой) в колонке `month` для покупателей 1–4.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT id,
+           date_trunc('month', created_at)::date AS month
+    FROM users
+    WHERE id <= 4;
+    ```
+    Результат:
+    ```
+     id |   month
+    ----+------------
+      1 | 2025-06-01
+      2 | 2025-06-01
+      3 | 2025-07-01
+      4 | 2025-07-01
+    (4 rows)
+    ```
+    `date_trunc` обрезает момент до начала месяца, `::date` убирает время.

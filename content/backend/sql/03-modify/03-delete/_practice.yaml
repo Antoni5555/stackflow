@@ -1,0 +1,84 @@
+- title: "Удалить тег"
+  text: |
+    Удалите тег «распродажа» (у него нет товаров) и выведите его `id` и `name`. Изменения сохраняются в базе песочницы; вернуть учебные данные — кнопка «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    DELETE FROM tags
+    WHERE name = 'распродажа'
+    RETURNING id, name;
+    ```
+    Результат:
+    ```
+     id |    name
+    ----+------------
+      6 | распродажа
+    (1 row)
+
+    DELETE 1
+    ```
+    `RETURNING` показывает удалённые строки.
+- title: "Отзывы без текста"
+  text: |
+    Удалите отзывы покупателя 1 без текста и выведите `id` удалённых отзывов.
+  answer: |
+    Ответ:
+    ```sql
+    DELETE FROM reviews
+    WHERE user_id = 1 AND text IS NULL
+    RETURNING id;
+    ```
+    Результат:
+    ```
+     id
+    ----
+      2
+     13
+    (2 rows)
+
+    DELETE 2
+    ```
+    Для пустого текста — `IS NULL`, как в `SELECT`.
+- title: "Каскад"
+  text: |
+    Удалите отменённый заказ 27 и проверьте, остались ли его позиции в `order_items`.
+  answer: |
+    Ответ:
+    ```sql
+    DELETE FROM orders
+    WHERE id = 27
+    RETURNING id, status;
+
+    SELECT count(*) AS items_left
+    FROM order_items
+    WHERE order_id = 27;
+    ```
+    Результат:
+    ```
+     id |  status
+    ----+-----------
+     27 | cancelled
+    (1 row)
+
+    DELETE 1
+     items_left
+    ------------
+              0
+    (1 row)
+    ```
+    Позиции удалились вместе с заказом: `order_items.order_id` объявлен `ON DELETE CASCADE`. `count(*)` — число строк, подробно — в разделе «Агрегация».
+- title: "Нельзя удалить"
+  text: |
+    Попробуйте удалить товар 1 — его покупали. Прочитайте ошибку: какая таблица мешает?
+  answer: |
+    Ответ:
+    ```sql
+    DELETE FROM products
+    WHERE id = 1;
+    ```
+    Результат:
+    ```
+    ERROR:  update or delete on table "products" violates foreign key constraint "order_items_product_id_fkey" on table "order_items"
+    DETAIL:  Key (id)=(1) is still referenced from table "order_items".
+    ```
+    На товар ссылаются позиции заказов с `RESTRICT` — проданный товар не удаляют, а снимают с продажи.

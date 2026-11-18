@@ -1,0 +1,88 @@
+- title: "Признак видимости"
+  text: |
+    Добавьте товарам обязательный столбец `is_visible` со значением по умолчанию `true` и выведите его у товаров 1 и 2. Таблица остаётся в базе песочницы; убрать её — `DROP TABLE`, вернуть всё как было — «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    ALTER TABLE products
+    ADD COLUMN is_visible boolean NOT NULL DEFAULT true;
+
+    SELECT id, is_visible
+    FROM products
+    WHERE id IN (1, 2);
+    ```
+    Результат:
+    ```
+    ALTER TABLE
+     id | is_visible
+    ----+------------
+      1 | t
+      2 | t
+    (2 rows)
+    ```
+    Существующие строки получили значение по умолчанию.
+- title: "Переименовать столбец"
+  text: |
+    Переименуйте у тегов столбец `name` в `title` и выведите первые два тега по `id`.
+  answer: |
+    Ответ:
+    ```sql
+    ALTER TABLE tags
+    RENAME COLUMN name TO title;
+
+    SELECT id, title
+    FROM tags
+    ORDER BY id
+    LIMIT 2;
+    ```
+    Результат:
+    ```
+    ALTER TABLE
+     id |  title
+    ----+---------
+      1 | хит
+      2 | новинка
+    (2 rows)
+    ```
+    После переименования старое имя в запросах больше не работает.
+- title: "Правило для старых строк"
+  text: |
+    Добавьте тегам проверку `tags_lowercase`: название записано строчными буквами. Затем попробуйте добавить тег «Хит».
+  hint: |
+    Если вы выполнили прошлое упражнение, столбец называется `title`; иначе — `name`.
+  answer: |
+    Ответ:
+    ```sql
+    ALTER TABLE tags
+    ADD CONSTRAINT tags_lowercase
+        CHECK (name = lower(name));
+
+    INSERT INTO tags (name) VALUES ('Хит');
+    ```
+    Результат:
+    ```
+    ALTER TABLE
+    ERROR:  new row for relation "tags" violates check constraint "tags_lowercase"
+    DETAIL:  Failing row contains (7, Хит).
+    ```
+    Ограничение добавилось, потому что все существующие теги строчные; новый «Хит» оно не пустило.
+- title: "Обязательный вес"
+  text: |
+    Добавьте товарам столбец `weight_g` (целые граммы), заполните его 500 для всех товаров и сделайте обязательным.
+  answer: |
+    Ответ:
+    ```sql
+    ALTER TABLE products ADD COLUMN weight_g integer;
+
+    UPDATE products SET weight_g = 500;
+
+    ALTER TABLE products
+    ALTER COLUMN weight_g SET NOT NULL;
+    ```
+    Результат:
+    ```
+    ALTER TABLE
+    UPDATE 22
+    ALTER TABLE
+    ```
+    Три шага: столбец без `NOT NULL`, заполнение, `SET NOT NULL`.

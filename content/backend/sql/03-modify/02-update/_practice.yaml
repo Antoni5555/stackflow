@@ -1,0 +1,88 @@
+- title: "Поставка мышей"
+  text: |
+    На склад пришло 10 беспроводных мышей (товар 4). Увеличьте остаток и выведите `id` и новый `stock`. Изменения сохраняются в базе песочницы; вернуть учебные данные — кнопка «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    UPDATE products
+    SET stock = stock + 10
+    WHERE id = 4
+    RETURNING id, stock;
+    ```
+    Результат:
+    ```
+     id | stock
+    ----+-------
+      4 |    22
+    (1 row)
+
+    UPDATE 1
+    ```
+    Новое значение считается от старого: `stock + 10`.
+- title: "Распродажа футболок"
+  text: |
+    Снизьте цены футболок (категория 7) на 15 % и выведите `id` и новую `price`.
+  answer: |
+    Ответ:
+    ```sql
+    UPDATE products
+    SET price = price * 0.85
+    WHERE category_id = 7
+    RETURNING id, price;
+    ```
+    Результат:
+    ```
+     id |  price
+    ----+---------
+     15 | 1096.50
+     16 | 1096.50
+     17 | 1521.50
+     18 | 1861.50
+    (4 rows)
+
+    UPDATE 4
+    ```
+    `numeric(10,2)` округлил результат до копеек.
+- title: "Переименовать тег"
+  text: |
+    Переименуйте тег «распродажа» в «sale» и проверьте результат — выведите `id` и `name`.
+  answer: |
+    Ответ:
+    ```sql
+    UPDATE tags
+    SET name = 'sale'
+    WHERE name = 'распродажа'
+    RETURNING id, name;
+    ```
+    Результат:
+    ```
+     id | name
+    ----+------
+      6 | sale
+    (1 row)
+
+    UPDATE 1
+    ```
+    Найти строку можно по любому условию, не только по `id`.
+- title: "Отключить просроченные"
+  text: |
+    Выключите (`is_active = false`) промокоды, срок которых закончился до 1 января 2026, и выведите их коды.
+  answer: |
+    Ответ:
+    ```sql
+    UPDATE promo_codes
+    SET is_active = false
+    WHERE valid_until < '2026-01-01'
+    RETURNING code;
+    ```
+    Результат:
+    ```
+        code
+    -------------
+     SUMMER25
+     BLACKFRIDAY
+    (2 rows)
+
+    UPDATE 2
+    ```
+    `UPDATE` с `WHERE` по дате; сначала полезно выполнить `SELECT` с тем же условием.
