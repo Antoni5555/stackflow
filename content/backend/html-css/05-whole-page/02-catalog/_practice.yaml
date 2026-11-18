@@ -1,0 +1,103 @@
+- title: "Каталог списком"
+  text: |
+    Сверстайте каталог из трёх карточек списком: без маркеров и отступов списка, в три колонки с промежутком 16px.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <ul class="catalog">
+      <li>
+        <article class="card">Ноутбук Aster 14</article>
+      </li>
+      <li>
+        <article class="card">Беспроводная мышь</article>
+      </li>
+      <li>
+        <article class="card">Коврик для мыши</article>
+      </li>
+    </ul>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .catalog {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    ```
+    По смыслу это список — `ul`. Маркеры и отступ слева — стиль списка по умолчанию, их убирает CSS.
+- title: "Кнопки на одной линии"
+  text: |
+    У карточек разная длина названия, и кнопки «В корзину» стоят на разной высоте. Прижмите кнопку к низу карточки.
+    ```html
+    <ul class="catalog">
+      <li class="card">
+        <h2>Мышь</h2>
+        <button>В корзину</button>
+      </li>
+      <li class="card">
+        <h2>Механическая клавиатура с подсветкой</h2>
+        <button>В корзину</button>
+      </li>
+    </ul>
+    ```
+    Стили каталога:
+    ```css
+    .catalog {
+      list-style: none;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(2, 200px);
+      gap: 16px;
+    }
+    ```
+  hint: |
+    Карточку — в колонку, кнопке — автоматический отступ сверху.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <ul class="catalog">
+      <li class="card">
+        <h2>Мышь</h2>
+        <button>В корзину</button>
+      </li>
+      <li class="card">
+        <h2>Механическая клавиатура с подсветкой</h2>
+        <button>В корзину</button>
+      </li>
+    </ul>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .catalog {
+      list-style: none;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(2, 200px);
+      gap: 16px;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card button {
+      margin-top: auto;
+    }
+    ```
+    Ячейки сетки в одном ряду одной высоты, а `margin-top: auto` забирает свободное место над кнопкой — кнопки встали на одну линию.
+- title: "Ничего не найдено"
+  text: |
+    Сверстайте пустое состояние каталога: сообщение «По запросу «самовар» ничего не нашлось» и ссылку «Весь каталог» на `/catalog/`.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <section class="catalog-empty">
+      <p>По запросу «самовар» ничего не нашлось.</p>
+      <a href="/catalog/">Весь каталог</a>
+    </section>
+    ```
+    Пустой экран выглядит как ошибка сайта; сообщение и выход — нет. В Django этот кусок выводит `{% empty %}` цикла.

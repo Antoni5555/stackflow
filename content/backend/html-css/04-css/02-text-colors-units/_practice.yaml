@@ -1,0 +1,108 @@
+- title: "Читаемый текст"
+  text: |
+    Настройте текст страницы: шрифт `system-ui, sans-serif`, размер `1rem`, высота строки `1.5`, цвет `#222`.
+    ```html
+    <p>Доставим заказ за 1–2 дня по Москве и области.</p>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <p>Доставим заказ за 1–2 дня по Москве и области.</p>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    body {
+      font-family: system-ui, sans-serif;
+      font-size: 1rem;
+      line-height: 1.5;
+      color: #222;
+    }
+    ```
+    В DevTools (Computed) у абзаца — `font-size: 16px` и `line-height: 24px`: `1rem` — 16px по умолчанию, `1.5` — полтора размера шрифта.
+- title: "Размеры в rem"
+  text: |
+    Заголовок карточки — `1.5rem`, подпись с артикулом — `0.875rem`. Сколько это в пикселях?
+    ```html
+    <h2 class="title">Беспроводная мышь</h2>
+    <p class="sku">Артикул 000004</p>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <h2 class="title">Беспроводная мышь</h2>
+    <p class="sku">Артикул 000004</p>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .title {
+      font-size: 1.5rem;
+    }
+
+    .sku {
+      font-size: 0.875rem;
+    }
+    ```
+    24px и 14px при шрифте браузера 16px. Покупатель увеличит шрифт в настройках — оба размера вырастут вместе с ним.
+- title: "Акцент для распродажи"
+  text: |
+    Цвет кнопок задан переменной `--accent: #2e7d32`. В блоке распродажи `.sale` кнопки должны стать красными `#c62828` — без нового правила для кнопок.
+    ```html
+    <button class="button">В корзину</button>
+    <section class="sale">
+      <h2>Распродажа</h2>
+      <button class="button">В корзину</button>
+    </section>
+    ```
+  hint: |
+    Переменные наследуются: переопределите её у блока.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <button class="button">В корзину</button>
+    <section class="sale">
+      <h2>Распродажа</h2>
+      <button class="button">В корзину</button>
+    </section>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    :root {
+      --accent: #2e7d32;
+    }
+
+    .button {
+      background-color: var(--accent);
+      color: #fff;
+    }
+
+    .sale {
+      --accent: #c62828;
+    }
+    ```
+    Новое значение `--accent` действует только внутри `.sale`. Так же устроены темы: переопределяют переменные, а не правила.
+- title: "Поле на половину формы"
+  text: |
+    Форма поиска шириной 600px; поле в ней — половина ширины формы.
+    ```html
+    <form class="search" action="/search/">
+      <input name="q">
+    </form>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form class="search" action="/search/">
+      <input name="q">
+    </form>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .search {
+      width: 600px;
+    }
+
+    .search input {
+      width: 50%;
+    }
+    ```
+    `%` считается от родителя: 50% от 600px — 300px. Поменяйте ширину формы — поле изменится вместе с ней.

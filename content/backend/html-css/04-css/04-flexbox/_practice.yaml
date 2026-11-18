@@ -1,0 +1,113 @@
+- title: "Меню в ряд"
+  text: |
+    Поставьте пункты меню в ряд с расстоянием 16px между ними.
+    ```html
+    <nav class="menu">
+      <a href="/">Главная</a>
+      <a href="/catalog/">Каталог</a>
+      <a href="/cart/">Корзина</a>
+    </nav>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <nav class="menu">
+      <a href="/">Главная</a>
+      <a href="/catalog/">Каталог</a>
+      <a href="/cart/">Корзина</a>
+    </nav>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .menu {
+      display: flex;
+      gap: 16px;
+    }
+    ```
+    `gap` — только между элементами, по краям меню отступа нет.
+- title: "Баннер по центру"
+  text: |
+    Текст баннера высотой 200px — точно по центру и по горизонтали, и по вертикали.
+    ```html
+    <section class="banner">
+      <p>Скидка 10% по промокоду WELCOME10</p>
+    </section>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <section class="banner">
+      <p>Скидка 10% по промокоду WELCOME10</p>
+    </section>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .banner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+      background-color: #f1f8e9;
+    }
+    ```
+    `justify-content` — по главной оси (горизонталь в ряду), `align-items` — по поперечной.
+- title: "Поиск на всю ширину"
+  text: |
+    В форме поиска поле занимает всё свободное место, а кнопка — сколько нужно её тексту; между ними 8px.
+    ```html
+    <form class="search" action="/search/">
+      <input name="q">
+      <button>Найти</button>
+    </form>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form class="search" action="/search/">
+      <input name="q">
+      <button>Найти</button>
+    </form>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .search {
+      display: flex;
+      gap: 8px;
+    }
+
+    .search input {
+      flex: 1;
+    }
+    ```
+    `flex: 1` отдаёт полю всё место, что осталось после кнопки.
+- title: "Цена справа"
+  text: |
+    В строке корзины название и количество — слева, цена — прижата к правому краю.
+    ```html
+    <div class="cart-row">
+      <span>Беспроводная мышь</span>
+      <span>× 2</span>
+      <span class="cart-row__price">2 998 ₽</span>
+    </div>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <div class="cart-row">
+      <span>Беспроводная мышь</span>
+      <span>× 2</span>
+      <span class="cart-row__price">2 998 ₽</span>
+    </div>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .cart-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .cart-row__price {
+      margin-left: auto;
+    }
+    ```
+    `margin-left: auto` забирает всё свободное место слева от цены. `space-between` здесь не подошёл бы: он развёл бы по краям и «× 2».

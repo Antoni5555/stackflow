@@ -1,0 +1,80 @@
+- title: "Общий head"
+  text: |
+    Напишите `index.html` каталога с полным общим `<head>`, который будет одинаков на всех страницах магазина: кодировка, `viewport`, заголовок вкладки «Каталог — Магазин», подключение `style.css`. В `<body>` — `h1` «Каталог».
+  answer: |
+    Ответ — файл `index.html`:
+    ```html
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport"
+            content="width=device-width, initial-scale=1">
+      <title>Каталог — Магазин</title>
+      <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+      <h1>Каталог</h1>
+    </body>
+    </html>
+    ```
+    В шаблонах Django всё, кроме `title` и `h1`, уедет в `base.html`; заголовок вкладки страница задаст своим блоком.
+- title: "Шапка магазина"
+  text: |
+    Сверстайте шапку для всех страниц: логотип-ссылка «Магазин» на `/` слева, меню «Каталог», «Доставка», «Корзина» справа (`/catalog/`, `/delivery/`, `/cart/`). Сейчас открыт каталог — отметьте это в меню.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <header class="header">
+      <a class="header__logo" href="/">Магазин</a>
+      <nav class="header__menu">
+        <a href="/catalog/" aria-current="page">Каталог</a>
+        <a href="/delivery/">Доставка</a>
+        <a href="/cart/">Корзина</a>
+      </nav>
+    </header>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header__menu {
+      display: flex;
+      gap: 16px;
+    }
+
+    .header__menu [aria-current="page"] {
+      font-weight: 700;
+    }
+    ```
+    Кто «текущий», в шаблоне решит переменная от view: шапка одна, а `aria-current` встаёт на нужную ссылку.
+- title: "Подвал"
+  text: |
+    Сверстайте подвал для всех страниц: ссылки «Доставка» и «О магазине» (`/delivery/`, `/about/`) в ряд и строка «© Магазин, 2026» под ними; текст подвала серый `#757575`.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <footer class="footer">
+      <nav class="footer__links">
+        <a href="/delivery/">Доставка</a>
+        <a href="/about/">О магазине</a>
+      </nav>
+      <p class="footer__copy">© Магазин, 2026</p>
+    </footer>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .footer {
+      color: #757575;
+    }
+
+    .footer__links {
+      display: flex;
+      gap: 16px;
+    }
+    ```
+    Ссылки остались синими: у ссылок свой цвет браузера, наследованный серый их не перекрасил. Подвал вместе с шапкой уедет в `base.html` и будет на всех страницах.

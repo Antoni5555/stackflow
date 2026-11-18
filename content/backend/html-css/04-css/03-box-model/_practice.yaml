@@ -1,0 +1,96 @@
+- title: "Отступы карточки"
+  text: |
+    У карточки: внутренний отступ 16px сверху и снизу, 24px слева и справа, рамка 1px `#ddd`, расстояние до следующей карточки — 24px.
+    ```html
+    <article class="card">Ноутбук Aster 14</article>
+    <article class="card">Ноутбук Nimbus Air</article>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <article class="card">Ноутбук Aster 14</article>
+    <article class="card">Ноутбук Nimbus Air</article>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .card {
+      padding: 16px 24px;
+      border: 1px solid #ddd;
+      margin-bottom: 24px;
+    }
+    ```
+    `padding` — внутри рамки (под фоном), `margin` — снаружи. Сокращение `16px 24px` — вертикаль и горизонталь.
+- title: "Карточка по центру"
+  text: |
+    Поставьте карточку шириной 320px по центру страницы.
+    ```html
+    <article class="card">Корзина пуста</article>
+    ```
+  hint: |
+    Блоку с заданной шириной хватит автоматических внешних отступов слева и справа.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <article class="card">Корзина пуста</article>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .card {
+      width: 320px;
+      margin: 0 auto;
+    }
+    ```
+    `auto` делит свободное место поровну слева и справа. Без заданной ширины блок занял бы всю строку, и центрировать было бы нечего.
+- title: "Строки заказа"
+  text: |
+    Разделите строки заказа тонкой линией `#eee` только снизу, с отступами 12px сверху и снизу и без боковых.
+    ```html
+    <div class="row">Ноутбук Aster 14 — 1 шт.</div>
+    <div class="row">Беспроводная мышь — 2 шт.</div>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <div class="row">Ноутбук Aster 14 — 1 шт.</div>
+    <div class="row">Беспроводная мышь — 2 шт.</div>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .row {
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+    ```
+    Рамку можно задать одной стороне: `border-bottom`. Остальные стороны остались без рамки.
+- title: "Скрытая метка"
+  text: |
+    Метка «Хит» не должна показываться у карточки, если у неё есть класс `badge--hidden` — элемента не должно быть на странице вовсе.
+    ```html
+    <article class="card">
+      <span class="badge">Хит</span>
+      Ноутбук Aster 14
+    </article>
+    <article class="card">
+      <span class="badge badge--hidden">Хит</span>
+      Проводная мышь
+    </article>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <article class="card">
+      <span class="badge">Хит</span>
+      Ноутбук Aster 14
+    </article>
+    <article class="card">
+      <span class="badge badge--hidden">Хит</span>
+      Проводная мышь
+    </article>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .badge--hidden {
+      display: none;
+    }
+    ```
+    `display: none` убирает элемент целиком: места он не занимает. Первая метка осталась строчной (`inline`), как любой `span`.

@@ -1,0 +1,86 @@
+- title: "Карточка по БЭМ"
+  text: |
+    Сверстайте карточку товара как компонент `card`: фото, название, цена, кнопка «В корзину» — у каждой части свой класс по схеме «блок__элемент». Стили: рамка карточки 1px `#ddd`, цена жирная.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <article class="card">
+      <img class="card__image"
+           src="/static/img/mouse.jpg"
+           alt="Беспроводная мышь">
+      <h2 class="card__title">Беспроводная мышь</h2>
+      <p class="card__price">1 499 ₽</p>
+      <button class="card__buy">В корзину</button>
+    </article>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .card {
+      border: 1px solid #ddd;
+      padding: 16px;
+    }
+
+    .card__price {
+      font-weight: 700;
+    }
+    ```
+    Все селекторы — в один класс: карточка выглядит одинаково в каталоге, корзине и где угодно ещё.
+- title: "Карточка со скидкой"
+  text: |
+    Добавьте вариант карточки со скидкой: красная рамка `#c62828` и старая цена — зачёркнутая и серая (`#757575`) рядом с новой.
+    ```html
+    <article class="card">
+      <h2 class="card__title">Беспроводная мышь</h2>
+      <p class="card__price">1 499 ₽</p>
+    </article>
+    ```
+  hint: |
+    Вариант — модификатор, его ставят рядом с основным классом.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <article class="card card--sale">
+      <h2 class="card__title">Беспроводная мышь</h2>
+      <p class="card__price">
+        1 199 ₽
+        <s class="card__price--old">1 499 ₽</s>
+      </p>
+    </article>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .card {
+      border: 1px solid #ddd;
+    }
+
+    .card--sale {
+      border-color: #c62828;
+    }
+
+    .card__price--old {
+      color: #757575;
+      text-decoration: line-through;
+    }
+    ```
+    `card--sale` только меняет цвет рамки — остальное карточка берёт от `card`. Тег `s` — «уже неактуально», ему подходит старая цена.
+- title: "Нет в наличии"
+  text: |
+    Вариант карточки «нет в наличии»: карточка бледнее (`opacity: 0.6`), кнопка неактивна и подписана «Нет в наличии».
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <article class="card card--out">
+      <h2 class="card__title">Ноутбук Nimbus Air</h2>
+      <p class="card__price">54 990 ₽</p>
+      <button class="card__buy" disabled>
+        Нет в наличии
+      </button>
+    </article>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .card--out {
+      opacity: 0.6;
+    }
+    ```
+    Неактивность — атрибутом `disabled` (кнопку нельзя нажать), а не только видом. Вид дорисовывает модификатор.

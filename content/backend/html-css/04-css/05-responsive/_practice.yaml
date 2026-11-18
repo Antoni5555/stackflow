@@ -1,0 +1,128 @@
+- title: "Сетка каталога"
+  text: |
+    Каталог — три равные колонки карточек с промежутком 16px.
+    ```html
+    <div class="catalog">
+      <article class="card">Ноутбук Aster 14</article>
+      <article class="card">Ноутбук Aster 16 Pro</article>
+      <article class="card">Ноутбук Nimbus Air</article>
+      <article class="card">Беспроводная мышь</article>
+    </div>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <div class="catalog">
+      <article class="card">Ноутбук Aster 14</article>
+      <article class="card">Ноутбук Aster 16 Pro</article>
+      <article class="card">Ноутбук Nimbus Air</article>
+      <article class="card">Беспроводная мышь</article>
+    </div>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .catalog {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    ```
+    Четвёртая карточка сама перешла во второй ряд. `1fr` — доля свободного места, поэтому колонки равны при любой ширине.
+- title: "Одна колонка на телефоне"
+  text: |
+    Каталог из прошлого упражнения: на экранах до 600px — одна колонка. Проверьте переключателем «Телефон 375» над предпросмотром.
+  hint: |
+    Медиазапрос пишут ниже основного правила и меняют в нём только число колонок.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <div class="catalog">
+      <article class="card">Ноутбук Aster 14</article>
+      <article class="card">Ноутбук Aster 16 Pro</article>
+      <article class="card">Ноутбук Nimbus Air</article>
+      <article class="card">Беспроводная мышь</article>
+    </div>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .catalog {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .catalog {
+        grid-template-columns: 1fr;
+      }
+    }
+    ```
+    В медиазапросе меняется одна строка; `display` и `gap` действуют и на телефоне.
+- title: "Меню на телефоне"
+  text: |
+    На ПК видно меню из ссылок, а кнопка «Меню» скрыта; на экранах до 600px — наоборот.
+    ```html
+    <header class="header">
+      <nav class="menu">
+        <a href="/catalog/">Каталог</a>
+        <a href="/cart/">Корзина</a>
+      </nav>
+      <button class="burger">Меню</button>
+    </header>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <header class="header">
+      <nav class="menu">
+        <a href="/catalog/">Каталог</a>
+        <a href="/cart/">Корзина</a>
+      </nav>
+      <button class="burger">Меню</button>
+    </header>
+    ```
+    Файл `style.css` целиком:
+    ```css
+    .menu {
+      display: flex;
+      gap: 16px;
+    }
+
+    .burger {
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .menu {
+        display: none;
+      }
+
+      .burger {
+        display: block;
+      }
+    }
+    ```
+    Специфичность в медиазапросе та же, поэтому он стоит ниже основных правил и на узком экране побеждает. Открывать меню по кнопке будет JavaScript — это не тема курса.
+- title: "Картинка не шире экрана"
+  text: |
+    Фото товара шириной 800px на телефоне вылезает за экран. Сделайте так, чтобы картинка не была шире своего контейнера, а пропорции сохранялись.
+    ```html
+    <img src="/static/img/laptop.jpg"
+         alt="Ноутбук Aster 14"
+         width="800" height="500">
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <img src="/static/img/laptop.jpg"
+         alt="Ноутбук Aster 14"
+         width="800" height="500">
+    ```
+    Файл `style.css` целиком:
+    ```css
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+    ```
+    `max-width: 100%` не даёт картинке быть шире родителя, `height: auto` пересчитывает высоту по пропорциям вместо атрибута `height`.
