@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { verifyGitTask } from '../../src/static/js/engines/git/checker.js';
 import { gitShellFromSetup } from '../../src/static/js/engines/git/index.js';
 import { repoAt } from '../../src/static/js/engines/git/repo.js';
 
@@ -156,6 +157,26 @@ describe('ветки и слияние', () => {
     runAll(sh, 'echo "DEBUG = True" > settings.py\necho "PORT = 8080" >> settings.py\ngit add settings.py\ngit commit');
     assert.match(run(sh, 'git log --oneline -n 1').out, /Merge branch 'feature'\n$/);
     assert.equal(run(sh, 'git status -s').out, '');
+  });
+
+  it('эталон: merge с конфликтом может завершиться с кодом 1, другие ошибки — нет', () => {
+    const task = {
+      setup: {
+        ...HISTORY,
+        commits: [
+          ...HISTORY.commits,
+          { message: 'Порт 9000', files: { 'settings.py': 'DEBUG = True\nPORT = 9000\n' } },
+          { message: 'Порт 7000', branch: 'feature', files: { 'settings.py': 'DEBUG = True\nPORT = 7000\n' } },
+        ],
+      },
+      solution: 'git merge feature\necho "DEBUG = True" > settings.py\necho "PORT = 8080" >> settings.py\ngit add settings.py\ngit commit',
+      rules: [
+        { path: `${ROOT}/settings.py`, contains: '^PORT = 8080$', fail: 'Порт — 8080.' },
+        { path: `${ROOT}/settings.py`, not_contains: '^(<<<<<<<|=======|>>>>>>>)', fail: 'Остались маркеры конфликта.' },
+      ],
+    };
+    assert.deepEqual(verifyGitTask(task), []);
+    assert.match(verifyGitTask({ ...task, solution: `git switch nope\n${task.solution}` }).join('\n'), /«git switch nope» завершилась с кодом/);
   });
 
   it('переключение с несохранёнными правками, которые бы потерялись', () => {

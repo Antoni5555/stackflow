@@ -256,7 +256,7 @@ DOM_FIELDS = (['files', 'check', 'solution'], [])
 # Задача в терминале — exercise с check.type: state: setup (файлы до начала), правила
 # по итоговому состоянию и solution — команды эталона по одной на строку
 STATE_FIELDS = (['setup', 'check', 'solution'], [])
-STATE_PATH_CHECKS = {'exists', 'contains', 'mode', 'owner', 'link_to'}
+STATE_PATH_CHECKS = {'exists', 'contains', 'not_contains', 'mode', 'owner', 'link_to'}
 # Git (курс с движком git): ключи setup и правила; «есть / нет» — через exists: false
 STATE_SETUP_KEYS = {
     'cwd', 'files', 'dirs', 'repo', 'commits', 'head', 'remote', 'venv', 'gitconfig',

@@ -94,5 +94,7 @@ export function verifyGitTask(task) {
   return verifyTask(task, {
     makeShell: gitShellFromSetup,
     firstFailed: (rules, shell) => firstFailedGitRule(rules, shell, task.setup),
+    // merge, pull, cherry-pick с конфликтом завершаются с кодом 1, как в настоящем Git
+    expectedFailure: (chunks) => chunks.some((chunk) => !chunk.err && /^CONFLICT \(/m.test(chunk.text)),
   });
 }

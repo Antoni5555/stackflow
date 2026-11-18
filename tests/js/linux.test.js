@@ -373,5 +373,8 @@ describe('задачи: правила состояния', async () => {
     assert.ok(ok({ output_matches: '^2$' }));
     assert.ok(ok({ path: '/srv/shop/nope', exists: false }));
     assert.ok(!ok({ path: '/srv/shop/nope', contains: 'x' }));
+    assert.ok(ok({ path: '/srv/shop/.env', not_contains: '^PORT=9000$' }));
+    assert.ok(!ok({ path: '/srv/shop/.env', not_contains: '^PORT=8000$' }));
+    assert.ok(!ok({ path: '/srv/shop/nope', not_contains: 'x' }));   // файла нет — не пройдено
   });
 });

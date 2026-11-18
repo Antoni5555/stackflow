@@ -1,5 +1,6 @@
 // Правила задач в терминале (check.type: state) — по итоговому состоянию ФС и выводу.
-// Формат — docs/content-format.md: path + exists | contains | mode | owner | link_to,
+// Формат — docs/content-format.md: path + exists | contains | not_contains | mode | owner
+// | link_to,
 // или output_matches — вывод последней команды. Проверка идёт от root: права ученика
 // не должны мешать проверке.
 
@@ -21,9 +22,11 @@ export function failedRule(rule, shell) {
     }
     if ('exists' in rule) return Boolean(node) !== Boolean(rule.exists);
     if (!node) return true;
-    if ('contains' in rule) {
+    // not_contains — шаблона в файле нет («маркеров конфликта не осталось»); файла нет — не пройдено
+    for (const [key, found] of [['contains', false], ['not_contains', true]]) {
+      if (!(key in rule)) continue;
       try {
-        return !search(rule.contains, fs.readFile(rule.path));
+        return search(rule[key], fs.readFile(rule.path)) === found;
       } catch (e) {
         return true;
       }
@@ -50,16 +53,19 @@ export function shellFromSetup(setup) {
 
 /**
  * Проверка эталона (тест сайта): solution проходит все правила, нетронутый setup — нет.
+ * Каждая строка solution — с кодом 0, кроме ожидаемых неудач (expectedFailure по выводу).
  * Возвращает список проблем (пустой — всё хорошо).
  */
-export function verifyTask(task, { makeShell = shellFromSetup, firstFailed = firstFailedRule } = {}) {
+export function verifyTask(task, {
+  makeShell = shellFromSetup, firstFailed = firstFailedRule, expectedFailure = () => false,
+} = {}) {
   const problems = [];
   const shell = makeShell(task.setup);
   for (const line of task.solution.split('\n')) {
     if (!line.trim()) continue;
     const { chunks } = shell.run(line);
     const errors = chunks.filter((chunk) => chunk.err).map((chunk) => chunk.text.trim());
-    if (shell.status !== 0) problems.push(`команда «${line}» завершилась с кодом ${shell.status}: ${errors.join(' ')}`);
+    if (shell.status !== 0 && !expectedFailure(chunks)) problems.push(`команда «${line}» завершилась с кодом ${shell.status}: ${errors.join(' ')}`);
   }
   const failed = firstFailed(task.rules, shell);
   if (failed) problems.push(`эталон не проходит правило: ${failed.fail}`);
