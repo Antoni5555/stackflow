@@ -1,0 +1,16 @@
+title: Какой запрос безопасен
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: Безопасен только запрос, где значение передано отдельно от текста SQL.
+statement: |
+  `email` пришёл из формы входа. Какие вызовы безопасны от SQL-инъекции (psycopg)?
+options:
+  - "`cur.execute(\"SELECT id FROM users WHERE email = %s\", (email,))`"
+  - "`cur.execute(f\"SELECT id FROM users WHERE email = '{email}'\")`"
+  - "`cur.execute(\"SELECT id FROM users WHERE email = '%s'\" % email)`"
+  - "`cur.execute(\"SELECT id FROM users WHERE email = %(email)s\", {\"email\": email})`"
+  - "`cur.execute(\"SELECT id FROM users WHERE email = '\" + email.replace(\"'\", \"''\") + \"'\")`"
+answer: [0, 3]
+explanation: |
+  Безопасны только варианты, где значение передано вторым аргументом `execute` — позиционно (`%s` + кортеж) или по имени (`%(email)s` + словарь). f-строка и оператор `%` для строк в Python склеивают значение с SQL до вызова драйвера — это та же инъекция, хотя второй вариант выглядит похоже на параметры. Ручное экранирование кавычек — ненадёжная защита, которую легко обойти.

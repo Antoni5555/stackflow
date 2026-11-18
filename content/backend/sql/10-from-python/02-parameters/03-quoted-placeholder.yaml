@@ -1,0 +1,34 @@
+title: Кавычки вокруг %s
+type: fix
+difficulty: 2
+pitfall: Плейсхолдер пишут без кавычек — драйвер сам оформит значение.
+statement: |
+  Разработчик перешёл на параметры, но запрос падает с ошибкой. Исправьте его.
+files:
+  orders.py: |
+    def orders_by_status(conn, status):
+        return conn.execute(
+            "SELECT id, user_id FROM orders WHERE status = '%s' ORDER BY id",
+            (status,),
+        ).fetchall()
+check:
+  type: rules
+  rules:
+    - must_not_match: '["'']%s["'']'
+      fail: Плейсхолдер в кавычках — драйвер не видит в нём параметр. Уберите кавычки вокруг %s.
+    - must_match: '^[^#\n]*status\s*=\s*%s'
+      fail: "Условие на статус — с плейсхолдером: status = %s."
+    - must_match: '^\s*\(status,\)'
+      fail: Значение передаётся кортежем (status,).
+solution:
+  orders.py: |
+    def orders_by_status(conn, status):
+        return conn.execute(
+            "SELECT id, user_id FROM orders WHERE status = %s ORDER BY id",
+            (status,),
+        ).fetchall()
+hints:
+  - Чем `'%s'` отличается от `%s` для драйвера?
+  - Кавычки вокруг строки расставляет драйвер.
+explanation: |
+  В `'%s'` плейсхолдер оказался внутри строкового литерала SQL: для драйвера это просто текст `%s`, а параметр, переданный в `execute`, ему некуда подставить — psycopg отвечает ошибкой о числе параметров. Без кавычек `%s` — место для значения, и драйвер передаёт строку `'paid'` правильно оформленной, в том числе если в ней есть кавычки.

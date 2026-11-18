@@ -1,0 +1,38 @@
+title: В отчёте один заказ
+type: fix
+difficulty: 1
+pitfall: fetchone возвращает одну строку — остальные результаты запроса молча теряются.
+statement: |
+  Скрипт должен вывести все новые заказы, а выводит только один. Исправьте его, чтобы обрабатывались все строки результата.
+files:
+  report.py: |
+    import os
+
+    import psycopg
+
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        cur = conn.execute("SELECT id, user_id FROM orders WHERE status = %s ORDER BY id", ("new",))
+        row = cur.fetchone()
+        print(row)
+check:
+  type: rules
+  rules:
+    - must_not_match: '^\s*row\s*=\s*cur\.fetchone\(\)'
+      fail: fetchone() возвращает только первую строку результата.
+    - must_match: '^[^#\n]*cur\.fetchall\(\)|^\s*for\s+\w+\s+in\s+cur\b'
+      fail: Заберите все строки — fetchall() или цикл по курсору.
+solution:
+  report.py: |
+    import os
+
+    import psycopg
+
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        cur = conn.execute("SELECT id, user_id FROM orders WHERE status = %s ORDER BY id", ("new",))
+        for row in cur.fetchall():
+            print(row)
+hints:
+  - Сколько строк возвращает `fetchone()`?
+  - "`fetchall()` — список всех строк, по курсору можно пройти и циклом."
+explanation: |
+  `fetchone()` берёт одну следующую строку результата — первый новый заказ, а остальные два так и остаются непрочитанными. `fetchall()` возвращает список всех строк, `for row in cur` читает их по одной. `fetchone()` уместен, когда строка заведомо одна: товар по `id`, `count(*)`.

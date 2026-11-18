@@ -1,0 +1,48 @@
+title: Импорт тормозит
+type: fix
+difficulty: 2
+pitfall: Открытие соединения — дорогая операция; соединение в цикле на каждую строку делает импорт в разы медленнее.
+statement: |
+  Скрипт импорта остатков из файла поставщика обрабатывает 5000 строк больше минуты, а администратор базы жалуется на тысячи подключений. Исправьте его: одно соединение на весь импорт (и одна транзакция — пусть импорт будет атомарным).
+files:
+  import_stock.py: |
+    import csv
+    import os
+
+    import psycopg
+
+    with open("stock.csv", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+                conn.execute(
+                    "UPDATE products SET stock = %s WHERE id = %s",
+                    (int(row["stock"]), int(row["product_id"])),
+                )
+check:
+  type: rules
+  rules:
+    - must_match: '^(?:with\s+psycopg\.connect\(|conn\s*=\s*psycopg\.connect\()'
+      fail: Соединение открывается один раз — на верхнем уровне скрипта, до цикла.
+    - must_not_match: '^\s+for\s[^\n]*\n(?:\s+[^\n]*\n)*?\s+with\s+psycopg\.connect\('
+      fail: Внутри цикла соединение открываться не должно.
+    - must_match: '^\s+conn\.execute\('
+      fail: Обновление остатка — через то же соединение conn.
+solution:
+  import_stock.py: |
+    import csv
+    import os
+
+    import psycopg
+
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        with open("stock.csv", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                conn.execute(
+                    "UPDATE products SET stock = %s WHERE id = %s",
+                    (int(row["stock"]), int(row["product_id"])),
+                )
+hints:
+  - Сколько раз открывается соединение при 5000 строках?
+  - Поменяйте местами блоки `with`: соединение — снаружи, цикл — внутри.
+explanation: |
+  Каждое `psycopg.connect` — новое сетевое подключение, авторизация и серверный процесс, и всё это 5000 раз. К тому же каждая строка фиксировалась отдельно: сбой на середине оставил бы половину остатков обновлёнными. Одно соединение снаружи цикла — подключение один раз, а блок `with` делает весь импорт одной транзакцией: либо все остатки, либо ни одного.

@@ -1805,6 +1805,57 @@ def deadlock():
     f.save(out(SQ9 / "06-locks" / "img" / "deadlock.svg"))
 
 
+# ---------- SQL 10: SQL из приложения ----------
+SQ10 = ROOT / "sql" / "10-from-python"
+
+
+def driver_flow():
+    f = Figure(880, 230, "Код вызывает драйвер, драйвер говорит с сервером PostgreSQL по сети")
+    f.box(20, 40, 230, 80, "код Python|cur.execute(sql, params)", "box", "cs", rx=10)
+    f.arrow("M250 70H316")
+    f.box(320, 40, 200, 80, "драйвер psycopg|соединение, курсор", "acc", "onacc", rx=10)
+    f.arrow("M520 70H596")
+    f.text(470, 30, "SQL + параметры →", "s")
+    f.box(600, 40, 260, 80, "сервер PostgreSQL|процесс на соединение", "box2", "c", rx=10)
+    f.arrow("M596 104H524")
+    f.text(530, 130, "строки", "s")
+    f.arrow("M316 104H254")
+    f.text(256, 150, "кортежи или словари:", "s")
+    f.text(256, 168, "numeric → Decimal, NULL → None", "s")
+    f.text(20, 214, "Один интерфейс DB-API у psycopg и sqlite3: connect → cursor → execute → fetchone / fetchall → commit.", "s")
+    f.save(out(SQ10 / "01-connect" / "img" / "driver-flow.svg"))
+
+
+def injection():
+    f = Figure(880, 250, "f-строка смешивает ввод с кодом; параметр передаёт его отдельно, как данные")
+    f.text(20, 22, "ввод в поиске: ' OR '1'='1", "h")
+    f.text(20, 58, "f-строка", "h")
+    f.box(20, 66, 840, 44, "", "err", rx=8)
+    f.text(36, 94, "WHERE name = '", "c")
+    f.raw('<rect x="166" y="74" width="150" height="28" rx="4" class="fig-m2"/>')
+    f.text(176, 94, "' OR '1'='1", "c")
+    f.text(320, 94, "'  →  условие истинно для всех строк", "c")
+    f.text(20, 150, "параметр", "h")
+    f.box(20, 158, 400, 44, "WHERE name = %s", "ok", "c", rx=8)
+    f.box(450, 158, 410, 44, "значение: \"' OR '1'='1\" — просто строка", "box2", "c", rx=8)
+    f.text(20, 236, "Драйвер передаёт текст запроса и значения раздельно, и база не выполняет ввод как SQL.", "s")
+    f.save(out(SQ10 / "02-parameters" / "img" / "injection.svg"))
+
+
+def with_connection():
+    f = Figure(880, 230, "with psycopg.connect(...) — одна транзакция: COMMIT при успехе, ROLLBACK при исключении")
+    f.box(20, 70, 160, 50, "with connect()", "box2", "cs", rx=8)
+    f.arrow("M180 95H216")
+    f.box(220, 70, 150, 50, "execute #1", "box", "cs", rx=8)
+    f.arrow("M370 95H406")
+    f.box(410, 70, 150, 50, "execute #2", "box", "cs", rx=8)
+    f.arrow("M560 85L640 50"); f.arrow("M560 105L640 150")
+    f.box(644, 24, 216, 50, "без исключения → COMMIT", "ok", "t", rx=8)
+    f.box(644, 126, 216, 50, "исключение → ROLLBACK", "err", "errt", rx=8)
+    f.text(20, 212, "В обоих случаях соединение закрывается. Без with — conn.commit() вручную, иначе изменения пропадут при close().", "s")
+    f.save(out(SQ10 / "03-transactions-code" / "img" / "with-connection.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1828,6 +1879,7 @@ if __name__ == "__main__":
                   subquery_kinds, correlated, cte_steps, recursive_steps, ranking, lag_running,
                   jsonb_operators, view_kinds,
                   flat_to_tables, dependencies, denormalization, reviews_design,
-                  btree, composite, explain_node, transaction, mvcc, deadlock):
+                  btree, composite, explain_node, transaction, mvcc, deadlock,
+                  driver_flow, injection, with_connection):
         build()
     print("ok")

@@ -1,0 +1,21 @@
+title: Что вернёт курсор
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Курсор читает результат по порядку и назад не возвращается.
+statement: |
+  Запрос вернул три строки: заказы 32, 33 и 34. Что выведет код?
+  ```python
+  cur = conn.execute("SELECT id FROM orders WHERE status = %s ORDER BY id", ("new",))
+  print(cur.fetchone())
+  print(cur.fetchall())
+  print(cur.fetchone())
+  ```
+options:
+  - "`(32,)`, `[(32,), (33,), (34,)]`, `(32,)`"
+  - "`(32,)`, `[(33,), (34,)]`, `None`"
+  - "`(32,)`, `[(33,), (34,)]`, ошибка — строк больше нет"
+  - "`32`, `[33, 34]`, `None`"
+answer: [1]
+explanation: |
+  `fetchone` взял первую строку, `fetchall` — все **оставшиеся**, а последний `fetchone` ничего не нашёл и вернул `None` без ошибки. Строки — кортежи даже из одного столбца: `(32,)`, а не `32`.

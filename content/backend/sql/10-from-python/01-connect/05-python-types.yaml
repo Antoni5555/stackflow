@@ -1,0 +1,16 @@
+title: Какой тип получит Python
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: numeric из PostgreSQL приходит в Python как Decimal, NULL — как None.
+statement: |
+  Запрос через psycopg `SELECT price, stock, created_at, attributes, promo_code_id FROM …` вернул строку. Что верно про типы значений в Python?
+options:
+  - "`price` (`numeric(10,2)`) — `Decimal`"
+  - "`price` — `float`"
+  - "`created_at` (`timestamptz`) — `datetime` с часовым поясом"
+  - "`attributes` (`jsonb`) — `dict`"
+  - "`promo_code_id`, равный NULL, — строка `'NULL'`"
+answer: [0, 2, 3]
+explanation: |
+  psycopg переводит типы PostgreSQL в близкие типы Python: `numeric` — в `Decimal` (точно, без ошибок округления `float`), `timestamptz` — в `datetime` с поясом, `jsonb` — в `dict` или `list`, `integer` — в `int`. NULL всегда становится `None`.

@@ -1,0 +1,20 @@
+title: Что делает with
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Блок with psycopg.connect фиксирует при успехе и откатывает при исключении.
+statement: |
+  Что будет с базой после кода, если второй `execute` бросит исключение?
+  ```python
+  with psycopg.connect(dsn) as conn:
+      conn.execute("INSERT INTO orders (user_id) VALUES (%s)", (13,))
+      conn.execute("UPDATE products SET stock = stock - 1 WHERE id = %s", (999,))  # исключение
+  ```
+options:
+  - Заказ сохранится, остаток не изменится
+  - Ничего не сохранится — блок откатит транзакцию
+  - Заказ сохранится, потому что первый запрос выполнился успешно
+  - Соединение останется открытым с незавершённой транзакцией
+answer: [1]
+explanation: |
+  Оба запроса выполняются в одной транзакции, которую psycopg открыл на первом `execute`. При исключении блок `with` делает `rollback` и закрывает соединение — вставленный заказ тоже отменяется. При нормальном выходе был бы `commit`.

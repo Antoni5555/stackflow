@@ -1,0 +1,30 @@
+title: Поиск по названию
+type: fix
+difficulty: 2
+pitfall: Значение пользователя, вставленное в текст запроса f-строкой, становится частью SQL — это инъекция.
+statement: |
+  Функция ищет товары по названию из поисковой строки сайта. Тестировщик ввёл `' OR '1'='1` — и получил весь каталог. Исправьте функцию: значение должно уходить в базу параметром.
+files:
+  search.py: |
+    def find_products(conn, query):
+        sql = f"SELECT id, name, price FROM products WHERE name ILIKE '%{query}%' ORDER BY id"
+        return conn.execute(sql).fetchall()
+check:
+  type: rules
+  rules:
+    - must_not_match: 'f"[^"\n]*\{query\}|f''[^''\n]*\{query\}|\.format\(|%\s*query\b'
+      fail: Значение всё ещё вставляется в текст запроса — передайте его отдельно параметром.
+    - must_match: '^[^#\n]*ILIKE\s+%s'
+      fail: "На месте значения в запросе — плейсхолдер %s, без кавычек и без %."
+    - must_match: '^[^#\n]*execute\([^\n]*,\s*\([^\n]*query[^\n]*,\s*\)|^[^#\n]*execute\([^\n]*,\s*\[[^\n]*query'
+      fail: "Значение — вторым аргументом execute, кортежем: (\"%\" + query + \"%\",)."
+solution:
+  search.py: |
+    def find_products(conn, query):
+        sql = "SELECT id, name, price FROM products WHERE name ILIKE %s ORDER BY id"
+        return conn.execute(sql, ("%" + query + "%",)).fetchall()
+hints:
+  - "Что получится в тексте запроса, если `query` равен `' OR '1'='1`?"
+  - "Плейсхолдер `%s` в запросе, а `%` для поиска по части строки — в самом значении: `(\"%\" + query + \"%\",)`."
+explanation: |
+  Ввод `' OR '1'='1` закрывает кавычку и превращает условие в `name ILIKE '%' OR '1'='1%'` — оно истинно для всех строк. С параметром текст запроса фиксирован (`name ILIKE %s`), а значение уходит отдельно и остаётся строкой поиска. Знаки `%` для «содержит» добавляют к значению в Python, потому что `'%' || %s || '%'` в самом запросе — лишняя сложность. Запятая в `(…,)` делает кортеж из одного элемента.

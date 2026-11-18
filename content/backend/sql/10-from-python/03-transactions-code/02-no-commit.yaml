@@ -1,0 +1,37 @@
+title: Цены не обновились
+type: fix
+difficulty: 2
+pitfall: Соединение psycopg не фиксирует изменения само — без commit они откатываются при закрытии.
+statement: |
+  Скрипт поднимает цены книг на 10 %. Он работает без ошибок, но цены в базе не меняются. Исправьте его так, чтобы изменения фиксировались — блоком `with` для соединения или явным `commit()`.
+files:
+  raise_prices.py: |
+    import os
+
+    import psycopg
+
+    conn = psycopg.connect(os.environ["DATABASE_URL"])
+    cur = conn.execute("UPDATE products SET price = price * 1.1 WHERE category_id = %s", (9,))
+    print(f"Обновлено товаров: {cur.rowcount}")
+    conn.close()
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*with\s+psycopg\.connect\(|^\s*conn\.commit\(\)'
+      fail: Изменения нужно зафиксировать — блок with psycopg.connect(...) или conn.commit() до закрытия.
+    - must_not_match: '^\s*conn\.close\(\)\s*\n(?![\s\S]*conn\.commit\(\))'
+      fail: conn.close() без commit() откатывает транзакцию.
+solution:
+  raise_prices.py: |
+    import os
+
+    import psycopg
+
+    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+        cur = conn.execute("UPDATE products SET price = price * 1.1 WHERE category_id = %s", (9,))
+        print(f"Обновлено товаров: {cur.rowcount}")
+hints:
+  - Кто вызывает COMMIT в этом скрипте?
+  - "`with psycopg.connect(...) as conn:` фиксирует изменения при выходе из блока."
+explanation: |
+  Первый `execute` неявно открыл транзакцию, `rowcount` честно показал 3 изменённые строки — но они видны только этой транзакции. `conn.close()` без `commit()` откатывает её. Блок `with psycopg.connect(...)` фиксирует изменения при нормальном выходе, откатывает при исключении и закрывает соединение — забыть уже нечего.
