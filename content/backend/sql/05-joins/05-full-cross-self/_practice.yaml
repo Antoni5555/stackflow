@@ -1,0 +1,61 @@
+- title: "Подкатегории «Одежды»"
+  text: |
+    Выведите `name` подкатегорий категории «Одежда» с помощью соединения таблицы с самой собой.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT c.name
+    FROM categories c
+    JOIN categories parent ON parent.id = c.parent_id
+    WHERE parent.name = 'Одежда';
+    ```
+    Результат:
+    ```
+       name
+    ----------
+     Футболки
+     Обувь
+    (2 rows)
+    ```
+    Одна таблица под двумя псевдонимами: `c` — подкатегория, `parent` — её родитель.
+- title: "Все сочетания"
+  text: |
+    Футболка выпускается в размерах S, M и цветах white, black. Выведите все варианты `size` и `color`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT s.size, c.color
+    FROM (VALUES ('S'), ('M')) AS s (size)
+    CROSS JOIN (VALUES ('white'), ('black')) AS c (color);
+    ```
+    Результат:
+    ```
+     size | color
+    ------+-------
+     S    | white
+     S    | black
+     M    | white
+     M    | black
+    (4 rows)
+    ```
+    2 × 2 = 4 строки.
+- title: "Родитель и дедушка"
+  text: |
+    Для «Ноутбуков» выведите название родительской категории `parent` и её родителя `grandparent`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT p.name AS parent, g.name AS grandparent
+    FROM categories c
+    JOIN categories p ON p.id = c.parent_id
+    JOIN categories g ON g.id = p.parent_id
+    WHERE c.name = 'Ноутбуки';
+    ```
+    Результат:
+    ```
+       parent   | grandparent
+    ------------+-------------
+     Компьютеры | Электроника
+    (1 row)
+    ```
+    Три копии одной таблицы. Для дерева произвольной глубины есть рекурсивный CTE (раздел 7).

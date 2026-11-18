@@ -1,0 +1,87 @@
+- title: "Суммы покупателей"
+  text: |
+    С помощью CTE `totals` посчитайте сумму покупок каждого покупателя (неотменённые заказы) и выведите трёх самых крупных: `user_id`, `total`.
+  answer: |
+    Ответ:
+    ```sql
+    WITH totals AS (
+        SELECT o.user_id,
+               sum(oi.quantity * oi.price) AS total
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        WHERE o.status <> 'cancelled'
+        GROUP BY o.user_id
+    )
+    SELECT user_id, total
+    FROM totals
+    ORDER BY total DESC
+    LIMIT 3;
+    ```
+    Результат:
+    ```
+     user_id |   total
+    ---------+-----------
+           1 | 179007.00
+           8 | 144220.00
+          12 |  93549.00
+    (3 rows)
+    ```
+    Шаг с суммами назван и читается отдельно от отбора.
+- title: "Месяцы выше среднего"
+  text: |
+    Через CTE посчитайте число заказов по месяцам и выведите месяцы `month` (датой), где заказов больше среднего по месяцам, и их число `total`.
+  answer: |
+    Ответ:
+    ```sql
+    WITH monthly AS (
+        SELECT date_trunc('month', created_at)::date
+                   AS month,
+               count(*) AS total
+        FROM orders
+        GROUP BY month
+    )
+    SELECT month, total
+    FROM monthly
+    WHERE total > (SELECT avg(total) FROM monthly)
+    ORDER BY month;
+    ```
+    Результат:
+    ```
+       month    | total
+    ------------+-------
+     2025-12-01 |     6
+     2026-01-01 |     6
+     2026-03-01 |     6
+     2026-04-01 |     7
+    (4 rows)
+    ```
+    CTE использовано дважды: как таблица и для среднего.
+- title: "Два шага"
+  text: |
+    Через два CTE найдите товары, которые покупали, но на которые нет отзывов: `bought` — купленные `product_id`, `reviewed` — оценённые. Выведите `product_id`.
+  answer: |
+    Ответ:
+    ```sql
+    WITH bought AS (
+        SELECT DISTINCT product_id FROM order_items
+    ),
+    reviewed AS (
+        SELECT DISTINCT product_id FROM reviews
+    )
+    SELECT b.product_id
+    FROM bought b
+    LEFT JOIN reviewed r
+        ON r.product_id = b.product_id
+    WHERE r.product_id IS NULL
+    ORDER BY b.product_id;
+    ```
+    Результат:
+    ```
+     product_id
+    ------------
+              2
+             11
+             14
+    (3 rows)
+    ```
+    CTE перечисляют через запятую после одного `WITH`.

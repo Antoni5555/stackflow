@@ -1,0 +1,85 @@
+- title: "Поддерево «Одежды»"
+  text: |
+    Выведите `id` и `name` категории «Одежда» (6) и всех её подкатегорий через `WITH RECURSIVE`.
+  answer: |
+    Ответ:
+    ```sql
+    WITH RECURSIVE tree AS (
+        SELECT id, name FROM categories WHERE id = 6
+        UNION ALL
+        SELECT c.id, c.name
+        FROM categories c
+        JOIN tree t ON c.parent_id = t.id
+    )
+    SELECT id, name FROM tree ORDER BY id;
+    ```
+    Результат:
+    ```
+     id |   name
+    ----+----------
+      6 | Одежда
+      7 | Футболки
+      8 | Обувь
+    (3 rows)
+    ```
+    Старт — сама категория, шаг — её дети, потом их дети.
+- title: "Хлебные крошки"
+  text: |
+    Выведите путь от «Аксессуаров» (4) до корня: `name` категорий снизу вверх.
+  answer: |
+    Ответ:
+    ```sql
+    WITH RECURSIVE path AS (
+        SELECT id, name, parent_id
+        FROM categories WHERE id = 4
+        UNION ALL
+        SELECT c.id, c.name, c.parent_id
+        FROM categories c
+        JOIN path p ON c.id = p.parent_id
+    )
+    SELECT name FROM path;
+    ```
+    Результат:
+    ```
+        name
+    -------------
+     Аксессуары
+     Компьютеры
+     Электроника
+    (3 rows)
+    ```
+    Вверх по дереву: `c.id = p.parent_id`.
+- title: "Уровень вложенности"
+  text: |
+    Для всех категорий выведите `name` и уровень `level` (у корневых — 1), по уровню и `id`.
+  answer: |
+    Ответ:
+    ```sql
+    WITH RECURSIVE tree AS (
+        SELECT id, name, 1 AS level
+        FROM categories WHERE parent_id IS NULL
+        UNION ALL
+        SELECT c.id, c.name, t.level + 1
+        FROM categories c
+        JOIN tree t ON c.parent_id = t.id
+    )
+    SELECT name, level
+    FROM tree
+    ORDER BY level, id;
+    ```
+    Результат:
+    ```
+        name     | level
+    -------------+-------
+     Электроника |     1
+     Одежда      |     1
+     Книги       |     1
+     Компьютеры  |     2
+     Смартфоны   |     2
+     Футболки    |     2
+     Обувь       |     2
+     Ноутбуки    |     3
+     Аксессуары  |     3
+    (9 rows)
+    ```
+    Счётчик растёт на каждом шаге рекурсии.

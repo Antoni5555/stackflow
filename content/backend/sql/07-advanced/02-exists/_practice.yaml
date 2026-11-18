@@ -1,0 +1,85 @@
+- title: "Есть отзыв"
+  text: |
+    Выведите `id` и `name` товаров категории 4, на которые есть хотя бы один отзыв, через `EXISTS`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT p.id, p.name
+    FROM products p
+    WHERE p.category_id = 4
+      AND EXISTS (
+          SELECT 1 FROM reviews r
+          WHERE r.product_id = p.id
+      )
+    ORDER BY p.id;
+    ```
+    Результат:
+    ```
+     id |          name
+    ----+-------------------------
+      4 | Беспроводная мышь
+      5 | Проводная мышь
+      6 | Механическая клавиатура
+      7 | Коврик для мыши
+      9 | Веб-камера
+    (5 rows)
+    ```
+    Подзапрос связан с внешней строкой через `p.id`.
+- title: "Без заказов"
+  text: |
+    Выведите `id` и `name` покупателей без единого заказа через `NOT EXISTS`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT u.id, u.name
+    FROM users u
+    WHERE NOT EXISTS (
+        SELECT 1 FROM orders o
+        WHERE o.user_id = u.id
+    )
+    ORDER BY u.id;
+    ```
+    Результат:
+    ```
+     id |      name
+    ----+----------------
+      9 | Ирина Морозова
+     10 | Кирилл Волков
+     11 | Лидия Павлова
+     13 | Нина Орлова
+    (4 rows)
+    ```
+    `NOT EXISTS` не боится NULL, в отличие от `NOT IN`.
+- title: "Дешевле среднего по категории"
+  text: |
+    Выведите `name`, `price` и `category_id` товаров, которые дешевле средней цены своей категории, по `category_id` и цене.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT p.name, p.price, p.category_id
+    FROM products p
+    WHERE p.price < (
+        SELECT avg(p2.price)
+        FROM products p2
+        WHERE p2.category_id = p.category_id
+    )
+    ORDER BY p.category_id, p.price;
+    ```
+    Результат:
+    ```
+              name           |  price   | category_id
+    -------------------------+----------+-------------
+     Ноутбук Nimbus Air      | 54990.00 |           3
+     Ноутбук Aster 14        | 64990.00 |           3
+     Коврик для мыши         |   490.00 |           4
+     Проводная мышь          |   590.00 |           4
+     USB-хаб на 4 порта      |  1499.00 |           4
+     Беспроводная мышь       |  1499.00 |           4
+     Чехол для смартфона     |   990.00 |           5
+     Смартфон Lumo S         | 24990.00 |           5
+     Футболка базовая белая  |  1290.00 |           7
+     Футболка базовая чёрная |  1290.00 |           7
+     Книга «SQL на практике» |  1590.00 |           9
+    (11 rows)
+    ```
+    Коррелированный подзапрос считает среднюю для категории каждой строки.

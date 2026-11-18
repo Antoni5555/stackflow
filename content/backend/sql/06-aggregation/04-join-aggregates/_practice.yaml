@@ -1,0 +1,81 @@
+- title: "Выручка по заказам"
+  text: |
+    Для заказов покупателя 1 выведите `id` заказа и его сумму `total` (`quantity * price` по позициям), по `id`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT o.id,
+           sum(oi.quantity * oi.price) AS total
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    WHERE o.user_id = 1
+    GROUP BY o.id
+    ORDER BY o.id;
+    ```
+    Результат:
+    ```
+     id |  total
+    ----+----------
+      1 | 61770.00
+      6 |  3280.00
+     14 |  3488.00
+     22 | 64990.00
+     28 |  5489.00
+     34 | 39990.00
+    (6 rows)
+    ```
+    Цена позиции — из `order_items`: столько заплатили.
+- title: "Отзывов у товара"
+  text: |
+    Для товаров категории 3 выведите название `name` и число отзывов `reviews`, включая товары без отзывов.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT p.name, count(r.id) AS reviews
+    FROM products p
+    LEFT JOIN reviews r ON r.product_id = p.id
+    WHERE p.category_id = 3
+    GROUP BY p.id
+    ORDER BY p.id;
+    ```
+    Результат:
+    ```
+             name         | reviews
+    ----------------------+---------
+     Ноутбук Aster 14     |       2
+     Ноутбук Aster 16 Pro |       0
+     Ноутбук Nimbus Air   |       0
+    (3 rows)
+    ```
+    `count(r.id)` даёт 0 тем, у кого отзывов нет; `count(*)` дал бы 1.
+- title: "Отправлено и отменено"
+  text: |
+    Для каждого покупателя с заказами выведите `user_id`, число отправленных `shipped` и отменённых `cancelled` заказов, по `user_id`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT user_id,
+           count(*) FILTER (WHERE status = 'shipped')
+               AS shipped,
+           count(*) FILTER (WHERE status = 'cancelled')
+               AS cancelled
+    FROM orders
+    GROUP BY user_id
+    ORDER BY user_id;
+    ```
+    Результат:
+    ```
+     user_id | shipped | cancelled
+    ---------+---------+-----------
+           1 |       4 |         0
+           2 |       3 |         1
+           3 |       2 |         1
+           4 |       2 |         0
+           5 |       2 |         1
+           6 |       3 |         0
+           7 |       1 |         1
+           8 |       3 |         0
+          12 |       2 |         1
+    (9 rows)
+    ```
+    `FILTER` — своё условие для каждого агрегата.

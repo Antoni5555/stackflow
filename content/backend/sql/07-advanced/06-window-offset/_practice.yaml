@@ -1,0 +1,72 @@
+- title: "Предыдущая цена"
+  text: |
+    Для книг (категория 9) по возрастанию цены выведите `name`, `price` и цену предыдущей книги в этом порядке `prev_price`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT name, price,
+           lag(price) OVER (ORDER BY price, id)
+               AS prev_price
+    FROM products
+    WHERE category_id = 9
+    ORDER BY price, id;
+    ```
+    Результат:
+    ```
+               name           |  price  | prev_price
+    --------------------------+---------+------------
+     Книга «SQL на практике»  | 1590.00 |
+     Книга «Python с нуля»    | 1890.00 |    1590.00
+     Книга «Алгоритмы просто» | 1890.00 |    1890.00
+    (3 rows)
+    ```
+    У первой строки предыдущей нет — NULL.
+- title: "Нарастающий итог заказов"
+  text: |
+    Для заказов покупателя 1 выведите `id` и нарастающее число заказов `running` по порядку `id`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT id,
+           count(*) OVER (ORDER BY id) AS running
+    FROM orders
+    WHERE user_id = 1
+    ORDER BY id;
+    ```
+    Результат:
+    ```
+     id | running
+    ----+---------
+      1 |       1
+      6 |       2
+     14 |       3
+     22 |       4
+     28 |       5
+     34 |       6
+    (6 rows)
+    ```
+    Агрегат с `ORDER BY` в окне — нарастающий итог.
+- title: "Дней между заказами"
+  text: |
+    Для заказов покупателя 4 выведите `id`, дату `day` и сколько дней прошло с предыдущего его заказа `gap`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT id, created_at::date AS day,
+           created_at::date
+             - lag(created_at::date)
+                 OVER (ORDER BY created_at) AS gap
+    FROM orders
+    WHERE user_id = 4
+    ORDER BY id;
+    ```
+    Результат:
+    ```
+     id |    day     | gap
+    ----+------------+-----
+      5 | 2025-12-01 |
+     18 | 2026-02-07 |  68
+     29 | 2026-04-05 |  57
+    (3 rows)
+    ```
+    Разность двух дат — целое число дней.

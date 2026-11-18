@@ -1,0 +1,78 @@
+- title: "Популярные товары"
+  text: |
+    Выведите `product_id` товаров, которые встречаются в трёх и более позициях заказов, и число позиций `items`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT product_id, count(*) AS items
+    FROM order_items
+    GROUP BY product_id
+    HAVING count(*) >= 3
+    ORDER BY product_id;
+    ```
+    Результат:
+    ```
+     product_id | items
+    ------------+-------
+              1 |     4
+              4 |     6
+              6 |     4
+              7 |     5
+              9 |     3
+             10 |     4
+             11 |     3
+             12 |     3
+             13 |     5
+             14 |     3
+             15 |     4
+             16 |     3
+             19 |     3
+             20 |     4
+    (14 rows)
+    ```
+    Условие на агрегат — в `HAVING`, псевдоним там не работает.
+- title: "Категории подороже"
+  text: |
+    Выведите `category_id` категорий со средней ценой товара выше 5000 ₽ и эту среднюю цену `avg_price` до рублей.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT category_id,
+           round(avg(price)) AS avg_price
+    FROM products
+    GROUP BY category_id
+    HAVING avg(price) > 5000
+    ORDER BY category_id;
+    ```
+    Результат:
+    ```
+     category_id | avg_price
+    -------------+-----------
+               3 |     69990
+               5 |     28990
+    (2 rows)
+    ```
+    В `HAVING` — точное `avg(price)`, а не округлённое.
+- title: "Щедрые оценщики"
+  text: |
+    Выведите `user_id` покупателей, у которых больше одного отзыва и все оценки не ниже 4 (минимальная оценка ≥ 4).
+  answer: |
+    Ответ:
+    ```sql
+    SELECT user_id
+    FROM reviews
+    GROUP BY user_id
+    HAVING count(*) > 1 AND min(rating) >= 4
+    ORDER BY user_id;
+    ```
+    Результат:
+    ```
+     user_id
+    ---------
+           1
+           4
+           8
+          12
+    (4 rows)
+    ```
+    В `HAVING` можно сочетать несколько агрегатов.

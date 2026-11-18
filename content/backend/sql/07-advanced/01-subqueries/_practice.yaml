@@ -1,0 +1,80 @@
+- title: "Дороже Веб-камеры"
+  text: |
+    Выведите `name` и `price` товаров дороже веб-камеры (товар 9), по возрастанию цены.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT name, price
+    FROM products
+    WHERE price > (
+        SELECT price FROM products WHERE id = 9
+    )
+    ORDER BY price;
+    ```
+    Результат:
+    ```
+              name           |  price
+    -------------------------+----------
+     Механическая клавиатура |  5490.00
+     Смартфон Lumo S         | 24990.00
+     Смартфон Pixelon 8      | 39990.00
+     Смартфон Pixelon 8 Max  | 49990.00
+     Ноутбук Nimbus Air      | 54990.00
+     Ноутбук Aster 14        | 64990.00
+     Ноутбук Aster 16 Pro    | 89990.00
+    (7 rows)
+    ```
+    Скалярный подзапрос вернул одно значение — 3990.00.
+- title: "Покупатели смартфонов"
+  text: |
+    Выведите `id` и `name` покупателей, у которых в заказах были товары категории 5 (смартфоны), по `id`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT id, name
+    FROM users
+    WHERE id IN (
+        SELECT o.user_id
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN products p ON p.id = oi.product_id
+        WHERE p.category_id = 5
+    )
+    ORDER BY id;
+    ```
+    Результат:
+    ```
+     id |      name
+    ----+----------------
+      1 | Анна Смирнова
+      2 | Борис Иванов
+      5 | Дарья Соколова
+      6 | Егор Лебедев
+      7 | Жанна Козлова
+      8 | Захар Новиков
+     12 | Максим Фёдоров
+    (7 rows)
+    ```
+    `IN` не размножает строки, сколько бы смартфонов ни купил покупатель.
+- title: "Средняя сумма заказа"
+  text: |
+    Посчитайте среднюю сумму заказа `avg_order` (до рублей) по всем заказам: сначала сумма каждого, потом среднее.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT round(avg(total)) AS avg_order
+    FROM (
+        SELECT order_id,
+               sum(quantity * price) AS total
+        FROM order_items
+        GROUP BY order_id
+    ) AS per_order;
+    ```
+    Результат:
+    ```
+     avg_order
+    -----------
+         27011
+    (1 row)
+    ```
+    Агрегат от агрегата — через подзапрос в `FROM`.

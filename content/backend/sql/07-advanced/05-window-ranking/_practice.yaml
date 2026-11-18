@@ -1,0 +1,81 @@
+- title: "Место по цене"
+  text: |
+    Для товаров категории 7 выведите `name`, `price` и место по цене от дорогих `place` (`rank`).
+  answer: |
+    Ответ:
+    ```sql
+    SELECT name, price,
+           rank() OVER (ORDER BY price DESC) AS place
+    FROM products
+    WHERE category_id = 7
+    ORDER BY place, name;
+    ```
+    Результат:
+    ```
+              name           |  price  | place
+    -------------------------+---------+-------
+     Лонгслив                | 2190.00 |     1
+     Футболка с принтом      | 1790.00 |     2
+     Футболка базовая белая  | 1290.00 |     3
+     Футболка базовая чёрная | 1290.00 |     3
+    (4 rows)
+    ```
+    Две футболки по 1290 делят третье место.
+- title: "Номер заказа покупателя"
+  text: |
+    Для заказов покупателя 2 выведите `id`, `created_at::date` как `day` и порядковый номер заказа у покупателя `n` (первый — 1).
+  answer: |
+    Ответ:
+    ```sql
+    SELECT id, created_at::date AS day,
+           row_number() OVER (ORDER BY created_at) AS n
+    FROM orders
+    WHERE user_id = 2
+    ORDER BY n;
+    ```
+    Результат:
+    ```
+     id |    day     | n
+    ----+------------+---
+      2 | 2025-11-29 | 1
+      9 | 2025-12-24 | 2
+     16 | 2026-01-31 | 3
+     25 | 2026-03-15 | 4
+     33 | 2026-04-15 | 5
+    (5 rows)
+    ```
+    `row_number` нумерует строки окна по порядку.
+- title: "Самый дорогой в категории"
+  text: |
+    Для каждой категории выведите `category_id`, `name` и `price` самого дорогого товара (при равенстве — все).
+  answer: |
+    Ответ:
+    ```sql
+    WITH ranked AS (
+        SELECT category_id, name, price,
+               rank() OVER (
+                   PARTITION BY category_id
+                   ORDER BY price DESC
+               ) AS place
+        FROM products
+    )
+    SELECT category_id, name, price
+    FROM ranked
+    WHERE place = 1
+    ORDER BY category_id, name;
+    ```
+    Результат:
+    ```
+     category_id |           name            |  price
+    -------------+---------------------------+----------
+               1 | Зарядное устройство 65 Вт |  2490.00
+               3 | Ноутбук Aster 16 Pro      | 89990.00
+               4 | Механическая клавиатура   |  5490.00
+               5 | Смартфон Pixelon 8 Max    | 49990.00
+               6 | Носки, 3 пары             |   590.00
+               7 | Лонгслив                  |  2190.00
+               9 | Книга «Python с нуля»     |  1890.00
+               9 | Книга «Алгоритмы просто»  |  1890.00
+    (8 rows)
+    ```
+    Окно — в CTE, отбор — снаружи: в `WHERE` оконные функции нельзя.

@@ -1,0 +1,73 @@
+- title: "Псевдоним в сортировке"
+  text: |
+    Выведите `user_id` и число заказов `total` для покупателей с тремя и более заказами, отсортировав по `total` по убыванию, затем по `user_id`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT user_id, count(*) AS total
+    FROM orders
+    GROUP BY user_id
+    HAVING count(*) >= 3
+    ORDER BY total DESC, user_id;
+    ```
+    Результат:
+    ```
+     user_id | total
+    ---------+-------
+           1 |     6
+           2 |     5
+           3 |     4
+           8 |     4
+          12 |     4
+           4 |     3
+           5 |     3
+           6 |     3
+    (8 rows)
+    ```
+    В `HAVING` — выражение, в `ORDER BY` — уже псевдоним.
+- title: "Псевдоним в WHERE"
+  text: |
+    Выведите `id`, `name` и цену со скидкой 10 % `sale_price` товаров, у которых цена со скидкой меньше 1000 ₽.
+  hint: |
+    Псевдонима в `WHERE` ещё нет.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT id, name, price * 0.9 AS sale_price
+    FROM products
+    WHERE price * 0.9 < 1000
+    ORDER BY id;
+    ```
+    Результат:
+    ```
+     id |        name         | sale_price
+    ----+---------------------+------------
+      5 | Проводная мышь      |    531.000
+      7 | Коврик для мыши     |    441.000
+     13 | Чехол для смартфона |    891.000
+     22 | Носки, 3 пары       |    531.000
+    (4 rows)
+    ```
+    `WHERE` выполняется до `SELECT`, поэтому выражение повторено.
+- title: "Топ-3 категории"
+  text: |
+    Выведите три `category_id` с наибольшим числом товаров и это число `total`; при равенстве — меньший `category_id` выше.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT category_id, count(*) AS total
+    FROM products
+    GROUP BY category_id
+    ORDER BY total DESC, category_id
+    LIMIT 3;
+    ```
+    Результат:
+    ```
+     category_id | total
+    -------------+-------
+               4 |     6
+               5 |     4
+               7 |     4
+    (3 rows)
+    ```
+    `LIMIT` применяется последним — к уже отсортированным группам.

@@ -1,0 +1,96 @@
+- title: "Товар и категория"
+  text: |
+    Выведите название товара `product` и название его категории `category` для товаров 1, 13 и 22.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT p.name AS product, c.name AS category
+    FROM products p
+    JOIN categories c ON c.id = p.category_id
+    WHERE p.id IN (1, 13, 22);
+    ```
+    Результат:
+    ```
+           product       | category
+    ---------------------+-----------
+     Ноутбук Aster 14    | Ноутбуки
+     Чехол для смартфона | Смартфоны
+     Носки, 3 пары       | Одежда
+    (3 rows)
+    ```
+    Связь — внешний ключ `products.category_id` и ключ `categories.id`.
+- title: "Кто оплатил заказ"
+  text: |
+    Выведите `id` заказов со статусом `paid` и имя покупателя `name`, по номеру заказа.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT o.id, u.name
+    FROM orders o
+    JOIN users u ON u.id = o.user_id
+    WHERE o.status = 'paid'
+    ORDER BY o.id;
+    ```
+    Результат:
+    ```
+     id |      name
+    ----+----------------
+     28 | Анна Смирнова
+     29 | Глеб Попов
+     30 | Захар Новиков
+     31 | Вера Кузнецова
+    (4 rows)
+    ```
+    `id` есть в обеих таблицах — пишем `o.id`.
+- title: "Код промокода в заказе"
+  text: |
+    Выведите `id` заказов, оформленных с промокодом, и код промокода `code`, по номеру заказа.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT o.id, pc.code
+    FROM orders o
+    JOIN promo_codes pc ON pc.id = o.promo_code_id
+    ORDER BY o.id;
+    ```
+    Результат:
+    ```
+     id |    code
+    ----+-------------
+      1 | BLACKFRIDAY
+      2 | BLACKFRIDAY
+      4 | BLACKFRIDAY
+     11 | NEWYEAR20
+     12 | NEWYEAR20
+     13 | NEWYEAR20
+     18 | WELCOME10
+     22 | WELCOME10
+     25 | WELCOME10
+     30 | WELCOME10
+     32 | WELCOME10
+    (11 rows)
+    ```
+    Заказы без промокода (`promo_code_id` — NULL) не нашли пары и в результат не попали.
+- title: "Отзывы с названиями"
+  text: |
+    Выведите название товара `product` и оценку `rating` отзывов покупателя 2, по названию товара.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT p.name AS product, r.rating
+    FROM reviews r
+    JOIN products p ON p.id = r.product_id
+    WHERE r.user_id = 2
+    ORDER BY p.name;
+    ```
+    Результат:
+    ```
+             product         | rating
+    -------------------------+--------
+     Книга «SQL на практике» |      5
+     Смартфон Pixelon 8      |      5
+     Футболка базовая белая  |      5
+     Чехол для смартфона     |      3
+    (4 rows)
+    ```
+    Фильтр по одной таблице, вывод — из другой.

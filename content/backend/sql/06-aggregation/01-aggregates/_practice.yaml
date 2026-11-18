@@ -1,0 +1,82 @@
+- title: "Сколько товаров"
+  text: |
+    Выведите число товаров в каталоге `total` и сколько из них есть в наличии `in_stock`.
+  hint: |
+    Условия у двух чисел разные — пока проще двумя запросами.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT count(*) AS total
+    FROM products;
+
+    SELECT count(*) AS in_stock
+    FROM products
+    WHERE stock > 0;
+    ```
+    Результат:
+    ```
+     total
+    -------
+        22
+    (1 row)
+     in_stock
+    ----------
+           18
+    (1 row)
+    ```
+    Два числа с разными условиями в одном запросе дадут `FILTER` (тема 4).
+- title: "Цены книг"
+  text: |
+    Выведите минимальную `min_price`, максимальную `max_price` и среднюю (до рублей) `avg_price` цену книг (категория 9).
+  answer: |
+    Ответ:
+    ```sql
+    SELECT min(price) AS min_price,
+           max(price) AS max_price,
+           round(avg(price)) AS avg_price
+    FROM products
+    WHERE category_id = 9;
+    ```
+    Результат:
+    ```
+     min_price | max_price | avg_price
+    -----------+-----------+-----------
+       1590.00 |   1890.00 |      1790
+    (1 row)
+    ```
+    `round` без второго аргумента округляет до целого.
+- title: "Штук на складе"
+  text: |
+    Сколько всего штук аксессуаров (категория 4) на складе? Колонка `total_stock`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT sum(stock) AS total_stock
+    FROM products
+    WHERE category_id = 4;
+    ```
+    Результат:
+    ```
+     total_stock
+    -------------
+             108
+    (1 row)
+    ```
+    `sum` складывает значения столбца по всем строкам, прошедшим `WHERE`.
+- title: "Разных покупателей"
+  text: |
+    Сколько разных покупателей делали заказы? Колонка `buyers`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT count(DISTINCT user_id) AS buyers
+    FROM orders;
+    ```
+    Результат:
+    ```
+     buyers
+    --------
+          9
+    (1 row)
+    ```
+    `count(*)` дал бы 34 — число заказов.

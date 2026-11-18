@@ -1,0 +1,73 @@
+- title: "Что купила Вера"
+  text: |
+    Выведите номер заказа `order_id` и название товара `product` для всех позиций заказов Веры Кузнецовой (`users.id` 3), по номеру заказа и названию.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT o.id AS order_id, p.name AS product
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    JOIN products p ON p.id = oi.product_id
+    WHERE o.user_id = 3
+    ORDER BY o.id, p.name;
+    ```
+    Результат:
+    ```
+     order_id |         product
+    ----------+-------------------------
+            3 | Ноутбук Aster 16 Pro
+           11 | Механическая клавиатура
+           11 | Ноутбук Aster 14
+           20 | Веб-камера
+           31 | Механическая клавиатура
+    (5 rows)
+    ```
+    Заказ → позиции → товары: два соединения по внешним ключам.
+- title: "Категории покупок"
+  text: |
+    Выведите без повторов названия категорий `category`, товары которых покупал Глеб (`users.id` 4), по алфавиту.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT DISTINCT c.name AS category
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.id
+    JOIN products p ON p.id = oi.product_id
+    JOIN categories c ON c.id = p.category_id
+    WHERE o.user_id = 4
+    ORDER BY category;
+    ```
+    Результат:
+    ```
+      category
+    ------------
+     Аксессуары
+     Книги
+     Футболки
+    (3 rows)
+    ```
+    Здесь `DISTINCT` уместен: вопрос и правда про уникальные категории.
+- title: "Покупатель и товар заказа"
+  text: |
+    Для позиций заказа 18 выведите имя покупателя `customer`, товар `product` и количество `quantity`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT u.name AS customer, p.name AS product,
+           oi.quantity
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    JOIN users u ON u.id = o.user_id
+    JOIN products p ON p.id = oi.product_id
+    WHERE oi.order_id = 18;
+    ```
+    Результат:
+    ```
+      customer  |         product         | quantity
+    ------------+-------------------------+----------
+     Глеб Попов | Беспроводная мышь       |        1
+     Глеб Попов | Механическая клавиатура |        1
+     Глеб Попов | Коврик для мыши         |        1
+    (3 rows)
+    ```
+    Четыре таблицы, у каждой — своя роль в результате.

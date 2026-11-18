@@ -1,0 +1,84 @@
+- title: "Товары в наличии"
+  text: |
+    Создайте представление `in_stock` — `id`, `name`, `price` товаров с остатком больше нуля — и выведите из него три самых дешёвых. Представление останется в базе песочницы.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE VIEW in_stock AS
+    SELECT id, name, price
+    FROM products
+    WHERE stock > 0;
+
+    SELECT name, price
+    FROM in_stock
+    ORDER BY price, id
+    LIMIT 3;
+    ```
+    Результат:
+    ```
+    CREATE VIEW
+          name       | price
+    -----------------+--------
+     Коврик для мыши | 490.00
+     Проводная мышь  | 590.00
+     Носки, 3 пары   | 590.00
+    (3 rows)
+    ```
+    К представлению обращаются как к таблице.
+- title: "Представление следит за данными"
+  text: |
+    Обнулите остаток коврика (товар 7) и снова выведите три самых дешёвых товара из `in_stock`.
+  answer: |
+    Ответ:
+    ```sql
+    UPDATE products SET stock = 0 WHERE id = 7;
+
+    SELECT name, price
+    FROM in_stock
+    ORDER BY price, id
+    LIMIT 3;
+    ```
+    Результат:
+    ```
+    UPDATE 1
+            name         | price
+    ---------------------+--------
+     Проводная мышь      | 590.00
+     Носки, 3 пары       | 590.00
+     Чехол для смартфона | 990.00
+    (3 rows)
+    ```
+    Коврик исчез из представления сразу: представление хранит запрос, а не данные.
+- title: "Снимок"
+  text: |
+    Создайте материализованное представление `stock_snapshot` с суммой остатков `total` по всему каталогу, добавьте 100 штук носков (товар 22) и сравните снимок до и после `REFRESH`.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE MATERIALIZED VIEW stock_snapshot AS
+    SELECT sum(stock) AS total FROM products;
+
+    UPDATE products SET stock = stock + 100
+    WHERE id = 22;
+
+    SELECT total FROM stock_snapshot;
+
+    REFRESH MATERIALIZED VIEW stock_snapshot;
+
+    SELECT total FROM stock_snapshot;
+    ```
+    Результат:
+    ```
+    SELECT 1
+    UPDATE 1
+     total
+    -------
+       323
+    (1 row)
+    REFRESH MATERIALIZED VIEW
+     total
+    -------
+       423
+    (1 row)
+    ```
+    Снимок обновился только после `REFRESH`.

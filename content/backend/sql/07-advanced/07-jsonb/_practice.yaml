@@ -1,0 +1,67 @@
+- title: "Цвета товаров"
+  text: |
+    Выведите `name` и цвет `color` (текстом) товаров категории 4.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT name, attributes ->> 'color' AS color
+    FROM products
+    WHERE category_id = 4
+    ORDER BY id;
+    ```
+    Результат:
+    ```
+              name           | color
+    -------------------------+-------
+     Беспроводная мышь       | black
+     Проводная мышь          | black
+     Механическая клавиатура | white
+     Коврик для мыши         | black
+     USB-хаб на 4 порта      |
+     Веб-камера              | black
+    (6 rows)
+    ```
+    `->>` — значение текстом; у USB-хаба ключа нет — пусто.
+- title: "Размер M"
+  text: |
+    Выведите `id` и `name` товаров с размером `M` через оператор `@>`.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT id, name
+    FROM products
+    WHERE attributes @> '{"size": "M"}'
+    ORDER BY id;
+    ```
+    Результат:
+    ```
+     id |          name
+    ----+------------------------
+     15 | Футболка базовая белая
+     18 | Лонгслив
+    (2 rows)
+    ```
+    `@>` проверяет, что документ содержит пару.
+- title: "Память больше 100"
+  text: |
+    Выведите `name` и объём памяти `memory_gb` (числом) смартфонов с памятью больше 100 ГБ.
+  answer: |
+    Ответ:
+    ```sql
+    SELECT name,
+           (attributes ->> 'memory_gb')::int
+               AS memory_gb
+    FROM products
+    WHERE (attributes ->> 'memory_gb')::int > 100
+    ORDER BY id;
+    ```
+    Результат:
+    ```
+              name          | memory_gb
+    ------------------------+-----------
+     Смартфон Pixelon 8     |       128
+     Смартфон Pixelon 8 Max |       256
+     Смартфон Lumo S        |       128
+    (3 rows)
+    ```
+    Число из JSON приводят `::int`, иначе сравнение пойдёт по алфавиту.
