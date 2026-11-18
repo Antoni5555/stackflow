@@ -1,0 +1,52 @@
+title: Два варианта цены доставки
+type: exercise
+difficulty: 2
+pitfall: Конфликт разрешён только тогда, когда маркеры удалены, файл добавлен и слияние закоммичено.
+statement: |
+  В `main` стоимость доставки поменяли на 300, а в ветке `delivery-price` — на 350. Решено: правильная цена — 350. Влейте `delivery-price` в `main` (вы на `main`) и разрешите конфликт в `shop/settings.py`: в файле должны остаться строки `DEBUG = True` и `DELIVERY_PRICE = 350` без маркеров. Завершите слияние коммитом с сообщением `Слияние delivery-price`.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас магазина
+      files:
+        shop/settings.py: |
+          DEBUG = True
+          DELIVERY_PRICE = 250
+    - message: Доставка — 350
+      branch: delivery-price
+      from: main
+      files:
+        shop/settings.py: |
+          DEBUG = True
+          DELIVERY_PRICE = 350
+    - message: Доставка — 300
+      branch: main
+      files:
+        shop/settings.py: |
+          DEBUG = True
+          DELIVERY_PRICE = 300
+  head: main
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/shop/settings.py
+      contains: '^DELIVERY_PRICE = 350$'
+      fail: В settings.py должна остаться цена 350.
+    - path: /home/shop/shop/shop/settings.py
+      contains: '(?<![\s\S])(?![\s\S]*^(?:<<<<<<<|=======|>>>>>>>))'
+      fail: В файле остались маркеры конфликта — удалите строки <<<<<<<, ======= и >>>>>>>.
+    - merged: {from: delivery-price, into: main}
+      fail: "Слияние не завершено: после правки файла — git add shop/settings.py и git commit -m \"Слияние delivery-price\"."
+    - clean: true
+      fail: Остались незакоммиченные изменения.
+solution: |
+  git merge delivery-price || echo "Конфликт — разрешаем вручную"
+  echo "DEBUG = True" > shop/settings.py
+  echo "DELIVERY_PRICE = 350" >> shop/settings.py
+  git add shop/settings.py
+  git commit -m "Слияние delivery-price"
+hints:
+  - Что пишет `git status` после `git merge`?
+  - "Перепишите файл без маркеров (`nano shop/settings.py` или `echo … >`), затем `git add` и `git commit`."
+explanation: |
+  Обе ветки изменили строку `DELIVERY_PRICE`, и Git остановил слияние, записав обе версии между маркерами. Решение: оставить `DELIVERY_PRICE = 350`, удалить маркеры, `git add shop/settings.py` — это знак «конфликт решён», — и `git commit` создаёт коммит слияния с двумя родителями.

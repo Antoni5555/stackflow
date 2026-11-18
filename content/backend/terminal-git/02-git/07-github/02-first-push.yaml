@@ -1,0 +1,30 @@
+title: Проект на GitHub
+type: exercise
+difficulty: 1
+pitfall: Первая отправка ветки — git push -u origin main; без -u Git не знает, с какой веткой на GitHub её связать.
+statement: |
+  На GitHub создан пустой репозиторий `git@github.com:anna/shop.git`. Свяжите с ним локальный репозиторий под именем `origin` и отправьте ветку `main` так, чтобы дальше хватало просто `git push`.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас магазина
+      files:
+        manage.py: |
+          print("manage")
+    - message: Каталог
+      files:
+        catalog/views.py: |
+          # catalog
+check:
+  type: state
+  expect:
+    - pushed: main
+      fail: "Ветка main не на GitHub. Сначала git remote add origin git@github.com:anna/shop.git, затем git push -u origin main."
+solution: |
+  git remote add origin git@github.com:anna/shop.git
+  git push -u origin main
+hints:
+  - Что отвечает `git push`, пока не задан `remote`?
+  - "Первая отправка: `git push -u origin main`."
+explanation: |
+  `git remote add origin адрес` запоминает адрес GitHub под именем `origin`. При первой отправке нужно сказать, куда и какую ветку: `git push -u origin main`; `-u` связывает локальную `main` с `origin/main`, и дальше `git push` и `git pull` работают без аргументов.

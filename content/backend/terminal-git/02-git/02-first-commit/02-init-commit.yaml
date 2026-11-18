@@ -1,0 +1,33 @@
+title: Первый снимок
+type: exercise
+difficulty: 1
+pitfall: git commit сохраняет только то, что добавлено в индекс командой git add.
+statement: |
+  В папке `~/shop` лежит проект магазина, но репозитория ещё нет. Создайте репозиторий и закоммитьте `manage.py` и папку `shop` с сообщением `Каркас магазина`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/manage.py: |
+      print("manage")
+    /home/shop/shop/shop/settings.py: |
+      DEBUG = True
+    /home/shop/shop/shop/urls.py: |
+      urlpatterns = []
+check:
+  type: state
+  expect:
+    - commit_in: {branch: main, message: '^Каркас магазина$'}
+      fail: "Коммита «Каркас магазина» нет. Порядок: git init → git add … → git commit -m \"…\"."
+    - tracked: manage.py
+      fail: manage.py не попал в коммит — его нужно добавить в индекс (git add) до коммита.
+    - tracked: shop/urls.py
+      fail: "Папка shop попала в коммит не целиком: git add shop."
+solution: |
+  git init
+  git add manage.py shop
+  git commit -m "Каркас магазина"
+hints:
+  - Что отвечает `git commit`, если ничего не добавлено?
+  - "`git add` принимает и файлы, и папки."
+explanation: |
+  `git init` создаёт пустой репозиторий; файлы остаются неотслеживаемыми. Коммит сохраняет содержимое индекса, поэтому сначала `git add manage.py shop` (папка добавляется со всем содержимым), потом `git commit -m`. Без `add` Git отвечает `nothing added to commit`.

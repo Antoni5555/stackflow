@@ -1,0 +1,41 @@
+title: .env уже в истории
+type: exercise
+difficulty: 2
+pitfall: .gitignore не действует на уже отслеживаемые файлы — их убирают из индекса git rm --cached.
+statement: |
+  `.env` закоммитили в первом же коммите. Добавьте его в `.gitignore` и сделайте так, чтобы Git перестал его отслеживать, но файл остался на диске. Закоммитьте с сообщением `Не храним .env в репозитории`.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас магазина
+      files:
+        manage.py: |
+          print("manage")
+        .env: |
+          SECRET_KEY=dev-8f2c1a
+check:
+  type: state
+  expect:
+    - tracked: .env
+      exists: false
+      fail: ".env всё ещё отслеживается: .gitignore на закоммиченные файлы не действует. Уберите его из индекса: git rm --cached .env."
+    - path: /home/shop/shop/.env
+      exists: true
+      fail: ".env удалён с диска. git rm без --cached удаляет файл совсем."
+    - tracked: .gitignore
+      fail: .gitignore с правилом .env нужно закоммитить.
+    - path: /home/shop/shop/.gitignore
+      contains: '^\.env$'
+      fail: В .gitignore нет строки .env.
+    - commit_in: {branch: main, message: '^Не храним \.env в репозитории$'}
+      fail: Коммита «Не храним .env в репозитории» нет.
+solution: |
+  echo .env > .gitignore
+  git rm --cached .env
+  git add .gitignore
+  git commit -m "Не храним .env в репозитории"
+hints:
+  - Что покажет `git status` после добавления `.env` в `.gitignore`?
+  - "`git rm --cached` убирает файл из индекса, не трогая диск."
+explanation: |
+  Закоммиченный `.env` Git отслеживает, и правило в `.gitignore` на него не влияет. `git rm --cached .env` убирает файл из индекса: в следующем коммите его не будет, а на диске он остаётся. `git rm .env` удалил бы и файл. Ключ из `.env` всё равно нужно сменить — в первом коммите он остался навсегда.

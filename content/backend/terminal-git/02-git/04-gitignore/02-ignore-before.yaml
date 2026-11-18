@@ -1,0 +1,45 @@
+title: Коммит без секретов
+type: exercise
+difficulty: 1
+pitfall: git add . добавляет всё — секреты, окружение и кэш отсекает только .gitignore, созданный заранее.
+statement: |
+  В репозитории магазина появились `.env` с секретным ключом, окружение `venv/` и кэш `__pycache__/`. Создайте `.gitignore`, который их исключит, затем выполните `git add .` и закоммитьте с сообщением `Игнорируем секреты и окружение`. В коммит должен попасть только `.gitignore`.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас магазина
+      files:
+        manage.py: |
+          print("manage")
+  files:
+    /home/shop/shop/.env: |
+      SECRET_KEY=dev-8f2c1a
+    /home/shop/shop/venv/bin/python: ""
+    /home/shop/shop/__pycache__/views.cpython-312.pyc: ""
+check:
+  type: state
+  expect:
+    - tracked: .env
+      exists: false
+      fail: ".env попал в коммит. Добавьте строку .env в .gitignore до git add ."
+    - tracked: venv/bin/python
+      exists: false
+      fail: "Окружение попало в коммит — нужна строка venv/ в .gitignore."
+    - tracked: __pycache__/views.cpython-312.pyc
+      exists: false
+      fail: "Кэш Python попал в коммит — нужна строка __pycache__/ в .gitignore."
+    - tracked: .gitignore
+      fail: .gitignore тоже коммитят — он общий для всего проекта.
+    - commit_in: {branch: main, message: '^Игнорируем секреты и окружение$'}
+      fail: Коммита «Игнорируем секреты и окружение» нет.
+solution: |
+  echo .env > .gitignore
+  echo venv/ >> .gitignore
+  echo __pycache__/ >> .gitignore
+  git add .
+  git commit -m "Игнорируем секреты и окружение"
+hints:
+  - Что покажет `git status` до создания `.gitignore`?
+  - "Шаблоны — по строке: `echo .env > .gitignore`, остальные — через `>>`."
+explanation: |
+  `git add .` добавляет все неотслеживаемые файлы, которые не исключены. `.gitignore` с тремя строками делает `.env`, `venv/` и `__pycache__/` невидимыми для Git — в коммит уходит только сам `.gitignore`. Первая строка пишется через `>`, следующие — `>>`, иначе каждая затрёт предыдущую.

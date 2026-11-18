@@ -1,0 +1,33 @@
+title: Что уйдёт в коммит
+type: exercise
+difficulty: 1
+pitfall: После git add обычный git diff пуст — изменения в индексе показывает git diff --staged.
+statement: |
+  Вы изменили цену в `catalog/models.py`. Добавьте правку в индекс и перед коммитом выведите разницу, которая войдёт в коммит. После `git add` обычный `git diff` ничего не показывает — найдите правильную команду.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каталог — модель товара
+      files:
+        catalog/models.py: |
+          class Product:
+              price = 0
+  files:
+    /home/shop/shop/catalog/models.py: |
+      class Product:
+          price = 100
+check:
+  type: state
+  expect:
+    - staged: catalog/models.py
+      fail: "Изменение должно остаться в индексе (git add catalog/models.py), коммит делать не нужно."
+    - output_matches: '^\+\s+price = 100'
+      fail: "Выведите разницу индекса с последним коммитом: git diff --staged."
+solution: |
+  git add catalog/models.py
+  git diff --staged
+hints:
+  - С чем сравнивает обычный `git diff`?
+  - "Индекс против последнего коммита — флаг `--staged`."
+explanation: |
+  `git diff` сравнивает рабочую папку с индексом: после `git add` они совпадают, и разницы нет. То, что войдёт в коммит, — разница индекса и последнего коммита: `git diff --staged`. Там видно `-    price = 0` и `+    price = 100`.

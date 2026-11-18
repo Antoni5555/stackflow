@@ -1,0 +1,22 @@
+title: Прочитать diff
+type: quiz
+kind: single
+difficulty: 1
+pitfall: В diff строки с минусом — как было, с плюсом — как стало.
+statement: |
+  Что изменилось в файле?
+  ```
+  @@ -1,3 +1,3 @@
+   DEBUG = False
+  -TIME_ZONE = 'UTC'
+  +TIME_ZONE = 'Europe/Moscow'
+   LANGUAGE_CODE = 'ru'
+  ```
+options:
+  - Часовой пояс поменяли с `Europe/Moscow` на `UTC`
+  - Часовой пояс поменяли с `UTC` на `Europe/Moscow`
+  - Добавили строку `DEBUG = False`
+  - Удалили строку `LANGUAGE_CODE = 'ru'`
+answer: [1]
+explanation: |
+  Строка с `-` — старая версия, с `+` — новая: `TIME_ZONE` был `UTC`, стал `Europe/Moscow`. Строки без знака — контекст: они не изменились и показаны, чтобы было понятно, где правка.

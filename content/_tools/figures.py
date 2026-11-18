@@ -1953,6 +1953,99 @@ def requirements():
     f.save(out(TG1 / "06-pip" / "img" / "requirements.svg"))
 
 
+# ---------- Терминал и Git: раздел 2 ----------
+TG2 = ROOT / "terminal-git" / "02-git"
+
+
+def _commit(f, x, y, sha, msg, cls="box2", w=200):
+    f.box(x, y, w, 56, f"{sha}|{msg}", cls, "onacc" if cls == "acc" else "cs", rx=10)
+
+
+def commits_chain():
+    f = Figure(880, 200, "История — цепочка коммитов: снимок файлов, автор, дата и сообщение; каждый знает предыдущий")
+    _commit(f, 20, 50, "5700f91", "Каркас магазина")
+    _commit(f, 320, 50, "3243adf", "Каталог: модель товара")
+    _commit(f, 620, 50, "34b56d0", "Настройки для прода", "acc", 240)
+    f.arrow("M320 78H224"); f.arrow("M620 78H524")
+    f.text(620, 132, "HEAD -> main", "cs")
+    f.text(20, 170, "Стрелка — ссылка на родителя. Хеш однозначно определяет коммит; хватает первых 7 символов.", "s")
+    f.save(out(TG2 / "01-why-vcs" / "img" / "commits-chain.svg"))
+
+
+def three_areas():
+    f = Figure(880, 220, "Коммит делается в два шага: git add кладёт в индекс, git commit сохраняет индекс в историю")
+    f.box(20, 40, 240, 90, "рабочая папка|файлы на диске", "box2", "c", rx=12)
+    f.box(320, 40, 240, 90, "индекс|следующий коммит", "acc", "onacc", rx=12)
+    f.box(620, 40, 240, 90, "репозиторий|коммиты в .git", "box2", "c", rx=12)
+    f.arrow("M260 85H316"); f.arrow("M560 85H616")
+    f.text(250, 30, "git add", "cs"); f.text(548, 30, "git commit", "cs")
+    f.text(20, 160, "untracked / modified", "s"); f.text(320, 160, "staged — Changes to be committed", "s")
+    f.text(620, 160, "clean — nothing to commit", "s")
+    f.text(20, 200, "git status показывает, что лежит в какой области; в коммит идёт версия файла на момент git add.", "s")
+    f.save(out(TG2 / "02-first-commit" / "img" / "three-areas.svg"))
+
+
+def diff_areas():
+    f = Figure(880, 220, "git diff и git diff --staged сравнивают разные пары областей")
+    f.box(20, 40, 240, 70, "рабочая папка", "box2", "c", rx=12)
+    f.box(320, 40, 240, 70, "индекс", "acc", "onacc", rx=12)
+    f.box(620, 40, 240, 70, "последний коммит", "box2", "c", rx=12)
+    f.line("M140 120V150H440V120", "lnd"); f.text(160, 170, "git diff — ещё не добавленное", "cs")
+    f.line("M440 30V14H740V30", "lnd"); f.text(460, 10, "git diff --staged — войдёт в коммит", "cs")
+    f.text(20, 205, "После git add обычный git diff пуст: изменения уже в индексе.", "s")
+    f.save(out(TG2 / "03-history-diff" / "img" / "diff-areas.svg"))
+
+
+def gitignore():
+    f = Figure(880, 230, ".gitignore прячет неотслеживаемые файлы; уже закоммиченные убирают git rm --cached")
+    f.box(20, 30, 270, 60, ".gitignore|.env  venv/  __pycache__/", "box2", "cs", rx=8)
+    for k, (name, cls) in enumerate((("manage.py → в коммит", "ok"), (".env → не видно Git", "box"),
+                                     ("venv/ → не видно Git", "box"))):
+        f.box(320, 20 + k * 50, 260, 40, name, cls, "t", rx=8)
+    f.box(620, 30, 240, 100, ".env уже в коммите:|.gitignore не действует|→ git rm --cached .env", "err", "errt", rx=8)
+    f.text(20, 200, "git rm --cached убирает файл из индекса, оставляя на диске; секрет из истории всё равно меняют.", "s")
+    f.save(out(TG2 / "04-gitignore" / "img" / "gitignore.svg"))
+
+
+def branches():
+    f = Figure(880, 260, "Ветка — указатель на коммит; при fast-forward git merge просто сдвигает main")
+    f.text(20, 24, "до слияния", "h")
+    _commit(f, 20, 34, "5be578d", "Каркас", w=150); _commit(f, 200, 34, "a9d5869", ".gitignore", w=150)
+    _commit(f, 380, 34, "f675ed6", "О магазине", "acc", 150)
+    f.arrow("M200 62H174"); f.arrow("M380 62H354")
+    f.text(220, 112, "main", "cs"); f.text(400, 112, "HEAD -> about", "cs")
+    f.text(20, 154, "после git switch main; git merge about", "h")
+    _commit(f, 20, 164, "5be578d", "Каркас", w=150); _commit(f, 200, 164, "a9d5869", ".gitignore", w=150)
+    _commit(f, 380, 164, "f675ed6", "О магазине", "acc", 150)
+    f.arrow("M200 192H174"); f.arrow("M380 192H354")
+    f.text(400, 242, "HEAD -> main, about", "cs")
+    f.text(580, 200, "нового коммита нет —", "s"); f.text(580, 218, "main догнал about", "s")
+    f.save(out(TG2 / "05-branches" / "img" / "branches.svg"))
+
+
+def conflict():
+    f = Figure(880, 250, "Обе ветки изменили одну строку после общего коммита — Git просит выбрать вручную")
+    _commit(f, 20, 96, "d4153a5", "TIME_ZONE = 'UTC'", w=220)
+    _commit(f, 320, 30, "4ca0a0f  main", "TIME_ZONE = 'Europe/Kazan'", w=260)
+    _commit(f, 320, 160, "7dc2562  timezone", "TIME_ZONE = 'Europe/Moscow'", w=260)
+    f.arrow("M320 58L244 110"); f.arrow("M320 188L244 140")
+    f.box(640, 70, 220, 110, "<<<<<<< HEAD|Kazan|=======|Moscow|>>>>>>> timezone", "err", "errt", rx=8)
+    f.arrow("M584 120H636")
+    f.text(20, 240, "Решение: оставить нужный вариант без маркеров → git add → git commit; отмена — git merge --abort.", "s")
+    f.save(out(TG2 / "06-conflict" / "img" / "conflict.svg"))
+
+
+def push_pull():
+    f = Figure(880, 220, "push отправляет коммиты на GitHub, pull забирает новые, clone скачивает репозиторий целиком")
+    f.box(20, 50, 280, 90, "локальный репозиторий|~/shop/.git", "box2", "c", rx=12)
+    f.box(580, 50, 280, 90, "GitHub (origin)|anna/shop.git", "acc", "onacc", rx=12)
+    f.arrow("M300 76H576"); f.text(380, 66, "git push (-u origin main)", "cs")
+    f.arrow("M576 114H304"); f.text(400, 134, "git pull / git clone", "cs")
+    f.text(20, 186, "Push отклонён (fetch first) — на GitHub есть чужие коммиты: git pull --no-rebase, затем git push.", "s")
+    f.text(20, 206, "Доступ — SSH-ключ: публичный .pub на GitHub, приватный остаётся у вас.", "s")
+    f.save(out(TG2 / "07-github" / "img" / "push-pull.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1978,6 +2071,7 @@ if __name__ == "__main__":
                   flat_to_tables, dependencies, denormalization, reviews_design,
                   btree, composite, explain_node, transaction, mvcc, deadlock,
                   driver_flow, injection, with_connection,
-                  command_parts, path_tree, cp_mv, argv, venv, requirements):
+                  command_parts, path_tree, cp_mv, argv, venv, requirements,
+                  commits_chain, three_areas, diff_areas, gitignore, branches, conflict, push_pull):
         build()
     print("ok")

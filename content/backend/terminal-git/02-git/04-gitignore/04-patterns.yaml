@@ -1,0 +1,21 @@
+title: Что исключит шаблон
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: Шаблоны .gitignore — по именам и маскам; слеш в конце — только папки, ! — исключение.
+statement: |
+  `.gitignore` проекта:
+  ```
+  *.log
+  media/
+  !media/placeholder.png
+  ```
+  Какие файлы Git **будет** показывать как неотслеживаемые?
+options:
+  - "`logs/orders.log`"
+  - "`media/products/1.jpg`"
+  - "`shop/views.py`"
+  - "`errors.log.txt`"
+answer: [2, 3]
+explanation: |
+  `*.log` исключает файлы, оканчивающиеся на `.log`, в любой папке — `logs/orders.log` скрыт, а `errors.log.txt` оканчивается на `.txt` и виден. `media/` скрывает папку целиком. Исключение `!media/placeholder.png` здесь не сработает: если исключена вся папка, Git не заглядывает внутрь, и файлы в ней вернуть нельзя (нужно `media/*` вместо `media/`). `shop/views.py` ни под одно правило не попадает.

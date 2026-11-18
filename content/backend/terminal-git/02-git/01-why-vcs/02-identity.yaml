@@ -1,0 +1,32 @@
+title: Кто вы?
+type: exercise
+difficulty: 1
+pitfall: Git подписывает каждый коммит именем и почтой из настроек — без них коммит не создаётся.
+statement: |
+  На новом ноутбуке репозиторий проекта создан, но Git ещё не настроен — `git commit` ответит `Author identity unknown`. Настройте Git для всех репозиториев: имя `Анна Смирнова`, почта `anna@shop.example`. Затем добавьте `manage.py` и сделайте коммит с сообщением `Каркас магазина`.
+setup:
+  cwd: /home/shop/shop
+  gitconfig: null
+  commits: []
+  files:
+    /home/shop/shop/manage.py: |
+      print("manage")
+check:
+  type: state
+  expect:
+    - config: {key: user.email, value: '^anna@shop\.example$'}
+      fail: "Почта не настроена: git config --global user.email anna@shop.example."
+    - config: {key: user.name, value: '^Анна Смирнова$'}
+      fail: "Имя не настроено: git config --global user.name \"Анна Смирнова\" — с кавычками, в имени пробел."
+    - commit_in: {branch: main, message: '^Каркас магазина$'}
+      fail: Коммита «Каркас магазина» нет. После настройки добавьте файл и сделайте коммит.
+solution: |
+  git config --global user.name "Анна Смирнова"
+  git config --global user.email anna@shop.example
+  git add manage.py
+  git commit -m "Каркас магазина"
+hints:
+  - Что Git предлагает выполнить в тексте ошибки?
+  - Имя с пробелом берут в кавычки.
+explanation: |
+  Каждый коммит хранит автора, и Git не создаёт коммит, пока не знает имя и почту. `git config --global` записывает их в `~/.gitconfig` — один раз для всех репозиториев на компьютере. Имя с пробелом — в кавычках, иначе `Смирнова` станет лишним аргументом.

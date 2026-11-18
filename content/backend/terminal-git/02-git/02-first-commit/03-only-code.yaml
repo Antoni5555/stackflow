@@ -1,0 +1,44 @@
+title: Без черновиков
+type: exercise
+difficulty: 2
+pitfall: git add . добавляет всё подряд — в коммит попадает лишнее; добавляют только нужное.
+statement: |
+  В репозитории магазина вы поправили модель товара `catalog/models.py` и заодно записали заметки в `notes.txt`. Закоммитьте только изменение модели с сообщением `Каталог: цена товара`. Заметки в историю попасть не должны.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас магазина
+      files:
+        manage.py: |
+          print("manage")
+        catalog/models.py: |
+          class Product:
+              name = ""
+  files:
+    /home/shop/shop/catalog/models.py: |
+      class Product:
+          name = ""
+          price = 0
+    /home/shop/shop/notes.txt: |
+      спросить про скидки
+check:
+  type: state
+  expect:
+    - commit_in: {branch: main, message: '^Каталог: цена товара$'}
+      fail: "Коммита «Каталог: цена товара» нет."
+    - tracked: notes.txt
+      exists: false
+      fail: "notes.txt попал в коммит. git add . добавляет всё — добавьте только catalog/models.py."
+    - path: /home/shop/shop/catalog/models.py
+      contains: 'price = 0'
+      fail: Изменение модели потерялось.
+    - commit_count: {branch: main, count: 2}
+      fail: Нужен ровно один новый коммит.
+solution: |
+  git add catalog/models.py
+  git commit -m "Каталог: цена товара"
+hints:
+  - Посмотрите `git status` — какие файлы изменены и какие новые?
+  - "`git add` с путём к файлу добавляет только его."
+explanation: |
+  `git status` показывает две вещи: `modified: catalog/models.py` и `Untracked: notes.txt`. `git add .` положил бы в индекс обе, и черновики остались бы в истории навсегда. `git add catalog/models.py` добавляет только модель — коммит содержит одно логическое изменение. Заметки потом убирают в `.gitignore`.

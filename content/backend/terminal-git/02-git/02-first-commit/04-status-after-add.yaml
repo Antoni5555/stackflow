@@ -1,0 +1,15 @@
+title: Правка после add
+type: quiz
+kind: single
+difficulty: 2
+pitfall: git add кладёт в индекс версию файла на момент команды — последующие правки в коммит не попадут без нового add.
+statement: |
+  Разработчик выполнил `git add settings.py` (там `DEBUG = False`), потом исправил в файле ещё и `ALLOWED_HOSTS` и сразу сделал `git commit -m "Настройки"`. Что попало в коммит?
+options:
+  - Обе правки — коммит берёт файл с диска
+  - Только `DEBUG = False`; правка `ALLOWED_HOSTS` осталась в статусе modified
+  - Ничего — после изменения файла индекс очищается
+  - Коммит не создастся — файл изменён после add
+answer: [1]
+explanation: |
+  Коммит сохраняет индекс, а в индексе — версия файла на момент `git add`. Вторая правка появилась позже, и `git status` покажет файл одновременно в `Changes to be committed` (до коммита) и `Changes not staged for commit`. Нужно повторить `git add settings.py` перед коммитом.

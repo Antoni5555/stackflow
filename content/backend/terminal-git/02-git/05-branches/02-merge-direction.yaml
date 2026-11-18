@@ -1,0 +1,39 @@
+title: Страница доставки
+type: exercise
+difficulty: 2
+pitfall: git merge вливает указанную ветку в текущую — переключаются туда, куда вливают.
+statement: |
+  Страница «Доставка» готова в ветке `delivery`, вы сейчас на ней. Влейте `delivery` в `main` и удалите ветку `delivery`.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас магазина
+      files:
+        manage.py: |
+          print("manage")
+    - message: Страница «Доставка»
+      branch: delivery
+      from: main
+      files:
+        templates/delivery.html: |
+          <h1>Доставка</h1>
+  head: delivery
+check:
+  type: state
+  expect:
+    - commit_in: {branch: main, message: '^Страница «Доставка»$'}
+      fail: "delivery не влита в main. Перейдите в main (git switch main) и выполните git merge delivery."
+    - head: main
+      fail: Оставайтесь на ветке main после слияния.
+    - branch: delivery
+      exists: false
+      fail: "Слитую ветку удаляют: git branch -d delivery."
+solution: |
+  git switch main
+  git merge delivery
+  git branch -d delivery
+hints:
+  - "`git merge X` вливает X в текущую ветку. Какая ветка сейчас текущая?"
+  - Сначала переключитесь на ту ветку, которая должна получить изменения.
+explanation: |
+  `git merge main`, выполненный из `delivery`, влил бы `main` в `delivery` — главная ветка осталась бы без страницы. Правильно: `git switch main`, потом `git merge delivery`. В `main` новых коммитов не было — слияние fast-forward. После слияния ветку удаляют `git branch -d delivery`: коммит остаётся в `main`.

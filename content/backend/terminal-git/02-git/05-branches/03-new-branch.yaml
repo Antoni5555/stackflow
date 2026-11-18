@@ -1,0 +1,33 @@
+title: Работа не в main
+type: exercise
+difficulty: 1
+pitfall: Новую работу ведут в отдельной ветке, чтобы main оставался рабочим.
+statement: |
+  Начните страницу контактов в новой ветке `contacts`: создайте ветку, добавьте файл `templates/contacts.html` с текстом `<h1>Контакты</h1>` и закоммитьте его с сообщением `Страница контактов`. Ветка `main` измениться не должна.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас магазина
+      files:
+        manage.py: |
+          print("manage")
+check:
+  type: state
+  expect:
+    - branch: contacts
+      fail: "Ветки contacts нет: git switch -c contacts."
+    - commit_in: {branch: contacts, message: '^Страница контактов$'}
+      fail: Коммита «Страница контактов» в ветке contacts нет.
+    - commit_count: {branch: main, count: 1}
+      fail: "В main появился новый коммит — значит, коммит сделан до перехода на ветку contacts."
+solution: |
+  git switch -c contacts
+  mkdir -p templates
+  echo '<h1>Контакты</h1>' > templates/contacts.html
+  git add templates
+  git commit -m "Страница контактов"
+hints:
+  - Создайте ветку до коммита — новые коммиты двигают текущую ветку.
+  - "`git switch -c имя` — создать ветку и сразу перейти на неё."
+explanation: |
+  Коммит двигает ту ветку, на которой вы стоите (`HEAD`). Если сначала закоммитить, а потом создать ветку, коммит окажется в `main`. `git switch -c contacts` создаёт ветку от текущего коммита и переключает на неё — дальше все коммиты идут в `contacts`, а `main` остаётся как был.

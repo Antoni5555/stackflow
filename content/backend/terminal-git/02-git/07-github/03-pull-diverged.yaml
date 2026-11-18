@@ -1,0 +1,44 @@
+title: Коллега успел первым
+type: exercise
+difficulty: 2
+pitfall: Если на GitHub появились чужие коммиты, push отклоняется; при разошедшихся ветках pull требует выбрать способ — --no-rebase.
+statement: |
+  Вы написали `README.md` (файл уже в папке). Закоммитьте его с сообщением `README` и отправьте на GitHub. Учтите: коллега уже отправил в `main` свой коммит «Корзина: модель», и `git push` откажет. Объедините ветки слиянием и отправьте результат.
+setup:
+  cwd: /home/shop/shop
+  commits:
+    - message: Каркас магазина
+      files:
+        manage.py: |
+          print("manage")
+  remote:
+    url: git@github.com:anna/shop.git
+    pushed: [main]
+    commits:
+      - message: "Корзина: модель"
+        files:
+          cart/models.py: |
+            class Cart:
+                pass
+  files:
+    /home/shop/shop/README.md: |
+      # Магазин
+check:
+  type: state
+  expect:
+    - commit_in: {branch: main, message: '^README$'}
+      fail: Коммита README нет.
+    - commit_in: {branch: main, message: '^Корзина: модель$'}
+      fail: "Коммит коллеги не забран. git pull при разошедшихся ветках требует способ: git pull --no-rebase."
+    - pushed: main
+      fail: "Результат не отправлен на GitHub: git push после pull."
+solution: |
+  git add README.md
+  git commit -m "README"
+  git pull --no-rebase
+  git push
+hints:
+  - Что отвечает `git push` и что советует?
+  - "`git pull` при расхождении просит выбрать способ — `--no-rebase` (слияние)."
+explanation: |
+  На GitHub есть коммит, которого нет у вас, и `git push` отклоняется (`fetch first`), чтобы не затереть чужую работу. `git pull` скачивает его, но ветки разошлись, и Git просит выбрать способ объединения. `git pull --no-rebase` создаёт коммит слияния, после чего `git push` проходит. `--rebase` тоже решил бы задачу — перенёс бы ваш коммит поверх коллегиного.
