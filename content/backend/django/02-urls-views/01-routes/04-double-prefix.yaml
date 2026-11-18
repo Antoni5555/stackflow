@@ -1,0 +1,60 @@
+title: API переехал на /api/api/
+type: exercise
+difficulty: 2
+pitfall: Внутри модуля, подключённого через include, адреса пишут без префикса — иначе он повторяется.
+statement: |
+  Маршруты API вынесли в `api_urls.py` и подключили под префиксом `api/`, но `/api/ping/` и `/api/products/` теперь отвечают 404. Исправьте маршруты так, чтобы адреса остались прежними.
+files:
+  views.py: |
+    from django.http import JsonResponse
+
+
+    def ping(request):
+        return JsonResponse({"status": "ok"})
+
+
+    def api_products(request):
+        return JsonResponse({"count": 2})
+  api_urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("api/ping/", views.ping),
+        path("api/products/", views.api_products),
+    ]
+  urls.py: |
+    from django.urls import include, path
+
+    urlpatterns = [
+        path("api/", include("shop.api_urls")),
+    ]
+solution:
+  api_urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("ping/", views.ping),
+        path("products/", views.api_products),
+    ]
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/api/ping/")
+        assert response.status_code == 200 and response.json() == {"status": "ok"}
+      fail: "/api/ping/ отвечает 404. Какой адрес получается, если склеить префикс из urls.py и маршрут из api_urls.py?"
+    - code: |
+        assert client.get("/api/products/").json() == {"count": 2}
+      fail: /api/products/ тоже должен работать.
+    - code: |
+        assert client.get("/api/api/ping/").status_code == 404
+      fail: Адреса вида /api/api/… остаться не должны — префикс указывается один раз.
+hints:
+  - "Посмотрите на 404-страницу: какие шаблоны адресов перечислил Django для `api/`?"
+  - "Префикс `api/` уже задан в `urls.py` — в `api_urls.py` оставьте `ping/` и `products/`."
+explanation: |
+  `include` отрезает совпавший префикс `api/` и ищет остаток адреса во включённом списке. Остаток `/api/ping/` — это `ping/`, а маршрут ждёт `api/ping/`. Он совпал бы только с `/api/api/ping/`. Во включённом модуле адреса пишут относительно префикса — тогда префикс меняется в одном месте.

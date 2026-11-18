@@ -1,0 +1,64 @@
+title: Каталог без фильтра падает
+type: exercise
+difficulty: 1
+pitfall: request.GET["…"] при отсутствии параметра выбрасывает MultiValueDictKeyError — ответ 500.
+statement: |
+  Фильтр по цене `/catalog/?max_price=2000` работает, а просто `/catalog/` отвечает ошибкой 500. Без параметра каталог должен показывать все товары.
+files:
+  views.py: |
+    from django.http import JsonResponse
+
+    PRODUCTS = [
+        {"name": "Ноутбук Aster 14", "price": 64990},
+        {"name": "Беспроводная мышь", "price": 1499},
+        {"name": "Коврик для мыши", "price": 490},
+    ]
+
+
+    def catalog(request):
+        max_price = int(request.GET["max_price"])
+        names = [p["name"] for p in PRODUCTS if p["price"] <= max_price]
+        return JsonResponse({"products": names})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+solution:
+  views.py: |
+    from django.http import JsonResponse
+
+    PRODUCTS = [
+        {"name": "Ноутбук Aster 14", "price": 64990},
+        {"name": "Беспроводная мышь", "price": 1499},
+        {"name": "Коврик для мыши", "price": 490},
+    ]
+
+
+    def catalog(request):
+        products = PRODUCTS
+        max_price = request.GET.get("max_price")
+        if max_price is not None:
+            products = [p for p in products if p["price"] <= int(max_price)]
+        names = [p["name"] for p in products]
+        return JsonResponse({"products": names})
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/catalog/")
+        assert response.status_code == 200
+        assert len(response.json()["products"]) == 3
+      fail: "Без параметра max_price каталог падает (MultiValueDictKeyError) — а должен показать все три товара."
+    - code: |
+        products = client.get("/catalog/", {"max_price": "2000"}).json()["products"]
+        assert products == ["Беспроводная мышь", "Коврик для мыши"]
+      fail: Фильтр ?max_price=2000 должен оставлять товары не дороже 2000.
+hints:
+  - "Что возвращает `request.GET[\"max_price\"]`, если такого параметра в адресе нет?"
+  - "`request.GET.get(\"max_price\")` вернёт `None` — тогда фильтр не применяем."
+explanation: |
+  `request.GET` — `QueryDict`; обращение по ключу, которого нет, выбрасывает `MultiValueDictKeyError` (наследника `KeyError`). Необязательные параметры берут через `.get()`: без параметра — `None`, и view решает, что делать — здесь не фильтровать.

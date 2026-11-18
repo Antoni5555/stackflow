@@ -1,0 +1,64 @@
+title: Ссылки после переезда каталога
+type: exercise
+difficulty: 1
+pitfall: Адрес, записанный в шаблоне вручную, не меняется вместе с маршрутом — ссылки ведут на 404.
+statement: |
+  Страницы товаров переехали с `/products/<slug>/` на `/catalog/<slug>/`, но ссылки в каталоге по-прежнему ведут на старые адреса и отвечают 404. Исправьте шаблон так, чтобы ссылки строились по имени маршрута.
+files:
+  views.py: |
+    from django.http import HttpResponse
+    from django.shortcuts import render
+
+    PRODUCTS = {
+        "aster-14": "Ноутбук Aster 14",
+        "wireless-mouse": "Беспроводная мышь",
+    }
+
+
+    def product_list(request):
+        return render(request, "shop/product_list.html", {"products": PRODUCTS})
+
+
+    def product_detail(request, slug):
+        return HttpResponse(f"<h1>{PRODUCTS[slug]}</h1>")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.product_list, name="product_list"),
+        path("catalog/<slug:slug>/", views.product_detail, name="product_detail"),
+    ]
+  templates/shop/product_list.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for slug, name in products.items %}
+        <li><a href="/products/{{ slug }}/">{{ name }}</a></li>
+      {% endfor %}
+    </ul>
+solution:
+  templates/shop/product_list.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for slug, name in products.items %}
+        <li><a href="{% url 'product_detail' slug %}">{{ name }}</a></li>
+      {% endfor %}
+    </ul>
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/catalog/").content.decode()
+        assert 'href="/catalog/aster-14/"' in html and 'href="/catalog/wireless-mouse/"' in html
+      fail: Ссылки в каталоге ведут не на /catalog/<slug>/.
+    - code: |
+        from django.template.loader import get_template
+        source = get_template("shop/product_list.html").template.source
+        assert "{% url" in source
+      fail: "Адрес всё ещё записан вручную — постройте его тегом {% url 'product_detail' slug %}."
+hints:
+  - "Какое имя у маршрута страницы товара в `urls.py`?"
+  - "`href=\"{% url 'product_detail' slug %}\"`."
+explanation: |
+  Адрес, записанный в шаблоне руками, не знает о `urls.py`. Маршрут перенесли, а ссылка осталась старой. Тег `{% url 'product_detail' slug %}` строит адрес по имени маршрута в момент отрисовки — при следующем переезде ссылки перестроятся сами.

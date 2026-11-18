@@ -1,0 +1,74 @@
+- title: Поиск с метками
+  text: |
+    Сделайте `/search/`: параметр `q` — строка поиска, `tag` — метки (может повторяться). Пустой или отсутствующий `q` — ответ 400. В JSON верните `q` и список меток.
+  hint: |
+    `request.GET.get("q", "")` и `.strip()`; все метки — `getlist`.
+  answer: |
+    Ответ:
+
+    Файл `views.py`:
+    ```python
+    from django.http import JsonResponse
+
+    UTF8 = {"ensure_ascii": False}
+
+
+    def search(request):
+        q = request.GET.get("q", "").strip()
+        if not q:
+            return JsonResponse(
+                {"error": "пустой запрос"},
+                status=400, json_dumps_params=UTF8,
+            )
+        tags = request.GET.getlist("tag")
+        return JsonResponse(
+            {"q": q, "tags": tags}, json_dumps_params=UTF8
+        )
+    ```
+    Результат:
+    ```
+    GET /search/?q=мышь&tag=хит&tag=новинка → 200 OK
+    {"q": "мышь", "tags": ["хит", "новинка"]}
+
+    GET /search/?q=+ → 400 Bad Request
+    {"error": "пустой запрос"}
+    ```
+    `+` в адресе — пробел; после `strip()` запрос пустой.
+- title: Распродажа ведёт в каталог
+  text: |
+    Адрес `/sale/` должен перенаправлять в каталог с сортировкой по цене: `/catalog/?sort=price`. Маршрут каталога называется `catalog`.
+  answer: |
+    Ответ:
+
+    Файл `views.py` (фрагмент):
+    ```python
+    from django.shortcuts import redirect
+    from django.urls import reverse
+
+
+    def sale(request):
+        return redirect(reverse("catalog") + "?sort=price")
+    ```
+    Результат:
+    ```
+    GET /sale/ → 302 Found
+    Location: /catalog/?sort=price
+    ```
+    `redirect("catalog")` построил бы адрес без параметров, поэтому адрес собираем `reverse` и дописываем query-строку. Распродажа временная — 302, а не 301.
+- title: Только чтение
+  text: |
+    Страница заказа `/orders/<int:pk>/` должна открываться GET-запросом и не принимать POST, PUT и другие методы. Каким декоратором это сделать?
+  answer: |
+    Ответ:
+
+    Файл `views.py` (фрагмент):
+    ```python
+    from django.http import HttpResponse
+    from django.views.decorators.http import require_GET
+
+
+    @require_GET
+    def order_detail(request, pk):
+        return HttpResponse(f"Заказ №{pk}")
+    ```
+    На POST Django ответит `405 Method Not Allowed` с заголовком `Allow: GET`. Есть и общий вариант: `@require_http_methods(["GET", "HEAD"])`.

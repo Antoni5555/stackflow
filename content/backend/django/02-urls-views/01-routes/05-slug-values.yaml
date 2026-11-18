@@ -1,0 +1,16 @@
+title: Что подходит под slug
+type: quiz
+kind: multiple
+difficulty: 1
+pitfall: Конвертер slug принимает только латиницу, цифры, дефис и подчёркивание — кириллица и пробел не подходят.
+statement: |
+  Маршрут — `path("products/<slug:slug>/", views.product_detail)`. Для каких адресов вызовется `product_detail`?
+options:
+  - "`/products/aster-14/`"
+  - "`/products/wireless_mouse/`"
+  - "`/products/ноутбук/`"
+  - "`/products/Aster-14/`"
+  - "`/products/aster%2014/` (пробел в адресе)"
+answer: [0, 1, 3]
+explanation: |
+  `slug` — это латинские буквы любого регистра, цифры, `-` и `_`. Кириллица и пробел не подходят, и маршрут для таких адресов не совпадает — Django отвечает 404, view не вызывается. Поэтому адреса товаров делают латиницей (`aster-14`), а `Aster-14` и `aster-14` для конвертера — разные, но оба правильные slug.

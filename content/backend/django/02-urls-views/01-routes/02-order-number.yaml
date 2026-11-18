@@ -1,0 +1,51 @@
+title: Заказ не находится по номеру
+type: exercise
+difficulty: 1
+pitfall: Без конвертера int параметр приходит строкой — словарь с числовыми ключами её не находит.
+statement: |
+  Страница `/orders/12/` пишет «не найден», хотя заказ 12 есть. Исправьте маршрут, не меняя view.
+files:
+  views.py: |
+    from django.http import HttpResponse
+
+    ORDERS = {12: "оплачен", 13: "доставляется"}
+
+
+    def order_detail(request, pk):
+        status = ORDERS.get(pk)
+        if status is None:
+            return HttpResponse("Заказ не найден", status=404)
+        return HttpResponse(f"Заказ №{pk}: {status}")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/<pk>/", views.order_detail),
+    ]
+solution:
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/<int:pk>/", views.order_detail),
+    ]
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/orders/12/")
+        assert response.status_code == 200
+        assert "оплачен" in response.content.decode()
+      fail: "Заказ 12 не находится: во view приходит строка \"12\", а ключи словаря — числа."
+    - code: |
+        assert client.get("/orders/abc/").status_code == 404
+      fail: Адрес с буквами вместо номера должен отвечать 404.
+hints:
+  - "Какого типа `pk` приходит во view, если в маршруте не указан конвертер?"
+  - "`path(\"orders/<int:pk>/\", …)`."
+explanation: |
+  Без конвертера работает `str`: во view приходит строка `"12"`, а `ORDERS.get("12")` ищет строковый ключ и не находит числовой `12`. Конвертер `int` превращает часть адреса в число. Заодно он не пускает во view адреса вроде `/orders/abc/` — такой маршрут просто не совпадает, и Django отвечает 404.

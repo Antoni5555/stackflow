@@ -1,0 +1,56 @@
+title: Новый товар стал товаром «new»
+type: exercise
+difficulty: 2
+pitfall: Маршруты проверяются по порядку — общий products/<slug:slug>/ перехватывает products/new/.
+statement: |
+  Форма нового товара на `/products/new/` не открывается: вместо неё — «Товар не найден». Почините, не меняя view.
+files:
+  views.py: |
+    from django.http import HttpResponse
+
+    PRODUCTS = {"aster-14": "Ноутбук Aster 14"}
+
+
+    def product_detail(request, slug):
+        if slug not in PRODUCTS:
+            return HttpResponse("Товар не найден", status=404)
+        return HttpResponse(PRODUCTS[slug])
+
+
+    def product_new(request):
+        return HttpResponse("Форма нового товара")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/", views.product_detail),
+        path("products/new/", views.product_new),
+    ]
+solution:
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/new/", views.product_new),
+        path("products/<slug:slug>/", views.product_detail),
+    ]
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/products/new/")
+        assert "Форма нового товара" in response.content.decode()
+      fail: /products/new/ попадает в маршрут товара — Django берёт первый подходящий маршрут.
+    - code: |
+        response = client.get("/products/aster-14/")
+        assert response.status_code == 200 and "Aster 14" in response.content.decode()
+      fail: Страница товара по slug должна работать как раньше.
+hints:
+  - "Подходит ли `new` под конвертер `slug`? Какой маршрут Django проверит первым?"
+  - "Поставьте `products/new/` выше `products/<slug:slug>/`."
+explanation: |
+  `new` — правильный slug, поэтому первый маршрут совпадает, и `product_detail` ищет товар с адресом `new`. До второго маршрута Django не доходит. Конкретные адреса ставят раньше общих с параметрами. Ещё надёжнее — чтобы адреса не пересекались вовсе: `products/new/` и `products/<slug:slug>/` можно развести как `products/add/` или `manage/products/new/`.

@@ -765,6 +765,86 @@ def first_page():
     f.save(out(DJ1 / "03-first-page" / "img" / "first-page.svg"))
 
 
+# ---------- Django 2.01: параметры маршрута и include ----------
+DJ2 = ROOT / "django" / "02-urls-views"
+
+
+def route_params():
+    f = Figure(860, 300, "Маршрут с параметром передаёт часть адреса во view; include склеивает префикс и маршрут модуля")
+    f.text(20, 24, "параметр", "h")
+    f.box(20, 36, 220, 50, "/products/aster-14/", "box2", "cs")
+    f.arrow("M240 61H276")
+    f.box(280, 36, 260, 50, "", "box")
+    f.text(410, 58, "products/<slug:slug>/", "cs", "middle")
+    f.text(410, 76, "конвертер slug: совпало", "s", "middle")
+    f.arrow("M540 61H576")
+    f.box(580, 36, 260, 50, "", "ok")
+    f.text(710, 58, "product_detail(request,", "cs", "middle")
+    f.text(710, 76, 'slug="aster-14")', "cs", "middle")
+    f.text(20, 112, "/orders/abc/ при <int:pk> — маршрут не совпал, view не вызывается, ответ 404", "s")
+    f.text(20, 160, "include", "h")
+    f.box(20, 172, 220, 50, "/api/ping/", "box2", "cs")
+    f.arrow("M240 197H276")
+    f.box(280, 172, 260, 50, "", "box")
+    f.text(410, 194, 'urls.py: path("api/", include(…))', "cs", "middle")
+    f.text(410, 212, "отрезан префикс api/, остаток ping/", "s", "middle")
+    f.arrow("M540 197H576")
+    f.box(580, 172, 260, 50, "", "ok")
+    f.text(710, 194, 'api_urls.py: path("ping/", …)', "cs", "middle")
+    f.text(710, 212, "views.ping(request)", "s", "middle")
+    f.text(20, 260, "Маршруты проверяются по порядку: побеждает первый подходящий.", "t")
+    f.text(20, 284, "Конкретные адреса (products/new/) — выше общих (products/<slug:slug>/).", "s")
+    f.save(out(DJ2 / "01-routes" / "img" / "route-params.svg"))
+
+
+# ---------- Django 2.02: reverse ----------
+def url_reverse():
+    f = Figure(860, 260, "Маршрут с именем работает в обе стороны: адрес → view и имя + параметры → адрес")
+    f.box(250, 100, 360, 60, "", "acc")
+    f.text(430, 124, 'path("catalog/<slug:slug>/", …,', "onacc", "middle")
+    f.text(430, 144, 'name="product_detail")', "onacc", "middle")
+    f.box(20, 20, 200, 50, "GET /catalog/aster-14/", "box2", "cs")
+    f.arrow("M220 45H330V96")
+    f.text(240, 36, "запрос → маршрут", "s")
+    f.box(640, 20, 200, 50, "product_detail(…)", "ok", "cs")
+    f.arrow("M530 96V45H636")
+    f.text(548, 36, "вызов view", "s")
+    f.box(20, 190, 260, 50, "", "box")
+    f.text(150, 212, 'reverse("product_detail",', "cs", "middle")
+    f.text(150, 230, 'args=["aster-14"])', "cs", "middle")
+    f.box(300, 190, 260, 50, "{% url 'product_detail' slug %}", "box", "cs")
+    f.arrow("M150 190V160H246", "lnd")
+    f.arrow("M430 190V164", "lnd")
+    f.arrow("M614 130H660V190")
+    f.box(600, 194, 240, 46, '"/catalog/aster-14/"', "ok", "cs")
+    f.text(672, 176, "адрес", "s")
+    f.save(out(DJ2 / "02-url-names" / "img" / "url-reverse.svg"))
+
+
+# ---------- Django 2.03: запрос и ответы ----------
+def request_response():
+    f = Figure(860, 330, "Что приходит во view в request и какие ответы она может вернуть")
+    f.box(20, 20, 300, 230, "", "box2")
+    f.text(36, 46, "request", "t")
+    rows = [("method", '"GET"'), ("path", '"/catalog/"'), ("GET", '{"max_price": "2000"}'),
+            ("POST", "поля формы"), ("headers", '{"User-Agent": …}')]
+    for i, (k, v) in enumerate(rows):
+        y = 80 + i * 32
+        f.text(36, y, k, "cs"); f.text(120, y, v, "cs")
+    f.text(36, 236, "все значения GET и POST — строки", "s")
+    f.arrow("M320 135H366")
+    f.box(370, 110, 120, 50, "view", "ok", "c")
+    outs = [("200", "данные", "ok"), ("400", "неверный параметр", "err"), ("404", "raise Http404", "err"),
+            ("301 / 302", "redirect(…)", "box"), ("405", "@require_POST", "err")]
+    for i, (code, note, cls) in enumerate(outs):
+        y = 20 + i * 48
+        f.arrow(f"M490 135C520 135 520 {y + 20} 546 {y + 20}")
+        f.box(550, y, 290, 40, "", cls)
+        f.text(566, y + 25, code, "c"); f.text(660, y + 25, note, "s")
+    f.text(20, 300, "Ошибка клиента — 4xx с объяснением; непойманное исключение во view — 500.", "t")
+    f.save(out(DJ2 / "03-request-response" / "img" / "request-response.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2235,6 +2315,7 @@ if __name__ == "__main__":
                   is_a_has_a, with_flow,
                   pytest_failure, fixture_per_test, mock_gateway,
                   request_flow, project_structure, first_page,
+                  route_params, url_reverse, request_response,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

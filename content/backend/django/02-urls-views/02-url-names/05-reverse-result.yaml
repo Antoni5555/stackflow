@@ -1,0 +1,24 @@
+title: Что вернёт reverse
+type: quiz
+kind: single
+difficulty: 1
+pitfall: reverse возвращает путь от корня сайта, с начальным слешем и без домена.
+statement: |
+  ```python
+  urlpatterns = [
+      path("api/", include("shop.api_urls")),
+  ]
+  # shop/api_urls.py
+  urlpatterns = [
+      path("orders/<int:pk>/", views.order_api, name="order_api"),
+  ]
+  ```
+  Что вернёт `reverse("order_api", kwargs={"pk": 12})`?
+options:
+  - "`\"orders/12/\"`"
+  - "`\"/api/orders/12/\"`"
+  - "`\"https://shop.example/api/orders/12/\"`"
+  - "`NoReverseMatch` — имена из подключённых модулей недоступны"
+answer: [1]
+explanation: |
+  `reverse` собирает путь целиком: префикс из `include` плюс маршрут модуля, с начальным `/` — его можно сразу подставить в `href` или редирект. Домен в результат не входит: полный адрес строят `request.build_absolute_uri(...)`. У модуля нет `app_name`, поэтому имя доступно без префикса.

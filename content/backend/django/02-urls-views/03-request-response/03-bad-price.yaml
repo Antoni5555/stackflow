@@ -1,0 +1,74 @@
+title: max_price=abc роняет сервер
+type: exercise
+difficulty: 2
+pitfall: Значения из request.GET — строки; int() от неверного значения без try даёт 500 вместо ответа 400.
+statement: |
+  На `/catalog/?max_price=abc` сервер отвечает 500. Сделайте так, чтобы неверное значение давало ответ 400 с JSON `{"error": "max_price — целое число"}`, а правильный фильтр и каталог без параметра работали как раньше.
+files:
+  views.py: |
+    from django.http import JsonResponse
+
+    PRODUCTS = [
+        {"name": "Ноутбук Aster 14", "price": 64990},
+        {"name": "Беспроводная мышь", "price": 1499},
+        {"name": "Коврик для мыши", "price": 490},
+    ]
+
+
+    def catalog(request):
+        products = PRODUCTS
+        max_price = request.GET.get("max_price")
+        if max_price is not None:
+            products = [p for p in products if p["price"] <= int(max_price)]
+        names = [p["name"] for p in products]
+        return JsonResponse({"products": names})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+solution:
+  views.py: |
+    from django.http import JsonResponse
+
+    PRODUCTS = [
+        {"name": "Ноутбук Aster 14", "price": 64990},
+        {"name": "Беспроводная мышь", "price": 1499},
+        {"name": "Коврик для мыши", "price": 490},
+    ]
+
+
+    def catalog(request):
+        products = PRODUCTS
+        max_price = request.GET.get("max_price")
+        if max_price is not None:
+            try:
+                max_price = int(max_price)
+            except ValueError:
+                return JsonResponse({"error": "max_price — целое число"}, status=400)
+            products = [p for p in products if p["price"] <= max_price]
+        names = [p["name"] for p in products]
+        return JsonResponse({"products": names})
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/catalog/", {"max_price": "abc"})
+        assert response.status_code == 400
+      fail: "?max_price=abc всё ещё даёт 500 — неверное значение от клиента — это ответ 400."
+    - code: |
+        response = client.get("/catalog/", {"max_price": "abc"})
+        assert response.json() == {"error": "max_price — целое число"}
+      fail: 'В ответе 400 должен быть JSON {"error": "max_price — целое число"}.'
+    - code: |
+        assert client.get("/catalog/", {"max_price": "500"}).json() == {"products": ["Коврик для мыши"]}
+        assert len(client.get("/catalog/").json()["products"]) == 3
+      fail: Правильный фильтр и каталог без параметра должны работать как раньше.
+hints:
+  - "Какое исключение выбрасывает `int(\"abc\")`?"
+  - "Оберните `int(max_price)` в `try` / `except ValueError` и верните `JsonResponse(..., status=400)`."
+explanation: |
+  Всё, что приходит в запросе, присылает клиент, и проверять это — работа view. `int("abc")` выбрасывает `ValueError`; непойманное исключение — ошибка 500, будто сломался сервер. Ответ 400 честно говорит «ошибка в запросе» и объясняет, что исправить.

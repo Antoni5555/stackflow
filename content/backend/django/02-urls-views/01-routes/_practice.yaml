@@ -1,0 +1,85 @@
+- title: Статус заказа
+  text: |
+    Сделайте адрес `/orders/<номер>/status/`, который отвечает JSON с номером и статусом заказа. Неизвестный номер — статус `"unknown"`.
+    ```python
+    ORDERS = {12: "paid", 13: "shipped"}
+    ```
+  answer: |
+    Ответ:
+
+    Файл `views.py`:
+    ```python
+    from django.http import JsonResponse
+
+    ORDERS = {12: "paid", 13: "shipped"}
+
+
+    def order_status(request, pk):
+        status = ORDERS.get(pk, "unknown")
+        return JsonResponse({"order": pk, "status": status})
+    ```
+    В `urls.py` — `path("orders/<int:pk>/status/", views.order_status)`.
+
+    Результат:
+    ```
+    GET /orders/12/status/ → 200 OK
+    {"order": 12, "status": "paid"}
+    ```
+    `int` превратил `"12"` в число — поэтому ключ нашёлся и в JSON номер без кавычек.
+- title: Два параметра
+  text: |
+    Архив новостей: `/news/2026/11/` — новости за ноябрь 2026. Сделайте маршрут с двумя числовыми параметрами и view, которая возвращает их в JSON.
+  answer: |
+    Ответ:
+
+    Файл `views.py`:
+    ```python
+    from django.http import JsonResponse
+
+
+    def archive(request, year, month):
+        return JsonResponse({"year": year, "month": month})
+    ```
+    В `urls.py` — `path("news/<int:year>/<int:month>/", views.archive)`.
+
+    Результат:
+    ```
+    GET /news/2026/11/ → 200 OK
+    {"year": 2026, "month": 11}
+    ```
+    Каждый параметр приходит отдельным аргументом с тем же именем, что в маршруте.
+- title: Личный кабинет через include
+  text: |
+    Соберите маршруты личного кабинета `orders/` и `profile/` в модуле `account_urls.py` и подключите их под префиксом `account/`. View могут возвращать простой текст.
+  answer: |
+    Ответ:
+
+    Файл `account_urls.py`:
+    ```python
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/", views.orders),
+        path("profile/", views.profile),
+    ]
+    ```
+
+    Файл `urls.py`:
+    ```python
+    from django.urls import include, path
+
+    urlpatterns = [
+        path("account/", include("shop.account_urls")),
+    ]
+    ```
+    Результат:
+    ```
+    GET /account/orders/ → 200 OK
+    Мои заказы
+
+    GET /account/profile/ → 200 OK
+    Профиль
+    ```
+    Префикс `account/` записан один раз: перенести кабинет на `/my/` — одна правка в `urls.py`.

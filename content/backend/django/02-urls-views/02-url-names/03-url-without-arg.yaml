@@ -1,0 +1,61 @@
+title: Каталог падает с NoReverseMatch
+type: exercise
+difficulty: 1
+pitfall: "{% url %} без параметров для маршрута с параметром не может построить адрес — NoReverseMatch и ошибка 500."
+statement: |
+  Каталог отвечает ошибкой 500: `NoReverseMatch: Reverse for 'product_detail' with no arguments not found`. Исправьте шаблон.
+files:
+  views.py: |
+    from django.http import HttpResponse
+    from django.shortcuts import render
+
+    PRODUCTS = {
+        "aster-14": "Ноутбук Aster 14",
+        "wireless-mouse": "Беспроводная мышь",
+    }
+
+
+    def product_list(request):
+        return render(request, "shop/product_list.html", {"products": PRODUCTS})
+
+
+    def product_detail(request, slug):
+        return HttpResponse(f"<h1>{PRODUCTS[slug]}</h1>")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.product_list, name="product_list"),
+        path("catalog/<slug:slug>/", views.product_detail, name="product_detail"),
+    ]
+  templates/shop/product_list.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for slug, name in products.items %}
+        <li><a href="{% url 'product_detail' %}">{{ name }}</a></li>
+      {% endfor %}
+    </ul>
+solution:
+  templates/shop/product_list.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for slug, name in products.items %}
+        <li><a href="{% url 'product_detail' slug %}">{{ name }}</a></li>
+      {% endfor %}
+    </ul>
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/catalog/").status_code == 200
+      fail: "Каталог всё ещё падает: маршрут product_detail ждёт параметр slug, а тег его не передаёт."
+    - code: |
+        assert 'href="/catalog/aster-14/"' in client.get("/catalog/").content.decode()
+      fail: Ссылка должна вести на страницу своего товара — /catalog/aster-14/.
+hints:
+  - "Какой параметр есть в маршруте `catalog/<slug:slug>/`?"
+  - "Параметры передают после имени через пробел: `{% url 'product_detail' slug %}`."
+explanation: |
+  Маршрут `product_detail` содержит `<slug:slug>`, и без значения Django не может собрать адрес — выбрасывает `NoReverseMatch`. Параметры тега `{% url %}` перечисляют после имени через пробел, по порядку или по имени (`slug=slug`).

@@ -1,0 +1,55 @@
+title: Несуществующий товар — ошибка 500
+type: exercise
+difficulty: 1
+pitfall: Ключ, которого нет в словаре, даёт KeyError и 500 — «такого нет» — это 404.
+statement: |
+  `/products/unknown/` отвечает ошибкой 500 (`KeyError`). Сделайте так, чтобы для несуществующего товара был ответ 404, а существующие товары открывались как раньше.
+files:
+  views.py: |
+    from django.http import HttpResponse
+
+    PRODUCTS = {
+        "aster-14": "Ноутбук Aster 14",
+        "wireless-mouse": "Беспроводная мышь",
+    }
+
+
+    def product_detail(request, slug):
+        return HttpResponse(f"<h1>{PRODUCTS[slug]}</h1>")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/", views.product_detail),
+    ]
+solution:
+  views.py: |
+    from django.http import Http404, HttpResponse
+
+    PRODUCTS = {
+        "aster-14": "Ноутбук Aster 14",
+        "wireless-mouse": "Беспроводная мышь",
+    }
+
+
+    def product_detail(request, slug):
+        if slug not in PRODUCTS:
+            raise Http404("Товар не найден")
+        return HttpResponse(f"<h1>{PRODUCTS[slug]}</h1>")
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/products/unknown/").status_code == 404
+      fail: Для несуществующего товара ответ должен быть 404, а не 500.
+    - code: |
+        response = client.get("/products/aster-14/")
+        assert response.status_code == 200 and "Aster 14" in response.content.decode()
+      fail: Существующий товар должен открываться как раньше.
+hints:
+  - "Какой код ответа означает «такого нет»?"
+  - "`from django.http import Http404` и `raise Http404(\"Товар не найден\")`, если slug нет в словаре."
+explanation: |
+  `KeyError` — ошибка в коде, поэтому Django отвечает 500. А ситуация обычная: покупатель открыл старую ссылку или ошибся в адресе. `raise Http404` можно выбросить в любом месте view — Django превратит исключение в страницу 404. Когда появятся модели, то же самое одной строкой делает `get_object_or_404`.

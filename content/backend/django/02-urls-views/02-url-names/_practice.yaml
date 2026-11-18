@@ -1,0 +1,45 @@
+- title: Адреса архива по имени
+  text: |
+    Дайте маршруту архива `news/<int:year>/<int:month>/` имя `archive` и сделайте `/news/links/`, который отвечает JSON со ссылками на ноябрь и декабрь 2026 — через `reverse`, один раз с `args`, другой — с `kwargs`.
+  answer: |
+    Ответ:
+
+    Файл `views.py`:
+    ```python
+    from django.http import JsonResponse
+    from django.urls import reverse
+
+
+    def archive(request, year, month):
+        return JsonResponse({"year": year, "month": month})
+
+
+    def links(request):
+        nov = reverse("archive", args=[2026, 11])
+        dec = reverse(
+            "archive", kwargs={"year": 2026, "month": 12}
+        )
+        return JsonResponse({"november": nov, "december": dec})
+    ```
+    Маршруты — `path("news/<int:year>/<int:month>/", views.archive, name="archive")` и `path("news/links/", views.links)`.
+
+    Результат:
+    ```
+    GET /news/links/ → 200 OK
+    {"november": "/news/2026/11/", "december": "/news/2026/12/"}
+    ```
+    `args` — параметры по порядку, `kwargs` — по именам; адрес получается одинаковый.
+- title: Ссылка с двумя параметрами в шаблоне
+  text: |
+    Как в шаблоне написать ссылку «Ноябрь 2026» на тот же маршрут `archive`?
+  answer: |
+    Ответ:
+    ```html
+    <a href="{% url 'archive' 2026 11 %}">Ноябрь 2026</a>
+    ```
+    Параметры идут после имени через пробел, в порядке маршрута; можно и по именам: `{% url 'archive' year=2026 month=11 %}`. Получится `href="/news/2026/11/"`.
+- title: Имена в своём модуле
+  text: |
+    Маршруты кабинета из `account_urls.py` получили `app_name = "account"` и имена `orders` и `profile`. Как теперь получить адрес страницы заказов в Python и в шаблоне?
+  answer: |
+    Ответ: `reverse("account:orders")` в Python и `{% url 'account:orders' %}` в шаблоне. При подключении `path("account/", include("shop.account_urls"))` оба дадут `/account/orders/`. Имя без префикса (`"orders"`) после `app_name` даёт `NoReverseMatch`.

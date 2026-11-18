@@ -1,0 +1,53 @@
+title: Старые адреса — навсегда
+type: exercise
+difficulty: 2
+pitfall: redirect по умолчанию отвечает 302 (временно) — поисковики продолжают хранить старый адрес.
+statement: |
+  Товары раньше жили на `/item/<slug>/`, теперь — на `/products/<slug>/`. Редирект со старых адресов уже есть, но поисковики так и не переключились на новые. Сделайте редирект постоянным.
+files:
+  views.py: |
+    from django.http import HttpResponse
+    from django.shortcuts import redirect
+
+
+    def product_detail(request, slug):
+        return HttpResponse(f"Товар {slug}")
+
+
+    def old_product(request, slug):
+        return redirect("product_detail", slug=slug)
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/", views.product_detail, name="product_detail"),
+        path("item/<slug:slug>/", views.old_product),
+    ]
+solution:
+  views.py: |
+    from django.http import HttpResponse
+    from django.shortcuts import redirect
+
+
+    def product_detail(request, slug):
+        return HttpResponse(f"Товар {slug}")
+
+
+    def old_product(request, slug):
+        return redirect("product_detail", slug=slug, permanent=True)
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/item/aster-14/").status_code == 301
+      fail: "Редирект отвечает 302 — это «временно». Для переезда навсегда нужен 301."
+    - code: |
+        assert client.get("/item/aster-14/")["Location"] == "/products/aster-14/"
+      fail: Редирект должен вести на /products/<тот же slug>/.
+hints:
+  - "Какой код ответа означает «переехал навсегда»?"
+  - "`redirect(\"product_detail\", slug=slug, permanent=True)`."
+explanation: |
+  `redirect` без параметров отвечает 302 — «временно перемещён»: поисковик оставляет в выдаче старый адрес и продолжает приходить на него. 301 — «перемещён навсегда»: поисковики заменяют адрес в выдаче, браузеры запоминают переход. Переезд страниц — это 301, а редирект после отправки формы или на страницу входа — 302.

@@ -1,0 +1,58 @@
+title: Корзина очищается по ссылке
+type: exercise
+difficulty: 2
+pitfall: Действие, которое меняет данные, по GET запускает любая ссылка — превью в мессенджере, робот, чужая страница.
+statement: |
+  Покупатели жалуются, что корзина иногда очищается сама: адрес `/cart/clear/` срабатывает от обычного перехода по ссылке. Разрешите эту view только POST-запросы; после очистки — редирект в каталог, как сейчас.
+files:
+  views.py: |
+    from django.http import HttpResponse
+    from django.shortcuts import redirect
+
+
+    def catalog(request):
+        return HttpResponse("Каталог")
+
+
+    def cart_clear(request):
+        request.session["cart"] = {}
+        return redirect("catalog")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog, name="catalog"),
+        path("cart/clear/", views.cart_clear, name="cart_clear"),
+    ]
+solution:
+  views.py: |
+    from django.http import HttpResponse
+    from django.shortcuts import redirect
+    from django.views.decorators.http import require_POST
+
+
+    def catalog(request):
+        return HttpResponse("Каталог")
+
+
+    @require_POST
+    def cart_clear(request):
+        request.session["cart"] = {}
+        return redirect("catalog")
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/cart/clear/").status_code == 405
+      fail: "GET-запрос всё ещё очищает корзину — разрешите view только POST (ответ на GET — 405)."
+    - code: |
+        response = client.post("/cart/clear/")
+        assert response.status_code == 302 and response["Location"] == "/catalog/"
+      fail: POST-запрос должен очищать корзину и перенаправлять в каталог.
+hints:
+  - "В `django.views.decorators.http` есть декораторы, которые ограничивают методы запроса."
+  - "`@require_POST` над `cart_clear`."
+explanation: |
+  GET по смыслу «только посмотреть»: такие адреса открывают превью ссылок, поисковые роботы, предзагрузка браузера, а ещё чужая страница может вставить их картинкой. `@require_POST` отвечает 405 на всё, кроме POST, и действие выполняется только по отправке формы. В формах Django POST к тому же защищён CSRF-токеном. Корзина здесь хранится в сессии — подробно о ней в разделе «Цикл запроса изнутри».

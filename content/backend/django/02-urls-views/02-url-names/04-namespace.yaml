@@ -1,0 +1,92 @@
+title: После app_name ссылки сломались
+type: exercise
+difficulty: 2
+pitfall: После app_name имена маршрутов модуля получают префикс — старое имя без него даёт NoReverseMatch.
+statement: |
+  Маршруты каталога вынесли в `catalog_urls.py` и дали пространство имён `catalog`. Теперь каталог и страница товара падают с `NoReverseMatch`. Исправьте ссылки, не трогая маршруты.
+files:
+  views.py: |
+    from django.http import HttpResponse
+    from django.shortcuts import render
+    from django.urls import reverse
+
+    PRODUCTS = {
+        "aster-14": "Ноутбук Aster 14",
+        "wireless-mouse": "Беспроводная мышь",
+    }
+
+
+    def product_list(request):
+        return render(request, "shop/product_list.html", {"products": PRODUCTS})
+
+
+    def product_detail(request, slug):
+        back = reverse("product_list")
+        return HttpResponse(f'<a href="{back}">← Каталог</a><h1>{PRODUCTS[slug]}</h1>')
+  catalog_urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    app_name = "catalog"
+    urlpatterns = [
+        path("", views.product_list, name="product_list"),
+        path("<slug:slug>/", views.product_detail, name="product_detail"),
+    ]
+  urls.py: |
+    from django.urls import include, path
+
+    urlpatterns = [
+        path("catalog/", include("shop.catalog_urls")),
+    ]
+  templates/shop/product_list.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for slug, name in products.items %}
+        <li><a href="{% url 'product_detail' slug %}">{{ name }}</a></li>
+      {% endfor %}
+    </ul>
+solution:
+  views.py: |
+    from django.http import HttpResponse
+    from django.shortcuts import render
+    from django.urls import reverse
+
+    PRODUCTS = {
+        "aster-14": "Ноутбук Aster 14",
+        "wireless-mouse": "Беспроводная мышь",
+    }
+
+
+    def product_list(request):
+        return render(request, "shop/product_list.html", {"products": PRODUCTS})
+
+
+    def product_detail(request, slug):
+        back = reverse("catalog:product_list")
+        return HttpResponse(f'<a href="{back}">← Каталог</a><h1>{PRODUCTS[slug]}</h1>')
+  templates/shop/product_list.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for slug, name in products.items %}
+        <li><a href="{% url 'catalog:product_detail' slug %}">{{ name }}</a></li>
+      {% endfor %}
+    </ul>
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/catalog/")
+        assert response.status_code == 200
+        assert 'href="/catalog/aster-14/"' in response.content.decode()
+      fail: "Каталог падает: имя маршрута теперь с пространством имён — catalog:product_detail."
+    - code: |
+        response = client.get("/catalog/aster-14/")
+        assert response.status_code == 200
+        assert 'href="/catalog/"' in response.content.decode()
+      fail: "Страница товара падает: reverse во view тоже должен знать пространство имён."
+hints:
+  - "Что делает строка `app_name = \"catalog\"` с именами маршрутов модуля?"
+  - "`{% url 'catalog:product_detail' slug %}` в шаблоне и `reverse(\"catalog:product_list\")` во view."
+explanation: |
+  `app_name` в модуле, подключённом через `include`, создаёт пространство имён: маршруты называются `catalog:product_list` и `catalog:product_detail`. Имени без префикса больше нет, поэтому Django и выбрасывает `NoReverseMatch`. Исправлять нужно все места: и шаблоны, и `reverse` в Python-коде.
