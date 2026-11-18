@@ -1,0 +1,78 @@
+- title: "Контакты покупателя"
+  text: |
+    Поля «Почта» (`email`) и «Телефон» (`phone`) с подписями: клик по подписи ставит курсор в поле, на телефоне открывается подходящая клавиатура.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <label for="email">Почта</label>
+    <input type="email" id="email" name="email">
+
+    <label for="phone">Телефон</label>
+    <input type="tel" id="phone" name="phone">
+    ```
+    `for` подписи совпадает с `id` поля, а на сервер уходит `name`. `type` выбирает клавиатуру: с «@» у почты, цифровую у телефона.
+- title: "Способ доставки"
+  text: |
+    Выбор одного способа доставки: «Курьер» (`courier`) или «Самовывоз» (`pickup`), поле — `delivery`, по умолчанию выбран курьер.
+  hint: |
+    У радиокнопок одной группы общий `name`, а уходит `value` выбранной.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <label>
+      <input type="radio" name="delivery"
+             value="courier" checked>
+      Курьер
+    </label>
+    <label>
+      <input type="radio" name="delivery"
+             value="pickup">
+      Самовывоз
+    </label>
+    ```
+    Поле внутри `label` — тоже связь: `for` и `id` не нужны. Отправится `delivery=courier` или `delivery=pickup`.
+- title: "Город из списка"
+  text: |
+    Список городов `city`: «Москва», «Санкт-Петербург», «Казань»; на сервер уходят коды `msk`, `spb`, `kzn`.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <label for="city">Город</label>
+    <select id="city" name="city">
+      <option value="msk">Москва</option>
+      <option value="spb">Санкт-Петербург</option>
+      <option value="kzn">Казань</option>
+    </select>
+    ```
+    Покупатель видит текст `option`, сервер получает `value`: `city=spb`.
+- title: "Комментарий и звонок"
+  text: |
+    Добавьте к заказу многострочный комментарий `comment` на 4 строки и галочку «Позвонить перед доставкой» — поле `call` со значением `yes`.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <label for="comment">Комментарий</label>
+    <textarea id="comment" name="comment"
+              rows="4"></textarea>
+
+    <label>
+      <input type="checkbox" name="call" value="yes">
+      Позвонить перед доставкой
+    </label>
+    ```
+    Отмеченная галочка отправит `call=yes`, неотмеченная не отправится совсем — сервер должен считать отсутствие поля за «нет».
+- title: "Товар в скрытом поле"
+  text: |
+    Форма «В корзину» (`/cart/add/`, POST) отправляет количество `quantity` (по умолчанию 1) и номер товара `product_id` = 4, который покупатель не видит и не вводит.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form action="/cart/add/" method="post">
+      <input type="hidden" name="product_id" value="4">
+      <label for="qty">Количество</label>
+      <input type="number" id="qty" name="quantity"
+             value="1">
+      <button>В корзину</button>
+    </form>
+    ```
+    Скрытое поле не видно на странице, но уходит вместе с остальными. Скрыть — не значит защитить: значение видно в DevTools и меняется там.

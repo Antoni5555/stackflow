@@ -1,0 +1,50 @@
+- title: "Удалить из корзины"
+  text: |
+    Кнопка «Удалить» убирает товар 4 из корзины (`/cart/remove/4/`). Сверстайте её как защищённую форму; значение токена подставит сервер — пока напишите `TOKEN`.
+  hint: |
+    Django ищет токен в поле `csrfmiddlewaretoken`.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form action="/cart/remove/4/" method="post">
+      <input type="hidden" name="csrfmiddlewaretoken"
+             value="TOKEN">
+      <button>Удалить</button>
+    </form>
+    ```
+    Удаление меняет данные — только POST и с токеном. В шаблоне Django это поле вставляет `{% csrf_token %}`.
+- title: "Отмена заказа"
+  text: |
+    Сейчас заказ отменяется ссылкой — её может «нажать» любая чужая страница. Переделайте в защищённую форму:
+    ```html
+    <a href="/orders/12/cancel/">Отменить заказ</a>
+    ```
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form action="/orders/12/cancel/" method="post">
+      <input type="hidden" name="csrfmiddlewaretoken"
+             value="TOKEN">
+      <button>Отменить заказ</button>
+    </form>
+    ```
+    Ссылка — это GET, а GET токеном не защищён: чужая страница может открыть адрес хоть картинкой. Всё, что меняет данные, — POST-форма с токеном.
+- title: "Где нужен токен"
+  text: |
+    На странице товара две формы: поиск (`/search/`, поле `q`) и отзыв (`/products/4/reviews/`, поле `text`). Сверстайте обе и добавьте токен только туда, где он нужен.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form action="/search/">
+      <input name="q">
+      <button>Найти</button>
+    </form>
+
+    <form action="/products/4/reviews/" method="post">
+      <input type="hidden" name="csrfmiddlewaretoken"
+             value="TOKEN">
+      <textarea name="text"></textarea>
+      <button>Отправить</button>
+    </form>
+    ```
+    Поиск ничего не меняет — ему токен не нужен, а в адрес GET-формы токен ушёл бы открытым текстом. Защищают POST-формы.

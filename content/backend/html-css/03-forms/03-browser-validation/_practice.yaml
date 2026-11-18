@@ -1,0 +1,53 @@
+- title: "Обязательные поля"
+  text: |
+    В форме заказа имя `name` и почта `email` обязательны, а почта должна быть похожа на адрес.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <label for="name">Имя</label>
+    <input id="name" name="name" required>
+
+    <label for="email">Почта</label>
+    <input type="email" id="email" name="email"
+           required>
+    ```
+    `type="email"` сам проверяет вид адреса, `required` — что поле не пустое. Форма с такой ошибкой не уйдёт.
+- title: "Длина отзыва"
+  text: |
+    Текст отзыва `text` обязателен, от 10 до 1000 символов.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <label for="text">Отзыв</label>
+    <textarea id="text" name="text" rows="5"
+              minlength="10" maxlength="1000"
+              required></textarea>
+    ```
+    `maxlength` не даст набрать больше, `minlength` не даст отправить короче. Сервер всё равно проверит длину сам.
+- title: "Промокод"
+  text: |
+    Поле промокода `promo` необязательное, но если заполнено — от 4 до 12 заглавных латинских букв и цифр (как `WELCOME10`).
+  hint: |
+    Шаблон сравнивается со всем значением целиком; пустое необязательное поле не проверяется.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <label for="promo">Промокод</label>
+    <input id="promo" name="promo"
+           pattern="[A-Z0-9]{4,12}">
+    ```
+    `^` и `$` не нужны: `pattern` и так проверяет значение целиком, как `re.fullmatch`.
+- title: "Код из СМС"
+  text: |
+    Поле `code` для шестизначного кода из СМС: на телефоне — цифровая клавиатура, ровно шесть цифр, обязательно. Это не число, а код: ведущие нули важны.
+  hint: |
+    Тип поля — текст, клавиатуру меняет отдельный атрибут.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <label for="code">Код из СМС</label>
+    <input id="code" name="code"
+           inputmode="numeric" pattern="[0-9]{6}"
+           maxlength="6" required>
+    ```
+    `type="number"` превратил бы `012345` в число 12345 и показал бы стрелки. `inputmode="numeric"` даёт цифровую клавиатуру, оставляя поле текстовым.

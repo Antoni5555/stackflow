@@ -1,0 +1,45 @@
+- title: "Аватар"
+  text: |
+    Форма загрузки аватара на `/profile/avatar/`: одно поле `avatar` только для картинок и кнопка «Загрузить».
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form action="/profile/avatar/" method="post"
+          enctype="multipart/form-data">
+      <input type="file" name="avatar"
+             accept="image/*">
+      <button>Загрузить</button>
+    </form>
+    ```
+    Без `enctype="multipart/form-data"` уйдёт только имя файла. `accept` лишь фильтрует окно выбора — тип файла проверяет сервер.
+- title: "Отзыв с фото"
+  text: |
+    Форма отзыва на `/products/4/reviews/`: текст `text` и до нескольких фото в одном поле `photos`.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form action="/products/4/reviews/" method="post"
+          enctype="multipart/form-data">
+      <textarea name="text" required></textarea>
+      <input type="file" name="photos"
+             accept="image/*" multiple>
+      <button>Отправить</button>
+    </form>
+    ```
+    Текст и файлы уходят одним запросом: в Django текст — в `request.POST`, файлы — `request.FILES.getlist("photos")`.
+- title: "Прайс-лист поставщика"
+  text: |
+    Форма для поставщика: загрузить прайс-лист `price_list` только в формате CSV на `/supplier/upload/`.
+  hint: |
+    `accept` принимает и расширения файлов, например `.pdf`.
+  answer: |
+    Ответ — внутри `<body>` файла `index.html`:
+    ```html
+    <form action="/supplier/upload/" method="post"
+          enctype="multipart/form-data">
+      <input type="file" name="price_list"
+             accept=".csv" required>
+      <button>Загрузить</button>
+    </form>
+    ```
+    `accept` — снова только подсказка окну выбора: сервер должен сам убедиться, что пришёл CSV, и прочитать его осторожно.
