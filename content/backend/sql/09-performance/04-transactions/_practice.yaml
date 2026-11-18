@@ -1,0 +1,160 @@
+- title: "Передумали"
+  text: |
+    В транзакции обнулите остаток ноутбука Aster 14 (товар 1), проверьте его, отмените транзакцию и проверьте снова. Изменения сохраняются в базе песочницы; вернуть учебные данные — кнопка «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    BEGIN;
+
+    UPDATE products SET stock = 0 WHERE id = 1;
+
+    SELECT stock FROM products WHERE id = 1;
+
+    ROLLBACK;
+
+    SELECT stock FROM products WHERE id = 1;
+    ```
+    Результат:
+    ```
+    BEGIN
+    UPDATE 1
+     stock
+    -------
+         0
+    (1 row)
+    ROLLBACK
+     stock
+    -------
+         5
+    (1 row)
+    ```
+    Внутри транзакции изменение видно, после `ROLLBACK` его как не было.
+- title: "Оформление заказа"
+  text: |
+    Одной транзакцией оформите заказ покупателя 5: новый заказ, позиция — одна мышь (товар 4) по текущей цене, списание остатка. Потом выведите остаток мыши.
+  hint: |
+    `RETURNING id` покажет номер нового заказа — подставьте его в позицию. Цену можно взять подзапросом.
+  answer: |
+    Ответ:
+    ```sql
+    BEGIN;
+
+    INSERT INTO orders (user_id) VALUES (5)
+    RETURNING id;
+
+    INSERT INTO order_items
+        (order_id, product_id, quantity, price)
+    VALUES (35, 4, 1,
+            (SELECT price FROM products WHERE id = 4));
+
+    UPDATE products SET stock = stock - 1
+    WHERE id = 4;
+
+    COMMIT;
+
+    SELECT stock FROM products WHERE id = 4;
+    ```
+    Результат:
+    ```
+    BEGIN
+     id
+    ----
+     35
+    (1 row)
+
+    INSERT 0 1
+    INSERT 0 1
+    UPDATE 1
+    COMMIT
+     stock
+    -------
+        11
+    (1 row)
+    ```
+    Три запроса зафиксированы вместе: упади любой — не осталось бы ни заказа, ни списания. В песочнице после прошлых запусков номер заказа может быть другим.
+- title: "Ошибка в середине"
+  text: |
+    В транзакции спишите один ноутбук Aster 16 Pro (товар 2), потом попробуйте списать 100 штук мыши (товар 4), выведите остаток товара 2 и выполните `COMMIT`. Что осталось в базе?
+  answer: |
+    Ответ:
+    ```sql
+    BEGIN;
+
+    UPDATE products SET stock = stock - 1
+    WHERE id = 2;
+
+    UPDATE products SET stock = stock - 100
+    WHERE id = 4;
+
+    SELECT stock FROM products WHERE id = 2;
+
+    COMMIT;
+
+    SELECT stock FROM products WHERE id = 2;
+    ```
+    Результат:
+    ```
+    BEGIN
+    UPDATE 1
+    ERROR:  new row for relation "products" violates check constraint "products_stock_check"
+    DETAIL:  Failing row contains (4, 4, Беспроводная мышь, 1499.00, -88, {"color": "black"}, 2025-06-01 10:00:00+03).
+    ERROR:  current transaction is aborted, commands ignored until end of transaction block
+    ROLLBACK
+     stock
+    -------
+         2
+    (1 row)
+    ```
+    После ошибки транзакция только отказывает в запросах, а `COMMIT` отвечает `ROLLBACK`: списание ноутбука тоже отменено, остаток — снова 2.
+- title: "Пропустить плохую позицию"
+  text: |
+    Покупатель 5 оформляет заказ на мышь (товар 4) и товар 99, которого нет. В одной транзакции создайте заказ и мышь, позицию с товаром 99 попробуйте после `SAVEPOINT` и откатитесь к нему, зафиксируйте заказ и выведите его позиции (`product_id`, `quantity`).
+  hint: |
+    Номер заказа — из `RETURNING id`; в песочнице после прошлых запусков он может быть не 35.
+  answer: |
+    Ответ:
+    ```sql
+    BEGIN;
+
+    INSERT INTO orders (user_id) VALUES (5)
+    RETURNING id;
+
+    INSERT INTO order_items
+        (order_id, product_id, quantity, price)
+    VALUES (35, 4, 1, 1499.00);
+
+    SAVEPOINT item_99;
+
+    INSERT INTO order_items
+        (order_id, product_id, quantity, price)
+    VALUES (35, 99, 1, 100.00);
+
+    ROLLBACK TO SAVEPOINT item_99;
+
+    COMMIT;
+
+    SELECT product_id, quantity
+    FROM order_items
+    WHERE order_id = 35;
+    ```
+    Результат:
+    ```
+    BEGIN
+     id
+    ----
+     35
+    (1 row)
+
+    INSERT 0 1
+    INSERT 0 1
+    SAVEPOINT
+    ERROR:  insert or update on table "order_items" violates foreign key constraint "order_items_product_id_fkey"
+    DETAIL:  Key (product_id)=(99) is not present in table "products".
+    ROLLBACK
+    COMMIT
+     product_id | quantity
+    ------------+----------
+              4 |        1
+    (1 row)
+    ```
+    `ROLLBACK TO SAVEPOINT` отменил только неудачную вставку и вывел транзакцию из состояния ошибки — заказ с мышью сохранился.

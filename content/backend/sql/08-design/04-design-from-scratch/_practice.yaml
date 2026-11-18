@@ -1,0 +1,138 @@
+- title: "Избранное"
+  text: |
+    Покупатель добавляет товары в избранное — каждый товар один раз; нужно знать, когда добавлен. Удалили покупателя или товар — запись пропадает. Спроектируйте таблицу `favorites`, добавьте покупателю 1 товары 1 и 4 и попробуйте добавить товар 1 ещё раз. Изменения сохраняются в базе песочницы; вернуть учебные данные — кнопка «Начать заново».
+  hint: |
+    Это связь N:M «покупатель — товар»; естественный ключ — пара.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE favorites (
+        user_id    integer NOT NULL
+                   REFERENCES users (id) ON DELETE CASCADE,
+        product_id integer NOT NULL
+                   REFERENCES products (id) ON DELETE CASCADE,
+        added_at   timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, product_id)
+    );
+
+    INSERT INTO favorites (user_id, product_id)
+    VALUES (1, 1), (1, 4);
+
+    INSERT INTO favorites (user_id, product_id)
+    VALUES (1, 1);
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    INSERT 0 2
+    ERROR:  duplicate key value violates unique constraint "favorites_pkey"
+    DETAIL:  Key (user_id, product_id)=(1, 1) already exists.
+    ```
+    Первичный ключ пары сам запрещает повтор, а `ON DELETE CASCADE` убирает записи вместе с покупателем или товаром.
+- title: "Фото товара"
+  text: |
+    У товара до восьми фото; у каждого — адрес картинки и место в галерее (1–8), два фото на одном месте быть не может. Удалили товар — фото удаляются. Создайте `product_photos`, добавьте товару 10 два фото и проверьте, что девятое место запрещено.
+  hint: |
+    Связь 1:N — внешний ключ у фото; правила из описания — `CHECK` и `UNIQUE`.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE product_photos (
+        id         integer GENERATED ALWAYS AS IDENTITY
+                   PRIMARY KEY,
+        product_id integer NOT NULL
+                   REFERENCES products (id) ON DELETE CASCADE,
+        url        text     NOT NULL,
+        position   smallint NOT NULL
+                   CHECK (position BETWEEN 1 AND 8),
+        UNIQUE (product_id, position)
+    );
+
+    INSERT INTO product_photos (product_id, url, position)
+    VALUES (10, '/img/10-front.jpg', 1),
+           (10, '/img/10-back.jpg', 2);
+
+    INSERT INTO product_photos (product_id, url, position)
+    VALUES (10, '/img/10-side.jpg', 9);
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    INSERT 0 2
+    ERROR:  new row for relation "product_photos" violates check constraint "product_photos_position_check"
+    DETAIL:  Failing row contains (3, 10, /img/10-side.jpg, 9).
+    ```
+    Правило «до восьми» проверяет `CHECK`, правило «одно фото на месте» — `UNIQUE` пары.
+- title: "Вопросы о товаре"
+  text: |
+    Покупатель задаёт вопрос о товаре, магазин отвечает на него один раз (ответа может ещё не быть). Создайте `product_questions`, добавьте два вопроса о товаре 6 от покупателей 2 и 3, ответьте на первый и выведите `id` и `question` вопросов без ответа.
+  hint: |
+    Один ответ на вопрос — не отдельная таблица, а столбцы вопроса, которые могут быть NULL.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE product_questions (
+        id          integer GENERATED ALWAYS AS IDENTITY
+                    PRIMARY KEY,
+        product_id  integer NOT NULL
+                    REFERENCES products (id) ON DELETE CASCADE,
+        user_id     integer NOT NULL
+                    REFERENCES users (id) ON DELETE CASCADE,
+        question    text NOT NULL,
+        answer      text,
+        created_at  timestamptz NOT NULL DEFAULT now(),
+        answered_at timestamptz
+    );
+
+    INSERT INTO product_questions
+        (product_id, user_id, question)
+    VALUES (6, 2, 'Какие переключатели?'),
+           (6, 3, 'Есть подсветка?');
+
+    UPDATE product_questions
+    SET answer = 'Красные, линейные.',
+        answered_at = now()
+    WHERE id = 1;
+
+    SELECT id, question
+    FROM product_questions
+    WHERE answer IS NULL;
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    INSERT 0 2
+    UPDATE 1
+     id |    question
+    ----+-----------------
+      2 | Есть подсветка?
+    (1 row)
+    ```
+    Ответ — 1:1 с вопросом и один, поэтому живёт в той же строке. Будь ответов много (обсуждение), понадобилась бы своя таблица.
+- title: "Популярное в избранном"
+  text: |
+    Проверьте схему избранного запросом: покупатели 1, 2 и 3 добавили товар 1, покупатель 2 — ещё товар 10. Выведите `name` товаров категории 1 (ноутбуки) и `fans` — сколько раз товар добавлен в избранное, включая товары без добавлений.
+  hint: |
+    Таблица `favorites` — из упражнения «Избранное». Товары без добавлений даст `LEFT JOIN`.
+  answer: |
+    Ответ:
+    ```sql
+    INSERT INTO favorites (user_id, product_id)
+    VALUES (1, 1), (2, 1), (3, 1), (2, 10);
+
+    SELECT p.name, count(f.user_id) AS fans
+    FROM products p
+    LEFT JOIN favorites f ON f.product_id = p.id
+    WHERE p.category_id = 1
+    GROUP BY p.id, p.name
+    ORDER BY fans DESC, p.id;
+    ```
+    Результат:
+    ```
+    INSERT 0 4
+               name            | fans
+    ---------------------------+------
+     Зарядное устройство 65 Вт |    0
+    (1 row)
+    ```
+    `count(f.user_id)` не считает NULL, поэтому у товаров без добавлений — 0. Если упражнение «Избранное» уже выполнено, в песочнице у товара 1 будет ещё одна строка от покупателя 1 — тогда первая вставка упадёт на повторе; начните с «Начать заново».

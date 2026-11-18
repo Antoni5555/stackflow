@@ -1,0 +1,117 @@
+- title: "Какие индексы уже есть"
+  text: |
+    Выведите `indexname` всех индексов таблиц `orders` и `order_items` из системного представления `pg_indexes`. Какие ограничения их создали и есть ли индекс на внешние ключи?
+  answer: |
+    Ответ:
+    ```sql
+    SELECT tablename, indexname
+    FROM pg_indexes
+    WHERE tablename IN ('orders', 'order_items')
+    ORDER BY tablename, indexname;
+    ```
+    Результат:
+    ```
+      tablename  |              indexname
+    -------------+-------------------------------------
+     order_items | order_items_order_id_product_id_key
+     order_items | order_items_pkey
+     orders      | orders_pkey
+    (3 rows)
+    ```
+    `_pkey` — от первичных ключей, `_key` — от `UNIQUE (order_id, product_id)`. На `orders.user_id` индекса нет: внешний ключ его не создаёт. Поиск по `order_items.order_id` выручает составной индекс — `order_id` в нём первый.
+- title: "Индекс на внешний ключ"
+  text: |
+    Создайте индекс `orders_user_id_idx` на `orders.user_id` и снова выведите индексы таблицы `orders`. Изменения сохраняются в базе песочницы; вернуть учебные данные — кнопка «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    CREATE INDEX orders_user_id_idx ON orders (user_id);
+
+    SELECT indexname
+    FROM pg_indexes
+    WHERE tablename = 'orders'
+    ORDER BY indexname;
+    ```
+    Результат:
+    ```
+    CREATE INDEX
+         indexname
+    --------------------
+     orders_pkey
+     orders_user_id_idx
+    (2 rows)
+    ```
+    Теперь у `orders` два индекса. Полное определение каждого — в столбце `indexdef` того же представления: `CREATE INDEX … USING btree (user_id)`, B-tree — вид по умолчанию.
+- title: "До и после индекса"
+  text: |
+    Посмотрите план поиска просмотров покупателя 42 без индекса и после `CREATE INDEX page_views_user_id_idx ON page_views (user_id)`. Чтобы план был короче, пишите `EXPLAIN (COSTS OFF)` — без оценок стоимости.
+
+    Таблица просмотров, как в уроке (200 000 строк), если её ещё нет в песочнице:
+    ```sql
+    CREATE TABLE page_views (
+        id         bigint GENERATED ALWAYS AS IDENTITY
+                   PRIMARY KEY,
+        user_id    integer     NOT NULL,
+        product_id integer     NOT NULL,
+        viewed_at  timestamptz NOT NULL
+    );
+    INSERT INTO page_views (user_id, product_id, viewed_at)
+    SELECT g % 5000 + 1, g % 22 + 1,
+           '2026-01-01'::timestamptz + g * interval '1 minute'
+    FROM generate_series(1, 200000) AS g;
+    ANALYZE page_views;
+    ```
+  answer: |
+    Ответ:
+    ```sql
+    EXPLAIN (COSTS OFF)
+    SELECT * FROM page_views WHERE user_id = 42;
+
+    CREATE INDEX page_views_user_id_idx
+        ON page_views (user_id);
+
+    EXPLAIN (COSTS OFF)
+    SELECT * FROM page_views WHERE user_id = 42;
+    ```
+    Результат:
+    ```
+            QUERY PLAN
+    --------------------------
+     Seq Scan on page_views
+       Filter: (user_id = 42)
+    (2 rows)
+    CREATE INDEX
+                        QUERY PLAN
+    ---------------------------------------------------
+     Bitmap Heap Scan on page_views
+       Recheck Cond: (user_id = 42)
+       ->  Bitmap Index Scan on page_views_user_id_idx
+             Index Cond: (user_id = 42)
+    (4 rows)
+    ```
+    Без индекса — Seq Scan и проверка каждой строки (`Filter`); с индексом — `Index Cond`: строки найдены по индексу.
+- title: "Индекс, который не нужен"
+  text: |
+    Создайте индекс `products_category_id_idx` на `products.category_id` и посмотрите план `SELECT * FROM products WHERE category_id = 4` (`EXPLAIN (COSTS OFF)`). Потом удалите индекс.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE INDEX products_category_id_idx
+        ON products (category_id);
+
+    EXPLAIN (COSTS OFF)
+    SELECT * FROM products WHERE category_id = 4;
+
+    DROP INDEX products_category_id_idx;
+    ```
+    Результат:
+    ```
+    CREATE INDEX
+             QUERY PLAN
+    -----------------------------
+     Seq Scan on products
+       Filter: (category_id = 4)
+    (2 rows)
+    DROP INDEX
+    ```
+    22 товара читаются целиком быстрее, чем через индекс, — планировщик его не взял. На такой таблице индекс только замедляет запись.

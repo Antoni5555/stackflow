@@ -1,0 +1,137 @@
+- title: "Последние просмотры"
+  text: |
+    Создайте составной индекс `page_views_user_time_idx` под запрос «пять последних просмотров покупателя 42» и посмотрите план этого запроса (`EXPLAIN (COSTS OFF)`): `user_id`, `viewed_at` пяти строк, новые сверху.
+
+    Таблица просмотров, как в уроке (200 000 строк), если её ещё нет в песочнице:
+    ```sql
+    CREATE TABLE page_views (
+        id         bigint GENERATED ALWAYS AS IDENTITY
+                   PRIMARY KEY,
+        user_id    integer     NOT NULL,
+        product_id integer     NOT NULL,
+        viewed_at  timestamptz NOT NULL
+    );
+    INSERT INTO page_views (user_id, product_id, viewed_at)
+    SELECT g % 5000 + 1, g % 22 + 1,
+           '2026-01-01'::timestamptz + g * interval '1 minute'
+    FROM generate_series(1, 200000) AS g;
+    ANALYZE page_views;
+    ```
+  hint: |
+    Сначала столбец с `=`, потом столбец сортировки — в том же направлении.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE INDEX page_views_user_time_idx
+        ON page_views (user_id, viewed_at DESC);
+
+    EXPLAIN (COSTS OFF)
+    SELECT user_id, viewed_at
+    FROM page_views
+    WHERE user_id = 42
+    ORDER BY viewed_at DESC
+    LIMIT 5;
+    ```
+    Результат:
+    ```
+    CREATE INDEX
+                                 QUERY PLAN
+    --------------------------------------------------------------------
+     Limit
+       ->  Index Only Scan using page_views_user_time_idx on page_views
+             Index Cond: (user_id = 42)
+    (3 rows)
+    ```
+    В плане нет `Sort`: строки приходят из индекса уже в нужном порядке, и `Limit` останавливается после пятой. Index Only Scan — оба столбца запроса есть в индексе, в таблицу заходить не нужно.
+- title: "Без первого столбца"
+  text: |
+    С тем же индексом `(user_id, viewed_at DESC)` посмотрите план запроса просмотров за последние сутки данных — `viewed_at >= '2026-05-19'` — без условия на покупателя.
+
+    Таблица просмотров, как в уроке (200 000 строк), если её ещё нет в песочнице:
+    ```sql
+    CREATE TABLE page_views (
+        id         bigint GENERATED ALWAYS AS IDENTITY
+                   PRIMARY KEY,
+        user_id    integer     NOT NULL,
+        product_id integer     NOT NULL,
+        viewed_at  timestamptz NOT NULL
+    );
+    INSERT INTO page_views (user_id, product_id, viewed_at)
+    SELECT g % 5000 + 1, g % 22 + 1,
+           '2026-01-01'::timestamptz + g * interval '1 minute'
+    FROM generate_series(1, 200000) AS g;
+    ANALYZE page_views;
+    ```
+  answer: |
+    Ответ:
+    ```sql
+    EXPLAIN (COSTS OFF)
+    SELECT count(*)
+    FROM page_views
+    WHERE viewed_at >= '2026-05-19';
+    ```
+    Результат:
+    ```
+                                        QUERY PLAN
+    -----------------------------------------------------------------------------------
+     Aggregate
+       ->  Seq Scan on page_views
+             Filter: (viewed_at >= '2026-05-19 00:00:00+03'::timestamp with time zone)
+    (3 rows)
+    ```
+    Правило левого префикса: без условия на `user_id` упорядоченности по `viewed_at` в индексе нет, и база читает всю таблицу. Под такой запрос нужен свой индекс на `viewed_at`.
+- title: "Почта без учёта регистра"
+  text: |
+    Запретите регистрировать почту, которая отличается от существующей только регистром: создайте уникальный индекс `users_email_lower_key` по `lower(email)` и попробуйте добавить покупателя `Anna.Smirnova@example.com`. Изменения сохраняются в базе песочницы; вернуть учебные данные — кнопка «Начать заново».
+  answer: |
+    Ответ:
+    ```sql
+    CREATE UNIQUE INDEX users_email_lower_key
+        ON users (lower(email));
+
+    INSERT INTO users (email, name)
+    VALUES ('Anna.Smirnova@example.com', 'Анна С.');
+    ```
+    Результат:
+    ```
+    CREATE INDEX
+    ERROR:  duplicate key value violates unique constraint "users_email_lower_key"
+    DETAIL:  Key (lower(email))=(anna.smirnova@example.com) already exists.
+    ```
+    Ограничение `UNIQUE (email)` пропустило бы такую почту — строки разные. Уникальный индекс по выражению сравнивает результат `lower()`.
+- title: "Один основной адрес"
+  text: |
+    У покупателя несколько адресов доставки, но основной (`is_default`) — только один. Создайте таблицу `addresses` (`id`, `user_id`, `address`, `is_default`) и частичный уникальный индекс, добавьте покупателю 1 два обычных адреса и два основных.
+  hint: |
+    Уникальность `user_id` — только среди строк `WHERE is_default`.
+  answer: |
+    Ответ:
+    ```sql
+    CREATE TABLE addresses (
+        id         integer GENERATED ALWAYS AS IDENTITY
+                   PRIMARY KEY,
+        user_id    integer NOT NULL REFERENCES users (id),
+        address    text    NOT NULL,
+        is_default boolean NOT NULL DEFAULT false
+    );
+
+    CREATE UNIQUE INDEX addresses_one_default
+        ON addresses (user_id) WHERE is_default;
+
+    INSERT INTO addresses (user_id, address)
+    VALUES (1, 'Москва, ул. Ленина, 1'),
+           (1, 'Москва, ул. Мира, 5');
+
+    INSERT INTO addresses (user_id, address, is_default)
+    VALUES (1, 'Москва, ул. Ленина, 1', true),
+           (1, 'Москва, ул. Мира, 5', true);
+    ```
+    Результат:
+    ```
+    CREATE TABLE
+    CREATE INDEX
+    INSERT 0 2
+    ERROR:  duplicate key value violates unique constraint "addresses_one_default"
+    DETAIL:  Key (user_id)=(1) already exists.
+    ```
+    Обычных адресов может быть сколько угодно — их индекс не содержит. Второй основной упал, и вместе с ним вся команда: первая строка тоже не добавилась.
