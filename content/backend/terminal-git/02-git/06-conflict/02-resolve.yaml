@@ -33,14 +33,14 @@ check:
       contains: '^DELIVERY_PRICE = 350$'
       fail: В settings.py должна остаться цена 350.
     - path: /home/shop/shop/shop/settings.py
-      contains: '(?<![\s\S])(?![\s\S]*^(?:<<<<<<<|=======|>>>>>>>))'
+      not_contains: '^(<<<<<<<|=======|>>>>>>>)'
       fail: В файле остались маркеры конфликта — удалите строки <<<<<<<, ======= и >>>>>>>.
     - merged: {from: delivery-price, into: main}
       fail: "Слияние не завершено: после правки файла — git add shop/settings.py и git commit -m \"Слияние delivery-price\"."
     - clean: true
       fail: Остались незакоммиченные изменения.
 solution: |
-  git merge delivery-price || echo "Конфликт — разрешаем вручную"
+  git merge delivery-price
   echo "DEBUG = True" > shop/settings.py
   echo "DELIVERY_PRICE = 350" >> shop/settings.py
   git add shop/settings.py

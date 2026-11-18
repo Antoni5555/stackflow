@@ -249,7 +249,7 @@ GIT_COMMANDS = {
 GIT_SUBCOMMANDS = {"stash": {"push", "list", "pop", "apply", "drop"}, "remote": {"add"}}
 PIP_COMMANDS = {"install": {"-r"}, "freeze": None, "uninstall": {"-y"}, "list": None}
 STATE_RULES = {  # ключ, по которому узнаём правило → какие ещё ключи обязательны
-    "exists": {"path"}, "contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "link_to": {"path"},
+    "exists": {"path"}, "contains": {"path"}, "not_contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "link_to": {"path"},
     "output_matches": set(),
     "head": set(), "commit_in": set(), "commit_count": set(), "clean": set(), "merged": set(),
     "pushed": set(), "config": set(), "stash_count": set(), "pip_package": set(),
@@ -402,7 +402,7 @@ def check_state(task):
             problems.append(f"config требует key и value: {rule}")
         if kind == "pip_package" and "name" not in (rule["pip_package"] or {}):
             problems.append(f"pip_package требует name: {rule}")
-        if kind in ("contains", "mode") and "path" not in rule:
+        if kind in ("contains", "not_contains", "mode") and "path" not in rule:
             problems.append(f"{kind} требует path: {rule}")
         if kind == "mode" and not (isinstance(rule["mode"], str) and re.fullmatch(r"[0-7]{3}", rule["mode"])):
             problems.append(f"mode — три восьмеричные цифры строкой, например '644': {rule}")
@@ -410,7 +410,7 @@ def check_state(task):
             problems.append(f"commit_in требует branch и message: {rule}")
         if kind == "merged" and not {"from", "into"} <= set(rule["merged"] or {}):
             problems.append(f"merged требует from и into: {rule}")
-        for pattern in (rule.get("contains"), rule.get("output_matches"), (rule.get("commit_in") or {}).get("message"),
+        for pattern in (rule.get("contains"), rule.get("not_contains"), rule.get("output_matches"), (rule.get("commit_in") or {}).get("message"),
                         (rule.get("config") or {}).get("value")):
             if pattern is None:
                 continue
