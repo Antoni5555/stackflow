@@ -229,7 +229,7 @@ def check_dom(task):
 # Команды симулятора Linux/Git и их флаги (docs/content-format.md, «exercise с проверкой состояния»).
 # None — флаги не поддерживаются; набор — разрешённые флаги.
 LINUX_COMMANDS = {
-    "pwd": None, "cd": None, "ls": {"-l", "-a"}, "cat": None, "echo": None, "mkdir": {"-p"},
+    "pwd": None, "cd": None, "ls": {"-l", "-a", "-h", "-R"}, "cat": None, "echo": None, "mkdir": {"-p"},
     "touch": None, "rm": {"-r"}, "cp": {"-r"}, "mv": None, "ln": {"-s"}, "head": {"-n"}, "tail": {"-n"},
     "wc": {"-l"}, "grep": {"-i", "-n", "-r", "-c", "-v"}, "sort": {"-n", "-r"}, "uniq": {"-c"},
     "cut": {"-d", "-f"}, "find": {"-name", "-type", "-size", "-mtime"}, "tar": {"-c", "-x", "-z", "-f"},

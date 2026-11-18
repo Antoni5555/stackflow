@@ -1856,6 +1856,103 @@ def with_connection():
     f.save(out(SQ10 / "03-transactions-code" / "img" / "with-connection.svg"))
 
 
+# ---------- Терминал и Git: раздел 1 ----------
+TG1 = ROOT / "terminal-git" / "01-terminal"
+
+
+def command_parts():
+    f = Figure(880, 200, "Строка терминала: приглашение, команда, флаги и аргумент через пробелы")
+    parts = [("shop@server:~/shop$", 200, "box2", "приглашение: кто, где"), ("ls", 70, "acc", "команда"),
+             ("-la", 80, "box", "флаги"), ("templates", 140, "box", "аргумент")]
+    x = 20
+    for text, w, cls, label in parts:
+        f.box(x, 40, w, 50, text, cls, "onacc" if cls == "acc" else "c", rx=8)
+        f.text(x + w / 2, 116, label, "s", "middle")
+        x += w + 16
+    f.text(20, 160, "Короткие флаги склеиваются: -la = -l -a. Длинные — с двумя дефисами: --help.", "s")
+    f.text(20, 180, "Код выхода после команды: 0 — успех, другое число — ошибка (echo $?).", "s")
+    f.save(out(TG1 / "01-commands" / "img" / "command-parts.svg"))
+
+
+def path_tree():
+    f = Figure(880, 300, "Абсолютный путь — от корня /, относительный — от текущей папки")
+    nodes = [("/", 20, 20), ("home", 60, 64), ("shop  (~)", 100, 108), ("shop  (проект)", 140, 152),
+             ("manage.py", 180, 196), ("orders  ← мы здесь", 180, 230), ("shop", 180, 264)]
+    for name, x, y in nodes:
+        f.text(x, y, name, "cs")
+    f.text(240, 288, "settings.py", "cs")
+    f.line("M28 26V60H56"); f.line("M68 70V104H96"); f.line("M108 114V148H136"); f.line("M148 158V260H176")
+    f.line("M148 192H176"); f.line("M148 226H176"); f.line("M188 270V284H236")
+    f.box(430, 40, 430, 60, "абсолютный путь|/home/shop/shop/shop/settings.py", "box2", "cs", rx=8)
+    f.box(430, 120, 430, 60, "относительный из orders|../shop/settings.py", "acc", "onacc", rx=8)
+    f.box(430, 200, 430, 60, "через домашнюю папку|~/shop/shop/settings.py", "box", "cs", rx=8)
+    f.save(out(TG1 / "02-paths" / "img" / "path-tree.svg"))
+
+
+def cp_mv():
+    f = Figure(880, 240, "cp оставляет исходник, mv переносит или переименовывает — и перезаписывает существующее")
+    f.text(20, 24, "cp -r templates backup", "cs")
+    f.box(20, 36, 170, 44, "templates/", "box2", "c", rx=8)
+    f.arrow("M190 58H246")
+    f.box(250, 36, 170, 44, "templates/", "box2", "c", rx=8)
+    f.box(250, 88, 170, 44, "backup/", "acc", "onacc", rx=8)
+    f.arrow("M190 70L246 104", "lnd")
+    f.text(470, 24, "mv draft.md README.md", "cs")
+    f.box(470, 36, 170, 44, "draft.md", "box2", "c", rx=8)
+    f.box(470, 88, 170, 44, "README.md (старый)", "box", "c", rx=8)
+    f.arrow("M640 58H696")
+    f.box(700, 36, 160, 44, "README.md", "acc", "onacc", rx=8)
+    f.text(470, 160, "draft.md исчез, старый README.md перезаписан без вопросов.", "s")
+    f.text(20, 160, "Без -r cp пропустит папку: omitting directory.", "s")
+    f.text(20, 220, "Сохранить старый файл: сначала mv README.md README.old.md, потом mv draft.md README.md.", "s")
+    f.save(out(TG1 / "03-files" / "img" / "cp-mv.svg"))
+
+
+def argv():
+    f = Figure(880, 210, "Всё, что после имени скрипта, попадает в sys.argv строками")
+    words = [("python3", "box2", None), ("export_orders.py", "acc", "[0]"), ("2026-04-15", "box", "[1]"),
+             ("--format", "box", "[2]"), ("csv", "box", "[3]")]
+    x = 20
+    for text, cls, idx in words:
+        w = 30 + 11 * len(text)
+        f.box(x, 40, w, 46, text, cls, "onacc" if cls == "acc" else "c", rx=8)
+        if idx:
+            f.text(x + w / 2, 112, f"sys.argv{idx}", "cs", "middle")
+        else:
+            f.text(x + w / 2, 112, "не входит", "s", "middle")
+        x += w + 14
+    f.text(20, 160, "sys.argv == ['export_orders.py', '2026-04-15', '--format', 'csv'] — все элементы str.", "s")
+    f.text(20, 180, "Код выхода: 0 — дошёл до конца, 1 — исключение, sys.exit(n) — свой.", "s")
+    f.save(out(TG1 / "04-run-python" / "img" / "argv.svg"))
+
+
+def venv():
+    f = Figure(880, 240, "После активации python и pip берутся из окружения проекта")
+    f.text(20, 24, "до активации", "h")
+    f.box(20, 34, 380, 50, "python3, pip → /usr/bin (система)", "box2", "cs", rx=8)
+    f.box(20, 94, 380, 50, "pip install → externally-managed-environment", "err", "errt", rx=8)
+    f.arrow("M410 90H466")
+    f.text(330, 170, "source venv/bin/activate", "cs")
+    f.text(480, 24, "(venv) после активации", "h")
+    f.box(480, 34, 380, 50, "python, pip → ~/shop/venv/bin", "acc", "onacc", rx=8)
+    f.box(480, 94, 380, 50, "пакеты → ~/shop/venv/lib/…/site-packages", "ok", "t", rx=8)
+    f.text(20, 200, "Активация действует в одном терминале; deactivate — выключить; без активации — venv/bin/pip.", "s")
+    f.text(20, 220, "Папку venv не коммитят и не переносят — её создают заново по requirements.txt.", "s")
+    f.save(out(TG1 / "05-venv" / "img" / "venv.svg"))
+
+
+def requirements():
+    f = Figure(880, 220, "requirements.txt переносит точный состав окружения")
+    f.box(20, 50, 200, 70, "venv на ноутбуке|Django 5.1.4 …", "box2", "c", rx=10)
+    f.arrow("M220 85H286"); f.text(200, 38, "pip freeze >", "cs")
+    f.box(290, 50, 220, 70, "requirements.txt|в git", "acc", "onacc", rx=10)
+    f.arrow("M510 85H576"); f.text(490, 38, "pip install -r", "cs")
+    f.box(580, 50, 280, 70, "новое venv на сервере|те же версии", "box2", "c", rx=10)
+    f.text(20, 170, "asgiref==3.8.1   Django==5.1.4   sqlparse==0.5.3 — точные версии, включая зависимости.", "cs")
+    f.text(20, 196, "Без -r pip ищет пакет с именем requirements.txt; без версий у каждого окажутся свои.", "s")
+    f.save(out(TG1 / "06-pip" / "img" / "requirements.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -1880,6 +1977,7 @@ if __name__ == "__main__":
                   jsonb_operators, view_kinds,
                   flat_to_tables, dependencies, denormalization, reviews_design,
                   btree, composite, explain_node, transaction, mvcc, deadlock,
-                  driver_flow, injection, with_connection):
+                  driver_flow, injection, with_connection,
+                  command_parts, path_tree, cp_mv, argv, venv, requirements):
         build()
     print("ok")

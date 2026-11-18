@@ -1,0 +1,28 @@
+title: Окружение есть, а pip ругается
+type: exercise
+difficulty: 1
+pitfall: Окружение нужно активировать — иначе pip остаётся системным.
+statement: |
+  В проекте `~/shop` уже есть виртуальное окружение `venv`. Поставьте в него пакет `requests`. Команда `pip install requests` отвечает `externally-managed-environment` — разберитесь почему.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/manage.py: |
+      print("manage")
+  venv:
+    path: venv
+    packages: {}
+check:
+  type: state
+  expect:
+    - pip_package: {name: requests}
+      venv: venv
+      fail: "В окружении venv нет requests. Окружение не активировано — pip остался системным. Активируйте: source venv/bin/activate."
+solution: |
+  source venv/bin/activate
+  pip install requests
+hints:
+  - Есть ли `(venv)` в начале приглашения?
+  - "Окружение включают командой `source venv/bin/activate`."
+explanation: |
+  Создать окружение мало — пока оно не активировано, команда `pip` берётся из системы, а системный Python в Ubuntu защищён от `pip install`. `source venv/bin/activate` подставляет `pip` и `python` окружения — в приглашении появляется `(venv)`, и пакет ставится в папку проекта. Без активации сработал бы полный путь: `venv/bin/pip install requests`.

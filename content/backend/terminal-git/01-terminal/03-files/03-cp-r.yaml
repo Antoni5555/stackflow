@@ -1,0 +1,33 @@
+title: Копия шаблонов
+type: exercise
+difficulty: 1
+pitfall: cp без -r пропускает папку — копии не будет.
+statement: |
+  Перед переделкой шаблонов сделайте их резервную копию: скопируйте папку `templates` целиком в папку `backup` (она уже есть), чтобы получилось `backup/templates/…`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/templates/base.html: |
+      <html>{% block content %}{% endblock %}</html>
+    /home/shop/shop/templates/catalog.html: |
+      {% extends "base.html" %}
+  dirs: [/home/shop/shop/backup]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/backup/templates/base.html
+      exists: true
+      fail: "Копии нет. Сообщение «-r not specified; omitting directory» значит, что папку cp пропустил — нужен cp -r."
+    - path: /home/shop/shop/backup/templates/catalog.html
+      exists: true
+      fail: Скопировались не все шаблоны.
+    - path: /home/shop/shop/templates/base.html
+      exists: true
+      fail: Исходные шаблоны пропали — нужно копирование (cp), а не перемещение (mv).
+solution: |
+  cp -r templates backup/
+hints:
+  - Что пишет `cp templates backup/`?
+  - Для папок у `cp` есть флаг «со всем содержимым».
+explanation: |
+  `cp` без `-r` копирует только файлы, а папку пропускает с сообщением `-r not specified; omitting directory 'templates'` — и код выхода у команды ненулевой. `cp -r` копирует папку со всем содержимым; если `backup` существует, копия ляжет внутрь: `backup/templates/`.

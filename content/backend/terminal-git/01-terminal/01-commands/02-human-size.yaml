@@ -1,0 +1,24 @@
+title: Сколько весит выгрузка
+type: exercise
+difficulty: 1
+pitfall: ls -l показывает размер в байтах; в удобных единицах — с флагом -h.
+statement: |
+  В папке `~/shop/exports` лежит выгрузка заказов `orders.csv`. Выведите подробный список этой папки так, чтобы размер файла был в удобных единицах (K, M, G), а не в байтах.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/manage.py: |
+      print("manage")
+    /home/shop/shop/exports/orders.csv: {size: 6M}
+check:
+  type: state
+  expect:
+    - output_matches: '6\.0M\s+\w+\s+\d+\s+[\d:]+\s+orders\.csv'
+      fail: "Нужен подробный список папки exports с размером в M — флаги -l и -h вместе: ls -lh exports."
+solution: |
+  ls -lh exports
+hints:
+  - Посмотрите `ls --help`.
+  - "Флаги можно писать вместе: `-l` и `-h` — это `-lh`."
+explanation: |
+  `ls -l exports` покажет размер `6291456` — число байт, которое не сразу прочтёшь. Флаг `-h` (human-readable) переводит его в `6.0M`, но работает только вместе с `-l`: без подробного списка размера нет вовсе. Короткие флаги склеиваются: `ls -lh` = `ls -l -h`.

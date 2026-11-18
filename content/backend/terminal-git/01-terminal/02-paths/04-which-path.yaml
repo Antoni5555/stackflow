@@ -1,0 +1,16 @@
+title: Какой путь верный
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: Относительный путь зависит от текущей папки, абсолютный и путь с ~ — нет.
+statement: |
+  Текущая папка — `/home/shop/shop/orders`. Какие пути указывают на файл `/home/shop/shop/templates/base.html`?
+options:
+  - "`../templates/base.html`"
+  - "`templates/base.html`"
+  - "`/templates/base.html`"
+  - "`~/shop/templates/base.html`"
+  - "`/home/shop/shop/templates/base.html`"
+answer: [0, 3, 4]
+explanation: |
+  `..` поднимается из `orders` в `/home/shop/shop`, откуда `templates/base.html` — нужный файл. `~` — это `/home/shop`, так что третий верный вариант — путь от дома, а пятый — абсолютный. `templates/base.html` ищется внутри `orders`, а `/templates/…` — в корне диска.

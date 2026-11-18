@@ -1,0 +1,15 @@
+title: Команда python не найдена
+type: quiz
+kind: single
+difficulty: 1
+pitfall: В Ubuntu команда Python — python3; python появляется с пакетом python-is-python3 или в активном окружении.
+statement: |
+  На новом сервере с Ubuntu разработчик пишет `python manage.py migrate` и получает `Command 'python' not found, did you mean: command 'python3' from deb python3`. Что сделать?
+options:
+  - Python не установлен — поставить его с сайта python.org
+  - Запустить `python3 manage.py migrate` (или активировать виртуальное окружение проекта)
+  - Переименовать `manage.py` в `manage.py3`
+  - Выполнить `sudo python manage.py migrate`
+answer: [1]
+explanation: |
+  Python в Ubuntu есть, но команда называется `python3`. Внутри активного виртуального окружения появляется и `python` — он указывает на Python окружения. `sudo` тут не поможет: команды `python` нет и для root.

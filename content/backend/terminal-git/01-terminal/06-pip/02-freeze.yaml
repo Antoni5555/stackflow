@@ -1,0 +1,35 @@
+title: Зависимости магазина
+type: exercise
+difficulty: 1
+pitfall: pip freeze только выводит список — в файл его записывает перенаправление >.
+statement: |
+  Окружение `venv` проекта `~/shop` уже создано. Поставьте в него Django версии 5.1.4 и запишите точные версии всех пакетов окружения в `requirements.txt` в корне проекта.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/manage.py: |
+      print("manage")
+  venv:
+    path: venv
+    packages: {}
+check:
+  type: state
+  expect:
+    - pip_package: {name: django, version: 5.1.4}
+      venv: venv
+      fail: "В окружении нет Django 5.1.4. Активируйте окружение и поставьте конкретную версию: pip install django==5.1.4."
+    - path: /home/shop/shop/requirements.txt
+      contains: '^Django==5\.1\.4$'
+      fail: "В requirements.txt нет строки Django==5.1.4. pip freeze выводит список на экран — в файл его записывает > requirements.txt."
+    - path: /home/shop/shop/requirements.txt
+      contains: '^asgiref=='
+      fail: В requirements.txt должны попасть и зависимости Django — их тоже записывает pip freeze.
+solution: |
+  source venv/bin/activate
+  pip install django==5.1.4
+  pip freeze > requirements.txt
+hints:
+  - "Конкретная версия — через `==`."
+  - "`pip freeze > requirements.txt` — вывод команды в файл."
+explanation: |
+  `pip install django==5.1.4` ставит именно эту версию и две её зависимости. `pip freeze` печатает все пакеты окружения с версиями — на экран; `>` перенаправляет вывод в файл. Записывать список руками (`echo Django==5.1.4 > requirements.txt`) хуже: потеряются зависимости, и на другом компьютере они встанут в других версиях.

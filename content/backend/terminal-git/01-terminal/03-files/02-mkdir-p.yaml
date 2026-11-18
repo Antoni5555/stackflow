@@ -1,0 +1,27 @@
+title: Папки для шаблонов и стилей
+type: exercise
+difficulty: 1
+pitfall: mkdir не создаёт промежуточные папки — для вложенной цепочки нужен -p.
+statement: |
+  В корне проекта `~/shop` создайте папки для шаблонов приложения — `templates/shop` — и для стилей — `static/css`. Ни `templates`, ни `static` пока нет.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/manage.py: |
+      print("manage")
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/templates/shop
+      exists: true
+      fail: "Папки templates/shop нет. mkdir не создаёт промежуточные папки — нужен флаг -p."
+    - path: /home/shop/shop/static/css
+      exists: true
+      fail: Папки static/css нет.
+solution: |
+  mkdir -p templates/shop static/css
+hints:
+  - "Что ответит `mkdir templates/shop`, если папки `templates` ещё нет?"
+  - "`mkdir -p` создаёт всю цепочку; путей можно передать несколько."
+explanation: |
+  `mkdir templates/shop` падает с `No such file or directory`: создать `shop` негде, пока нет `templates`. С `-p` команда создаёт все недостающие папки по пути и не ругается, если какие-то уже есть. Одной командой можно создать несколько путей.

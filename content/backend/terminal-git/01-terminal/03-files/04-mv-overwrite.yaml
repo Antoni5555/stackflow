@@ -1,0 +1,33 @@
+title: Новый README
+type: exercise
+difficulty: 2
+pitfall: mv перезаписывает существующий файл без предупреждения.
+statement: |
+  Черновик `draft.md` готов и должен стать новым `README.md`. Но старый `README.md` нужно сохранить под именем `README.old.md`. Сделайте так, чтобы в проекте были `README.md` с текстом черновика и `README.old.md` со старым текстом, а `draft.md` не осталось.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/README.md: |
+      Магазин: первая версия
+    /home/shop/shop/draft.md: |
+      Магазин: каталог, корзина, заказы
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/README.old.md
+      contains: 'первая версия'
+      fail: "В README.old.md нет старого текста. Если сначала переименовать draft.md в README.md, mv молча затрёт старый файл."
+    - path: /home/shop/shop/README.md
+      contains: 'каталог, корзина, заказы'
+      fail: В README.md должен быть текст черновика.
+    - path: /home/shop/shop/draft.md
+      exists: false
+      fail: draft.md должен стать README.md — переименуйте его, а не копируйте.
+solution: |
+  mv README.md README.old.md
+  mv draft.md README.md
+hints:
+  - Что станет со старым `README.md`, если сразу выполнить `mv draft.md README.md`?
+  - Сначала уберите старый файл с дороги — переименуйте.
+explanation: |
+  `mv draft.md README.md` записывает черновик на место существующего `README.md` без вопросов — старый текст пропадает. Порядок важен: сначала `mv README.md README.old.md`, потом `mv draft.md README.md`. В настоящем Linux от случайной перезаписи защищает `mv -i` (спросит) или `mv -n` (не перезапишет).

@@ -1,0 +1,36 @@
+title: Окружение на новом ноутбуке
+type: exercise
+difficulty: 2
+pitfall: Список пакетов из файла ставят с флагом -r; без него pip ищет пакет с именем файла.
+statement: |
+  Вы склонировали проект магазина на новый ноутбук. В корне `~/shop` есть `requirements.txt`, окружения ещё нет. Создайте окружение `venv` и поставьте в него все пакеты из файла.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: |
+      asgiref==3.8.1
+      Django==5.0.10
+      sqlparse==0.5.3
+    /home/shop/shop/manage.py: |
+      print("manage")
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/venv/bin/activate
+      exists: true
+      fail: "Окружения нет: python3 -m venv venv."
+    - pip_package: {name: django, version: 5.0.10}
+      venv: venv
+      fail: "В окружении нет Django 5.0.10 из requirements.txt. Список из файла ставится так: pip install -r requirements.txt."
+    - pip_package: {name: sqlparse, version: 0.5.3}
+      venv: venv
+      fail: Поставились не все пакеты из файла.
+solution: |
+  python3 -m venv venv
+  source venv/bin/activate
+  pip install -r requirements.txt
+hints:
+  - "Что отвечает `pip install requirements.txt`?"
+  - "Флаг `-r` говорит pip читать список пакетов из файла."
+explanation: |
+  `pip install requirements.txt` ищет в каталоге пакет с таким именем и не находит. `-r requirements.txt` читает файл построчно и ставит каждую версию как записано — поэтому на новом ноутбуке окажется Django 5.0.10, а не последняя версия. Окружение каждый раз создаётся заново: его не переносят, переносят только список.

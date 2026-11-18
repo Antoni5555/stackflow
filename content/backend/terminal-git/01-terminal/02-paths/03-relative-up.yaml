@@ -1,0 +1,26 @@
+title: Настройки из соседней папки
+type: exercise
+difficulty: 2
+pitfall: Относительный путь считается от текущей папки; чтобы подняться на уровень выше, нужен ..
+statement: |
+  Вы работаете в папке приложения `~/shop/orders`. Не переходя из неё, выведите содержимое файла `config/settings.ini`, который лежит в корне проекта `~/shop`.
+setup:
+  cwd: /home/shop/shop/orders
+  files:
+    /home/shop/shop/config/settings.ini: |
+      DEBUG=False
+      ALLOWED_HOSTS=shop.example
+    /home/shop/shop/orders/views.py: |
+      # views
+check:
+  type: state
+  expect:
+    - output_matches: 'ALLOWED_HOSTS=shop\.example'
+      fail: "Путь config/settings.ini ищется внутри orders. Поднимитесь на уровень выше: ../config/settings.ini."
+solution: |
+  cat ../config/settings.ini
+hints:
+  - Где ищется `config/settings.ini`, если вы в `~/shop/orders`?
+  - "`..` — папка на уровень выше."
+explanation: |
+  `cat config/settings.ini` ищет файл в `~/shop/orders/config/` и отвечает `No such file or directory`. `..` поднимается в корень проекта `~/shop`, оттуда путь идёт вниз: `../config/settings.ini`. Сработал бы и абсолютный путь `/home/shop/shop/config/settings.ini` или `~/shop/config/settings.ini`.

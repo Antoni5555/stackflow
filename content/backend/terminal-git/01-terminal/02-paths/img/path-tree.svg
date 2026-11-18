@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" width="880" height="300" class="fig" role="img" aria-labelledby="t"><title id="t">Абсолютный путь — от корня /, относительный — от текущей папки</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<text x="20" y="20" text-anchor="start" class="fig-cs">/</text>
+<text x="60" y="64" text-anchor="start" class="fig-cs">home</text>
+<text x="100" y="108" text-anchor="start" class="fig-cs">shop  (~)</text>
+<text x="140" y="152" text-anchor="start" class="fig-cs">shop  (проект)</text>
+<text x="180" y="196" text-anchor="start" class="fig-cs">manage.py</text>
+<text x="180" y="230" text-anchor="start" class="fig-cs">orders  ← мы здесь</text>
+<text x="180" y="264" text-anchor="start" class="fig-cs">shop</text>
+<text x="240" y="288" text-anchor="start" class="fig-cs">settings.py</text>
+<path d="M28 26V60H56" class="fig-ln"/>
+<path d="M68 70V104H96" class="fig-ln"/>
+<path d="M108 114V148H136" class="fig-ln"/>
+<path d="M148 158V260H176" class="fig-ln"/>
+<path d="M148 192H176" class="fig-ln"/>
+<path d="M148 226H176" class="fig-ln"/>
+<path d="M188 270V284H236" class="fig-ln"/>
+<rect x="430" y="40" width="430" height="60" rx="8" class="fig-box2"/>
+<text x="645.0" y="66.0" text-anchor="middle" class="fig-cs">абсолютный путь</text>
+<text x="645.0" y="84.0" text-anchor="middle" class="fig-cs">/home/shop/shop/shop/settings.py</text>
+<rect x="430" y="120" width="430" height="60" rx="8" class="fig-acc"/>
+<text x="645.0" y="146.0" text-anchor="middle" class="fig-onacc">относительный из orders</text>
+<text x="645.0" y="164.0" text-anchor="middle" class="fig-onacc">../shop/settings.py</text>
+<rect x="430" y="200" width="430" height="60" rx="8" class="fig-box"/>
+<text x="645.0" y="226.0" text-anchor="middle" class="fig-cs">через домашнюю папку</text>
+<text x="645.0" y="244.0" text-anchor="middle" class="fig-cs">~/shop/shop/settings.py</text>
+</svg>

@@ -1,0 +1,29 @@
+title: Где секретный ключ
+type: exercise
+difficulty: 1
+pitfall: ls не показывает файлы, имя которых начинается с точки, — для них нужен ls -a.
+statement: |
+  Коллега говорит, что секретный ключ Django лежит в файле настроек в корне проекта `~/shop`, но `ls` его не показывает. Найдите этот файл и выведите его содержимое.
+setup:
+  cwd: /home/shop
+  files:
+    /home/shop/shop/.env: |
+      SECRET_KEY=dev-8f2c1a
+      DEBUG=True
+    /home/shop/shop/manage.py: |
+      print("manage")
+    /home/shop/shop/shop/settings.py: |
+      DEBUG = True
+check:
+  type: state
+  expect:
+    - output_matches: 'SECRET_KEY=dev-8f2c1a'
+      fail: Выведите содержимое файла с ключом командой cat — сначала найдите его через ls -a.
+solution: |
+  ls -a shop
+  cat shop/.env
+hints:
+  - Какие имена `ls` не показывает?
+  - "`ls -a shop` покажет и скрытые файлы."
+explanation: |
+  Файл называется `.env`: имя с точки делает его скрытым, и `ls` его пропускает. `ls -a` показывает всё, включая скрытые, а `cat shop/.env` выводит содержимое. Так хранят секреты и настройки окружения — и потому `.env` не коммитят в Git (раздел «Git»).
