@@ -1,0 +1,52 @@
+title: Чей это стиль
+type: fix
+difficulty: 1
+pitfall: Линтер по умолчанию не проверяет имена — CapWords у функции и camelCase у константы пропустит только ревью.
+statement: |
+  flake8 молчит, но на ревью код вернули: имена не по PEP 8. Переименуйте константу, класс и функцию (и все места, где они используются).
+files:
+  order.py: |
+    maxItems = 50
+
+
+    class order_item:
+        def __init__(self, product_id, qty):
+            self.product_id = product_id
+            self.qty = qty
+
+
+    def AddItem(items, product_id, qty):
+        if len(items) >= maxItems:
+            raise ValueError("слишком много позиций")
+        items.append(order_item(product_id, qty))
+check:
+  type: rules
+  rules:
+    - must_match: '^MAX_ITEMS = 50'
+      fail: "Константа модуля — UPPER_CASE: MAX_ITEMS."
+    - must_match: '^class OrderItem\b'
+      fail: "Класс — CapWords: OrderItem."
+    - must_match: '^def add_item\('
+      fail: "Функция — snake_case: add_item."
+    - must_not_match: '\b(maxItems|order_item|AddItem)\b'
+      fail: "Где-то осталось старое имя — переименуйте и использования."
+solution:
+  order.py: |
+    MAX_ITEMS = 50
+
+
+    class OrderItem:
+        def __init__(self, product_id, qty):
+            self.product_id = product_id
+            self.qty = qty
+
+
+    def add_item(items, product_id, qty):
+        if len(items) >= MAX_ITEMS:
+            raise ValueError("слишком много позиций")
+        items.append(OrderItem(product_id, qty))
+hints:
+  - "Три вида имён — три стиля: константа, класс, функция."
+  - "После переименования проверьте строки, где имена используются: `if len(items) >= …` и `items.append(…)`."
+explanation: |
+  `MAX_ITEMS` — константа модуля, `OrderItem` — класс, `add_item` — функция. Стандартный набор правил flake8 имена не проверяет (для этого есть плагин pep8-naming или правила `N` в ruff), поэтому такие ошибки обычно ловят на ревью. Переименовывать удобно средствами редактора: «Rename symbol» меняет имя во всех местах сразу.

@@ -1,0 +1,87 @@
+title: Оплата без банка
+type: exercise
+difficulty: 2
+pitfall: Заглушка вернёт заданный ответ при любых аргументах — без assert_called_once_with не узнать, что списали не ту сумму.
+statement: |
+  `checkout(total, gateway)` из `checkout.py` списывает `total` через `gateway.charge` и возвращает статус заказа; если банк недоступен (`ConnectionError`), заказ получает статус `payment_failed`. Напишите тесты с `Mock` вместо настоящего шлюза.
+files:
+  checkout.py: |
+    def checkout(total, gateway):
+        try:
+            payment_id = gateway.charge(total)
+        except ConnectionError:
+            return {"status": "payment_failed"}
+        return {"status": "paid", "payment_id": payment_id}
+  test_checkout.py: |
+    from unittest.mock import Mock
+
+    from checkout import checkout
+solution:
+  test_checkout.py: |
+    from unittest.mock import Mock
+
+    from checkout import checkout
+
+
+    def test_checkout_charges_total():
+        gateway = Mock()
+        gateway.charge.return_value = "pay_42"
+
+        order = checkout(2479, gateway)
+
+        assert order == {"status": "paid", "payment_id": "pay_42"}
+        gateway.charge.assert_called_once_with(2479)
+
+
+    def test_checkout_payment_failed():
+        gateway = Mock()
+        gateway.charge.side_effect = ConnectionError("банк недоступен")
+
+        order = checkout(2479, gateway)
+
+        assert order == {"status": "payment_failed"}
+check:
+  type: pytest
+  mutants:
+    - files:
+        checkout.py: |
+          def checkout(total, gateway):
+              try:
+                  payment_id = gateway.charge(round(total * 0.9))
+              except ConnectionError:
+                  return {"status": "payment_failed"}
+              return {"status": "paid", "payment_id": payment_id}
+      fail: Сумма списания не проверена — шлюзу передают сумму со скидкой, а тесты проходят.
+    - files:
+        checkout.py: |
+          def checkout(total, gateway):
+              gateway.charge(total)
+              try:
+                  payment_id = gateway.charge(total)
+              except ConnectionError:
+                  return {"status": "payment_failed"}
+              return {"status": "paid", "payment_id": payment_id}
+      fail: Число списаний не проверено — деньги списываются дважды.
+    - files:
+        checkout.py: |
+          def checkout(total, gateway):
+              try:
+                  payment_id = gateway.charge(total)
+              except ConnectionError:
+                  return {"status": "paid", "payment_id": None}
+              return {"status": "paid", "payment_id": payment_id}
+      fail: Недоступный банк не проверен — заказ считается оплаченным. Ошибку шлюза задают через side_effect.
+    - files:
+        checkout.py: |
+          def checkout(total, gateway):
+              try:
+                  gateway.charge(total)
+              except ConnectionError:
+                  return {"status": "payment_failed"}
+              return {"status": "paid", "payment_id": None}
+      fail: Номер платежа не проверен — задайте шлюзу return_value и сравните его с заказом.
+hints:
+  - "Два сценария: банк ответил номером платежа (`return_value`) и банк недоступен (`side_effect`)."
+  - "В успешном сценарии проверьте и заказ, и вызов: `gateway.charge.assert_called_once_with(2479)`."
+explanation: |
+  Mock заменяет банк: `return_value` задаёт номер платежа, `side_effect` — ошибку сети. Но проверить только результат мало: заглушка вернёт `"pay_42"` при любых аргументах и любом числе вызовов. `assert_called_once_with(2479)` ловит сразу две поломки — неверную сумму и повторное списание.

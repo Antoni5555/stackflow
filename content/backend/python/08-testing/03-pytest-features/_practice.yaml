@@ -1,0 +1,95 @@
+- title: Все границы одним тестом
+  text: |
+    Перепишите четыре теста `stock_status` одним тестом с `@pytest.mark.parametrize`.
+    ```python
+    import pytest
+
+
+    def stock_status(qty):
+        if qty == 0:
+            return "нет в наличии"
+        if qty <= 5:
+            return "мало"
+        return "в наличии"
+    ```
+  answer: |
+    Ответ — после функции:
+    ```python
+    @pytest.mark.parametrize(
+        "qty, expected",
+        [
+            (0, "нет в наличии"),
+            (1, "мало"),
+            (5, "мало"),
+            (6, "в наличии"),
+        ],
+    )
+    def test_stock_status(qty, expected):
+        assert stock_status(qty) == expected
+    ```
+    «Запустить тесты» покажет четыре теста `test_stock_status[…]` и `4 passed`. Русские буквы в квадратных скобках pytest записывает кодами: `test_stock_status[1-\u043c\u0430\u043b\u043e]` — это `мало`. Новый случай — одна строка в списке.
+- title: Отрицательная цена
+  text: |
+    Добавьте в `format_price` проверку: для отрицательного значения — `ValueError("цена не может быть отрицательной")`. Напишите тест с `pytest.raises` и `match`.
+    ```python
+    import pytest
+
+
+    def format_price(value):
+        return f"{value:,} ₽".replace(",", " ")
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import pytest
+
+
+    def format_price(value):
+        if value < 0:
+            raise ValueError("цена не может быть отрицательной")
+        return f"{value:,} ₽".replace(",", " ")
+
+
+    def test_negative_price():
+        with pytest.raises(ValueError, match="отрицательной"):
+            format_price(-1)
+
+
+    def test_zero_price():
+        assert format_price(0) == "0 ₽"
+    ```
+    «Запустить тесты» — `2 passed`. Второй тест проверяет границу с другой стороны: ноль — не ошибка.
+- title: Заказы из фикстуры
+  text: |
+    Напишите фикстуру `orders` — список из трёх заказов — и два теста функции `paid_total`: сумма оплаченных и сумма после отмены одного оплаченного заказа.
+    ```python
+    import pytest
+
+
+    def paid_total(orders):
+        return sum(o["total"] for o in orders
+                   if o["status"] == "paid")
+    ```
+  hint: |
+    Во втором тесте поменяйте статус заказа прямо в списке из фикстуры — первый тест этого не увидит.
+  answer: |
+    Ответ — после функции:
+    ```python
+    @pytest.fixture
+    def orders():
+        return [
+            {"total": 2479, "status": "paid"},
+            {"total": 990, "status": "new"},
+            {"total": 1499, "status": "paid"},
+        ]
+
+
+    def test_paid_total(orders):
+        assert paid_total(orders) == 3978
+
+
+    def test_cancelled_not_counted(orders):
+        orders[0]["status"] = "cancelled"
+        assert paid_total(orders) == 1499
+    ```
+    «Запустить тесты» — `2 passed`. Порядок тестов не важен: фикстура создаёт новый список для каждого.

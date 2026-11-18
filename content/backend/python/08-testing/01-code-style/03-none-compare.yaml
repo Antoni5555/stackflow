@@ -1,0 +1,36 @@
+title: Промокод сравнивают с None
+type: fix
+difficulty: 1
+pitfall: С None сравнивают через is / is not — == вызывает __eq__, который класс может переопределить.
+statement: |
+  Линтер подсветил две строки с `E711 comparison to None`. Исправьте сравнения так, как требует PEP 8, не меняя логику.
+files:
+  promo.py: |
+    def apply_promo(total, promo):
+        if promo == None:
+            return total
+        if promo.expires_at != None and promo.is_expired():
+            return total
+        return total - total * promo.percent / 100
+check:
+  type: rules
+  rules:
+    - must_not_match: '[!=]=\s*None'
+      fail: "В коде ещё есть сравнение с None через == или !=."
+    - must_match: '^\s*if promo is None:'
+      fail: "Проверку «промокода нет» пишут как promo is None."
+    - must_match: '^\s*if promo\.expires_at is not None and promo\.is_expired\(\):'
+      fail: "«Срок указан» — promo.expires_at is not None; остальное условие не меняйте."
+solution:
+  promo.py: |
+    def apply_promo(total, promo):
+        if promo is None:
+            return total
+        if promo.expires_at is not None and promo.is_expired():
+            return total
+        return total - total * promo.percent / 100
+hints:
+  - "Какой оператор проверяет, что это тот самый объект, а не равный ему?"
+  - "`== None` → `is None`, `!= None` → `is not None`."
+explanation: |
+  `None` — один объект на всю программу, поэтому его проверяют на тождество: `is None`, `is not None`. `==` вызывает метод `__eq__` объекта, а класс промокода может переопределить его как угодно — например, считать равными промокоды с одинаковым кодом, и сравнение с `None` даст неожиданный результат или упадёт. Линтер ловит такие места правилом `E711`.

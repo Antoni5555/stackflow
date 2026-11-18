@@ -1,0 +1,76 @@
+title: Тест на границу бесплатной доставки
+type: exercise
+difficulty: 1
+pitfall: Тест только на значения «из середины» проходит и с > вместо >= — ошибку на границе ловит только тест ровно на пороге.
+statement: |
+  В `delivery.py` — функция `delivery_cost(total)`: 299 ₽, а от 3000 ₽ включительно — бесплатно. Напишите в `test_delivery.py` тесты, которые поймают ошибку в этой функции, если её сломают.
+files:
+  delivery.py: |
+    FREE_FROM = 3000
+
+
+    def delivery_cost(total):
+        if total >= FREE_FROM:
+            return 0
+        return 299
+  test_delivery.py: |
+    from delivery import delivery_cost
+
+
+    def test_small_order_pays_delivery():
+        assert delivery_cost(500) == 299
+solution:
+  test_delivery.py: |
+    from delivery import delivery_cost
+
+
+    def test_small_order_pays_delivery():
+        assert delivery_cost(500) == 299
+
+
+    def test_big_order_free():
+        assert delivery_cost(4500) == 0
+
+
+    def test_free_from_exactly_3000():
+        assert delivery_cost(3000) == 0
+
+
+    def test_just_below_threshold_pays():
+        assert delivery_cost(2999) == 299
+check:
+  type: pytest
+  mutants:
+    - files:
+        delivery.py: |
+          FREE_FROM = 3000
+
+
+          def delivery_cost(total):
+              return 299
+      fail: Большой заказ не проверен — доставка всегда платная, а тесты проходят.
+    - files:
+        delivery.py: |
+          FREE_FROM = 3000
+
+
+          def delivery_cost(total):
+              if total > FREE_FROM:
+                  return 0
+              return 299
+      fail: Граница не проверена — заказ ровно на 3000 ₽ платит за доставку, а тесты проходят.
+    - files:
+        delivery.py: |
+          FREE_FROM = 3000
+
+
+          def delivery_cost(total):
+              if total >= FREE_FROM - 1:
+                  return 0
+              return 299
+      fail: Заказ на 2999 ₽ получил бесплатную доставку — проверьте сумму сразу под порогом.
+hints:
+  - "Какие суммы стоят на краях условия `total >= 3000`?"
+  - "Нужны тесты на большой заказ, ровно на 3000 и на 2999."
+explanation: |
+  Тест на 500 ₽ проходит почти с любой ошибкой в условии. Ошибки сравнения прячутся на границе, поэтому проверяют значение ровно на пороге (3000 → 0) и сразу под ним (2999 → 299), плюс обычный случай с каждой стороны. Сломанные версии в этой задаче — как раз такие «тихие» правки: `>` вместо `>=` и сдвиг порога на единицу.

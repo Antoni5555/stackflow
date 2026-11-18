@@ -1,0 +1,16 @@
+title: Что запустит pytest
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: pytest ищет функции по префиксу test — check_total не запустится, а testing_total запустится.
+statement: |
+  В файле `test_orders.py` такие функции и класс. Какие из них pytest запустит как тесты (настройки по умолчанию)?
+options:
+  - "`def test_total():`"
+  - "`def check_total():`"
+  - "`def total_test():`"
+  - "`def testing_total():`"
+  - "метод `test_paid` в `class TestOrder:`"
+answer: [0, 3, 4]
+explanation: |
+  pytest собирает функции, имя которых **начинается** с `test`, и методы с таким именем в классах `Test…`. `testing_total` тоже начинается с `test` — его запустят, хотя выглядит случайно. `check_total` и `total_test` не запустятся: pytest их не видит, и проверка в них молча не работает. Поэтому тесты всегда называют `test_что_проверяем`.

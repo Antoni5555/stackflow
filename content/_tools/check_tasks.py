@@ -555,6 +555,65 @@ def check_django_mutants(task, files, solution, check):
     return problems
 
 
+def check_pytest(task):
+    """Python-задача «напишите тесты»: эталонные тесты проходят на коде задачи и ловят
+    каждую сломанную версию, заготовка ловит не все. Нужен pytest (как в тренажёре — 8.1.1)."""
+    problems = []
+    files, solution, check = task.get("files") or {}, task.get("solution") or {}, task["check"]
+    if not isinstance(files, dict) or not isinstance(solution, dict):
+        return ["files и solution — словари {имя файла: текст}"]
+    if "starter_code" in task or "tests" in check:
+        problems.append("у задачи на тесты нет starter_code и check.tests — заготовка в files, проверка в mutants")
+    if len(solution) != 1 or not re.fullmatch(r"test_\w+\.py", next(iter(solution), "")):
+        return problems + ["solution — ровно один файл test_….py"]
+    test_file = next(iter(solution))
+    if "def test_" not in solution[test_file]:
+        problems.append(f"в эталонном {test_file} нет функций test_…")
+    modules = {name: text for name, text in files.items() if name != test_file}
+    if not modules:
+        problems.append("в files нет кода задачи — тестировать нечего")
+    for name, text in {**files, **solution}.items():
+        if not re.fullmatch(r"[\w/]+\.py", name):
+            problems.append(f"файл {name!r}: только модули .py")
+            continue
+        try:
+            ast.parse(text, name)
+        except SyntaxError as e:
+            problems.append(f"{name}: синтаксическая ошибка, строка {e.lineno}: {e.msg}")
+    mutants = check.get("mutants")
+    if not isinstance(mutants, list) or not mutants:
+        return problems + ["check.mutants — непустой список {files, fail}"]
+    for n, mutant in enumerate(mutants, 1):
+        changed = mutant.get("files") if isinstance(mutant, dict) else None
+        if not isinstance(changed, dict) or not changed or not mutant.get("fail"):
+            problems.append(f"сломанная версия {n}: нужны files (словарь) и fail")
+            continue
+        if set(changed) - set(modules):
+            problems.append(f"сломанная версия {n}: меняет только модули задачи из files, не {sorted(set(changed) - set(modules))}")
+        if all(modules.get(name) == text for name, text in changed.items()):
+            problems.append(f"сломанная версия {n} не меняет ни одного файла задачи")
+        for name, text in changed.items():
+            try:
+                compile(text, name, "exec")
+            except SyntaxError as e:
+                problems.append(f"сломанная версия {n}, {name}: не компилируется (строка {e.lineno}) — "
+                                "ловиться она должна тестами, а не SyntaxError")
+    if problems:
+        return problems
+    try:
+        import pytest  # noqa: F401
+    except ImportError:
+        return ["для задач check.type: pytest нужен pytest — запустите проверку из .venv сайта"]
+    with contextlib.redirect_stdout(io.StringIO()):
+        reference = runner.check_tests({**files, **solution}, test_file, mutants, guard=guard)
+        starter = runner.check_tests({test_file: "", **files}, test_file, mutants, guard=guard)
+    if reference["failed"]:
+        problems.append(f"эталон не проходит: {reference['failed']}\n{reference['output'][-600:]}")
+    if not starter["failed"]:
+        problems.append("заготовка тестов ловит все сломанные версии — задача ничего не проверяет")
+    return problems
+
+
 def check_django(task):
     """Форма Django-задачи. Сам эталон в тренажёре Django прогоняет тест сайта."""
     problems = []
@@ -660,6 +719,8 @@ def _check_task(path):
         problems += check_sql(task)
     elif task["type"] == "exercise" and (task.get("check") or {}).get("type") == "state":
         problems += check_state(task)
+    elif task["type"] == "exercise" and (task.get("check") or {}).get("type") == "pytest":
+        problems += check_pytest(task)
     elif task["type"] == "exercise" and (task.get("check") or {}).get("type") == "dom":
         problems += check_dom(task)
     elif task["type"] == "exercise":

@@ -1,0 +1,40 @@
+title: Тест, который не может упасть
+type: exercise
+difficulty: 2
+pitfall: assert (условие, "сообщение") проверяет непустой кортеж — он всегда истинный, тест не падает никогда.
+statement: |
+  Тест в `test_delivery.py` проходит всегда — даже когда доставку сломали. Найдите, почему, и исправьте тест, чтобы он ловил ошибку на границе 3000 ₽.
+files:
+  delivery.py: |
+    def delivery_cost(total):
+        if total >= 3000:
+            return 0
+        return 299
+  test_delivery.py: |
+    from delivery import delivery_cost
+
+
+    def test_free_from_exactly_3000():
+        assert (delivery_cost(3000) == 0, "от 3000 ₽ доставка бесплатна")
+solution:
+  test_delivery.py: |
+    from delivery import delivery_cost
+
+
+    def test_free_from_exactly_3000():
+        assert delivery_cost(3000) == 0, "от 3000 ₽ доставка бесплатна"
+check:
+  type: pytest
+  mutants:
+    - files:
+        delivery.py: |
+          def delivery_cost(total):
+              if total > 3000:
+                  return 0
+              return 299
+      fail: "Заказ ровно на 3000 ₽ платит за доставку, а тест прошёл. Что на самом деле проверяет assert со скобками?"
+hints:
+  - "Что получится, если взять в скобки два значения через запятую?"
+  - "Уберите скобки: `assert условие, \"сообщение\"`."
+explanation: |
+  Скобки с запятой создают кортеж из двух элементов, а непустой кортеж всегда истинный — `assert` проверяет его, а не сравнение. Python даже предупреждает об этом: `SyntaxWarning: assertion is always true, perhaps remove parentheses?`. Сообщение пишут через запятую без скобок. И общее правило: тест, который ни разу не падал, — под подозрением; сломайте код и убедитесь, что он падает.

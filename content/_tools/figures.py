@@ -586,6 +586,93 @@ def with_flow():
     f.save(out(PY7 / "13-context-managers" / "img" / "with-flow.svg"))
 
 
+# ---------- Python 8.02: как читать упавший тест ----------
+PY8 = ROOT / "python" / "08-testing"
+
+
+def pytest_failure():
+    f = Figure(860, 300, "Отчёт pytest об упавшем тесте: какой тест, строка проверки, значения, место в файле")
+    f.raw('<rect x="20" y="20" width="460" height="222" rx="14" class="fig-term"/>')
+    rows = [
+        ("test_main.py::test_free_from_exactly_3000 FAILED", "tt"),
+        ("", "tt"),
+        ("    def test_free_from_exactly_3000():", "tt"),
+        (">       assert delivery_cost(3000) == 0", "tt"),
+        ("E       assert 299 == 0", "tterr"),
+        ("E        +  where 299 = delivery_cost(3000)", "tterr"),
+        ("", "tt"),
+        ("test_main.py:19: AssertionError", "tt"),
+    ]
+    for i, (s, cls) in enumerate(rows):
+        f.text(36, 50 + i * 25, s, cls)
+    notes = [  # (номер строки, номер, подпись)
+        (0, "1", "какой тест упал"),
+        (3, "2", "строка с проверкой — отмечена «>»"),
+        (4, "3", "получили 299, ожидали 0"),
+        (5, "4", "откуда взялось 299"),
+        (7, "5", "файл и номер строки"),
+    ]
+    for row, n, s in notes:
+        y = 50 + row * 25 - 5
+        f.line(f"M484 {y}H520", "lnd")
+        f.raw(f'<circle cx="534" cy="{y}" r="11" class="fig-acc"/>')
+        f.text(534, y + 5, n, "onacc", "middle")
+        f.text(552, y + 5, s, "s")
+    f.text(20, 274, "Строки E — значения сравнения: pytest сам раскрывает обычный assert.", "t")
+    f.save(out(PY8 / "02-first-tests" / "img" / "pytest-failure.svg"))
+
+
+# ---------- Python 8.03: фикстура для каждого теста ----------
+def fixture_per_test():
+    f = Figure(860, 330, "Фикстура cart вызывается перед каждым тестом: каждый тест получает свою корзину")
+    f.box(20, 124, 200, 70, "", "box2")
+    f.text(120, 152, "@pytest.fixture", "cs", "middle")
+    f.text(120, 174, "def cart():", "c", "middle")
+    rows = [
+        ("test_total(cart)", "сумма 2479", "ok"),
+        ("test_add_same_product(cart)", "+ мышь → 3978", "box"),
+        ("test_remove(cart)", "− коврик → 1499", "box"),
+    ]
+    for i, (test, change, cls) in enumerate(rows):
+        y = 30 + i * 96
+        f.arrow(f"M220 159C260 159 260 {y + 30} 296 {y + 30}")
+        f.box(300, y, 210, 60, "", "box")
+        f.text(405, y + 26, "новая Cart()", "c", "middle")
+        f.text(405, y + 46, "мышь ×1, коврик ×2", "s", "middle")
+        f.arrow(f"M510 {y + 30}H546")
+        f.box(550, y, 290, 60, "", "box")
+        f.text(566, y + 26, test, "cs")
+        f.text(566, y + 46, change, "s")
+    f.text(20, 318, "Изменения корзины в одном тесте не видны другим: порядок тестов не важен.", "t")
+    f.save(out(PY8 / "03-pytest-features" / "img" / "fixture-per-test.svg"))
+
+
+# ---------- Python 8.04: Mock вместо платёжного шлюза ----------
+def mock_gateway():
+    f = Figure(860, 330, "В работе checkout вызывает настоящий шлюз банка, в тесте — Mock, который отвечает заданным и записывает вызовы")
+    f.text(20, 24, "в работе", "h")
+    f.box(20, 36, 220, 50, "checkout(2479, gateway)", "box", "cs")
+    f.arrow("M240 61H296")
+    f.box(300, 36, 220, 50, "PaymentGateway.charge", "box2", "cs")
+    f.arrow("M520 61H576", "lnd")
+    f.text(548, 52, "сеть", "s", "middle")
+    f.box(580, 36, 260, 50, "банк: деньги списаны", "err", "errt")
+    f.text(20, 128, "в тесте", "h")
+    f.box(20, 140, 220, 50, "checkout(2479, Mock())", "box", "cs")
+    f.arrow("M240 165H296")
+    f.box(300, 140, 290, 120, "", "ok")
+    f.text(316, 166, "Mock", "t")
+    f.text(316, 192, 'return_value = "pay_42"', "cs")
+    f.text(316, 214, "или side_effect = ConnectionError", "cs")
+    f.text(316, 244, "записал: charge(2479)", "cs")
+    f.arrow("M590 236H616")
+    f.box(620, 210, 230, 50, "", "box2")
+    f.text(634, 232, "тест проверяет:", "s")
+    f.text(634, 250, "assert_called_once_with(2479)", "cs")
+    f.text(20, 300, "Ни сети, ни денег: тест быстрый и может получить любой ответ банка, включая ошибку.", "t")
+    f.save(out(PY8 / "04-mocks" / "img" / "mock-gateway.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2054,6 +2141,7 @@ if __name__ == "__main__":
                   dict_lookup, lost_key, objects_and_class,
                   attribute_lookup, inheritance_mro, shop_errors,
                   is_a_has_a, with_flow,
+                  pytest_failure, fixture_per_test, mock_gateway,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

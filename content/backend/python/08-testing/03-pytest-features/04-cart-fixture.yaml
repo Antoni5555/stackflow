@@ -1,0 +1,108 @@
+title: Корзина из фикстуры
+type: exercise
+difficulty: 2
+pitfall: Повторное добавление того же товара должно увеличить количество, а не заменить его — без отдельного теста это не заметят.
+statement: |
+  Напишите тесты для класса `Cart` из `cart.py`. Корзину с парой товаров подготовьте в фикстуре `cart` — каждый тест получит свою.
+files:
+  cart.py: |
+    class Cart:
+        def __init__(self):
+            self.items = {}
+
+        def add(self, product_id, price, qty=1):
+            old = self.items.get(product_id, (price, 0))[1]
+            self.items[product_id] = (price, old + qty)
+
+        def remove(self, product_id):
+            del self.items[product_id]
+
+        def total(self):
+            return sum(p * q for p, q in self.items.values())
+  test_cart.py: |
+    import pytest
+
+    from cart import Cart
+solution:
+  test_cart.py: |
+    import pytest
+
+    from cart import Cart
+
+
+    @pytest.fixture
+    def cart():
+        cart = Cart()
+        cart.add(4, 1499)
+        cart.add(7, 490, qty=2)
+        return cart
+
+
+    def test_total(cart):
+        assert cart.total() == 2479
+
+
+    def test_add_same_product_increases_qty(cart):
+        cart.add(4, 1499)
+        assert cart.total() == 3978
+
+
+    def test_remove(cart):
+        cart.remove(7)
+        assert cart.total() == 1499
+check:
+  type: pytest
+  mutants:
+    - files:
+        cart.py: |
+          class Cart:
+              def __init__(self):
+                  self.items = {}
+
+              def add(self, product_id, price, qty=1):
+                  self.items[product_id] = (price, qty)
+
+              def remove(self, product_id):
+                  del self.items[product_id]
+
+              def total(self):
+                  return sum(p * q for p, q in self.items.values())
+      fail: Повторное добавление товара не проверено — количество заменяется, а не растёт.
+    - files:
+        cart.py: |
+          class Cart:
+              def __init__(self):
+                  self.items = {}
+
+              def add(self, product_id, price, qty=1):
+                  old = self.items.get(product_id, (price, 0))[1]
+                  self.items[product_id] = (price, old + qty)
+
+              def remove(self, product_id):
+                  self.items.pop(product_id)
+                  self.items.clear()
+
+              def total(self):
+                  return sum(p * q for p, q in self.items.values())
+      fail: Удаление не проверено как следует — remove очищает всю корзину.
+    - files:
+        cart.py: |
+          class Cart:
+              def __init__(self):
+                  self.items = {}
+
+              def add(self, product_id, price, qty=1):
+                  old = self.items.get(product_id, (price, 0))[1]
+                  self.items[product_id] = (price, old + qty)
+
+              def remove(self, product_id):
+                  del self.items[product_id]
+
+              def total(self):
+                  return sum(p for p, q in self.items.values())
+      fail: Сумма не проверена на товаре в нескольких штуках — total не умножает на количество.
+hints:
+  - "Фикстура: `@pytest.fixture def cart():` — корзина, где один товар в двух штуках."
+  - "Тесты: сумма, повторное добавление того же товара, удаление одного товара (остальные остаются)."
+explanation: |
+  Фикстура готовит корзину один раз в коде и заново для каждого теста: `test_add_same_product_increases_qty` меняет корзину, но `test_remove` этого не видит. Каждый тест закрывает свою ошибку: сумма с товаром в двух штуках — умножение на количество, повторное добавление — что количество растёт, удаление — что пропадает ровно один товар.

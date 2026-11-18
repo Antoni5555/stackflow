@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 300" width="860" height="300" class="fig" role="img" aria-labelledby="t"><title id="t">Отчёт pytest об упавшем тесте: какой тест, строка проверки, значения, место в файле</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<rect x="20" y="20" width="460" height="222" rx="14" class="fig-term"/>
+<text x="36" y="50" text-anchor="start" class="fig-tt">test_main.py::test_free_from_exactly_3000 FAILED</text>
+<text x="36" y="75" text-anchor="start" class="fig-tt"></text>
+<text x="36" y="100" text-anchor="start" class="fig-tt">    def test_free_from_exactly_3000():</text>
+<text x="36" y="125" text-anchor="start" class="fig-tt">&gt;       assert delivery_cost(3000) == 0</text>
+<text x="36" y="150" text-anchor="start" class="fig-tterr">E       assert 299 == 0</text>
+<text x="36" y="175" text-anchor="start" class="fig-tterr">E        +  where 299 = delivery_cost(3000)</text>
+<text x="36" y="200" text-anchor="start" class="fig-tt"></text>
+<text x="36" y="225" text-anchor="start" class="fig-tt">test_main.py:19: AssertionError</text>
+<path d="M484 45H520" class="fig-lnd"/>
+<circle cx="534" cy="45" r="11" class="fig-acc"/>
+<text x="534" y="50" text-anchor="middle" class="fig-onacc">1</text>
+<text x="552" y="50" text-anchor="start" class="fig-s">какой тест упал</text>
+<path d="M484 120H520" class="fig-lnd"/>
+<circle cx="534" cy="120" r="11" class="fig-acc"/>
+<text x="534" y="125" text-anchor="middle" class="fig-onacc">2</text>
+<text x="552" y="125" text-anchor="start" class="fig-s">строка с проверкой — отмечена «&gt;»</text>
+<path d="M484 145H520" class="fig-lnd"/>
+<circle cx="534" cy="145" r="11" class="fig-acc"/>
+<text x="534" y="150" text-anchor="middle" class="fig-onacc">3</text>
+<text x="552" y="150" text-anchor="start" class="fig-s">получили 299, ожидали 0</text>
+<path d="M484 170H520" class="fig-lnd"/>
+<circle cx="534" cy="170" r="11" class="fig-acc"/>
+<text x="534" y="175" text-anchor="middle" class="fig-onacc">4</text>
+<text x="552" y="175" text-anchor="start" class="fig-s">откуда взялось 299</text>
+<path d="M484 220H520" class="fig-lnd"/>
+<circle cx="534" cy="220" r="11" class="fig-acc"/>
+<text x="534" y="225" text-anchor="middle" class="fig-onacc">5</text>
+<text x="552" y="225" text-anchor="start" class="fig-s">файл и номер строки</text>
+<text x="20" y="274" text-anchor="start" class="fig-t">Строки E — значения сравнения: pytest сам раскрывает обычный assert.</text>
+</svg>

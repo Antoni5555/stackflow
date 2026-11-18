@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 330" width="860" height="330" class="fig" role="img" aria-labelledby="t"><title id="t">Фикстура cart вызывается перед каждым тестом: каждый тест получает свою корзину</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<rect x="20" y="124" width="200" height="70" rx="12" class="fig-box2"/>
+<text x="120" y="152" text-anchor="middle" class="fig-cs">@pytest.fixture</text>
+<text x="120" y="174" text-anchor="middle" class="fig-c">def cart():</text>
+<path d="M220 159C260 159 260 60 296 60" class="fig-ln" marker-end="url(#a)"/>
+<rect x="300" y="30" width="210" height="60" rx="12" class="fig-box"/>
+<text x="405" y="56" text-anchor="middle" class="fig-c">новая Cart()</text>
+<text x="405" y="76" text-anchor="middle" class="fig-s">мышь ×1, коврик ×2</text>
+<path d="M510 60H546" class="fig-ln" marker-end="url(#a)"/>
+<rect x="550" y="30" width="290" height="60" rx="12" class="fig-box"/>
+<text x="566" y="56" text-anchor="start" class="fig-cs">test_total(cart)</text>
+<text x="566" y="76" text-anchor="start" class="fig-s">сумма 2479</text>
+<path d="M220 159C260 159 260 156 296 156" class="fig-ln" marker-end="url(#a)"/>
+<rect x="300" y="126" width="210" height="60" rx="12" class="fig-box"/>
+<text x="405" y="152" text-anchor="middle" class="fig-c">новая Cart()</text>
+<text x="405" y="172" text-anchor="middle" class="fig-s">мышь ×1, коврик ×2</text>
+<path d="M510 156H546" class="fig-ln" marker-end="url(#a)"/>
+<rect x="550" y="126" width="290" height="60" rx="12" class="fig-box"/>
+<text x="566" y="152" text-anchor="start" class="fig-cs">test_add_same_product(cart)</text>
+<text x="566" y="172" text-anchor="start" class="fig-s">+ мышь → 3978</text>
+<path d="M220 159C260 159 260 252 296 252" class="fig-ln" marker-end="url(#a)"/>
+<rect x="300" y="222" width="210" height="60" rx="12" class="fig-box"/>
+<text x="405" y="248" text-anchor="middle" class="fig-c">новая Cart()</text>
+<text x="405" y="268" text-anchor="middle" class="fig-s">мышь ×1, коврик ×2</text>
+<path d="M510 252H546" class="fig-ln" marker-end="url(#a)"/>
+<rect x="550" y="222" width="290" height="60" rx="12" class="fig-box"/>
+<text x="566" y="248" text-anchor="start" class="fig-cs">test_remove(cart)</text>
+<text x="566" y="268" text-anchor="start" class="fig-s">− коврик → 1499</text>
+<text x="20" y="318" text-anchor="start" class="fig-t">Изменения корзины в одном тесте не видны другим: порядок тестов не важен.</text>
+</svg>

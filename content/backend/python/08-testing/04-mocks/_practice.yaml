@@ -1,0 +1,83 @@
+- title: Курс валют из заглушки
+  text: |
+    Функция переводит цену в доллары по курсу из внешнего сервиса. Напишите тест с `Mock` вместо сервиса: курс 90, цена 1800 → 20.0, сервис спрашивают про `"USD"`.
+    ```python
+    from unittest.mock import Mock
+
+
+    def to_usd(price, rates):
+        return round(price / rates.get_rate("USD"), 2)
+    ```
+  answer: |
+    Ответ — после функции:
+    ```python
+    def test_to_usd():
+        rates = Mock()
+        rates.get_rate.return_value = 90
+
+        assert to_usd(1800, rates) == 20.0
+        rates.get_rate.assert_called_once_with("USD")
+    ```
+    «Запустить тесты» — `1 passed`. Курс в тесте всегда 90, поэтому результат не зависит от настоящего курса.
+- title: Повтор после сбоя
+  text: |
+    `charge_with_retry` повторяет списание, если банк ответил `ConnectionError`, — не больше трёх попыток. Проверьте: первая попытка падает, вторая возвращает `"pay_7"`.
+    ```python
+    from unittest.mock import Mock
+
+
+    def charge_with_retry(gateway, total, attempts=3):
+        for attempt in range(attempts):
+            try:
+                return gateway.charge(total)
+            except ConnectionError:
+                if attempt == attempts - 1:
+                    raise
+    ```
+  hint: |
+    `side_effect` может быть списком: каждый вызов берёт следующий элемент, исключение в списке выбрасывается.
+  answer: |
+    Ответ — после функции:
+    ```python
+    def test_retry_after_failure():
+        gateway = Mock()
+        gateway.charge.side_effect = [
+            ConnectionError(),
+            "pay_7",
+        ]
+
+        assert charge_with_retry(gateway, 2479) == "pay_7"
+        assert gateway.charge.call_count == 2
+    ```
+    «Запустить тесты» — `1 passed`. `call_count` подтверждает, что попыток было ровно две: после успеха функция не списывает деньги снова.
+- title: Бесплатный заказ
+  text: |
+    Если сумма заказа 0 (всё оплачено бонусами), банк вызывать нельзя. Допишите в `checkout` это условие и проверьте тестом, что `charge` не вызывался.
+    ```python
+    from unittest.mock import Mock
+
+
+    def checkout(total, gateway):
+        payment_id = gateway.charge(total)
+        return {"status": "paid", "payment_id": payment_id}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from unittest.mock import Mock
+
+
+    def checkout(total, gateway):
+        if total == 0:
+            return {"status": "paid", "payment_id": None}
+        payment_id = gateway.charge(total)
+        return {"status": "paid", "payment_id": payment_id}
+
+
+    def test_free_order_not_charged():
+        gateway = Mock()
+        order = checkout(0, gateway)
+        assert order["status"] == "paid"
+        gateway.charge.assert_not_called()
+    ```
+    «Запустить тесты» — `1 passed`. Без проверки `assert_not_called()` тест прошёл бы и при списании нуля рублей — а банк мог бы взять за это комиссию.

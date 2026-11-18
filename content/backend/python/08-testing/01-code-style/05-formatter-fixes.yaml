@@ -1,0 +1,16 @@
+title: Что исправит форматтер
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: Форматтер меняет только форму кода; неиспользуемые имена и сравнения с None остаются человеку.
+statement: |
+  В файле нашлись такие замечания. Какие из них исчезнут после `ruff format`, без правок руками?
+options:
+  - "`E225 missing whitespace around operator` — `total=price*qty`"
+  - "`E302 expected 2 blank lines` — функции идут подряд"
+  - "`F401 'os' imported but unused`"
+  - "`E711 comparison to None`"
+  - "`E231 missing whitespace after ','` — `calc_total(items,discount)`"
+answer: [0, 1, 4]
+explanation: |
+  Форматтер переписывает только форму: пробелы, пустые строки, переносы, кавычки. Поведение программы при этом не меняется. Удалить импорт или заменить `==` на `is` — уже изменение кода: форматтер такого не делает, это задача человека (или линтера с исправлением `--fix`, но тоже осознанно).

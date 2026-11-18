@@ -1,0 +1,112 @@
+- title: Имена по PEP 8
+  text: |
+    Перепишите код по PEP 8: имена константы, класса, функции и переменных, пробелы.
+    ```python
+    vatRate=20
+    class product_card:
+        def __init__(self,Name,Price):
+            self.Name=Name
+            self.Price=Price
+    def PriceWithVat(p):
+        return p.Price+p.Price*vatRate/100
+    print(PriceWithVat(product_card("Мышь",1000)))
+    ```
+  hint: |
+    Константа — `UPPER_CASE`, класс — `CapWords`, функция и атрибуты — `snake_case`; две пустые строки между классом и функцией.
+  answer: |
+    Ответ:
+    ```python
+    VAT_RATE = 20
+
+
+    class ProductCard:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+
+    def price_with_vat(card):
+        return card.price + card.price * VAT_RATE / 100
+
+
+    print(price_with_vat(ProductCard("Мышь", 1000)))
+    ```
+    Результат:
+    ```
+    1200.0
+    ```
+    Поведение не изменилось — изменилось только то, как код читается. Однобуквенный параметр `p` заменён именем `card`.
+- title: Проверка на None
+  text: |
+    Перепишите условия по PEP 8, не меняя результат.
+    ```python
+    def delivery_text(address):
+        if address == None:
+            return "самовывоз"
+        if address.get("express") == True:
+            return "экспресс"
+        return "курьер"
+
+
+    print(delivery_text(None))
+    print(delivery_text({"express": True}))
+    print(delivery_text({"express": False}))
+    ```
+  hint: |
+    С `None` — через `is`, с `True` не сравнивают вовсе.
+  answer: |
+    Ответ:
+    ```python
+    def delivery_text(address):
+        if address is None:
+            return "самовывоз"
+        if address.get("express"):
+            return "экспресс"
+        return "курьер"
+
+
+    print(delivery_text(None))
+    print(delivery_text({"express": True}))
+    print(delivery_text({"express": False}))
+    ```
+    Результат:
+    ```
+    самовывоз
+    экспресс
+    курьер
+    ```
+    `if address.get("express"):` срабатывает на любое истинное значение. Это то, что и имелось в виду, — без лишнего `== True` (линтер ругается на него правилом `E712`).
+- title: Что скажет линтер
+  text: |
+    Какие замечания flake8 найдёт в этом коде (только коды и строки)? Исправьте их.
+    ```python
+    import json
+    from decimal import Decimal
+
+
+    def order_sum(items):
+        count = len(items)
+        return sum(Decimal(p) for p in items)
+
+
+    print(order_sum(["1499.00", "490.00"]))
+    ```
+  hint: |
+    Ищите имена, которые создали, но не использовали.
+  answer: |
+    flake8 найдёт `F401 'json' imported but unused` (строка 1) и `F841 local variable 'count' is assigned to but never used` (строка 6). Исправленный код:
+    ```python
+    from decimal import Decimal
+
+
+    def order_sum(items):
+        return sum(Decimal(p) for p in items)
+
+
+    print(order_sum(["1499.00", "490.00"]))
+    ```
+    Результат:
+    ```
+    1989.00
+    ```
+    Оба замечания — из группы `F` (pyflakes): код работает, но содержит лишнее, которое путает читателя.

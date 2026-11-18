@@ -1,0 +1,21 @@
+title: Проверка, которая не проверяет
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Метод проверки Mock без скобок — просто ссылка на метод, он не вызывается.
+statement: |
+  ```python
+  def test_place_order_sends_email():
+      with patch("orders.send_email") as fake_send:
+          place_order("anna@example.com", 2479)
+      fake_send.assert_called_once
+  ```
+  Из `place_order` случайно удалили отправку письма. Что покажет тест?
+options:
+  - "`FAILED` — `send_email` не вызывали ни разу"
+  - "`PASSED` — проверка не выполнилась"
+  - "`FAILED` с `AttributeError`: такого метода у Mock нет"
+  - "`ERROR` — pytest не разрешает выражение без присваивания"
+answer: [1]
+explanation: |
+  `fake_send.assert_called_once` без скобок только достаёт метод и ничего с ним не делает — проверки нет, тест проходит при любом коде. Нужно `fake_send.assert_called_once()`. Опечатки в имени (`called_once`, `assert_caled_once`) Python 3.12 ловит сам и выбрасывает `AttributeError`, а забытые скобки не ловит никто. Поэтому полезно хоть раз увидеть, как тест падает.

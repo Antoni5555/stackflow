@@ -1,0 +1,64 @@
+title: Тесты суммы корзины
+type: exercise
+difficulty: 2
+pitfall: Тест с количеством 1 не заметит, что функция забыла умножить цену на количество.
+statement: |
+  `cart_total(items)` из `cart.py` считает сумму корзины: `items` — список пар `(цена, количество)`. Напишите тесты, которые поймают, если функцию сломают.
+files:
+  cart.py: |
+    def cart_total(items):
+        total = 0
+        for price, qty in items:
+            total += price * qty
+        return total
+  test_cart.py: |
+    from cart import cart_total
+solution:
+  test_cart.py: |
+    from cart import cart_total
+
+
+    def test_empty_cart_is_zero():
+        assert cart_total([]) == 0
+
+
+    def test_quantity_multiplies_price():
+        assert cart_total([(590, 3)]) == 1770
+
+
+    def test_sums_all_items():
+        assert cart_total([(590, 2), (490, 1)]) == 1670
+check:
+  type: pytest
+  mutants:
+    - files:
+        cart.py: |
+          def cart_total(items):
+              total = 0
+              for price, qty in items:
+                  total += price
+              return total
+      fail: Количество не проверено — функция складывает цены без умножения на количество.
+    - files:
+        cart.py: |
+          def cart_total(items):
+              total = 0
+              for price, qty in items[1:]:
+                  total += price * qty
+              return total
+      fail: Корзина из нескольких товаров не проверена — первая позиция теряется.
+    - files:
+        cart.py: |
+          def cart_total(items):
+              if not items:
+                  return None
+              total = 0
+              for price, qty in items:
+                  total += price * qty
+              return total
+      fail: Пустая корзина не проверена — функция возвращает None вместо 0.
+hints:
+  - "Какие корзины ломают функцию по-разному: пустая, один товар в нескольких штуках, несколько товаров?"
+  - "Нужны три теста: `[]`, `[(590, 3)]` и корзина хотя бы из двух позиций."
+explanation: |
+  Каждый тест закрывает свою возможную ошибку: пустая корзина — что вернётся 0, а не `None`; один товар в трёх штуках — что цена умножается на количество; две позиции — что складываются все. Тест «одна позиция, одна штука» не поймал бы ни одну из этих ошибок.

@@ -1,0 +1,62 @@
+title: Промокоды на одном тесте
+type: exercise
+difficulty: 2
+pitfall: Тест на «круглую» сумму не заметит, что скидку стали округлять по-другому.
+statement: |
+  `apply_promo(total, code)` из `promo.py` вычитает скидку по промокоду; скидка — целое число рублей, дробная часть отбрасывается. Напишите в `test_promo.py` тест с `@pytest.mark.parametrize`, который поймает поломку функции.
+files:
+  promo.py: |
+    PROMO = {"WELCOME10": 10, "SALE25": 25}
+
+
+    def apply_promo(total, code):
+        return total - total * PROMO[code] // 100
+  test_promo.py: |
+    import pytest
+
+    from promo import apply_promo
+
+
+    def test_welcome10():
+        assert apply_promo(1000, "WELCOME10") == 900
+solution:
+  test_promo.py: |
+    import pytest
+
+    from promo import apply_promo
+
+
+    @pytest.mark.parametrize(
+        "total, code, expected",
+        [
+            (1000, "WELCOME10", 900),
+            (1000, "SALE25", 750),
+            (999, "SALE25", 750),
+        ],
+    )
+    def test_apply_promo(total, code, expected):
+        assert apply_promo(total, code) == expected
+check:
+  type: pytest
+  mutants:
+    - files:
+        promo.py: |
+          PROMO = {"WELCOME10": 10, "SALE25": 20}
+
+
+          def apply_promo(total, code):
+              return total - total * PROMO[code] // 100
+      fail: Промокод SALE25 не проверен — скидка по нему стала 20%, а тесты проходят.
+    - files:
+        promo.py: |
+          PROMO = {"WELCOME10": 10, "SALE25": 25}
+
+
+          def apply_promo(total, code):
+              return total - round(total * PROMO[code] / 100)
+      fail: Округление не проверено — нужна сумма, где скидка не делится нацело (например, 999 по SALE25).
+hints:
+  - "Какие случаи стоит проверить: каждый промокод и сумму, где скидка получается дробной."
+  - "Наборы `(1000, \"WELCOME10\", 900)`, `(1000, \"SALE25\", 750)`, `(999, \"SALE25\", 750)` — в одном `parametrize`."
+explanation: |
+  На суммах вроде 1000 скидка делится нацело, и любая формула округления даёт одно и то же. Ошибку округления видно только там, где у скидки есть дробная часть: 999 × 25% = 249,75 → 249 при делении нацело и 250 при `round`. `parametrize` позволяет добавить такой набор одной строкой, а в отчёте сразу видно, какой набор упал.

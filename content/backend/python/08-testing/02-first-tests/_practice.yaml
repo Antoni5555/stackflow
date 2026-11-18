@@ -1,0 +1,69 @@
+- title: Проверки через assert
+  text: |
+    Допишите после функции три проверки `assert` с сообщениями: 1499 → `"1 499 ₽"`, 990 → `"990 ₽"`, 64990 → `"64 990 ₽"`. В конце напечатайте `проверки прошли`.
+    ```python
+    def format_price(value):
+        return f"{value:,} ₽".replace(",", " ")
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def format_price(value):
+        return f"{value:,} ₽".replace(",", " ")
+
+
+    assert format_price(1499) == "1 499 ₽", "тысячи"
+    assert format_price(990) == "990 ₽", "меньше тысячи"
+    assert format_price(64990) == "64 990 ₽", "десятки тысяч"
+    print("проверки прошли")
+    ```
+    Результат:
+    ```
+    проверки прошли
+    ```
+    Если проверка не пройдёт, программа остановится с `AssertionError: <сообщение>`. Сообщение подскажет, какой случай сломался.
+- title: Тесты остатка на складе
+  text: |
+    Напишите тесты pytest для функции ниже и запустите их кнопкой «Запустить тесты». Проверьте каждую границу: 0, 1, 5, 6.
+    ```python
+    def stock_status(qty):
+        if qty == 0:
+            return "нет в наличии"
+        if qty <= 5:
+            return "мало"
+        return "в наличии"
+    ```
+  hint: |
+    По тесту на значение: `def test_zero(): assert stock_status(0) == "нет в наличии"` и так далее.
+  answer: |
+    Ответ — после функции в том же коде:
+    ```python
+    def test_zero():
+        assert stock_status(0) == "нет в наличии"
+
+
+    def test_one_is_few():
+        assert stock_status(1) == "мало"
+
+
+    def test_five_is_few():
+        assert stock_status(5) == "мало"
+
+
+    def test_six_in_stock():
+        assert stock_status(6) == "в наличии"
+    ```
+    «Запустить тесты» покажет четыре строки `PASSED` и итог `4 passed`. Тесты стоят на обеих сторонах каждой границы: 0 и 1, 5 и 6.
+- title: Сломайте и посмотрите
+  text: |
+    В функции из прошлой задачи замените `qty <= 5` на `qty < 5` и снова запустите тесты. Какой тест упадёт и что покажет pytest?
+  answer: |
+    Упадёт `test_five_is_few`. Строки из отчёта:
+    ```
+    test_main.py::test_five_is_few FAILED
+    >       assert stock_status(5) == "мало"
+    E       AssertionError: assert 'в наличии' == 'мало'
+    E         - мало
+    E         + в наличии
+    ```
+    Для строк pytest показывает разницу: `-` — ожидаемое, `+` — полученное. Тесты на 0, 1 и 6 прошли — ошибку поймал только тест ровно на границе.

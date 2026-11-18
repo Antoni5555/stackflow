@@ -1,0 +1,74 @@
+title: Письмо ушло из теста
+type: exercise
+difficulty: 3
+pitfall: patch подменяет имя в указанном модуле; после from notify import send_email патчить нужно orders.send_email.
+statement: |
+  Тест в `test_orders.py` подменяет отправку письма, но падает с `RuntimeError: настоящее письмо из теста!` — вызвалась настоящая функция. Исправьте тест так, чтобы письмо подменялось, и проверьте, кому и что отправлено.
+files:
+  notify.py: |
+    def send_email(to, text):
+        raise RuntimeError("настоящее письмо из теста!")
+  orders.py: |
+    from notify import send_email
+
+
+    def place_order(email, total):
+        send_email(email, f"Заказ на {total} ₽ принят")
+        return "created"
+  test_orders.py: |
+    from unittest.mock import patch
+
+    from orders import place_order
+
+
+    def test_place_order_sends_email():
+        with patch("notify.send_email") as fake_send:
+            assert place_order("anna@example.com", 2479) == "created"
+        fake_send.assert_called_once()
+solution:
+  test_orders.py: |
+    from unittest.mock import patch
+
+    from orders import place_order
+
+
+    def test_place_order_sends_email():
+        with patch("orders.send_email") as fake_send:
+            assert place_order("anna@example.com", 2479) == "created"
+        fake_send.assert_called_once_with(
+            "anna@example.com", "Заказ на 2479 ₽ принят"
+        )
+check:
+  type: pytest
+  mutants:
+    - files:
+        orders.py: |
+          from notify import send_email
+
+
+          def place_order(email, total):
+              return "created"
+      fail: Отправка письма не проверена — заказ создаётся без письма.
+    - files:
+        orders.py: |
+          from notify import send_email
+
+
+          def place_order(email, total):
+              send_email("shop@example.com", f"Заказ на {total} ₽ принят")
+              return "created"
+      fail: Получатель не проверен — письмо уходит магазину, а не покупателю.
+    - files:
+        orders.py: |
+          from notify import send_email
+
+
+          def place_order(email, total):
+              send_email(email, "Заказ принят")
+              return "created"
+      fail: Текст письма не проверен — в нём нет суммы заказа.
+hints:
+  - "Откуда `orders` берёт `send_email` при вызове: из модуля `notify` или из своего пространства имён?"
+  - "`patch(\"orders.send_email\")` и `assert_called_once_with(почта, текст)`."
+explanation: |
+  `from notify import send_email` создаёт в модуле `orders` своё имя, указывающее на функцию. `patch("notify.send_email")` заменяет имя в `notify`, но `orders` вызывает свою ссылку — настоящую функцию. Патчат там, где имя используют: `orders.send_email`. А `assert_called_once()` проверяет только факт вызова — получателя и текст проверяет `assert_called_once_with`.

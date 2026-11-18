@@ -1,0 +1,15 @@
+title: Имя функции расчёта
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Имя в стиле CapWords читается как класс, а не как функция.
+statement: |
+  Функция считает стоимость доставки заказа. Какое имя для неё подходит по PEP 8?
+options:
+  - "`DeliveryCost`"
+  - "`deliveryCost`"
+  - "`delivery_cost`"
+  - "`DELIVERY_COST`"
+answer: [2]
+explanation: |
+  Функции и переменные в Python называют в `snake_case`. `DeliveryCost` по виду — класс (`CapWords`), `DELIVERY_COST` — константа, а `deliveryCost` — стиль JavaScript и Java. По имени читатель сразу понимает, что перед ним: `delivery_cost(order)` — вызов функции, `DeliveryCost(order)` — создание объекта.

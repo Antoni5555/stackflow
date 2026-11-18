@@ -1,0 +1,69 @@
+title: Ошибки количества
+type: exercise
+difficulty: 2
+pitfall: pytest.raises(Exception) пройдёт от ошибки любого типа — тип и границы нужно проверять явно.
+statement: |
+  `add_to_cart(cart, product_id, qty)` из `cart.py` выбрасывает `ValueError`, если количество не от 1 до 99. Напишите тесты с `pytest.raises`, которые поймают поломку проверки.
+files:
+  cart.py: |
+    def add_to_cart(cart, product_id, qty):
+        if not 1 <= qty <= 99:
+            raise ValueError("количество должно быть от 1 до 99")
+        cart[product_id] = cart.get(product_id, 0) + qty
+  test_cart.py: |
+    import pytest
+
+    from cart import add_to_cart
+solution:
+  test_cart.py: |
+    import pytest
+
+    from cart import add_to_cart
+
+
+    def test_add_valid_quantity():
+        cart = {}
+        add_to_cart(cart, 4, 99)
+        assert cart == {4: 99}
+
+
+    @pytest.mark.parametrize("qty", [0, -1, 100])
+    def test_invalid_quantity(qty):
+        with pytest.raises(ValueError, match="от 1 до 99"):
+            add_to_cart({}, 4, qty)
+check:
+  type: pytest
+  mutants:
+    - files:
+        cart.py: |
+          def add_to_cart(cart, product_id, qty):
+              if qty > 99:
+                  raise ValueError("количество должно быть от 1 до 99")
+              cart[product_id] = cart.get(product_id, 0) + qty
+      fail: Нулевое количество не проверено — товар добавляется в корзину 0 штук.
+    - files:
+        cart.py: |
+          def add_to_cart(cart, product_id, qty):
+              if qty < 1:
+                  raise ValueError("количество должно быть от 1 до 99")
+              cart[product_id] = cart.get(product_id, 0) + qty
+      fail: Верхняя граница не проверена — в корзину можно положить 100 штук.
+    - files:
+        cart.py: |
+          def add_to_cart(cart, product_id, qty):
+              if not 1 <= qty <= 99:
+                  raise TypeError("количество должно быть от 1 до 99")
+              cart[product_id] = cart.get(product_id, 0) + qty
+      fail: Тип ошибки не проверен — функция выбрасывает TypeError вместо ValueError.
+    - files:
+        cart.py: |
+          def add_to_cart(cart, product_id, qty):
+              if not 1 <= qty < 99:
+                  raise ValueError("количество должно быть от 1 до 99")
+              cart[product_id] = cart.get(product_id, 0) + qty
+      fail: 99 штук — допустимое количество, а функция его не принимает. Проверьте и разрешённую границу.
+hints:
+  - "Какие количества на краях: 0, 1, 99, 100? Какие из них должны давать ошибку?"
+  - "`pytest.raises(ValueError)` для 0 и 100 (удобно через `parametrize`) и обычный тест, что 99 добавляется."
+explanation: |
+  Проверка диапазона ломается на краях, поэтому тестов нужно два вида: недопустимые значения сразу за границами (0 и 100) дают именно `ValueError`, а допустимое значение на границе (99) проходит. `pytest.raises(Exception)` пропустил бы `TypeError`; точный тип и `match` делают тест строгим.

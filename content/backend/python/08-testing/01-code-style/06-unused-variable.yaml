@@ -1,0 +1,39 @@
+title: Скидку посчитали, но не применили
+type: exercise
+difficulty: 2
+pitfall: Переменная, которую присвоили и не прочитали (F841), часто означает, что вернули не то значение.
+statement: |
+  Линтер выдал `F841 local variable 'discounted' is assigned to but never used`. Покупатели жалуются, что скидка не применяется. Исправьте функцию `apply_discount(total, percent)` — она возвращает сумму со скидкой `percent` процентов.
+starter_code: |
+  from decimal import Decimal
+
+
+  def apply_discount(total, percent):
+      discounted = total - total * percent / 100
+      return total
+
+
+  print(apply_discount(Decimal("2000"), 10))
+check:
+  type: tests
+  tests:
+    - code: assert apply_discount(Decimal("2000"), 10) == Decimal("1800")
+      fail: Сумма 2000 со скидкой 10% должна быть 1800.
+    - code: assert apply_discount(Decimal("999"), 0) == Decimal("999")
+      fail: Скидка 0% не меняет сумму.
+    - code: assert apply_discount(Decimal("500"), 50) == Decimal("250")
+      fail: Сумма 500 со скидкой 50% — 250.
+solution: |
+  from decimal import Decimal
+
+
+  def apply_discount(total, percent):
+      return total - total * percent / 100
+
+
+  print(apply_discount(Decimal("2000"), 10))
+hints:
+  - "Что функция вычисляет и что возвращает?"
+  - "Верните `discounted` — или сразу выражение, без промежуточной переменной."
+explanation: |
+  Переменная `discounted` вычислена и брошена, а функция вернула исходную сумму. Работает без ошибок, поэтому такие баги долго живут. Предупреждение линтера `F841` — повод остановиться: либо переменная лишняя, либо вы забыли ей воспользоваться.
