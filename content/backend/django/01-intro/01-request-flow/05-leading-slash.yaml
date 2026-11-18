@@ -1,0 +1,43 @@
+title: Лишний слеш в маршруте
+type: exercise
+difficulty: 1
+pitfall: Django сравнивает адрес без начального «/» — маршрут "/catalog/" не совпадает ни с одним запросом.
+statement: |
+  Маршрут каталога написан, view есть, но `/catalog/` отвечает 404. Исправьте маршрут.
+files:
+  views.py: |
+    from django.http import HttpResponse
+
+
+    def catalog(request):
+        return HttpResponse("<h1>Каталог</h1>")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("/catalog/", views.catalog),
+    ]
+solution:
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/catalog/")
+        assert response.status_code == 200
+        assert "Каталог" in response.content.decode()
+      fail: "/catalog/ отвечает 404. С чего начинается адрес, который Django сравнивает с маршрутами?"
+hints:
+  - "Посмотрите на 404-страницу: какой путь Django пытался сопоставить — с начальным слешем или без?"
+  - "Маршрут пишут без `/` в начале: `path(\"catalog/\", …)`."
+explanation: |
+  Django отрезает начальный `/` от адреса и сравнивает с маршрутами остаток: `catalog/`. Маршрут `"/catalog/"` ждёт адрес `//catalog/` и не совпадает ни с чем. `manage.py check` предупреждает о таком маршруте (`urls.W002`), но не останавливает проект. Слеш в конце, наоборот, принят: `catalog/` — и Django перенаправит `/catalog` на `/catalog/`.

@@ -1,0 +1,42 @@
+title: View вернула словарь
+type: exercise
+difficulty: 1
+pitfall: View обязана вернуть объект ответа — словарь даёт ошибку 500.
+statement: |
+  `/api/ping/` отвечает ошибкой 500. Исправьте view так, чтобы она отвечала JSON `{"status": "ok"}`.
+files:
+  views.py: |
+    def ping(request):
+        return {"status": "ok"}
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("api/ping/", views.ping),
+    ]
+solution:
+  views.py: |
+    from django.http import JsonResponse
+
+
+    def ping(request):
+        return JsonResponse({"status": "ok"})
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/api/ping/")
+        assert response.status_code == 200
+      fail: "Ответ — 500: view вернула словарь, а Django ждёт объект ответа."
+    - code: |
+        response = client.get("/api/ping/")
+        assert response["Content-Type"] == "application/json"
+        assert response.json() == {"status": "ok"}
+      fail: 'Нужен JSON {"status": "ok"} с Content-Type application/json.'
+hints:
+  - "Что Django делает с результатом view — и есть ли у словаря код ответа и заголовки?"
+  - "Оберните словарь в `JsonResponse` из `django.http`."
+explanation: |
+  Django берёт у результата view код ответа и заголовки — у словаря их нет, поэтому запрос падает с `AttributeError`, и клиент получает 500. View всегда возвращает объект ответа: `HttpResponse`, `JsonResponse` или результат `render`.

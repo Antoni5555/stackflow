@@ -673,6 +673,98 @@ def mock_gateway():
     f.save(out(PY8 / "04-mocks" / "img" / "mock-gateway.svg"))
 
 
+# ---------- Django 1.01: путь запроса ----------
+DJ1 = ROOT / "django" / "01-intro"
+
+
+def request_flow():
+    f = Figure(860, 340, "Путь запроса в Django: urls.py выбирает view, view берёт данные и шаблон и возвращает HttpResponse")
+    f.box(20, 40, 160, 56, "", "box2")
+    f.text(100, 64, "браузер", "t", "middle")
+    f.text(100, 84, "GET /catalog/", "cs", "middle")
+    f.arrow("M180 68H226")
+    f.box(230, 40, 170, 56, "", "box")
+    f.text(315, 64, "urls.py", "c", "middle")
+    f.text(315, 84, "ищет маршрут", "s", "middle")
+    f.arrow("M400 68H446")
+    f.text(423, 58, "нашёл", "s", "middle")
+    f.box(450, 40, 170, 56, "", "ok")
+    f.text(535, 64, "view(request)", "c", "middle")
+    f.text(535, 84, "views.py", "s", "middle")
+    f.arrow("M315 96V164")
+    f.text(327, 136, "не нашёл", "s")
+    f.box(230, 168, 170, 44, "404 Not Found", "err", "errt")
+    f.arrow("M500 96V164", "lnd")
+    f.box(430, 168, 140, 56, "", "box2")
+    f.text(500, 192, "Model", "t", "middle")
+    f.text(500, 212, "данные из базы", "s", "middle")
+    f.arrow("M590 96V164", "lnd")
+    f.box(590, 168, 150, 56, "", "box2")
+    f.text(665, 192, "Template", "t", "middle")
+    f.text(665, 212, "HTML с данными", "s", "middle")
+    f.arrow("M620 68H676")
+    f.box(680, 40, 160, 56, "", "acc")
+    f.text(760, 64, "HttpResponse", "onacc", "middle")
+    f.text(760, 84, "200 + HTML", "onacc", "middle")
+    f.arrow("M760 40V24H100V36")
+    f.text(430, 18, "ответ уходит браузеру", "s", "middle")
+    f.text(20, 268, "Пунктир — необязательные шаги: view может обойтись без базы и без шаблона.", "s")
+    f.text(20, 296, "Ошибка внутри view — ответ 500.", "s")
+    f.save(out(DJ1 / "01-request-flow" / "img" / "request-flow.svg"))
+
+
+# ---------- Django 1.02: структура проекта ----------
+def project_structure():
+    f = Figure(860, 380, "Структура проекта: manage.py, пакет настроек config и приложение catalog")
+    f.box(20, 20, 820, 44, "", "box2")
+    f.text(36, 47, "~/shop/", "c")
+    f.text(130, 47, "папка проекта: здесь запускают команды", "s")
+    f.box(40, 80, 240, 40, "manage.py", "box", "c")
+    f.text(40, 140, "команды: runserver, check, startapp…", "s")
+    f.box(300, 80, 260, 220, "", "box")
+    f.text(316, 104, "config/", "c"); f.text(400, 104, "проект", "s")
+    for i, (name, note) in enumerate([("settings.py", "настройки"), ("urls.py", "главные маршруты"),
+                                      ("wsgi.py", "вход для сервера"), ("asgi.py", "вход для сервера"),
+                                      ("__init__.py", "это пакет")]):
+        y = 140 + i * 30
+        f.text(330, y, name, "cs"); f.text(440, y, note, "s")
+    f.box(580, 80, 260, 260, "", "ok")
+    f.text(596, 104, "catalog/", "c"); f.text(680, 104, "приложение", "s")
+    for i, (name, note) in enumerate([("models.py", "модели"), ("views.py", "view"), ("admin.py", "админка"),
+                                      ("apps.py", "CatalogConfig"), ("tests.py", "тесты"),
+                                      ("migrations/", "миграции"), ("__init__.py", "это пакет")]):
+        y = 140 + i * 28
+        f.text(610, y, name, "cs"); f.text(720, y, note, "s")
+    f.text(300, 330, "проект один, приложений — по числу областей сайта", "s")
+    f.text(20, 368, "Приложение подключается к проекту строкой \"catalog\" в INSTALLED_APPS (config/settings.py).", "t")
+    f.save(out(DJ1 / "02-project-and-app" / "img" / "project-structure.svg"))
+
+
+# ---------- Django 1.03: маршрут, view, ответ ----------
+def first_page():
+    f = Figure(860, 250, "Маршрут связывает адрес с view, view возвращает объект ответа: код, заголовки, тело")
+    f.box(20, 40, 180, 56, "", "box2")
+    f.text(110, 64, "запрос", "t", "middle")
+    f.text(110, 84, "GET /api/ping/", "cs", "middle")
+    f.arrow("M200 68H236")
+    f.box(240, 40, 250, 56, "", "box")
+    f.text(365, 64, "urls.py", "c", "middle")
+    f.text(365, 84, 'path("api/ping/", views.ping)', "cs", "middle")
+    f.arrow("M490 68H526")
+    f.box(530, 40, 170, 56, "", "ok")
+    f.text(615, 64, "ping(request)", "c", "middle")
+    f.text(615, 84, "return JsonResponse", "cs", "middle")
+    f.arrow("M615 96V128")
+    f.box(300, 132, 540, 80, "", "acc")
+    f.text(316, 156, "200 OK", "onacc")
+    f.text(316, 178, "Content-Type: application/json", "onacc")
+    f.text(316, 200, '{"status": "ok"}', "onacc")
+    f.text(20, 160, "объект ответа:", "s")
+    f.text(20, 180, "код, заголовки, тело", "s")
+    f.text(20, 238, "HttpResponse — то же самое с Content-Type: text/html.", "s")
+    f.save(out(DJ1 / "03-first-page" / "img" / "first-page.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2142,6 +2234,7 @@ if __name__ == "__main__":
                   attribute_lookup, inheritance_mro, shop_errors,
                   is_a_has_a, with_flow,
                   pytest_failure, fixture_per_test, mock_gateway,
+                  request_flow, project_structure, first_page,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

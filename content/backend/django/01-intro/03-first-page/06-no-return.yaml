@@ -1,0 +1,21 @@
+title: Забытый return
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Ветка view без return возвращает None — Django отвечает 500.
+statement: |
+  ```python
+  def stock(request):
+      qty = 0
+      if qty > 0:
+          return HttpResponse("В наличии")
+  ```
+  Что увидит покупатель на `/stock/` при `DEBUG = True`?
+options:
+  - "Пустую страницу с кодом 200"
+  - "Ошибку 500: `ValueError: The view shop.views.stock didn't return an HttpResponse object. It returned None instead.`"
+  - "Страницу 404 — Django решит, что страницы нет"
+  - "Текст «В наличии»"
+answer: [1]
+explanation: |
+  `qty > 0` ложно, функция доходит до конца без `return` и возвращает `None`. Django проверяет результат view и, не найдя ответа, выбрасывает `ValueError` — ошибка 500. Каждая ветка view должна заканчиваться ответом: здесь не хватает `return HttpResponse("Нет в наличии")` после `if`.

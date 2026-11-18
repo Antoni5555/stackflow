@@ -10,6 +10,7 @@
 Формат — [docs/content-format.md](../../docs/content-format.md), легенда — [00-overview.md](00-overview.md).
 
 ## 1. Знакомство с Django ●○○
+✅ Написан: `content/backend/django/01-intro` — 3 урока, 15 задач (6 `exercise` `check.type: django`, 7 `quiz`, 2 `fix`), 3 рисунка, задачники — 9 упражнений. Ответы страниц — `engines/django/runner.py` тренажёра; `startproject`/`runserver` — настоящий Django 5.2.18 во временной папке. Тема 1.01 использует `render` и шаблон без объяснения синтаксиса (он — в разделе 3).
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|
 | 01 | Как Django обрабатывает запрос | MTV, путь request → URLconf → view → шаблон → response, что делает каждая часть | что происходит при открытии `/catalog/` | ❌ |

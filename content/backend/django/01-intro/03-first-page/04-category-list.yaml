@@ -1,0 +1,47 @@
+title: Список категорий для приложения
+type: exercise
+difficulty: 2
+pitfall: JsonResponse по умолчанию принимает только словарь — список даёт TypeError.
+statement: |
+  Мобильному приложению нужен список категорий по адресу `/api/categories/` в виде `{"categories": [...]}`. Сейчас адрес отвечает ошибкой 500. Исправьте view.
+files:
+  views.py: |
+    from django.http import JsonResponse
+
+    CATEGORIES = ["Ноутбуки", "Смартфоны", "Аксессуары"]
+
+
+    def categories(request):
+        return JsonResponse(CATEGORIES)
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("api/categories/", views.categories),
+    ]
+solution:
+  views.py: |
+    from django.http import JsonResponse
+
+    CATEGORIES = ["Ноутбуки", "Смартфоны", "Аксессуары"]
+
+
+    def categories(request):
+        return JsonResponse({"categories": CATEGORIES})
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/api/categories/").status_code == 200
+      fail: "Ответ — 500. Что JsonResponse принимает по умолчанию?"
+    - code: |
+        data = client.get("/api/categories/").json()
+        assert data == {"categories": ["Ноутбуки", "Смартфоны", "Аксессуары"]}
+      fail: 'Приложение ждёт словарь {"categories": [...]} со всеми категориями.'
+hints:
+  - "Посмотрите текст ошибки: `In order to allow non-dict objects to be serialized…`."
+  - "Заверните список в словарь: `JsonResponse({\"categories\": CATEGORIES})`."
+explanation: |
+  `JsonResponse` без `safe=False` принимает только словарь и для списка выбрасывает `TypeError`. Можно разрешить список явно, но словарь вокруг лучше: в ответ потом легко добавить поля (`count`, `next`), не ломая приложения, которые уже читают `categories`.

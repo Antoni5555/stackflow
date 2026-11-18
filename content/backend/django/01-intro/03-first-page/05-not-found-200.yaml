@@ -1,0 +1,42 @@
+title: Ошибка с кодом 200
+type: exercise
+difficulty: 2
+pitfall: JsonResponse с текстом ошибки, но без status, отвечает 200 — клиент считает запрос успешным.
+statement: |
+  `/api/products/99/` сообщает, что товара нет, но приложение показывает пустую карточку: ответ приходит с кодом 200. Сделайте так, чтобы ответ был 404, а JSON с ошибкой остался.
+files:
+  views.py: |
+    from django.http import JsonResponse
+
+
+    def product(request):
+        return JsonResponse({"error": "товар не найден"})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("api/products/99/", views.product),
+    ]
+solution:
+  views.py: |
+    from django.http import JsonResponse
+
+
+    def product(request):
+        return JsonResponse({"error": "товар не найден"}, status=404)
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/api/products/99/").status_code == 404
+      fail: "Ответ пришёл с кодом 200 — для клиента это успех. Код задают параметром status."
+    - code: |
+        assert client.get("/api/products/99/").json() == {"error": "товар не найден"}
+      fail: JSON с текстом ошибки должен остаться в ответе.
+hints:
+  - "Какой код ответа означает «такого нет»?"
+  - "`JsonResponse({...}, status=404)`."
+explanation: |
+  Клиенты сначала смотрят на код ответа: 2xx — успех, 4xx — ошибка запроса. С кодом 200 приложение решило, что товар пришёл, и показало пустую карточку. Код — часть смысла ответа, а текст ошибки в JSON — пояснение для человека.

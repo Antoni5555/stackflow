@@ -1,0 +1,15 @@
+title: Точка в startproject
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Без точки startproject создаёт вложенную папку с тем же именем — shop/shop/settings.py.
+statement: |
+  Вы в пустой папке `~/shop`. Чем `django-admin startproject config .` отличается от `django-admin startproject config`?
+options:
+  - Ничем — точка в конце игнорируется
+  - С точкой проект создаётся в текущей папке; без неё — во вложенной папке `config/` (и внутри неё ещё один пакет `config`)
+  - С точкой создаётся проект без `manage.py`
+  - Без точки Django спросит, куда создать проект
+answer: [1]
+explanation: |
+  Последний аргумент — папка, куда положить проект. Точка — текущая папка: рядом окажутся `manage.py` и пакет `config/` с настройками. Без неё Django создаст папку `config/`, а в ней — `manage.py` и ещё один `config/`. Получается лишний уровень вложенности и два пакета с одинаковым именем.

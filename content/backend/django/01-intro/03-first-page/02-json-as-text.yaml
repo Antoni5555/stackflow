@@ -1,0 +1,44 @@
+title: Мониторинг не видит JSON
+type: exercise
+difficulty: 1
+pitfall: Строка с JSON в HttpResponse уходит с Content-Type text/html — клиенты не распознают её как JSON.
+statement: |
+  Мониторинг раз в минуту открывает `/api/ping/` и ждёт JSON `{"status": "ok"}`. Ответ выглядит правильно, но мониторинг пишет «неверный формат ответа». Исправьте view.
+files:
+  views.py: |
+    from django.http import HttpResponse
+
+
+    def ping(request):
+        return HttpResponse('{"status": "ok"}')
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("api/ping/", views.ping),
+    ]
+solution:
+  views.py: |
+    from django.http import JsonResponse
+
+
+    def ping(request):
+        return JsonResponse({"status": "ok"})
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/api/ping/")
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/json"
+      fail: "Ответ уходит с Content-Type text/html — для клиента это HTML, а не JSON."
+    - code: |
+        assert client.get("/api/ping/").json() == {"status": "ok"}
+      fail: 'Тело ответа должно быть JSON {"status": "ok"}.'
+hints:
+  - "Посмотрите на заголовок Content-Type в ответе тренажёра."
+  - "Для JSON есть свой класс ответа: `JsonResponse({\"status\": \"ok\"})`."
+explanation: |
+  Клиент определяет формат не по виду текста, а по заголовку `Content-Type`. `HttpResponse` по умолчанию отвечает `text/html`, поэтому строка с JSON внутри для мониторинга — HTML-страница. `JsonResponse` сам превращает словарь в JSON и ставит `application/json`.

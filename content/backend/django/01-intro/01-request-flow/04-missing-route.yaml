@@ -1,0 +1,56 @@
+title: Страница есть, а 404
+type: exercise
+difficulty: 1
+pitfall: View, которой нет в urlpatterns, Django не вызывает — адрес отвечает 404.
+statement: |
+  Написали view `about` для страницы «О магазине», но `/about/` отвечает 404. Сделайте так, чтобы страница открывалась, а каталог продолжал работать.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+
+    def catalog(request):
+        return render(request, "shop/catalog.html")
+
+
+    def about(request):
+        return render(request, "shop/about.html")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+  templates/shop/catalog.html: |
+    <h1>Каталог</h1>
+  templates/shop/about.html: |
+    <h1>О магазине</h1>
+    <p>Работаем с 2025 года.</p>
+solution:
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+        path("about/", views.about),
+    ]
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/about/")
+        assert response.status_code == 200
+        assert "О магазине" in response.content.decode()
+      fail: /about/ всё ещё отвечает 404 — Django не знает, какую view вызвать для этого адреса.
+    - code: |
+        assert client.get("/catalog/").status_code == 200
+      fail: Каталог перестал открываться — маршрут catalog/ нужно оставить.
+hints:
+  - "Где Django ищет, какая view отвечает за адрес?"
+  - "Добавьте в `urlpatterns` маршрут `path(\"about/\", views.about)`."
+explanation: |
+  Django вызывает только те view, которые указаны в `urlpatterns`. Сама по себе функция в `views.py` ни к какому адресу не привязана. Запрос перебирает маршруты по порядку, и на 404-странице при `DEBUG = True` видно этот список: `about/` в нём не было.

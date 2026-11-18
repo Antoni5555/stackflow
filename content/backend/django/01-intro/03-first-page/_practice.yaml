@@ -1,0 +1,80 @@
+- title: Версия API
+  text: |
+    Сделайте адрес `/api/version/`, который отвечает JSON `{"version": "1.0"}`.
+  answer: |
+    Ответ:
+
+    Файл `views.py`:
+    ```python
+    from django.http import JsonResponse
+
+
+    def version(request):
+        return JsonResponse({"version": "1.0"})
+    ```
+
+    Файл `urls.py`:
+    ```python
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("api/version/", views.version),
+    ]
+    ```
+    Результат:
+    ```
+    GET /api/version/ → 200 OK
+    Content-Type: application/json
+
+    {"version": "1.0"}
+    ```
+- title: Код 201
+  text: |
+    Сделайте адрес `/orders/new/`, который отвечает текстом «Заказ создан» с кодом 201.
+  answer: |
+    Ответ:
+
+    Файл `views.py`:
+    ```python
+    from django.http import HttpResponse
+
+
+    def create_order(request):
+        return HttpResponse("Заказ создан", status=201)
+    ```
+    Маршрут — `path("orders/new/", views.create_order)`.
+
+    Результат:
+    ```
+    GET /orders/new/ → 201 Created
+    Content-Type: text/html; charset=utf-8
+
+    Заказ создан
+    ```
+    201 Created означает «запись создана». Настоящий заказ создают POST-запросом, а не GET, — это тема «Запрос и ответ».
+- title: Список без обёртки
+  text: |
+    Отдайте по `/api/delivery/` JSON-список способов доставки `["courier", "pickup"]` — именно списком, без словаря вокруг.
+  hint: |
+    `JsonResponse` примет список, только если явно разрешить.
+  answer: |
+    Ответ:
+
+    Файл `views.py`:
+    ```python
+    from django.http import JsonResponse
+
+
+    def delivery_methods(request):
+        return JsonResponse(["courier", "pickup"], safe=False)
+    ```
+    Результат:
+    ```
+    GET /api/delivery/ → 200 OK
+    Content-Type: application/json
+
+    ["courier", "pickup"]
+    ```
+    Без `safe=False` — `TypeError: In order to allow non-dict objects to be serialized set the safe parameter to False.`

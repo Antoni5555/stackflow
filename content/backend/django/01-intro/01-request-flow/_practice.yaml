@@ -1,0 +1,92 @@
+- title: Страница доставки
+  text: |
+    В песочнице Django сделайте страницу `/delivery/`: view передаёт в шаблон `shop/delivery.html` список способов доставки, шаблон выводит заголовок «Доставка» и список.
+    ```python
+    METHODS = ["Курьер — 299 ₽", "Самовывоз — бесплатно"]
+    ```
+  hint: |
+    Нужны три части: маршрут в `urls.py`, view с `render` и шаблон с `{% for %}`.
+  answer: |
+    Ответ:
+
+    Файл `urls.py`:
+    ```python
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("delivery/", views.delivery),
+    ]
+    ```
+
+    Файл `views.py`:
+    ```python
+    from django.shortcuts import render
+
+    METHODS = ["Курьер — 299 ₽", "Самовывоз — бесплатно"]
+
+
+    def delivery(request):
+        context = {"methods": METHODS}
+        return render(request, "shop/delivery.html", context)
+    ```
+
+    Файл `templates/shop/delivery.html`:
+    ```html
+    <h1>Доставка</h1>
+    <ul>
+      {% for method in methods %}
+        <li>{{ method }}</li>
+      {% endfor %}
+    </ul>
+    ```
+    Результат (`GET /delivery/`):
+    ```
+    GET /delivery/ → 200 OK
+    Шаблон: shop/delivery.html
+
+    <h1>Доставка</h1>
+    <ul>
+
+        <li>Курьер — 299 ₽</li>
+
+        <li>Самовывоз — бесплатно</li>
+
+    </ul>
+    ```
+    Остальные вкладки песочницы можно оставить как есть: маршрут из `urls.py` определяет, какая view отвечает.
+- title: Адрес длиннее маршрута
+  text: |
+    В `urls.py` только `path("catalog/", views.catalog)`. Что ответит Django на `GET /catalog/new/`? Проверьте в песочнице.
+  answer: |
+    Результат:
+    ```
+    GET /catalog/new/ → 404 Not Found
+
+    Using the URLconf defined in shop.urls,
+    Django tried these URL patterns, in this order:
+        catalog/
+    The current path, catalog/new/, didn't match any of these.
+    ```
+    Маршрут должен совпасть с адресом **целиком**: `catalog/` — не начало адреса, а весь адрес. Для `/catalog/new/` нужен свой маршрут.
+- title: Два одинаковых маршрута
+  text: |
+    В `urls.py` два маршрута на один адрес. Что покажет `GET /about/`?
+
+    Файл `urls.py` (фрагмент):
+    ```python
+    urlpatterns = [
+        path("about/", views.about_old),
+        path("about/", views.about),
+    ]
+    ```
+    View возвращают `HttpResponse("Старая страница")` и `HttpResponse("Новая страница")`.
+  answer: |
+    Результат:
+    ```
+    GET /about/ → 200 OK
+
+    Старая страница
+    ```
+    Django берёт **первый** подходящий маршрут и дальше не ищет. Второй маршрут никогда не сработает — ошибки при этом нет, поэтому такие дубли легко пропустить.

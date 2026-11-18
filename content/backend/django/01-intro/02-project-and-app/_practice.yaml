@@ -1,0 +1,56 @@
+- title: Проект на своём компьютере
+  text: |
+    Установите Django в виртуальное окружение, создайте проект `config` в текущей папке и приложение `catalog`, проверьте проект. В тренажёре команд `manage.py` нет — это упражнение для вашего терминала.
+  hint: |
+    `django-admin startproject` с точкой, потом `python manage.py startapp` и `check`.
+  answer: |
+    Команды:
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install django
+    django-admin startproject config .
+    python manage.py startapp catalog
+    python manage.py check
+    ```
+    Результат (последняя команда):
+    ```
+    System check identified no issues (0 silenced).
+    ```
+    Рядом появятся `manage.py`, пакет `config/` с настройками и папка приложения `catalog/`.
+- title: Подключить приложение
+  text: |
+    Подключите `catalog` к проекту и переведите сайт на русский язык и московское время. Какие строки `config/settings.py` нужно изменить?
+  answer: |
+    Ответ:
+
+    Файл `config/settings.py` (фрагмент):
+    ```python
+    INSTALLED_APPS = [
+        "django.contrib.admin",
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "django.contrib.messages",
+        "django.contrib.staticfiles",
+        "catalog",
+    ]
+
+    LANGUAGE_CODE = "ru"
+    TIME_ZONE = "Europe/Moscow"
+    ```
+    После `startproject` в файле стоят `LANGUAGE_CODE = 'en-us'` и `TIME_ZONE = 'UTC'`. С `ru` встроенные тексты Django — ошибки форм, админка — станут русскими.
+- title: Сервер разработки
+  text: |
+    Запустите сервер разработки и откройте в браузере `http://127.0.0.1:8000/catalog/`. Что появится в терминале?
+  answer: |
+    Команды:
+    ```bash
+    python manage.py runserver
+    ```
+    Результат (строки после открытия страницы, дата будет вашей):
+    ```
+    Not Found: /catalog/
+    [18/Nov/2026 18:11:37] "GET /catalog/ HTTP/1.1" 404 2199
+    ```
+    Сервер пишет журнал каждого запроса: метод, адрес, код ответа и размер. Маршрута `catalog/` в `config/urls.py` ещё нет, поэтому 404; главная страница `/` пока показывает приветствие Django. Остановить сервер — `Ctrl+C`.

@@ -1,0 +1,41 @@
+title: Подключить приложение заказов
+type: fix
+difficulty: 1
+pitfall: startapp не подключает приложение к проекту — его нужно добавить в INSTALLED_APPS.
+statement: |
+  В проекте появилось приложение `orders`, но шаблоны из `orders/templates/` не находятся (`TemplateDoesNotExist`), а модели не попадают в миграции. Подключите приложение.
+files:
+  config/settings.py: |
+    INSTALLED_APPS = [
+        "django.contrib.admin",
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "django.contrib.messages",
+        "django.contrib.staticfiles",
+        "catalog",
+    ]
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*["''](orders|orders\.apps\.OrdersConfig)["''],?\s*$'
+      fail: Добавьте приложение orders отдельной строкой в INSTALLED_APPS.
+    - must_match: '^\s*["'']catalog["''],?\s*$'
+      fail: Приложение catalog удалять не нужно.
+solution:
+  config/settings.py: |
+    INSTALLED_APPS = [
+        "django.contrib.admin",
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "django.contrib.messages",
+        "django.contrib.staticfiles",
+        "catalog",
+        "orders",
+    ]
+hints:
+  - "Где Django берёт список приложений, в которых ищет модели и шаблоны?"
+  - "Добавьте строку `\"orders\",` в `INSTALLED_APPS`."
+explanation: |
+  `INSTALLED_APPS` — реестр приложений проекта: Django импортирует каждое при старте и ищет в нём модели, шаблоны, статику и регистрацию в админке. `startapp` только создаёт папку — подключать приложение нужно самому. Запись — имя пакета (`"orders"`) или путь к его описанию (`"orders.apps.OrdersConfig"`).

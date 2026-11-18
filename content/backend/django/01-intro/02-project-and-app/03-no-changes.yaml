@@ -1,0 +1,15 @@
+title: Модель написана, а Django её не видит
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Приложение без записи в INSTALLED_APPS для Django не существует — его модели не попадают в миграции.
+statement: |
+  Создали приложение командой `python manage.py startapp orders` и написали в `orders/models.py` модель `Order`. Но `python manage.py makemigrations` отвечает `No changes detected`. Почему?
+options:
+  - Модели нужно ещё зарегистрировать в `admin.py`
+  - Приложение `orders` не добавлено в `INSTALLED_APPS`
+  - "`makemigrations` работает только после `runserver`"
+  - В имени модели нельзя использовать слово `Order`
+answer: [1]
+explanation: |
+  `startapp` только создаёт папку с файлами — подключать приложение к проекту нужно самому, добавив `"orders"` в `INSTALLED_APPS`. Django ищет модели только в подключённых приложениях, поэтому новых моделей для него нет. Регистрация в `admin.py` нужна только админке.
