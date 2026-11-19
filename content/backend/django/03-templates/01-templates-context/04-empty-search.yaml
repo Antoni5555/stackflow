@@ -1,0 +1,58 @@
+title: Пустой поиск — пустая страница
+type: exercise
+difficulty: 1
+pitfall: Цикл по пустому списку ничего не выводит — покупатель видит пустую страницу без объяснения.
+statement: |
+  Поиск `/catalog/?q=самовар` ничего не находит и показывает пустой список. Выведите в этом случае пункт «Ничего не нашлось.» — средствами шаблона, без изменения view.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+    PRODUCTS = ["Ноутбук Aster 14", "Беспроводная мышь", "Коврик для мыши"]
+
+
+    def catalog(request):
+        q = request.GET.get("q", "").lower()
+        found = [name for name in PRODUCTS if q in name.lower()]
+        return render(request, "shop/catalog.html", {"products": found})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+  templates/shop/catalog.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for name in products %}
+        <li>{{ name }}</li>
+      {% endfor %}
+    </ul>
+solution:
+  templates/shop/catalog.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for name in products %}
+        <li>{{ name }}</li>
+      {% empty %}
+        <li>Ничего не нашлось.</li>
+      {% endfor %}
+    </ul>
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/catalog/", {"q": "самовар"}).content.decode()
+        assert "Ничего не нашлось." in html
+      fail: "При пустом результате нужен пункт «Ничего не нашлось.»"
+    - code: |
+        html = client.get("/catalog/", {"q": "мыш"}).content.decode()
+        assert "Беспроводная мышь" in html and "Ничего не нашлось" not in html
+      fail: Когда товары нашлись, сообщения «Ничего не нашлось» быть не должно.
+hints:
+  - "У цикла `{% for %}` есть ветка для пустого списка."
+  - "`{% empty %}` перед `{% endfor %}`."
+explanation: |
+  `{% empty %}` внутри `{% for %}` выводится, только если список пуст, — это короче, чем `{% if products %}` вокруг цикла. Пустое состояние со словами и выходом («Весь каталог») — обязательная часть любого списка: пустая страница выглядит как поломка сайта.

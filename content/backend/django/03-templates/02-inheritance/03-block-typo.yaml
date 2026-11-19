@@ -1,0 +1,75 @@
+title: Каталог исчез без ошибки
+type: exercise
+difficulty: 1
+pitfall: Блок с именем, которого нет в каркасе, некуда вставить — его содержимое пропадает молча.
+statement: |
+  На странице каталога видны шапка и подвал, а самого каталога нет — и ошибки тоже нет. Найдите и исправьте причину в шаблоне каталога.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+    PRODUCTS = ["Ноутбук Aster 14", "Беспроводная мышь"]
+
+
+    def catalog(request):
+        return render(request, "shop/catalog.html", {"products": PRODUCTS})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+  templates/shop/base.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>{% block title %}Магазин{% endblock %}</title>
+    </head>
+    <body>
+      <header><a href="/catalog/">Магазин</a></header>
+      <main>{% block content %}{% endblock %}</main>
+      <footer>© Магазин, 2026</footer>
+    </body>
+    </html>
+  templates/shop/catalog.html: |
+    {% extends "shop/base.html" %}
+
+    {% block title %}Каталог — {{ block.super }}{% endblock %}
+
+    {% block contents %}
+      <h1>Каталог</h1>
+      <ul>
+        {% for name in products %}
+          <li>{{ name }}</li>
+        {% endfor %}
+      </ul>
+    {% endblock %}
+solution:
+  templates/shop/catalog.html: |
+    {% extends "shop/base.html" %}
+
+    {% block title %}Каталог — {{ block.super }}{% endblock %}
+
+    {% block content %}
+      <h1>Каталог</h1>
+      <ul>
+        {% for name in products %}
+          <li>{{ name }}</li>
+        {% endfor %}
+      </ul>
+    {% endblock %}
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/catalog/").content.decode()
+        assert "<h1>Каталог</h1>" in html and "Беспроводная мышь" in html
+      fail: "Каталога на странице нет: сравните имя блока с блоками в base.html."
+hints:
+  - "Какие блоки объявлены в `base.html`? Совпадает ли с ними имя блока в каталоге?"
+  - "`{% block content %}` — без `s`."
+explanation: |
+  Наследник может заполнить только те блоки, которые объявлены в каркасе. Блок `contents` в `base.html` не объявлен, поэтому его содержимое некуда вставить, а `content` остаётся пустым. Django не считает это ошибкой — страница просто без середины. Подсказкой служит список шаблонов ответа: в нём есть `base.html`, а данные в странице не появились.

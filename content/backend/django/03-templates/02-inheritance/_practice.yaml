@@ -1,0 +1,49 @@
+- title: Боковая панель по умолчанию
+  text: |
+    В каркасе есть блок `sidebar` с текстом «Доставка по всей России». Корзина его не трогает, каталог дописывает к нему строку «Промокод WELCOME10».
+    ```html
+    <title>{% block title %}Магазин{% endblock %}</title>
+    <aside>{% block sidebar %}<p>Доставка по всей России</p>{% endblock %}</aside>
+    <main>{% block content %}{% endblock %}</main>
+    ```
+  answer: |
+    Ответ:
+
+    Файл `templates/shop/cart.html`:
+    ```html
+    {% extends "shop/base.html" %}
+
+    {% block content %}<h1>Корзина</h1>{% endblock %}
+    ```
+
+    Файл `templates/shop/catalog.html`:
+    ```html
+    {% extends "shop/base.html" %}
+
+    {% block sidebar %}{{ block.super }}<p>Промокод WELCOME10</p>{% endblock %}
+    {% block content %}<h1>Каталог</h1>{% endblock %}
+    ```
+    Результат:
+    ```
+    GET /cart/
+    <aside><p>Доставка по всей России</p></aside>
+
+    GET /catalog/
+    <aside><p>Доставка по всей России</p><p>Промокод WELCOME10</p></aside>
+    ```
+    Непереопределённый блок остаётся как в каркасе, `{{ block.super }}` — дополнить, а не заменить.
+- title: include с only
+  text: |
+    Шаблон `shop/_badge.html` — `<span>{{ text }} {{ product.name }}</span>`. Страница с `product` в контексте подключает его дважды: `with text="Хит" only` и `with text="Новинка"`. Что получится?
+  answer: |
+    Результат:
+    ```
+    <span>Хит </span>
+    <span>Новинка Мышь</span>
+    ```
+    С `only` включённый шаблон видит только переданные значения — `product` ему недоступен, и название пустое. Без `only` он видит весь контекст страницы плюс `text`.
+- title: Каркас для раздела
+  text: |
+    Страницы личного кабинета должны иметь общее меню слева, а остальные страницы — нет. Как это устроить, не копируя меню и не трогая страницы каталога?
+  answer: |
+    Промежуточный каркас: `shop/account_base.html` наследует `shop/base.html`, в своём `{% block content %}` выводит меню кабинета и объявляет новый блок `{% block account_content %}{% endblock %}`. Страницы кабинета наследуют `account_base.html` и заполняют `account_content`. Наследование многоуровневое: `base.html` → `account_base.html` → страница.

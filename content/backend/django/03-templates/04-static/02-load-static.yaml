@@ -1,0 +1,43 @@
+title: Главная падает на стилях
+type: exercise
+difficulty: 1
+pitfall: "Тег {% static %} работает только после {% load static %} в этом же шаблоне."
+statement: |
+  Главная отвечает 500: `Invalid block tag on line 1: 'static'. Did you forget to register or load this tag?`. Исправьте шаблон.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+
+    def home(request):
+        return render(request, "shop/home.html")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("", views.home),
+    ]
+  templates/shop/home.html: |
+    <link rel="stylesheet" href="{% static 'shop/css/shop.css' %}">
+    <h1>Магазин</h1>
+solution:
+  templates/shop/home.html: |
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'shop/css/shop.css' %}">
+    <h1>Магазин</h1>
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/").status_code == 200
+      fail: "Шаблон не знает тега static — подключите библиотеку тегом {% load static %}."
+    - code: |
+        assert 'href="/static/shop/css/shop.css"' in client.get("/").content.decode()
+      fail: Стили должны подключаться по адресу /static/shop/css/shop.css.
+hints:
+  - "Тег `static` — из отдельной библиотеки шаблонов. Как её подключают?"
+  - "Первой строкой — `{% load static %}`."
+explanation: |
+  `static` не встроен в язык шаблонов, а живёт в библиотеке тегов — её подключают `{% load static %}` в каждом шаблоне, где тег используется. Подключение не переходит через `{% extends %}`: если тег есть в `base.html` и в странице, `load` нужен в обоих.

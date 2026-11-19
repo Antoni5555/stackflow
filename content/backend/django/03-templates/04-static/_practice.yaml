@@ -1,0 +1,45 @@
+- title: Стили приложения
+  text: |
+    В своём проекте положите файл стилей каталога так, чтобы Django нашёл его по пути `catalog/css/shop.css`, и проверьте командой `findstatic`. Это упражнение для вашего терминала: в тренажёре статических файлов нет.
+  answer: |
+    Команды:
+    ```bash
+    mkdir -p catalog/static/catalog/css
+    echo 'body { font-family: sans-serif; }' > catalog/static/catalog/css/shop.css
+    python manage.py findstatic catalog/css/shop.css
+    ```
+    Результат (путь у вас свой):
+    ```
+    Found 'catalog/css/shop.css' here:
+      /home/shop/shop/catalog/static/catalog/css/shop.css
+    ```
+    Подпапка `catalog/` внутри `static/` — часть пути: так файлы разных приложений не перекрывают друг друга.
+- title: Подключить в шаблоне
+  text: |
+    Подключите эти стили в `base.html` и проверьте адрес в тренажёре: какой `href` получится?
+  answer: |
+    Ответ:
+    ```html
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'catalog/css/shop.css' %}">
+    ```
+    Результат: `href="/static/catalog/css/shop.css"` — начало из `STATIC_URL`. `{% load static %}` нужен в каждом шаблоне, где есть тег `static`.
+- title: Собрать для сервера
+  text: |
+    Настройте сбор статики в папку `staticfiles` и соберите её. Сколько файлов окажется в папке, если в проекте два своих файла?
+  answer: |
+    Ответ:
+
+    Файл `config/settings.py` (фрагмент):
+    ```python
+    STATIC_ROOT = BASE_DIR / "staticfiles"
+    ```
+    Команды:
+    ```bash
+    python manage.py collectstatic --noinput
+    ```
+    Результат (путь у вас свой):
+    ```
+    129 static files copied to '/home/shop/shop/staticfiles'.
+    ```
+    Кроме двух своих — 127 файлов админки Django (`django.contrib.admin` тоже приложение со своей статикой). Папку `staticfiles/` добавьте в `.gitignore`.

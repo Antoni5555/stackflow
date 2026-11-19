@@ -1,0 +1,84 @@
+title: Одна карточка на две страницы
+type: exercise
+difficulty: 2
+pitfall: "Копия разметки карточки на каждой странице расходится при первой правке; переменная цикла на разных страницах называется по-разному."
+statement: |
+  Карточка товара скопирована в каталог и в корзину, и копии уже разошлись: в корзине нет цены. Вынесите карточку в шаблон `shop/_product_card.html` (название в `<h2>` и цена «N ₽» в `<p>`) и подключите её на обеих страницах. В корзине цикл идёт по `item`, а товар — `item.product`.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+    MOUSE = {"name": "Беспроводная мышь", "price": 1499}
+    PAD = {"name": "Коврик для мыши", "price": 490}
+
+
+    def catalog(request):
+        return render(request, "shop/catalog.html", {"products": [MOUSE, PAD]})
+
+
+    def cart(request):
+        items = [{"product": MOUSE, "qty": 2}]
+        return render(request, "shop/cart.html", {"items": items})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+        path("cart/", views.cart),
+    ]
+  templates/shop/catalog.html: |
+    <h1>Каталог</h1>
+    {% for product in products %}
+      <article class="card">
+        <h2>{{ product.name }}</h2>
+        <p>{{ product.price }} ₽</p>
+      </article>
+    {% endfor %}
+  templates/shop/cart.html: |
+    <h1>Корзина</h1>
+    {% for item in items %}
+      <article class="card">
+        <h2>{{ item.product.name }}</h2>
+      </article>
+      <p>× {{ item.qty }}</p>
+    {% endfor %}
+solution:
+  templates/shop/_product_card.html: |
+    <article class="card">
+      <h2>{{ product.name }}</h2>
+      <p>{{ product.price }} ₽</p>
+    </article>
+  templates/shop/catalog.html: |
+    <h1>Каталог</h1>
+    {% for product in products %}
+      {% include "shop/_product_card.html" %}
+    {% endfor %}
+  templates/shop/cart.html: |
+    <h1>Корзина</h1>
+    {% for item in items %}
+      {% include "shop/_product_card.html" with product=item.product %}
+      <p>× {{ item.qty }}</p>
+    {% endfor %}
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/catalog/")
+        assert "shop/_product_card.html" in templates_used(response)
+        assert "Коврик для мыши" in response.content.decode()
+      fail: Каталог должен подключать карточку shop/_product_card.html для каждого товара.
+    - code: |
+        response = client.get("/cart/")
+        assert "shop/_product_card.html" in templates_used(response)
+      fail: Корзина тоже должна подключать shop/_product_card.html.
+    - code: |
+        html = client.get("/cart/").content.decode()
+        assert "<h2>Беспроводная мышь</h2>" in html and "1499 ₽" in html
+      fail: "В корзине карточка пустая: в цикле переменная называется item — передайте товар явно: with product=item.product."
+hints:
+  - "Какое имя переменной ждёт карточка и как называется товар в цикле корзины?"
+  - "`{% include \"shop/_product_card.html\" with product=item.product %}`."
+explanation: |
+  Карточка теперь в одном файле: правка цены или вёрстки сразу видна везде, где она подключена. Включённый шаблон видит текущий контекст, но ждёт переменную `product`, а в корзине товар лежит в `item.product`. `with product=item.product` передаёт его под нужным именем. Так компонент не зависит от того, как называется переменная на конкретной странице.

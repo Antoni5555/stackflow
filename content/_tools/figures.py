@@ -845,6 +845,108 @@ def request_response():
     f.save(out(DJ2 / "03-request-response" / "img" / "request-response.svg"))
 
 
+# ---------- Django 3.01: render ----------
+DJ3 = ROOT / "django" / "03-templates"
+
+
+def render_flow():
+    f = Figure(860, 300, "render соединяет шаблон и контекст в готовый HTML; значения экранируются")
+    f.box(20, 20, 260, 120, "", "box2")
+    f.text(36, 44, "контекст (из view)", "s")
+    f.text(36, 72, '{"title": "Ноутбуки",', "cs")
+    f.text(36, 92, ' "products": [', "cs")
+    f.text(36, 112, '   {"name": "<b>Мышь</b>"}]}', "cs")
+    f.box(20, 160, 260, 120, "", "box")
+    f.text(36, 184, "шаблон shop/catalog.html", "s")
+    f.text(36, 212, "<h1>{{ title }}</h1>", "cs")
+    f.text(36, 232, "{% for p in products %}", "cs")
+    f.text(36, 252, "  <li>{{ p.name }}</li>", "cs")
+    f.arrow("M280 80H320V140H346")
+    f.arrow("M280 220H320V160H346")
+    f.box(350, 120, 140, 60, "", "acc")
+    f.text(420, 146, "render(", "onacc", "middle")
+    f.text(420, 166, "request, …)", "onacc", "middle")
+    f.arrow("M490 150H536")
+    f.box(540, 60, 300, 180, "", "ok")
+    f.text(556, 84, "HttpResponse — HTML", "s")
+    f.text(556, 114, "<h1>Ноутбуки</h1>", "cs")
+    f.text(556, 138, "<li>&lt;b&gt;Мышь&lt;/b&gt;</li>", "cs")
+    f.text(556, 176, "< и > из данных стали &lt; &gt;:", "s")
+    f.text(556, 196, "текст, а не теги", "s")
+    f.save(out(DJ3 / "01-templates-context" / "img" / "render.svg"))
+
+
+# ---------- Django 3.02: extends и include ----------
+def extends_include():
+    f = Figure(860, 330, "catalog.html наследует base.html и заполняет его блоки; карточка подключается include для каждого товара")
+    f.box(20, 20, 300, 290, "", "box2")
+    f.text(36, 44, "base.html — каркас", "t")
+    f.text(36, 74, "<head> … <title>", "cs")
+    f.box(36, 84, 268, 34, "{% block title %}", "acc", "onacc")
+    f.text(36, 140, "<header> шапка", "cs")
+    f.box(36, 152, 268, 110, "", "acc")
+    f.text(52, 176, "{% block content %}", "onacc")
+    f.text(36, 290, "<footer> подвал", "cs")
+    f.box(400, 20, 440, 200, "", "box")
+    f.text(416, 44, "catalog.html", "t")
+    f.text(416, 70, '{% extends "shop/base.html" %}', "cs")
+    f.text(416, 98, "{% block title %}Каталог — {{ block.super }}", "cs")
+    f.text(416, 126, "{% block content %}", "cs")
+    f.text(432, 150, "{% for product in products %}", "cs")
+    f.text(448, 174, '{% include "shop/_product_card.html" %}', "cs")
+    f.arrow("M400 94H308", "lnd")
+    f.arrow("M400 122C360 122 340 160 308 170", "lnd")
+    f.box(560, 250, 280, 60, "", "ok")
+    f.text(576, 274, "_product_card.html", "cs")
+    f.text(576, 294, "видит product из цикла", "s")
+    f.arrow("M700 180V246")
+    f.save(out(DJ3 / "02-inheritance" / "img" / "extends-include.svg"))
+
+
+# ---------- Django 3.03: фильтры ----------
+def filters_flow():
+    f = Figure(860, 260, "Значение проходит фильтр; свой фильтр — функция из библиотеки, подключённой load")
+    f.box(20, 30, 160, 50, "price = 64990", "box2", "cs")
+    f.arrow("M180 55H226")
+    f.box(230, 30, 200, 50, "", "box")
+    f.text(330, 60, "{{ price|rub }}", "cs", "middle")
+    f.arrow("M430 55H476")
+    f.box(480, 30, 160, 50, "64 990 ₽", "ok", "c")
+    f.box(230, 110, 440, 56, "", "acc")
+    f.text(246, 134, "{% load shop_extras %} →", "onacc")
+    f.text(246, 154, "shop/templatetags/shop_extras.py: @register.filter", "onacc")
+    f.arrow("M330 110V84", "lnd")
+    f.box(20, 196, 220, 50, "12:30 UTC (datetime)", "box2", "cs")
+    f.arrow("M240 221H286")
+    f.box(290, 196, 260, 50, "", "box")
+    f.text(420, 226, '{{ dt|date:"d.m.Y H:i" }}', "cs", "middle")
+    f.arrow("M550 221H596")
+    f.box(600, 196, 240, 50, "18.11.2026 15:30", "ok", "c")
+    f.text(660, 186, "часовой пояс сайта", "s")
+    f.save(out(DJ3 / "03-filters" / "img" / "filters.svg"))
+
+
+# ---------- Django 3.04: статика ----------
+def static_flow():
+    f = Figure(860, 320, "В разработке статику отдаёт runserver, на сервере collectstatic собирает её в STATIC_ROOT, а отдаёт Nginx")
+    f.box(20, 20, 250, 50, "catalog/static/catalog/…", "box2", "cs")
+    f.box(20, 84, 250, 50, "static/ (STATICFILES_DIRS)", "box2", "cs")
+    f.text(320, 92, "разработка (DEBUG = True)", "h")
+    f.arrow("M270 45H316"); f.arrow("M270 109H300V60H316")
+    f.box(320, 20, 200, 50, "runserver", "box", "c")
+    f.arrow("M520 45H566")
+    f.box(570, 20, 270, 50, "браузер: /static/…", "ok", "cs")
+    f.text(320, 256, "продакшен (DEBUG = False)", "h")
+    f.arrow("M145 134V206H316", "lnd")
+    f.box(320, 184, 200, 50, "collectstatic", "acc", "onacc")
+    f.arrow("M520 209H566")
+    f.box(570, 184, 270, 50, "staticfiles/ (STATIC_ROOT)", "box", "cs")
+    f.arrow("M705 234V256")
+    f.box(570, 260, 270, 50, "Nginx → браузер: /static/…", "ok", "cs")
+    f.text(20, 290, "Django в продакшене обрабатывает только страницы.", "s")
+    f.save(out(DJ3 / "04-static" / "img" / "static-flow.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2316,6 +2418,7 @@ if __name__ == "__main__":
                   pytest_failure, fixture_per_test, mock_gateway,
                   request_flow, project_structure, first_page,
                   route_params, url_reverse, request_response,
+                  render_flow, extends_include, filters_flow, static_flow,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

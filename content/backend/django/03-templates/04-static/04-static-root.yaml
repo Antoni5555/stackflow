@@ -1,0 +1,35 @@
+title: collectstatic некуда собирать
+type: fix
+difficulty: 1
+pitfall: Без STATIC_ROOT collectstatic не знает, куда собрать файлы, и падает с ImproperlyConfigured.
+statement: |
+  На сервере деплой падает на шаге `python manage.py collectstatic`: `ImproperlyConfigured: You're using the staticfiles app without having set the STATIC_ROOT setting to a filesystem path.` Добавьте настройку: собирать статику в папку `staticfiles` в корне проекта.
+files:
+  config/settings.py: |
+    from pathlib import Path
+
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+    STATIC_URL = "static/"
+    STATICFILES_DIRS = [BASE_DIR / "static"]
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*STATIC_ROOT\s*=\s*BASE_DIR\s*/\s*["'']staticfiles["'']'
+      fail: "Задайте STATIC_ROOT = BASE_DIR / \"staticfiles\"."
+    - must_match: '^\s*STATICFILES_DIRS\s*=\s*\[\s*BASE_DIR\s*/\s*["'']static["'']\s*\]'
+      fail: STATICFILES_DIRS — папки-источники, их менять не нужно; STATIC_ROOT — отдельная папка для сборки.
+solution:
+  config/settings.py: |
+    from pathlib import Path
+
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+    STATIC_URL = "static/"
+    STATICFILES_DIRS = [BASE_DIR / "static"]
+    STATIC_ROOT = BASE_DIR / "staticfiles"
+hints:
+  - "Какая настройка говорит `collectstatic`, куда копировать файлы?"
+  - "`STATIC_ROOT = BASE_DIR / \"staticfiles\"`."
+explanation: |
+  `STATICFILES_DIRS` и `static/` приложений — источники, а `STATIC_ROOT` — папка, куда `collectstatic` складывает всё вместе для веб-сервера. Это должны быть разные папки: если `STATIC_ROOT` окажется среди источников, проверка проекта остановит запуск ошибкой `staticfiles.E002`. Папку `staticfiles/` добавляют в `.gitignore` — её собирают заново при каждом деплое.

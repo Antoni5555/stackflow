@@ -1,0 +1,55 @@
+title: Шаблон есть, а TemplateDoesNotExist
+type: exercise
+difficulty: 1
+pitfall: Шаблоны ищутся по пути внутри папок templates/ — подпапка приложения входит в имя шаблона.
+statement: |
+  Шаблон каталога лежит в `templates/shop/catalog.html`, но `/catalog/` отвечает 500: `TemplateDoesNotExist: catalog.html`. Исправьте view.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+    PRODUCTS = ["Ноутбук Aster 14", "Беспроводная мышь"]
+
+
+    def catalog(request):
+        return render(request, "catalog.html", {"products": PRODUCTS})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+  templates/shop/catalog.html: |
+    <h1>Каталог</h1>
+    <ul>
+      {% for name in products %}
+        <li>{{ name }}</li>
+      {% endfor %}
+    </ul>
+solution:
+  views.py: |
+    from django.shortcuts import render
+
+    PRODUCTS = ["Ноутбук Aster 14", "Беспроводная мышь"]
+
+
+    def catalog(request):
+        return render(request, "shop/catalog.html", {"products": PRODUCTS})
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/catalog/")
+        assert response.status_code == 200
+        assert "shop/catalog.html" in templates_used(response)
+      fail: "Шаблон не найден: путь в render отсчитывается от папки templates/ — с подпапкой shop/."
+    - code: |
+        assert "Беспроводная мышь" in client.get("/catalog/").content.decode()
+      fail: В каталоге должны быть товары из списка.
+hints:
+  - "Путь к шаблону в `render` — от папки `templates/`. Где лежит файл относительно неё?"
+  - "`render(request, \"shop/catalog.html\", …)`."
+explanation: |
+  Django ищет шаблон в каждой папке `templates/`, и путь в `render` отсчитывается от неё: файл `templates/shop/catalog.html` называется `shop/catalog.html`. Подпапку с именем приложения не убирают, а наоборот, держат: шаблоны всех приложений лежат как бы в одной общей папке, и без подпапки одинаковые имена перекрыли бы друг друга.

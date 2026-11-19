@@ -1,0 +1,40 @@
+title: Пустое описание не заменилось
+type: exercise
+difficulty: 1
+pitfall: default_if_none заменяет только None — пустая строка выводится как есть.
+statement: |
+  У товара без описания должна быть надпись «Описания пока нет», но на странице пусто: описание в данных — пустая строка. Исправьте шаблон.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+
+    def product(request):
+        context = {"name": "Коврик для мыши", "description": ""}
+        return render(request, "shop/product.html", context)
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("product/", views.product),
+    ]
+  templates/shop/product.html: |
+    <h1>{{ name }}</h1>
+    <p>{{ description|default_if_none:"Описания пока нет" }}</p>
+solution:
+  templates/shop/product.html: |
+    <h1>{{ name }}</h1>
+    <p>{{ description|default:"Описания пока нет" }}</p>
+check:
+  type: django
+  tests:
+    - code: |
+        assert "<p>Описания пока нет</p>" in client.get("/product/").content.decode()
+      fail: "Пустая строка — не None: default_if_none её не заменяет."
+hints:
+  - "Чем пустая строка отличается от `None` для фильтра `default_if_none`?"
+  - "`default` заменяет любое «пустое» значение: `\"\"`, `None`, `0`, `[]`."
+explanation: |
+  `default_if_none` срабатывает только на `None`, а у товара описание — пустая строка `""`. `default` заменяет всё, что Python считает ложным: `""`, `None`, `0`, пустой список. Осторожно с числами: `{{ stock|default:"нет данных" }}` заменит и честный ноль.

@@ -1,0 +1,46 @@
+title: Стили по старому адресу
+type: exercise
+difficulty: 1
+pitfall: Адрес статики, записанный вручную, не меняется вместе с STATIC_URL — при переезде статики на CDN ссылки ломаются.
+statement: |
+  Логотип и стили подключены адресами, записанными вручную. Статику собираются перенести на CDN, поэтому адреса должны строиться из настроек. Перепишите шаблон на тег `{% static %}`; адреса при текущих настройках не изменятся.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+
+    def home(request):
+        return render(request, "shop/home.html")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("", views.home),
+    ]
+  templates/shop/home.html: |
+    <link rel="stylesheet" href="/static/shop/css/shop.css">
+    <img src="/static/img/logo.svg" alt="Магазин">
+solution:
+  templates/shop/home.html: |
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'shop/css/shop.css' %}">
+    <img src="{% static 'img/logo.svg' %}" alt="Магазин">
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/").content.decode()
+        assert 'href="/static/shop/css/shop.css"' in html and 'src="/static/img/logo.svg"' in html
+      fail: Адреса стилей и логотипа должны остаться прежними — /static/shop/css/shop.css и /static/img/logo.svg.
+    - code: |
+        from django.template.loader import get_template
+        source = get_template("shop/home.html").template.source
+        assert source.count("{% static") == 2 and "/static/" not in source
+      fail: "Оба адреса нужно строить тегом {% static '…' %} — без /static/ в тексте шаблона."
+hints:
+  - "Как в шаблоне построить адрес статики из настройки `STATIC_URL`?"
+  - "`{% load static %}` и `{% static 'img/logo.svg' %}` — путь без `/static/`."
+explanation: |
+  `{% static 'img/logo.svg' %}` берёт начало адреса из `STATIC_URL`. Сейчас это `/static/`, после переезда — например, `https://cdn.shop.example/`, и шаблоны менять не придётся. Тег также подставляет имя с хешем, если включено хранилище `ManifestStaticFilesStorage`.

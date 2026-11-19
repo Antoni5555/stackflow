@@ -1,0 +1,75 @@
+title: Страница без шапки
+type: exercise
+difficulty: 1
+pitfall: Страница, собранная целиком своим HTML, не получает изменений общего каркаса — шапки и подвала.
+statement: |
+  Страницу «О магазине» сверстали отдельным полным HTML, и на ней нет шапки и подвала, как на остальных страницах. Перепишите `about.html` на общем каркасе `shop/base.html`: заголовок вкладки — «О магазине — Магазин» (через родительский блок), содержимое — прежнее.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+
+    def about(request):
+        return render(request, "shop/about.html")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("about/", views.about),
+    ]
+  templates/shop/base.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>{% block title %}Магазин{% endblock %}</title>
+    </head>
+    <body>
+      <header><a href="/catalog/">Магазин</a></header>
+      <main>{% block content %}{% endblock %}</main>
+      <footer>© Магазин, 2026</footer>
+    </body>
+    </html>
+  templates/shop/about.html: |
+    <!doctype html>
+    <html lang="ru">
+    <head>
+      <meta charset="utf-8">
+      <title>О магазине</title>
+    </head>
+    <body>
+      <h1>О магазине</h1>
+      <p>Работаем с 2025 года.</p>
+    </body>
+    </html>
+solution:
+  templates/shop/about.html: |
+    {% extends "shop/base.html" %}
+
+    {% block title %}О магазине — {{ block.super }}{% endblock %}
+
+    {% block content %}
+      <h1>О магазине</h1>
+      <p>Работаем с 2025 года.</p>
+    {% endblock %}
+check:
+  type: django
+  tests:
+    - code: |
+        response = client.get("/about/")
+        assert "shop/base.html" in templates_used(response)
+      fail: "Страница не использует каркас shop/base.html — нужен {% extends %}."
+    - code: |
+        html = client.get("/about/").content.decode()
+        assert "Работаем с 2025 года." in html and "© Магазин, 2026" in html
+      fail: На странице должны быть и её текст (в блоке content), и подвал из каркаса.
+    - code: |
+        assert "<title>О магазине — Магазин</title>" in client.get("/about/").content.decode()
+      fail: "Заголовок вкладки — «О магазине — Магазин»: допишите к родительскому блоку {{ block.super }}."
+hints:
+  - "Какой тег должен стоять первым, чтобы взять каркас? Какие блоки в нём есть?"
+  - "`{% extends \"shop/base.html\" %}`, блоки `title` (с `{{ block.super }}`) и `content`."
+explanation: |
+  Наследник не повторяет `<html>`, `<head>` и `<body>` — всё это уже есть в каркасе. Страница только заполняет блоки: `content` — своим текстом, `title` — своим заголовком плюс `{{ block.super }}`, то есть «Магазин» из каркаса. Теперь любая правка шапки или подвала в `base.html` появится и здесь.

@@ -1,0 +1,51 @@
+title: Итог корзины со скобками
+type: exercise
+difficulty: 1
+pitfall: Методы в шаблоне вызываются без скобок — total() даёт TemplateSyntaxError.
+statement: |
+  Страница корзины падает с `TemplateSyntaxError: Could not parse the remainder: '()' from 'cart.total()'`. Исправьте шаблон, чтобы итог выводился.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+
+    class Cart:
+        def __init__(self, items):
+            self.items = items
+
+        def total(self):
+            return sum(price * qty for price, qty in self.items)
+
+
+    def cart(request):
+        cart = Cart([(1499, 2), (490, 1)])
+        return render(request, "shop/cart.html", {"cart": cart})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("cart/", views.cart),
+    ]
+  templates/shop/cart.html: |
+    <h1>Корзина</h1>
+    <p>Итого: {{ cart.total() }} ₽</p>
+solution:
+  templates/shop/cart.html: |
+    <h1>Корзина</h1>
+    <p>Итого: {{ cart.total }} ₽</p>
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/cart/").status_code == 200
+      fail: "Страница падает: в шаблоне методы вызывают без скобок."
+    - code: |
+        assert "Итого: 3488 ₽" in client.get("/cart/").content.decode()
+      fail: "Итог корзины должен быть 3488 ₽ — результат метода total."
+hints:
+  - "Как шаблон Django обращается к методам объекта?"
+  - "`{{ cart.total }}` — шаблон сам вызовет метод."
+explanation: |
+  Язык шаблонов не поддерживает вызовы со скобками: `{{ cart.total }}` находит атрибут `total`, видит, что это метод, и вызывает его без аргументов. Метод с аргументами из шаблона вызвать нельзя — такой результат считают во view и кладут в контекст готовым.

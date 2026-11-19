@@ -1,0 +1,50 @@
+title: Заказ «из прошлого»
+type: exercise
+difficulty: 2
+pitfall: Дата, отформатированная во view через strftime, выводится в UTC — шаблонный фильтр date сам переводит её в часовой пояс сайта.
+statement: |
+  Покупатели пишут, что время заказа на странице на 3 часа раньше настоящего: заказ сделан в 15:30 по Москве, а показано 12:30. Время в базе хранится в UTC. Исправьте так, чтобы выводилось `18.11.2026 15:30`.
+files:
+  views.py: |
+    from datetime import datetime, timezone
+
+    from django.shortcuts import render
+
+
+    def order(request):
+        created_at = datetime(2026, 11, 18, 12, 30, tzinfo=timezone.utc)
+        context = {"created_at": created_at.strftime("%d.%m.%Y %H:%M")}
+        return render(request, "shop/order.html", context)
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("order/", views.order),
+    ]
+  templates/shop/order.html: |
+    <p>Заказ оформлен {{ created_at }}</p>
+solution:
+  views.py: |
+    from datetime import datetime, timezone
+
+    from django.shortcuts import render
+
+
+    def order(request):
+        created_at = datetime(2026, 11, 18, 12, 30, tzinfo=timezone.utc)
+        return render(request, "shop/order.html", {"created_at": created_at})
+  templates/shop/order.html: |
+    <p>Заказ оформлен {{ created_at|date:"d.m.Y H:i" }}</p>
+check:
+  type: django
+  tests:
+    - code: |
+        assert "Заказ оформлен 18.11.2026 15:30" in client.get("/order/").content.decode()
+      fail: "На странице время UTC: строка из strftime не переводится в часовой пояс сайта — передайте datetime и отформатируйте фильтром date."
+hints:
+  - "Кто переводит время из UTC в московское: `strftime` во view или шаблон?"
+  - "Передайте в контекст сам `datetime`, а в шаблоне — `{{ created_at|date:\"d.m.Y H:i\" }}`."
+explanation: |
+  `strftime` форматирует время в том поясе, в котором оно хранится, — здесь UTC. Шаблон получает готовую строку и ничего с ней не делает. Объект `datetime` шаблон при `USE_TZ = True` сам переводит в `TIME_ZONE` сайта (`Europe/Moscow`), и фильтр `date` выводит уже 15:30. Правило: даты по проекту передают объектами, формат задают при выводе.

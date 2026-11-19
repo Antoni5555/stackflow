@@ -1,0 +1,15 @@
+title: Кто отдаёт CSS на сервере
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Django в продакшене статику не отдаёт — это работа веб-сервера.
+statement: |
+  Магазин запущен на сервере: Gunicorn с Django за Nginx, `DEBUG = False`, `collectstatic` выполнен. Кто отдаёт браузеру `/static/shop/css/shop.css`?
+options:
+  - "Django — тег `{% static %}` сам отдаёт файл"
+  - "Nginx — из папки `STATIC_ROOT`, не обращаясь к Django"
+  - "Gunicorn — он отдаёт все файлы проекта"
+  - "Никто: при `DEBUG = False` статика отключается"
+answer: [1]
+explanation: |
+  `{% static %}` только строит адрес. При `DEBUG = True` файлы отдаёт `runserver`; в продакшене Django этого не делает. Nginx отдаёт готовые файлы из `STATIC_ROOT` сам — быстро, с кэшированием и сжатием, а к Django уходят только запросы страниц. Если Nginx не настроен на `/static/`, страница откроется без стилей.

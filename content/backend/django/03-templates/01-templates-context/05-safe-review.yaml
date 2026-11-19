@@ -1,0 +1,53 @@
+title: Отзыв со скриптом
+type: exercise
+difficulty: 2
+pitfall: Фильтр safe отключает автоэкранирование — HTML из отзыва выполняется у всех посетителей.
+statement: |
+  Чтобы в отзывах работали переносы строк, разработчик добавил `|safe`. Теперь отзыв `<script>…</script>` выполняется у каждого, кто открыл товар. Сделайте так, чтобы текст отзывов показывался как текст.
+files:
+  views.py: |
+    from django.shortcuts import render
+
+    REVIEWS = [
+        "Лёгкий, батареи хватает на день.",
+        "<script>alert('взлом')</script>",
+    ]
+
+
+    def reviews(request):
+        return render(request, "shop/reviews.html", {"reviews": REVIEWS})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("reviews/", views.reviews),
+    ]
+  templates/shop/reviews.html: |
+    <h2>Отзывы</h2>
+    {% for text in reviews %}
+      <p>{{ text|safe }}</p>
+    {% endfor %}
+solution:
+  templates/shop/reviews.html: |
+    <h2>Отзывы</h2>
+    {% for text in reviews %}
+      <p>{{ text }}</p>
+    {% endfor %}
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/reviews/").content.decode()
+        assert "<script>" not in html
+      fail: "Тег <script> из отзыва попадает в страницу как HTML — значит, он выполнится."
+    - code: |
+        html = client.get("/reviews/").content.decode()
+        assert "&lt;script&gt;" in html and "Лёгкий" in html
+      fail: "Отзывы должны остаться на странице — текстом, с экранированными < и >."
+hints:
+  - "Что делает фильтр `|safe` с автоэкранированием?"
+  - "Уберите `|safe` — Django сам экранирует текст."
+explanation: |
+  `|safe` говорит Django: «этот текст — проверенный HTML, не экранируй». Для данных покупателя это неправда: `<script>` из отзыва выполнится в браузере каждого посетителя и сможет, например, украсть его сессию (XSS). Без `|safe` Django превратит `<` и `>` в `&lt;` и `&gt;`, и отзыв покажется текстом. Переносы строк делают безопасно — фильтром `|linebreaksbr`: он экранирует текст и только потом добавляет `<br>`.
