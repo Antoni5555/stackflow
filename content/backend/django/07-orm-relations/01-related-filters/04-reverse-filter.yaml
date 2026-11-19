@@ -1,0 +1,158 @@
+title: "Категории с недорогими товарами"
+type: exercise
+difficulty: 2
+pitfall: "В пути через обратную связь пишут related_name, а не имя модели; через «многие» — distinct()."
+statement: |
+  Страница `/cheap/` — категории, где есть товар дешевле 5000 ₽. Она падает с ошибкой 500. Исправьте view: каждая категория один раз, порядок — по названию.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+        parent = models.ForeignKey(
+            "self", on_delete=models.PROTECT, null=True, blank=True,
+            related_name="children",
+        )
+
+        def __str__(self):
+            return self.name
+
+
+    class Tag(models.Model):
+        name = models.CharField(max_length=50, unique=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+        tags = models.ManyToManyField(Tag, blank=True, related_name="products")
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+        is_published = models.BooleanField(default=True)
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Category
+
+
+    def cheap(request):
+        categories = Category.objects.filter(
+            product__price__lt=5000
+        ).order_by("name")
+        return render(request, "shop/cheap.html", {"categories": categories})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("cheap/", views.cheap),
+    ]
+  templates/shop/cheap.html: |
+    <ul>
+      {% for c in categories %}
+        <li>{{ c.name }}</li>
+      {% endfor %}
+    </ul>
+setup: |
+  electronics = Category.objects.create(name="Электроника")
+  laptops = Category.objects.create(name="Ноутбуки", parent=electronics)
+  mice = Category.objects.create(name="Мыши", parent=electronics)
+  pads = Category.objects.create(name="Коврики")
+  hit = Tag.objects.create(name="хит")
+  new = Tag.objects.create(name="новинка")
+  sale = Tag.objects.create(name="скидка")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", price="64990.00")
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", price="1499.00")
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", price="3490.00")
+  pad = Product.objects.create(category=pads, name="Коврик для мыши", price="490.00")
+  aster.tags.add(hit, new)
+  mouse.tags.add(hit, sale)
+  gaming.tags.add(new)
+  anna = User.objects.create_user("anna", "anna@shop.example")
+  boris = User.objects.create_user("boris", "boris@shop.example")
+  vera = User.objects.create_user("vera", "vera@shop.example")
+  for number, user, items in [
+      ("A-12", anna, [(aster, 1), (mouse, 1)]),
+      ("A-13", boris, [(pad, 2)]),
+      ("A-14", anna, [(gaming, 1)]),
+      ("A-15", vera, [(mouse, 2), (pad, 1)]),
+  ]:
+      order = Order.objects.create(user=user, number=number)
+      for product, qty in items:
+          OrderItem.objects.create(order=order, product=product, quantity=qty)
+  Review.objects.create(product=mouse, user=anna, rating=5)
+  Review.objects.create(product=mouse, user=boris, rating=4)
+  Review.objects.create(product=mouse, user=vera, rating=2, is_published=False)
+  Review.objects.create(product=aster, user=vera, rating=5)
+solution:
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Category
+
+
+    def cheap(request):
+        categories = (
+            Category.objects.filter(products__price__lt=5000)
+            .distinct()
+            .order_by("name")
+        )
+        return render(request, "shop/cheap.html", {"categories": categories})
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/cheap/").status_code == 200
+      fail: "Страница падает: `FieldError: Cannot resolve keyword 'product'` — у обратной связи имя из related_name."
+    - code: |
+        html = client.get("/cheap/").content.decode()
+        assert "Мыши" in html and "Коврики" in html
+        assert "Ноутбуки" not in html and "Электроника" not in html
+      fail: "На странице должны быть «Мыши» и «Коврики», а «Ноутбуков» (Aster дороже 5000) и «Электроники» (своих товаров нет) — нет."
+    - code: |
+        html = client.get("/cheap/").content.decode()
+        assert html.count("Мыши") == 1
+      fail: "«Мыши» на странице дважды — в категории два недорогих товара, уберите дубли."
+hints:
+  - "Как называется обратная связь от категории к товарам в `models.py`?"
+  - "`products__price__lt` и `.distinct()`."
+explanation: |
+  Обратная связь `Product.category` называется `related_name="products"`, и в пути фильтра — то же имя: `products__price__lt`. Имя модели строчными (`product`) работает, только когда `related_name` не задан. В «Мышах» два товара дешевле 5000 — `JOIN` даёт категорию дважды, `distinct()` убирает повтор.

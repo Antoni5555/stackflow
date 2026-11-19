@@ -1,0 +1,160 @@
+title: "Товар в подборке дважды"
+type: exercise
+difficulty: 2
+pitfall: "Фильтр через ManyToMany даёт строку на каждую подходящую связанную запись — нужны distinct()."
+statement: |
+  Подборка `/featured/` показывает товары с меткой «хит» или «новинка». Ноутбук Aster 14 в ней дважды. Исправьте view: каждый товар — один раз, порядок — по `id`.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+        parent = models.ForeignKey(
+            "self", on_delete=models.PROTECT, null=True, blank=True,
+            related_name="children",
+        )
+
+        def __str__(self):
+            return self.name
+
+
+    class Tag(models.Model):
+        name = models.CharField(max_length=50, unique=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+        tags = models.ManyToManyField(Tag, blank=True, related_name="products")
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+        is_published = models.BooleanField(default=True)
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def featured(request):
+        products = Product.objects.filter(
+            tags__name__in=["хит", "новинка"]
+        ).order_by("id")
+        return render(request, "shop/featured.html", {"products": products})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("featured/", views.featured),
+    ]
+  templates/shop/featured.html: |
+    <ul>
+      {% for p in products %}
+        <li>{{ p.name }}</li>
+      {% endfor %}
+    </ul>
+setup: |
+  electronics = Category.objects.create(name="Электроника")
+  laptops = Category.objects.create(name="Ноутбуки", parent=electronics)
+  mice = Category.objects.create(name="Мыши", parent=electronics)
+  pads = Category.objects.create(name="Коврики")
+  hit = Tag.objects.create(name="хит")
+  new = Tag.objects.create(name="новинка")
+  sale = Tag.objects.create(name="скидка")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", price="64990.00")
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", price="1499.00")
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", price="3490.00")
+  pad = Product.objects.create(category=pads, name="Коврик для мыши", price="490.00")
+  aster.tags.add(hit, new)
+  mouse.tags.add(hit, sale)
+  gaming.tags.add(new)
+  anna = User.objects.create_user("anna", "anna@shop.example")
+  boris = User.objects.create_user("boris", "boris@shop.example")
+  vera = User.objects.create_user("vera", "vera@shop.example")
+  for number, user, items in [
+      ("A-12", anna, [(aster, 1), (mouse, 1)]),
+      ("A-13", boris, [(pad, 2)]),
+      ("A-14", anna, [(gaming, 1)]),
+      ("A-15", vera, [(mouse, 2), (pad, 1)]),
+  ]:
+      order = Order.objects.create(user=user, number=number)
+      for product, qty in items:
+          OrderItem.objects.create(order=order, product=product, quantity=qty)
+  Review.objects.create(product=mouse, user=anna, rating=5)
+  Review.objects.create(product=mouse, user=boris, rating=4)
+  Review.objects.create(product=mouse, user=vera, rating=2, is_published=False)
+  Review.objects.create(product=aster, user=vera, rating=5)
+solution:
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def featured(request):
+        products = (
+            Product.objects.filter(tags__name__in=["хит", "новинка"])
+            .distinct()
+            .order_by("id")
+        )
+        return render(request, "shop/featured.html", {"products": products})
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/featured/").content.decode()
+        assert html.count("Ноутбук Aster 14") == 1
+      fail: "Ноутбук Aster 14 по-прежнему в подборке дважды — уберите дубли, которые даёт JOIN по меткам."
+    - code: |
+        html = client.get("/featured/").content.decode()
+        names = ["Ноутбук Aster 14", "Беспроводная мышь", "Игровая мышь"]
+        assert all(n in html for n in names)
+        assert "Коврик" not in html
+      fail: "В подборке должны быть три товара с метками «хит» или «новинка», а коврика без меток — нет."
+    - code: |
+        html = client.get("/featured/").content.decode()
+        assert html.index("Aster") < html.index("Беспроводная") < html.index("Игровая")
+      fail: "Порядок — по id: Aster 14, беспроводная мышь, игровая мышь."
+hints:
+  - "Сколько строк даёт JOIN для товара с двумя подходящими метками?"
+  - "`.distinct()`."
+explanation: |
+  У Aster 14 обе метки, и `JOIN` со связкой `shop_product_tags` даёт по строке на каждую подходящую метку — товар приходит дважды. `.distinct()` добавляет `SELECT DISTINCT` и оставляет по одной строке. Порядок `order_by("id")` сохраняется — сортируют по колонке, которая есть в выборке.

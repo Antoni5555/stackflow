@@ -1,0 +1,16 @@
+title: "Где бывают дубли"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Дубли дают условия через связи «ко многим» — M2M и обратные FK; через FK вперёд строка одна."
+statement: |
+  Какие запросы **могут** вернуть один и тот же объект несколько раз (без `distinct()`)? Модели — как в уроке.
+options:
+  - "`Product.objects.filter(category__parent__name=\"Электроника\")`"
+  - "`Product.objects.filter(tags__name__in=[\"хит\", \"скидка\"])`"
+  - "`Category.objects.filter(products__is_active=True)`"
+  - "`Order.objects.filter(user__username=\"anna\")`"
+  - "`User.objects.filter(orders__items__quantity__gte=1)`"
+answer: [1, 2, 4]
+explanation: |
+  Через `ForeignKey` вперёд (`category__parent`, `user`) у каждой строки ровно одна связанная — дублей нет. Через M2M (`tags`) и обратные связи (`products`, `orders__items`) строка повторяется для каждой подходящей связанной записи: мыши с метками «хит» и «скидка», категория с двумя активными товарами, покупатель с несколькими позициями.

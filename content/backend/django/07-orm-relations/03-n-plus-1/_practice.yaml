@@ -1,0 +1,73 @@
+- title: Посчитайте запросы
+  text: |
+    Сколько запросов делает цикл по товарам с выводом названия категории? Посчитайте с `CaptureQueriesContext`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    with CaptureQueriesContext(connection) as c:
+        for p in Product.objects.all():
+            print(p.name, p.category.name)
+    print("запросов:", len(c.captured_queries))
+    ```
+    Результат:
+    ```
+    Ноутбук Aster 14 Ноутбуки
+    Беспроводная мышь Мыши
+    Игровая мышь Мыши
+    Коврик для мыши Коврики
+    запросов: 5
+    ```
+    1 + 4: категория загружается для каждого товара, даже если она та же («Мыши» — дважды).
+- title: Только ключ
+  text: |
+    А если вывести `p.category_id` вместо `p.category.name`?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    with CaptureQueriesContext(connection) as c:
+        for p in Product.objects.all():
+            print(p.name, p.category_id)
+    print("запросов:", len(c.captured_queries))
+    ```
+    Результат:
+    ```
+    Ноутбук Aster 14 2
+    Беспроводная мышь 3
+    Игровая мышь 3
+    Коврик для мыши 4
+    запросов: 1
+    ```
+    `category_id` — колонка строки товара, она уже загружена; запрос нужен только за объектом категории.
+- title: Сумма в цикле
+  text: |
+    Выведите для каждого заказа, по номеру, общее количество единиц товара в позициях. Сколько запросов получилось?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    with CaptureQueriesContext(connection) as c:
+        for o in Order.objects.order_by("number"):
+            total = sum(i.quantity for i in o.items.all())
+            print(o.number, total)
+    print("запросов:", len(c.captured_queries))
+    ```
+    Результат:
+    ```
+    A-12 2
+    A-13 2
+    A-14 1
+    A-15 3
+    запросов: 5
+    ```
+    Позиции каждого заказа — отдельный запрос: N+1. Лечение — `prefetch_related("items")` (тема 5) или сумма в базе (раздел «ORM: агрегация»).

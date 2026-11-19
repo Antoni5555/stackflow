@@ -1,0 +1,20 @@
+title: "Сколько запросов"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Каждое обращение к связи в цикле — свой запрос: две связи — два «N»."
+statement: |
+  В базе 4 заказа. Сколько SQL-запросов выполнит этот код?
+
+  ```python
+  for order in Order.objects.all():
+      print(order.user.email, order.items.count())
+  ```
+options:
+  - "1"
+  - "5"
+  - "9"
+  - "2"
+answer: [2]
+explanation: |
+  Один запрос за заказами, затем на каждый из 4 заказов — запрос за покупателем (`order.user`) и `SELECT COUNT(*)` позиций (`order.items.count()`): 1 + 4 × 2 = 9. Проверено в тренажёре.

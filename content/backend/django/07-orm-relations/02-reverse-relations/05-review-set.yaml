@@ -1,0 +1,23 @@
+title: "Отзывы без related_name"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Без related_name обратный менеджер называется <модель>_set."
+statement: |
+  Модель отзыва:
+
+  ```python
+  class Review(models.Model):
+      product = models.ForeignKey(Product, on_delete=models.CASCADE)
+      rating = models.PositiveSmallIntegerField()
+  ```
+
+  Как получить все отзывы товара `product`?
+options:
+  - "`product.reviews.all()`"
+  - "`product.review_set.all()`"
+  - "`product.review.all()`"
+  - "`Review.objects.get(product=product)`"
+answer: [1]
+explanation: |
+  `related_name` не задан — Django называет обратный менеджер `<имя модели строчными>_set`: `review_set`. `reviews` появился бы только с `related_name="reviews"`. `get()` вернёт один объект и упадёт с `MultipleObjectsReturned`, если отзывов несколько; для списка — `Review.objects.filter(product=product)` (то же, что `review_set.all()`).

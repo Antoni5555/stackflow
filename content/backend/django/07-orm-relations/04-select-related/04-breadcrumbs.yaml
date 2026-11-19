@@ -1,0 +1,156 @@
+title: "Хлебные крошки"
+type: exercise
+difficulty: 2
+pitfall: "select_related по цепочке с nullable FK делает LEFT OUTER JOIN — объекты без родителя не теряются."
+statement: |
+  Страница товара `/product/<pk>/` показывает путь «Электроника / Ноутбуки» и делает 2 запроса. Исправьте view: один запрос, и страница коврика (у «Ковриков» нет родителя) по-прежнему открывается.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+        parent = models.ForeignKey(
+            "self", on_delete=models.PROTECT, null=True, blank=True,
+            related_name="children",
+        )
+
+        def __str__(self):
+            return self.name
+
+
+    class Tag(models.Model):
+        name = models.CharField(max_length=50, unique=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+        tags = models.ManyToManyField(Tag, blank=True, related_name="products")
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+        is_published = models.BooleanField(default=True)
+  views.py: |
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Product
+
+
+    def product(request, pk):
+        product = get_object_or_404(
+            Product.objects.select_related("category"), pk=pk
+        )
+        return render(request, "shop/product.html", {"product": product})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("product/<int:pk>/", views.product),
+    ]
+  templates/shop/product.html: |
+    <p>{% if product.category.parent %}{{ product.category.parent.name }} / {% endif %}{{ product.category.name }}</p>
+    <h1>{{ product.name }}</h1>
+setup: |
+  electronics = Category.objects.create(name="Электроника")
+  laptops = Category.objects.create(name="Ноутбуки", parent=electronics)
+  mice = Category.objects.create(name="Мыши", parent=electronics)
+  pads = Category.objects.create(name="Коврики")
+  hit = Tag.objects.create(name="хит")
+  new = Tag.objects.create(name="новинка")
+  sale = Tag.objects.create(name="скидка")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", price="64990.00")
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", price="1499.00")
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", price="3490.00")
+  pad = Product.objects.create(category=pads, name="Коврик для мыши", price="490.00")
+  aster.tags.add(hit, new)
+  mouse.tags.add(hit, sale)
+  gaming.tags.add(new)
+  anna = User.objects.create_user("anna", "anna@shop.example")
+  boris = User.objects.create_user("boris", "boris@shop.example")
+  vera = User.objects.create_user("vera", "vera@shop.example")
+  for number, user, items in [
+      ("A-12", anna, [(aster, 1), (mouse, 1)]),
+      ("A-13", boris, [(pad, 2)]),
+      ("A-14", anna, [(gaming, 1)]),
+      ("A-15", vera, [(mouse, 2), (pad, 1)]),
+  ]:
+      order = Order.objects.create(user=user, number=number)
+      for product, qty in items:
+          OrderItem.objects.create(order=order, product=product, quantity=qty)
+  Review.objects.create(product=mouse, user=anna, rating=5)
+  Review.objects.create(product=mouse, user=boris, rating=4)
+  Review.objects.create(product=mouse, user=vera, rating=2, is_published=False)
+  Review.objects.create(product=aster, user=vera, rating=5)
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Product
+
+
+    def product(request, pk):
+        product = get_object_or_404(
+            Product.objects.select_related("category__parent"), pk=pk
+        )
+        return render(request, "shop/product.html", {"product": product})
+check:
+  type: django
+  tests:
+    - code: |
+        pk = Product.objects.get(name="Ноутбук Aster 14").pk
+        html = client.get(f"/product/{pk}/").content.decode()
+        assert "Электроника / Ноутбуки" in html
+      fail: "На странице ноутбука должен быть путь «Электроника / Ноутбуки»."
+    - code: |
+        pk = Product.objects.get(name="Ноутбук Aster 14").pk
+        with max_queries(1):
+            client.get(f"/product/{pk}/")
+      fail: "Родительская категория загружается отдельным запросом — добавьте её в цепочку select_related."
+    - code: |
+        pk = Product.objects.get(name="Коврик для мыши").pk
+        r = client.get(f"/product/{pk}/")
+        assert r.status_code == 200 and "Коврики" in r.content.decode()
+      fail: "Страница коврика должна открываться: у его категории нет родителя."
+hints:
+  - "Через какие две связи шаблон добирается до «Электроники»?"
+  - "`select_related(\"category__parent\")`."
+explanation: |
+  `select_related("category")` присоединяет категорию, а `category.parent` — ещё один запрос. Цепочка `"category__parent"` присоединяет и родителя. Поле `parent` с `null=True`, поэтому Django делает для него `LEFT OUTER JOIN` — товар из категории без родителя не пропадает, `product.category.parent` у него `None`.

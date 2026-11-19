@@ -1,0 +1,50 @@
+- title: Мыши по цене
+  text: |
+    Через обратную связь категории «Мыши» выведите её товары по возрастанию цены.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    mice = Category.objects.get(name="Мыши")
+    print(mice.products.order_by("price"))
+    ```
+    Результат:
+    ```
+    <QuerySet [<Product: Беспроводная мышь>, <Product: Игровая мышь>]>
+    ```
+    У менеджера связи — все методы QuerySet: `order_by`, `filter`, `count`.
+- title: Заказы Анны
+  text: |
+    Сколько заказов у Анны и есть ли среди них A-14? Используйте обратную связь пользователя.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    anna = User.objects.get(username="anna")
+    n = anna.orders.count()
+    print(n, anna.orders.filter(number="A-14").exists())
+    ```
+    Результат:
+    ```
+    2 True
+    ```
+    `count()` и `exists()` — запросы `COUNT(*)` и `LIMIT 1`, заказы целиком не загружаются.
+- title: Товар сразу в категорию
+  text: |
+    Создайте товар «Коврик XL» за 990 ₽ в категории «Коврики» через менеджер обратной связи, без указания `category=`. Выведите его категорию и число товаров в ней.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    pads = Category.objects.get(name="Коврики")
+    p = pads.products.create(name="Коврик XL", price="990.00")
+    print(p.category, pads.products.count())
+    ```
+    Результат:
+    ```
+    Коврики 2
+    ```
+    `category.products.create(…)` сам подставляет `category=pads`.

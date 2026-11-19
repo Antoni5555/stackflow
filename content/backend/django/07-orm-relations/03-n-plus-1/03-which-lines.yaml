@@ -1,0 +1,17 @@
+title: "Какая строка ходит в базу"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Ключ связи (user_id) есть в строке объекта, а сам связанный объект (user) — отдельный запрос."
+statement: |
+  Товары и заказы загружены простым `objects.all()` без `select_related`/`prefetch_related`. Какие обращения в цикле делают **дополнительный** запрос на каждый объект?
+options:
+  - "`order.user_id`"
+  - "`order.user.email`"
+  - "`order.number`"
+  - "`product.tags.all()`"
+  - "`product.category_id`"
+  - "`order.items.count()`"
+answer: [1, 3, 5]
+explanation: |
+  `user_id`, `category_id` и `number` — колонки строки, они уже загружены. `order.user` загружает пользователя, `product.tags.all()` — метки, `order.items.count()` — считает позиции: каждый раз запрос на объект.

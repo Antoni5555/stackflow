@@ -1,0 +1,15 @@
+title: "select_related для меток"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "select_related работает только для связей «к одному»; для M2M — FieldError."
+statement: |
+  Что произойдёт при выполнении `list(Product.objects.select_related("category", "tags"))`? `tags` — `ManyToManyField`.
+options:
+  - "Один запрос: товары, категории и метки через `JOIN`"
+  - "Два запроса: товары с категориями и отдельно метки"
+  - "`FieldError: Invalid field name(s) given in select_related: 'tags'. Choices are: category`"
+  - "Метки молча не загрузятся, товары с категориями — одним запросом"
+answer: [2]
+explanation: |
+  `select_related` принимает только `ForeignKey` и `OneToOneField` — связи, где у объекта один связанный объект. На `ManyToManyField` Django сразу падает с `FieldError` и перечисляет допустимые связи — у товара это только `category`. Метки загружают `prefetch_related("tags")` — это и есть второй вариант ответа, но для `select_related` он не работает.

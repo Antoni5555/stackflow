@@ -1,0 +1,58 @@
+- title: Дешёвая электроника
+  text: |
+    Найдите товары из подкатегорий «Электроники» дешевле 5000 ₽, по возрастанию цены. Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    qs = Product.objects.filter(
+        category__parent__name="Электроника", price__lt=5000
+    ).order_by("price")
+    print(qs)
+    ```
+    Результат:
+    ```
+    <QuerySet [<Product: Беспроводная мышь>, <Product: Игровая мышь>]>
+    ```
+    Условие на родителя категории и на цену товара — в одном `filter`; через FK вперёд дублей нет.
+- title: Кто купил коврик
+  text: |
+    Выведите имена покупателей, у которых в заказах есть «Коврик для мыши», — каждого один раз, по алфавиту.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    name = "Коврик для мыши"
+    users = (
+        User.objects.filter(orders__items__product__name=name)
+        .distinct()
+        .order_by("username")
+    )
+    print(list(users.values_list("username", flat=True)))
+    ```
+    Результат:
+    ```
+    ['boris', 'vera']
+    ```
+    Путь идёт через две обратные связи (`orders`, `items`) и FK `product`. Без `distinct()` покупатель с ковриком в нескольких позициях повторился бы.
+- title: Товары с пятёркой
+  text: |
+    Найдите товары, у которых есть **опубликованный** отзыв с оценкой 5, по `id`. Условия должны относиться к одному и тому же отзыву.
+  hint: 'Один `filter` или два?'
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    qs = Product.objects.filter(
+        reviews__rating=5, reviews__is_published=True
+    ).distinct().order_by("id")
+    print(qs)
+    ```
+    Результат:
+    ```
+    <QuerySet [<Product: Ноутбук Aster 14>, <Product: Беспроводная мышь>]>
+    ```
+    Оба условия в одном `filter` — про один отзыв. В цепочке `filter(reviews__rating=5).filter(reviews__is_published=True)` подошёл бы и товар, где пятёрка не опубликована, а опубликован другой отзыв.

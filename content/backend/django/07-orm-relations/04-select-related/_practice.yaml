@@ -1,0 +1,62 @@
+- title: Отзывы с товаром и автором
+  text: |
+    Выведите все отзывы по `id`: товар, автор, оценка — одним запросом.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    reviews = (
+        Review.objects.select_related("product", "user")
+        .order_by("id")
+    )
+    for r in reviews:
+        print(r.product.name, r.user.username, r.rating)
+    ```
+    Результат:
+    ```
+    Беспроводная мышь anna 5
+    Беспроводная мышь boris 4
+    Беспроводная мышь vera 2
+    Ноутбук Aster 14 vera 5
+    ```
+    Обе связи — FK вперёд: два `JOIN` в одном запросе.
+- title: Родитель категории
+  text: |
+    Выведите товары по `id` и родительскую категорию их категории одним запросом.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    qs = (
+        Product.objects.select_related("category__parent")
+        .order_by("id")
+    )
+    for p in qs:
+        print(p.name, p.category.parent)
+    ```
+    Результат:
+    ```
+    Ноутбук Aster 14 Электроника
+    Беспроводная мышь Электроника
+    Игровая мышь Электроника
+    Коврик для мыши None
+    ```
+    У «Ковриков» нет родителя — `None`, а товар в выборке остался.
+- title: Какой JOIN
+  text: |
+    Проверьте по тексту запроса, каким `JOIN` присоединяется родительская категория (`parent` с `null=True`).
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    qs = Product.objects.select_related("category__parent")
+    print("LEFT OUTER JOIN" in str(qs.query))
+    ```
+    Результат:
+    ```
+    True
+    ```
+    Категория товара обязательна — `INNER JOIN`, родитель может быть `NULL` — `LEFT OUTER JOIN`, иначе коврик пропал бы из выборки.

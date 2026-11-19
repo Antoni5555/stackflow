@@ -1226,6 +1226,72 @@ def f_race():
     f.save(out(DJ6 / "07-f-expressions" / "img" / "f-race.svg"))
 
 
+# ---------- Django 7: связи и N+1 ----------
+DJ7 = ROOT / "django" / "07-orm-relations"
+
+
+def join_duplicates():
+    f = Figure(860, 300, "JOIN через метки даёт строку на каждую подходящую метку; distinct() оставляет одну")
+    f.text(20, 24, 'filter(tags__name__in=["хит", "новинка"])', "cs")
+    rows = [("Aster 14 · хит", "err"), ("Aster 14 · новинка", "err"),
+            ("Беспроводная мышь · хит", "box2"), ("Игровая мышь · новинка", "box2")]
+    for i, (t, cls) in enumerate(rows):
+        f.box(20, 40 + i * 40, 330, 32, t, cls, "cs")
+    f.arrow("M360 110H446")
+    f.text(403, 98, ".distinct()", "cs", "middle")
+    for i, t in enumerate(["Aster 14", "Беспроводная мышь", "Игровая мышь"]):
+        f.box(450, 40 + i * 40, 260, 32, t, "ok", "cs")
+    f.text(20, 236, "Коврик без меток в выборку не попал вовсе: условие требует подходящей метки.", "t")
+    f.text(20, 262, "Дубли дают пути через M2M и обратные связи; через ForeignKey вперёд строка всегда одна.", "s")
+    f.save(out(DJ7 / "01-related-filters" / "img" / "join-duplicates.svg"))
+
+
+def n_plus_1():
+    f = Figure(860, 300, "Список заказов: один запрос за заказами и по запросу за покупателем каждого")
+    f.text(20, 24, "Order.objects.all() + {{ order.user.email }}", "cs")
+    f.box(20, 40, 390, 40, "SELECT … FROM shop_order  → 4 строки", "box2", "cs")
+    for i, uid in enumerate([1, 2, 1, 3]):
+        f.box(40, 92 + i * 42, 370, 34, f"SELECT … FROM auth_user WHERE id = {uid}", "err", "cs")
+    f.text(20, 280, "итого 1 + 4 = 5 запросов", "t")
+    f.text(450, 24, 'select_related("user")', "cs")
+    f.box(450, 40, 390, 60, "", "ok")
+    f.text(466, 64, "SELECT … FROM shop_order", "cs")
+    f.text(466, 86, "INNER JOIN auth_user ON …", "cs")
+    f.text(450, 130, "итого 1 запрос — и на 4, и на 4000 заказов", "t")
+    f.text(450, 160, "Число запросов слева растёт", "s")
+    f.text(450, 180, "вместе с числом строк на странице.", "s")
+    f.save(out(DJ7 / "03-n-plus-1" / "img" / "n-plus-1.svg"))
+
+
+def select_related_fig():
+    f = Figure(860, 250, "select_related собирает заказ и покупателя из одной строки JOIN")
+    f.text(20, 24, 'Order.objects.select_related("user")', "cs")
+    _table(f, 20, 40, "строка результата", ["shop_order.id, number, user_id", "auth_user.id, username, email …"], 340, "box2")
+    f.arrow("M360 70H446")
+    f.box(450, 40, 180, 50, "order", "ok", "cs")
+    f.arrow("M360 94H446")
+    f.box(450, 100, 180, 50, "order.user", "ok", "cs")
+    f.text(650, 70, "объект заказа", "s")
+    f.text(650, 130, "уже загружен — запроса нет", "s")
+    f.text(20, 200, "Для FK и OneToOne: обязательная связь — INNER JOIN, null=True — LEFT OUTER JOIN.", "t")
+    f.text(20, 228, 'Цепочки — "order__user"; для M2M и обратных связей — FieldError, нужен prefetch_related.', "s")
+    f.save(out(DJ7 / "04-select-related" / "img" / "select-related.svg"))
+
+
+def prefetch_fig():
+    f = Figure(860, 250, "prefetch_related: второй запрос с IN по всем товарам и раскладка меток в Python")
+    f.box(20, 30, 380, 40, "1. SELECT … FROM shop_product  → id 1, 2, 3, 4", "box2", "cs")
+    f.box(20, 82, 380, 60, "", "box2")
+    f.text(36, 106, "2. SELECT … FROM shop_tag JOIN …", "cs")
+    f.text(36, 128, "   WHERE product_id IN (1, 2, 3, 4)", "cs")
+    f.arrow("M400 100H446")
+    f.text(423, 90, "Python", "s", "middle")
+    _table(f, 450, 30, "кэш p.tags.all()", ["1 Aster 14 → хит, новинка", "2 Беспроводная → хит, скидка", "3 Игровая → новинка", "4 Коврик → (пусто)"], 390, "ok")
+    f.text(20, 200, "Два запроса на любое число товаров; в цикле p.tags.all() в базу не ходит.", "t")
+    f.text(20, 228, 'p.tags.filter(…) — новый запрос: условие задают в Prefetch("tags", queryset=…).', "s")
+    f.save(out(DJ7 / "05-prefetch-related" / "img" / "prefetch.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2701,6 +2767,7 @@ if __name__ == "__main__":
                   model_table, null_blank, foreign_key, many_to_many, meta_constraints, model_inheritance,
                   migrations_flow, merge_flow, admin_flow, admin_setup,
                   lazy_queryset, pagination, f_race,
+                  join_duplicates, n_plus_1, select_related_fig, prefetch_fig,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

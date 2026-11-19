@@ -1,0 +1,153 @@
+title: "Каталог с метками"
+type: exercise
+difficulty: 2
+pitfall: "Связи «к одному» — select_related, «ко многим» — prefetch_related; их сочетают."
+statement: |
+  Каталог `/catalog/` выводит у каждого товара категорию и метки и делает 9 запросов на 4 товара. Исправьте view: не больше двух запросов при любом числе товаров.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+        parent = models.ForeignKey(
+            "self", on_delete=models.PROTECT, null=True, blank=True,
+            related_name="children",
+        )
+
+        def __str__(self):
+            return self.name
+
+
+    class Tag(models.Model):
+        name = models.CharField(max_length=50, unique=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+        tags = models.ManyToManyField(Tag, blank=True, related_name="products")
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+        is_published = models.BooleanField(default=True)
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def catalog(request):
+        products = Product.objects.order_by("id")
+        return render(request, "shop/catalog.html", {"products": products})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+  templates/shop/catalog.html: |
+    <ul>
+      {% for p in products %}
+        <li>{{ p.name }} ({{ p.category.name }}): {% for t in p.tags.all %}{{ t.name }} {% endfor %}</li>
+      {% endfor %}
+    </ul>
+setup: |
+  electronics = Category.objects.create(name="Электроника")
+  laptops = Category.objects.create(name="Ноутбуки", parent=electronics)
+  mice = Category.objects.create(name="Мыши", parent=electronics)
+  pads = Category.objects.create(name="Коврики")
+  hit = Tag.objects.create(name="хит")
+  new = Tag.objects.create(name="новинка")
+  sale = Tag.objects.create(name="скидка")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", price="64990.00")
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", price="1499.00")
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", price="3490.00")
+  pad = Product.objects.create(category=pads, name="Коврик для мыши", price="490.00")
+  aster.tags.add(hit, new)
+  mouse.tags.add(hit, sale)
+  gaming.tags.add(new)
+  anna = User.objects.create_user("anna", "anna@shop.example")
+  boris = User.objects.create_user("boris", "boris@shop.example")
+  vera = User.objects.create_user("vera", "vera@shop.example")
+  for number, user, items in [
+      ("A-12", anna, [(aster, 1), (mouse, 1)]),
+      ("A-13", boris, [(pad, 2)]),
+      ("A-14", anna, [(gaming, 1)]),
+      ("A-15", vera, [(mouse, 2), (pad, 1)]),
+  ]:
+      order = Order.objects.create(user=user, number=number)
+      for product, qty in items:
+          OrderItem.objects.create(order=order, product=product, quantity=qty)
+  Review.objects.create(product=mouse, user=anna, rating=5)
+  Review.objects.create(product=mouse, user=boris, rating=4)
+  Review.objects.create(product=mouse, user=vera, rating=2, is_published=False)
+  Review.objects.create(product=aster, user=vera, rating=5)
+solution:
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def catalog(request):
+        products = (
+            Product.objects.select_related("category")
+            .prefetch_related("tags")
+            .order_by("id")
+        )
+        return render(request, "shop/catalog.html", {"products": products})
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/catalog/").content.decode()
+        assert "Ноутбук Aster 14 (Ноутбуки): хит новинка" in html
+        assert "Коврик для мыши (Коврики): <" in html
+      fail: "В каталоге должны быть категория и метки каждого товара."
+    - code: |
+        with max_queries(2):
+            client.get("/catalog/")
+      fail: "Категория или метки загружаются по запросу на товар: категорию — select_related, метки — prefetch_related."
+hints:
+  - "Какая из двух связей «к одному», а какая «ко многим»?"
+  - "`select_related(\"category\").prefetch_related(\"tags\")`."
+explanation: |
+  Категория у товара одна — `select_related("category")` присоединяет её в основном запросе. Меток много — `prefetch_related("tags")` загружает метки всех товаров вторым запросом `… WHERE product_id IN (1, 2, 3, 4)` и раскладывает их по товарам. Итого 2 запроса вместо 1 + 4 × 2 = 9.

@@ -1,0 +1,75 @@
+- title: Товаров в категории
+  text: |
+    Выведите все категории по `id` и число товаров в каждой — двумя запросами.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    qs = (
+        Category.objects.prefetch_related("products")
+        .order_by("id")
+    )
+    for c in qs:
+        print(c.name, len(c.products.all()))
+    ```
+    Результат:
+    ```
+    Электроника 0
+    Ноутбуки 1
+    Мыши 2
+    Коврики 1
+    ```
+    `len(c.products.all())` берёт предзагруженный список. Для одних только чисел проще посчитать в базе — раздел «ORM: агрегация».
+- title: Заказы и товары
+  text: |
+    Выведите заказы по номеру и названия товаров их позиций — без N+1 и по позициям, и по товарам.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    qs = (
+        Order.objects.prefetch_related("items__product")
+        .order_by("number")
+    )
+    for o in qs:
+        print(o.number, [i.product.name for i in o.items.all()])
+    ```
+    Результат:
+    ```
+    A-12 ['Ноутбук Aster 14', 'Беспроводная мышь']
+    A-13 ['Коврик для мыши']
+    A-14 ['Игровая мышь']
+    A-15 ['Беспроводная мышь', 'Коврик для мыши']
+    ```
+    Три запроса: заказы, позиции, товары.
+- title: Лучшая оценка
+  text: |
+    Выведите для каждого товара лучшую оценку среди опубликованных отзывов (или «нет отзывов») — двумя запросами.
+  hint: '`Prefetch(…, queryset=…, to_attr=…)`.'
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Prefetch
+    best = (
+        Review.objects.filter(is_published=True)
+        .order_by("-rating")
+    )
+    qs = Product.objects.prefetch_related(
+        Prefetch("reviews", queryset=best, to_attr="best")
+    ).order_by("id")
+    for p in qs:
+        top = p.best[0].rating if p.best else "нет отзывов"
+        print(p.name, top)
+    ```
+    Результат:
+    ```
+    Ноутбук Aster 14 5
+    Беспроводная мышь 5
+    Игровая мышь нет отзывов
+    Коврик для мыши нет отзывов
+    ```
+    Порядок задан в `Prefetch`, поэтому `p.best[0]` — лучший отзыв. `p.reviews.order_by("-rating").first()` в цикле сделал бы запрос на каждый товар.

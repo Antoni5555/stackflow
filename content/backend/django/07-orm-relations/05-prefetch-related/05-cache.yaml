@@ -1,0 +1,17 @@
+title: "Что берёт из кэша"
+type: quiz
+kind: multiple
+difficulty: 3
+pitfall: "Кэш предзагрузки работает для all(), count(), exists(); filter, order_by и first — новые запросы."
+statement: |
+  Товары загружены так: `products = list(Product.objects.prefetch_related("reviews"))`. Какие обращения к отзывам товара `p` из этого списка **не** выполняют новый SQL-запрос?
+options:
+  - "`list(p.reviews.all())`"
+  - "`p.reviews.count()`"
+  - "`p.reviews.exists()`"
+  - "`p.reviews.first()`"
+  - "`p.reviews.filter(rating=5)` (с перебором результата)"
+  - "`p.reviews.order_by(\"-rating\")` (с перебором результата)"
+answer: [0, 1, 2]
+explanation: |
+  Предзагруженные отзывы лежат в кэше менеджера: `all()` возвращает их, а `count()` и `exists()` на заполненном кэше считают в Python. `first()` сортирует по ключу и делает `LIMIT 1` — новый запрос; `filter` и `order_by` тоже строят новый QuerySet. Проверено в тренажёре: 0, 0, 0, 1, 1, 1 запрос.
