@@ -1,0 +1,15 @@
+title: Необязательный комментарий
+type: quiz
+kind: single
+difficulty: 1
+pitfall: У строки с null=True две пустоты — NULL и пустая строка.
+statement: |
+  У заказа необязательный комментарий покупателя. Как объявить поле?
+options:
+  - "`models.TextField(null=True)`"
+  - "`models.TextField(blank=True)`"
+  - "`models.TextField(null=True, blank=True)`"
+  - "`models.TextField()` — пустой комментарий и так допустим"
+answer: [1]
+explanation: |
+  Для строк пустое значение — `""`, поэтому достаточно `blank=True`: форма разрешит пустое поле, в базу запишется пустая строка. С `null=True` появились бы два вида «нет комментария» — `NULL` и `""`, и фильтровать пришлось бы оба. Без `blank=True` формы потребуют комментарий обязательно.

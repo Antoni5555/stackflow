@@ -1,0 +1,54 @@
+- title: set, add и clear
+  text: |
+    Повесьте на мышь метки «хит» и «скидка» через `set`, затем оставьте только «скидку», затем снимите все метки. Сколько товаров с меткой «хит» останется?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    hit = Tag.objects.create(name="хит")
+    sale = Tag.objects.create(name="скидка")
+    mouse = Product.objects.create(name="Мышь")
+    mouse.tags.set([hit, sale])
+    print(mouse.tags.all())
+    mouse.tags.set([sale])
+    print(mouse.tags.all())
+    mouse.tags.clear()
+    print(mouse.tags.count(), hit.products.count())
+    ```
+    Результат:
+    ```
+    <QuerySet [<Tag: хит>, <Tag: скидка>]>
+    <QuerySet [<Tag: скидка>]>
+    0 0
+    ```
+    Меняется только таблица-связка: сами метки остаются, у них просто нет товаров.
+- title: Избранное
+  text: |
+    Покупатель добавляет товары в избранное, и нужно знать, когда добавил. Как описать связь?
+  answer: |
+    Связь пользователь ↔ товар с данными — модель-связка:
+
+    Файл `models.py` (фрагмент):
+    ```python
+    class Favorite(models.Model):
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE
+        )
+        added_at = models.DateTimeField(auto_now_add=True)
+
+        class Meta:
+            constraints = [
+                models.UniqueConstraint(
+                    fields=["user", "product"],
+                    name="unique_favorite",
+                ),
+            ]
+    ```
+    Время добавления — данные пары, поэтому простой `ManyToManyField` не подходит; уникальность пары задаём сами.
+- title: Где объявить поле
+  text: |
+    Объявили `tags = models.ManyToManyField(Tag)` в `Product`. Как получить товары метки «хит»?
+  answer: |
+    `Tag.objects.get(name="хит").product_set.all()` — без `related_name` обратная связь называется `product_set`. С `related_name="products"` — `hit.products.all()`. Второе поле `ManyToManyField` в `Tag` не нужно — связь уже доступна с обеих сторон.

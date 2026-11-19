@@ -1,0 +1,61 @@
+title: Время изменения не меняется
+type: exercise
+difficulty: 2
+pitfall: auto_now срабатывает только в save() — массовый update() идёт прямым UPDATE и время изменения не трогает.
+statement: |
+  Функция `restock(product_id, qty)` из `queries.py` пополняет склад, но поле «изменено» у товара остаётся старым — менеджеры не видят, что товар обновлялся. Исправьте функцию: остаток и время изменения должны обновиться одним запросом.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        stock = models.PositiveIntegerField(default=0)
+        updated_at = models.DateTimeField(auto_now=True)
+  queries.py: |
+    from .models import Product
+
+
+    def restock(product_id, qty):
+        Product.objects.filter(pk=product_id).update(stock=qty)
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  Product.objects.create(name="Беспроводная мышь")
+solution:
+  queries.py: |
+    from django.utils import timezone
+
+    from .models import Product
+
+
+    def restock(product_id, qty):
+        Product.objects.filter(pk=product_id).update(
+            stock=qty, updated_at=timezone.now()
+        )
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import restock
+        product = Product.objects.get()
+        before = product.updated_at
+        restock(product.pk, 5)
+        product.refresh_from_db()
+        assert product.stock == 5
+        assert product.updated_at > before
+      fail: "Остаток обновился, а время изменения — нет: update() не вызывает save(), и auto_now не срабатывает."
+    - code: |
+        from shop.queries import restock
+        product = Product.objects.get()
+        with max_queries(1):
+            restock(product.pk, 7)
+      fail: Обновите товар одним запросом — без чтения и save().
+hints:
+  - "Почему `auto_now` не сработал? Какой метод его заполняет?"
+  - "Передайте время в `update()` сами: `updated_at=timezone.now()`."
+explanation: |
+  `auto_now` заполняется внутри `save()`, а `QuerySet.update()` сразу отправляет в базу `UPDATE … SET "stock" = 5` и `save()` не вызывает. Можно было бы прочитать объект и вызвать `save()`, но это два запроса и перезапись всех полей. Проще передать время в `update()` явно — один запрос, оба поля.

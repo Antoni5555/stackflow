@@ -1,0 +1,65 @@
+title: Статус «paid» на странице
+type: exercise
+difficulty: 1
+pitfall: В поле с choices хранится значение для базы; подпись для людей даёт get_FOO_display.
+statement: |
+  В списке заказов покупатель видит статусы `paid` и `new` вместо «Оплачен» и «Новый». Исправьте шаблон.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+            CANCELLED = "cancelled", "Отменён"
+
+        number = models.CharField(max_length=20, unique=True)
+        status = models.CharField(
+            max_length=20, choices=Status, default=Status.NEW
+        )
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Order
+
+
+    def orders(request):
+        return render(request, "shop/orders.html", {"orders": Order.objects.all()})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/", views.orders),
+    ]
+  templates/shop/orders.html: |
+    <ul>
+      {% for order in orders %}
+        <li>Заказ {{ order.number }}: {{ order.status }}</li>
+      {% endfor %}
+    </ul>
+setup: |
+  Order.objects.create(number="A-12", status="paid")
+  Order.objects.create(number="A-13")
+solution:
+  templates/shop/orders.html: |
+    <ul>
+      {% for order in orders %}
+        <li>Заказ {{ order.number }}: {{ order.get_status_display }}</li>
+      {% endfor %}
+    </ul>
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/orders/").content.decode()
+        assert "Заказ A-12: Оплачен" in html and "Заказ A-13: Новый" in html
+      fail: "На странице значения из базы (paid, new) — нужны подписи статусов."
+hints:
+  - "Какой метод Django добавляет модели для каждого поля с `choices`?"
+  - "`{{ order.get_status_display }}` — метод вызывается в шаблоне без скобок."
+explanation: |
+  В колонке хранится короткое значение для кода и базы — `"paid"`, а подпись «Оплачен» живёт только в `choices`. Для каждого поля с `choices` модель получает метод `get_<поле>_display()`, который возвращает подпись. Подписи можно менять и переводить, не трогая данных в базе.

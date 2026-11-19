@@ -1,0 +1,58 @@
+- title: Модель промокода
+  text: |
+    Опишите модель промокода: код (строка до 20 символов) и процент скидки (целое неотрицательное). Сделайте, чтобы промокод выводился как `WELCOME10 (−10%)`. Создайте в `orm.py` два промокода и выведите их.
+  answer: |
+    Ответ:
+
+    Файл `models.py`:
+    ```python
+    from django.db import models
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20)
+        percent = models.PositiveIntegerField()
+
+        def __str__(self):
+            return f"{self.code} (−{self.percent}%)"
+    ```
+
+    Файл `orm.py`:
+    ```python
+    Promo.objects.create(code="WELCOME10", percent=10)
+    Promo.objects.create(code="SALE25", percent=25)
+    print(Promo.objects.count())
+    Promo.objects.all()
+    ```
+    Результат:
+    ```
+    2
+    <QuerySet [<Promo: WELCOME10 (−10%)>, <Promo: SALE25 (−25%)>]>
+    ```
+- title: Изменить и удалить
+  text: |
+    Создайте промокод `SALE25` на 25%, поменяйте скидку на 30%, сохраните и удалите. Какие SQL-запросы уйдут в базу?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    promo = Promo.objects.create(code="SALE25", percent=25)
+    promo.percent = 30
+    promo.save()
+    promo.delete()
+    Promo.objects.count()
+    ```
+    SQL:
+    ```
+    INSERT INTO "shop_promo" ("code", "percent") VALUES ('SALE25', 25) RETURNING "shop_promo"."id"
+    UPDATE "shop_promo" SET "code" = 'SALE25', "percent" = 30 WHERE "shop_promo"."id" = 1
+    DELETE FROM "shop_promo" WHERE "shop_promo"."id" IN (1)
+    SELECT COUNT(*) AS "__count" FROM "shop_promo"
+    ```
+    `save()` переписал и неизменённый код — он всегда обновляет все поля объекта.
+- title: Таблица модели
+  text: |
+    В приложении `shop` модели `Promo`, `ProductTag` и `Order`. Как будут называться их таблицы?
+  answer: |
+    `shop_promo`, `shop_producttag`, `shop_order` — имя приложения, подчёркивание и имя модели строчными, без разделителя внутри имени модели. Своё имя задают `Meta.db_table`.

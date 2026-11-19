@@ -1,0 +1,66 @@
+title: Метка «хит» стёрла остальные
+type: exercise
+difficulty: 1
+pitfall: set() заменяет весь набор связей — остальные метки удаляются.
+statement: |
+  `mark_hit(product)` из `queries.py` должна добавить товару метку «хит». Но после неё пропадает метка «новинка». Исправьте функцию: остальные метки товара должны остаться.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Tag(models.Model):
+        name = models.CharField(max_length=50, unique=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        tags = models.ManyToManyField(Tag, blank=True, related_name="products")
+  queries.py: |
+    from .models import Tag
+
+
+    def mark_hit(product):
+        hit = Tag.objects.get(name="хит")
+        product.tags.set([hit])
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  hit = Tag.objects.create(name="хит")
+  new = Tag.objects.create(name="новинка")
+  mouse = Product.objects.create(name="Беспроводная мышь")
+  mouse.tags.add(new)
+solution:
+  queries.py: |
+    from .models import Tag
+
+
+    def mark_hit(product):
+        hit = Tag.objects.get(name="хит")
+        product.tags.add(hit)
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import mark_hit
+        mouse = Product.objects.get()
+        mark_hit(mouse)
+        assert sorted(t.name for t in mouse.tags.all()) == ["новинка", "хит"]
+      fail: "После mark_hit у товара должны быть обе метки — «хит» и «новинка»."
+    - code: |
+        from shop.queries import mark_hit
+        mouse = Product.objects.get()
+        mark_hit(mouse)
+        mark_hit(mouse)
+        assert mouse.tags.count() == 2
+      fail: Повторный вызов не должен дублировать метку.
+hints:
+  - "Чем `set()` отличается от `add()` у менеджера связи?"
+  - "`product.tags.add(hit)`."
+explanation: |
+  `set([…])` приводит набор связей к переданному списку: лишние пары удаляет, недостающие добавляет. `add(…)` только добавляет пары и не трогает остальные; повторная пара не создаётся — у таблицы-связки уникальность пары. `set` нужен, когда приходит полный новый набор, например из формы с галочками.

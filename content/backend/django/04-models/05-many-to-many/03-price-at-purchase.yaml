@@ -1,0 +1,59 @@
+title: Сумма старого заказа изменилась
+type: exercise
+difficulty: 2
+pitfall: Цена позиции через item.product.price — это текущая цена товара, а не цена покупки.
+statement: |
+  Мышь купили по 1499 ₽ за штуку (2 штуки), потом цену снизили до 1299 ₽ — и в истории сумма старого заказа «подешевела». Исправьте `order_total(order)` из `queries.py`: сумма должна считаться по ценам на момент покупки.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        products = models.ManyToManyField(Product, through="OrderItem")
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  queries.py: |
+    def order_total(order):
+        return sum(
+            item.product.price * item.quantity for item in order.items.all()
+        )
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  mouse = Product.objects.create(name="Беспроводная мышь", price="1499.00")
+  order = Order.objects.create(number="A-12")
+  OrderItem.objects.create(order=order, product=mouse, quantity=2, price=mouse.price)
+  Product.objects.filter(pk=mouse.pk).update(price="1299.00")
+solution:
+  queries.py: |
+    def order_total(order):
+        return sum(item.price * item.quantity for item in order.items.all())
+check:
+  type: django
+  tests:
+    - code: |
+        from decimal import Decimal
+        from shop.queries import order_total
+        assert order_total(Order.objects.get()) == Decimal("2998.00")
+      fail: "Сумма считается по текущей цене товара (1299 ₽), а покупали по 1499 ₽ — цена покупки хранится в позиции."
+hints:
+  - "Где хранится цена, по которой товар купили?"
+  - "`item.price * item.quantity`."
+explanation: |
+  Позиция заказа хранит свою цену — копию цены товара на момент оформления. `item.product.price` читает каталог прямо сейчас, и история заказов «плывёт» вслед за любыми изменениями цен. Заодно функция стала быстрее: товары для подсчёта больше не загружаются.

@@ -1,0 +1,55 @@
+- title: Типы значений
+  text: |
+    Модель отзыва: текст без ограничения длины, оценка — маленькое неотрицательное целое, время создания — автоматически. Какого типа будут значения в Python? Проверьте в `orm.py`.
+  answer: |
+    Ответ:
+
+    Файл `models.py`:
+    ```python
+    from django.db import models
+
+
+    class Review(models.Model):
+        text = models.TextField()
+        rating = models.PositiveSmallIntegerField()
+        created_at = models.DateTimeField(auto_now_add=True)
+    ```
+
+    Файл `orm.py`:
+    ```python
+    r = Review.objects.create(text="Отличная мышь", rating=5)
+    print(
+        type(r.rating).__name__,
+        type(r.created_at).__name__,
+        r.created_at.tzinfo,
+    )
+    ```
+    Результат:
+    ```
+    int datetime UTC
+    ```
+    Время хранится с часовым поясом — UTC; в московское его переводит шаблон.
+- title: Точность цены
+  text: |
+    Магазин продаёт оборудование до 5 000 000 ₽ с копейками. Какие `max_digits` и `decimal_places` нужны цене?
+  answer: |
+    `DecimalField(max_digits=9, decimal_places=2)`: 5 000 000,00 — это 7 цифр до запятой и 2 после, всего 9. С запасом на рост цен берут `max_digits=10` или `12` — лишние разряды в `numeric` ничего не стоят.
+- title: Какое поле выбрать
+  text: |
+    Подберите поля для модели поставщика: название, адрес сайта, почта для заказов, дата начала работы, активен ли договор.
+  answer: |
+    Ответ:
+
+    Файл `models.py`:
+    ```python
+    from django.db import models
+
+
+    class Supplier(models.Model):
+        name = models.CharField(max_length=200)
+        website = models.URLField()
+        email = models.EmailField()
+        since = models.DateField()
+        is_active = models.BooleanField(default=True)
+    ```
+    `URLField` и `EmailField` — строки с проверкой формата в формах; дата без времени — `DateField`.

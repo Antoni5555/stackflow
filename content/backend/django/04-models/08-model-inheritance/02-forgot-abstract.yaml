@@ -1,0 +1,66 @@
+title: Лишняя таблица и JOIN везде
+type: exercise
+difficulty: 2
+pitfall: Базовая модель без abstract=True — это многотабличное наследование с отдельной таблицей и JOIN в каждом запросе.
+statement: |
+  Общие поля времени вынесли в `TimeStampedModel`, и теперь каждый запрос к категориям и товарам делает `JOIN` с таблицей `shop_timestampedmodel`. Нужно, чтобы поля просто оказались в таблицах моделей, а общей таблицы не было.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class TimeStampedModel(models.Model):
+        created_at = models.DateTimeField(auto_now_add=True)
+        updated_at = models.DateTimeField(auto_now=True)
+
+
+    class Category(TimeStampedModel):
+        name = models.CharField(max_length=100)
+
+
+    class Product(TimeStampedModel):
+        name = models.CharField(max_length=200)
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  Category.objects.create(name="Мыши")
+  Product.objects.create(name="Беспроводная мышь")
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class TimeStampedModel(models.Model):
+        created_at = models.DateTimeField(auto_now_add=True)
+        updated_at = models.DateTimeField(auto_now=True)
+
+        class Meta:
+            abstract = True
+
+
+    class Category(TimeStampedModel):
+        name = models.CharField(max_length=100)
+
+
+    class Product(TimeStampedModel):
+        name = models.CharField(max_length=200)
+check:
+  type: django
+  tests:
+    - code: |
+        from django.db import connection
+        assert "shop_timestampedmodel" not in connection.introspection.table_names()
+      fail: "В базе есть таблица shop_timestampedmodel — базовая модель должна быть абстрактной."
+    - code: |
+        product = Product.objects.get()
+        assert product.created_at and product.updated_at
+        with max_queries(1):
+            list(Product.objects.all())
+      fail: Поля created_at и updated_at должны остаться у товара и читаться одним запросом.
+hints:
+  - "Как сказать Django, что у базовой модели не должно быть своей таблицы?"
+  - "`class Meta: abstract = True` внутри `TimeStampedModel`."
+explanation: |
+  Наследник обычной модели в Django — это многотабличное наследование: у `TimeStampedModel` своя таблица, у `Product` — своя со ссылкой `timestampedmodel_ptr_id`, и каждое чтение — `JOIN`. `abstract = True` убирает таблицу родителя: его поля копируются в таблицу каждого наследника, и запросы становятся обычными.

@@ -1,0 +1,48 @@
+- title: Мягкое удаление
+  text: |
+    Вынесите «мягкое удаление» в абстрактную модель: поле `is_deleted` и метод `soft_delete()`. Наследуйте от неё отзыв и проверьте.
+  answer: |
+    Ответ:
+
+    Файл `models.py`:
+    ```python
+    from django.db import models
+
+
+    class SoftDeleteModel(models.Model):
+        is_deleted = models.BooleanField(default=False)
+
+        class Meta:
+            abstract = True
+
+        def soft_delete(self):
+            self.is_deleted = True
+            self.save()
+
+
+    class Review(SoftDeleteModel):
+        text = models.TextField()
+    ```
+
+    Файл `orm.py`:
+    ```python
+    r = Review.objects.create(text="Плохая мышь")
+    r.soft_delete()
+    review = Review.objects.get()
+    print(Review.objects.count(), review.is_deleted)
+    ```
+    Результат:
+    ```
+    1 True
+    ```
+    Строка осталась в базе, а метод и поле получит любая модель, унаследованная от `SoftDeleteModel`. Скрывать удалённые из запросов будет свой менеджер — раздел «Продвинутый ORM».
+- title: Свой Meta у наследника
+  text: |
+    Абстрактная модель задаёт `ordering = ["-created_at"]`, а наследник объявил свой `class Meta` с `verbose_name`. Сохранится ли сортировка?
+  answer: |
+    Нет: свой `Meta` полностью заменяет родительский. Чтобы унаследовать параметры, пишут `class Meta(TimeStampedModel.Meta): verbose_name = "отзыв"`. Признак `abstract` при этом не наследуется — наследник останется обычной моделью.
+- title: Админка для распродажи
+  text: |
+    Менеджерам нужен отдельный раздел админки «Распродажа» с теми же товарами, но другими колонками. Какой вид наследования подходит?
+  answer: |
+    Прокси-модель: `class SaleProduct(Product): class Meta: proxy = True; verbose_name_plural = "распродажа"` — та же таблица, а в админке её регистрируют отдельно со своими колонками и фильтрами (раздел «Миграции и админка»).

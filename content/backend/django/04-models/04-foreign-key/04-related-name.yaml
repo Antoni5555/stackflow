@@ -1,0 +1,77 @@
+title: В категории нет товаров
+type: exercise
+difficulty: 2
+pitfall: Несуществующий атрибут в шаблоне выводится пустотой — product_set при related_name даёт пустой список без ошибки.
+statement: |
+  Страница категории показывает название, но список товаров пустой, хотя товары в ней есть, — и никакой ошибки. Исправьте шаблон.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+  views.py: |
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Category
+
+
+    def category(request, pk):
+        category = get_object_or_404(Category, pk=pk)
+        return render(request, "shop/category.html", {"category": category})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("categories/<int:pk>/", views.category),
+    ]
+  templates/shop/category.html: |
+    <h1>{{ category.name }}</h1>
+    <ul>
+      {% for product in category.product_set.all %}
+        <li>{{ product.name }}</li>
+      {% empty %}
+        <li>Товаров нет.</li>
+      {% endfor %}
+    </ul>
+setup: |
+  mice = Category.objects.create(name="Мыши")
+  Product.objects.create(category=mice, name="Беспроводная мышь")
+solution:
+  templates/shop/category.html: |
+    <h1>{{ category.name }}</h1>
+    <ul>
+      {% for product in category.products.all %}
+        <li>{{ product.name }}</li>
+      {% empty %}
+        <li>Товаров нет.</li>
+      {% endfor %}
+    </ul>
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get(f"/categories/{Category.objects.get().pk}/").content.decode()
+        assert "Беспроводная мышь" in html
+      fail: "Товаров в списке нет. Как называется обратная связь, если у ForeignKey задан related_name?"
+hints:
+  - "Посмотрите на `related_name` у поля `category` в модели."
+  - "`{% for product in category.products.all %}`."
+explanation: |
+  `related_name="products"` заменяет имя обратной связи: у категории есть `products`, а `product_set` больше нет. В Python `category.product_set` выбросил бы `AttributeError`, а шаблон молча подставил пустоту, и цикл ушёл в `{% empty %}`. `get_object_or_404` — короткая запись «найти или ответить 404», подробно — в разделе «ORM: чтение данных».

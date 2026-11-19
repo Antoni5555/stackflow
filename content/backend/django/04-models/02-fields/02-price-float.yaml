@@ -1,0 +1,53 @@
+title: Корзина на 0,30000000000000004 ₽
+type: exercise
+difficulty: 2
+pitfall: FloatField хранит дроби с двоичной погрешностью — суммы денег перестают быть точными.
+statement: |
+  Функция `cart_total()` из `queries.py` складывает цены всех товаров. Для товаров по 0,10 и 0,20 ₽ она возвращает `0.30000000000000004`. Исправьте модель так, чтобы цены хранились точно, и сумма была `Decimal("0.30")`.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.FloatField()
+  queries.py: |
+    from .models import Product
+
+
+    def cart_total():
+        return sum(p.price for p in Product.objects.all())
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  from decimal import Decimal
+  Product.objects.create(name="Наклейка", price=Decimal("0.10"))
+  Product.objects.create(name="Скрепка", price=Decimal("0.20"))
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+check:
+  type: django
+  tests:
+    - code: |
+        from decimal import Decimal
+        from shop.queries import cart_total
+        assert cart_total() == Decimal("0.30")
+      fail: "Сумма неточная: цены хранятся во float — для денег нужен DecimalField."
+    - code: |
+        from decimal import Decimal
+        assert Product._meta.get_field("price").decimal_places == 2
+      fail: У цены — два знака после запятой (копейки).
+hints:
+  - "Какое поле хранит десятичные дроби точно?"
+  - "`models.DecimalField(max_digits=10, decimal_places=2)`."
+explanation: |
+  `FloatField` — это `double precision`: 0,1 и 0,2 в нём хранятся приблизительно, и сумма получается 0,30000000000000004. `DecimalField` хранит `numeric(10, 2)`, а в Python отдаёт `Decimal` — точную десятичную дробь, и 0,10 + 0,20 = 0,30. `max_digits=10` — всего цифр, `decimal_places=2` — из них после запятой: цены до 99 999 999,99.

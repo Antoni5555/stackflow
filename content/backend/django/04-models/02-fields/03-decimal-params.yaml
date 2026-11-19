@@ -1,0 +1,62 @@
+title: Проект не запускается из-за цены
+type: exercise
+difficulty: 1
+pitfall: У DecimalField обязательны max_digits и decimal_places — без них проверки Django не пропустят модель.
+statement: |
+  После добавления цены проект не запускается: `fields.E130 DecimalFields must define a 'decimal_places' attribute.` и `fields.E132 DecimalFields must define a 'max_digits' attribute.` Почините модель: цены до 99 999 999,99 ₽.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField()
+
+        def __str__(self):
+            return self.name
+  views.py: |
+    from django.http import HttpResponse
+
+    from .models import Product
+
+
+    def catalog(request):
+        names = ", ".join(str(p) for p in Product.objects.all())
+        return HttpResponse(names)
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+setup: |
+  Product.objects.create(name="Беспроводная мышь", price="1499.00")
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+check:
+  type: django
+  tests:
+    - code: |
+        assert "Беспроводная мышь" in client.get("/catalog/").content.decode()
+      fail: Каталог должен открываться и показывать товар.
+    - code: |
+        field = Product._meta.get_field("price")
+        assert (field.max_digits, field.decimal_places) == (10, 2)
+      fail: "Цены до 99 999 999,99 — 10 цифр всего, из них 2 после запятой."
+hints:
+  - "Сколько всего цифр у числа 99 999 999,99 и сколько из них после запятой?"
+  - "`DecimalField(max_digits=10, decimal_places=2)`."
+explanation: |
+  Для `numeric(p, s)` базе нужно знать точность: сколько цифр всего (`max_digits`) и сколько после запятой (`decimal_places`). Django проверяет это до запуска — системные проверки ловят ошибки моделей раньше, чем дело дойдёт до базы. 99 999 999,99 — это 8 цифр до запятой и 2 после: `max_digits=10`.

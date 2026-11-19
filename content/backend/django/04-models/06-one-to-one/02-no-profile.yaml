@@ -1,0 +1,66 @@
+title: Страница профиля падает
+type: exercise
+difficulty: 2
+pitfall: user.profile у пользователя без профиля выбрасывает RelatedObjectDoesNotExist — ошибка 500.
+statement: |
+  У покупателей, зарегистрированных до появления профилей, страница `/users/<id>/` отвечает 500: `RelatedObjectDoesNotExist: User has no profile.` Исправьте view: если профиля нет, страница пишет «Телефон не указан».
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Profile(models.Model):
+        user = models.OneToOneField(User, on_delete=models.CASCADE)
+        phone = models.CharField(max_length=20, blank=True)
+  views.py: |
+    from django.contrib.auth.models import User
+    from django.http import HttpResponse
+    from django.shortcuts import get_object_or_404
+
+
+    def user_page(request, pk):
+        user = get_object_or_404(User, pk=pk)
+        phone = user.profile.phone or "не указан"
+        return HttpResponse(f"{user.username}: телефон {phone}")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("users/<int:pk>/", views.user_page),
+    ]
+setup: |
+  anna = User.objects.create_user("anna", "anna@shop.example", "x")
+  Profile.objects.create(user=anna, phone="+79001112233")
+  User.objects.create_user("boris", "boris@shop.example", "x")
+solution:
+  views.py: |
+    from django.contrib.auth.models import User
+    from django.http import HttpResponse
+    from django.shortcuts import get_object_or_404
+
+
+    def user_page(request, pk):
+        user = get_object_or_404(User, pk=pk)
+        phone = user.profile.phone if hasattr(user, "profile") else ""
+        return HttpResponse(f"{user.username}: телефон {phone or 'не указан'}")
+check:
+  type: django
+  tests:
+    - code: |
+        boris = User.objects.get(username="boris")
+        response = client.get(f"/users/{boris.pk}/")
+        assert response.status_code == 200
+        assert "телефон не указан" in response.content.decode()
+      fail: "У Бориса нет профиля — обращение user.profile падает. Проверьте, есть ли профиль, прежде чем читать его поля."
+    - code: |
+        anna = User.objects.get(username="anna")
+        assert "+79001112233" in client.get(f"/users/{anna.pk}/").content.decode()
+      fail: Телефон из профиля должен выводиться, если профиль есть.
+hints:
+  - "Какое исключение выбрасывает `user.profile`, если профиля нет, — и наследником чего оно является?"
+  - "`hasattr(user, \"profile\")` вернёт `False`, если профиля нет."
+explanation: |
+  Обратная связь `OneToOneField` — один объект, и если его нет, Django выбрасывает `RelatedObjectDoesNotExist` (наследник `Profile.DoesNotExist` и `AttributeError`). `hasattr` ловит `AttributeError` и возвращает `False`. Другой путь — `Profile.objects.get_or_create(user=user)`, но это запись в базу при каждом просмотре чужой страницы, а для GET-запроса так лучше не делать.

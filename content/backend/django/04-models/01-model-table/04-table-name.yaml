@@ -1,0 +1,15 @@
+title: Как называется таблица
+type: quiz
+kind: single
+difficulty: 1
+pitfall: Django склеивает имя приложения и имя модели строчными без подчёркиваний между словами модели.
+statement: |
+  В приложении `shop` модель `OrderItem`. Какую таблицу создаст для неё Django?
+options:
+  - "`order_item`"
+  - "`shop_order_item`"
+  - "`shop_orderitem`"
+  - "`OrderItem`"
+answer: [2]
+explanation: |
+  Имя таблицы — метка приложения, подчёркивание и имя модели строчными: `shop_orderitem`. Слова модели не разделяются. Своё имя задают `class Meta: db_table = "order_items"` — так делают, например, при подключении к уже существующей базе.

@@ -1,0 +1,83 @@
+title: Один отзыв на весь магазин
+type: exercise
+difficulty: 2
+pitfall: unique=True на поле пользователя разрешает один отзыв вообще, а не один на товар — уникальной должна быть пара.
+statement: |
+  Правило магазина: один отзыв от покупателя на каждый товар. Сейчас Анна не может оставить отзыв на второй товар — `IntegrityError`. Исправьте модель `Review`: на разные товары — можно, дважды на один — нельзя (ограничение в базе).
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+    from django.db.models import Q
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+
+
+    class Review(models.Model):
+        user = models.ForeignKey(User, on_delete=models.CASCADE, unique=True)
+        product = models.ForeignKey(Product, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  anna = User.objects.create_user("anna")
+  Product.objects.create(name="Беспроводная мышь")
+  Product.objects.create(name="Коврик для мыши")
+solution:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+    from django.db.models import Q
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+
+
+    class Review(models.Model):
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        product = models.ForeignKey(Product, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+
+        class Meta:
+            constraints = [
+                models.UniqueConstraint(
+                    fields=["user", "product"], name="one_review_per_product"
+                ),
+            ]
+check:
+  type: django
+  tests:
+    - code: |
+        anna = User.objects.get(username="anna")
+        for product in Product.objects.all():
+            Review.objects.create(user=anna, product=product, rating=5)
+        assert Review.objects.count() == 2
+      fail: "Анна не может оставить отзыв на второй товар: уникальным должно быть сочетание «покупатель + товар», а не покупатель."
+    - code: |
+        from django.db import IntegrityError, transaction
+        anna = User.objects.get(username="anna")
+        mouse = Product.objects.get(name="Беспроводная мышь")
+        Review.objects.create(user=anna, product=mouse, rating=5)
+        try:
+            with transaction.atomic():
+                Review.objects.create(user=anna, product=mouse, rating=4)
+        except IntegrityError:
+            pass
+        assert Review.objects.filter(user=anna, product=mouse).count() == 1
+      fail: Второй отзыв на тот же товар база должна отклонить.
+hints:
+  - "Что именно должно быть уникальным — покупатель или пара «покупатель + товар»?"
+  - "Уберите `unique=True` и добавьте в `Meta.constraints` `UniqueConstraint(fields=[\"user\", \"product\"], name=…)`."
+explanation: |
+  `unique=True` на `user` запрещает повторять пользователя в таблице отзывов вообще — один отзыв на весь магазин. Правило «один на товар» — это уникальность **пары** колонок: `UNIQUE ("user_id", "product_id")`. Его задаёт `UniqueConstraint` в `Meta`, и база соблюдает его при любом способе записи, включая одновременные запросы.

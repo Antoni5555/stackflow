@@ -1,0 +1,44 @@
+title: Product object (1)
+type: exercise
+difficulty: 1
+pitfall: Без __str__ объект модели выглядит как «Product object (1)» в консоли, админке и шаблонах.
+statement: |
+  В выпадающем списке товаров и в консоли вместо названий — «Product object (1)». Сделайте так, чтобы товар превращался в строку своим названием.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  Product.objects.create(name="Беспроводная мышь", price="1499.00")
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+check:
+  type: django
+  tests:
+    - code: |
+        assert str(Product.objects.get()) == "Беспроводная мышь"
+      fail: "str(товар) всё ещё «Product object (1)» — опишите метод __str__."
+hints:
+  - "Какой магический метод Python вызывает `str(obj)`?"
+  - "`def __str__(self): return self.name` в классе модели."
+explanation: |
+  `str()` от объекта вызывает его метод `__str__`. У `models.Model` он выводит имя модели и `pk` — этого мало, чтобы отличить товары. `__str__` используют консоль, админка, выпадающие списки форм и `{{ product }}` в шаблоне, поэтому его пишут почти каждой модели.

@@ -1,0 +1,15 @@
+title: Где хранить количество
+type: quiz
+kind: single
+difficulty: 1
+pitfall: В простой ManyToManyField негде хранить данные пары — нужна модель-связка через through.
+statement: |
+  Заказ ↔ товары — связь многие-ко-многим, и для каждой пары нужно количество и цена покупки. Как описать связь?
+options:
+  - "`products = models.ManyToManyField(Product)` и поле `quantity` в `Order`"
+  - "`products = models.ManyToManyField(Product)` и поле `quantity` в `Product`"
+  - "Модель `OrderItem` с `ForeignKey` на заказ и товар, полями `quantity` и `price`, и `ManyToManyField(Product, through=\"OrderItem\")`"
+  - "Хранить в заказе JSON-список `[{\"product\": 4, \"quantity\": 2}]`"
+answer: [2]
+explanation: |
+  Количество относится не к заказу и не к товару, а к их паре — значит, у пары должна быть своя строка со своими полями. Это модель-связка `OrderItem`. JSON-список в заказе лишает базу внешних ключей и ограничений: товар можно удалить, а запросы «сколько продано мышей» станут сложными.

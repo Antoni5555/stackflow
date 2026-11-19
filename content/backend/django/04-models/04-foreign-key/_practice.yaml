@@ -1,0 +1,50 @@
+- title: Товары по категориям
+  text: |
+    Создайте категории «Мыши» и «Коврики», две мыши и один коврик, и выведите для каждой категории число товаров через обратную связь.
+  answer: |
+    Ответ:
+
+    Файл `models.py`:
+    ```python
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category,
+            on_delete=models.PROTECT,
+            related_name="products",
+        )
+        name = models.CharField(max_length=200)
+    ```
+
+    Файл `orm.py`:
+    ```python
+    mice = Category.objects.create(name="Мыши")
+    pads = Category.objects.create(name="Коврики")
+    for name in ["Беспроводная мышь", "Проводная мышь"]:
+        Product.objects.create(category=mice, name=name)
+    Product.objects.create(category=pads, name="Коврик")
+    for c in Category.objects.all():
+        print(c.name, c.products.count())
+    ```
+    Результат:
+    ```
+    Мыши 2
+    Коврики 1
+    ```
+    Каждый `count()` — отдельный запрос; посчитать всё одним запросом научит раздел «ORM: агрегация».
+- title: Выбрать on_delete
+  text: |
+    Какое `on_delete` выбрать: отзыв → товар; отзыв → покупатель; товар → бренд; заказ → покупатель?
+  answer: |
+    Отзыв → товар: `CASCADE` (без товара отзыв не нужен). Отзыв → покупатель: `CASCADE` или `SET_NULL` с `null=True`, если отзывы удалённых покупателей нужно сохранить. Товар → бренд: `PROTECT` (справочник). Заказ → покупатель: `PROTECT` — заказы нужны для отчётов и бухгалтерии, покупателя с заказами не удаляют, а деактивируют.
+- title: Две связи на одну модель
+  text: |
+    У заказа два адреса: доставки и оплаты — оба `ForeignKey(Address, …)`. Что нужно добавить, чтобы проект запустился?
+  answer: |
+    Разные `related_name`: `ForeignKey(Address, on_delete=models.PROTECT, related_name="shipping_orders")` и `ForeignKey(Address, on_delete=models.PROTECT, related_name="billing_orders")`. Без них обе связи хотят обратное имя `order_set`, и проверки Django остановят проект ошибкой о конфликте обратных имён (`fields.E304`).

@@ -1,0 +1,45 @@
+- title: Профиль с related_name
+  text: |
+    Сделайте профиль с городом, обратную связь назовите `shop_profile`. Удалите пользователя — что станет с профилем?
+  answer: |
+    Ответ:
+
+    Файл `models.py`:
+    ```python
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Profile(models.Model):
+        user = models.OneToOneField(
+            User,
+            on_delete=models.CASCADE,
+            related_name="shop_profile",
+        )
+        city = models.CharField(max_length=100, blank=True)
+    ```
+
+    Файл `orm.py`:
+    ```python
+    anna = User.objects.create_user("anna")
+    Profile.objects.create(user=anna, city="Москва")
+    print(anna.shop_profile.city)
+    anna.delete()
+    Profile.objects.count()
+    ```
+    Результат:
+    ```
+    Москва
+    0
+    ```
+    `CASCADE` удалил профиль вместе с пользователем: Django отправил `DELETE FROM "shop_profile" WHERE "shop_profile"."user_id" IN (1)` перед удалением пользователя.
+- title: Безопасный доступ
+  text: |
+    Как в шаблоне вывести город покупателя, если профиля может не быть?
+  answer: |
+    Шаблон не падает на отсутствующих данных — несуществующий атрибут выводится пустотой. Поэтому `{{ user.shop_profile.city|default:"город не указан" }}` безопасен, если профиля нет, — в отличие от Python-кода, где `user.shop_profile` выбросит `RelatedObjectDoesNotExist`.
+- title: Почему не ForeignKey
+  text: |
+    Чем плох `ForeignKey(User, unique=True)` вместо `OneToOneField`?
+  answer: |
+    В базе одинаково — `UNIQUE` на `user_id`. Но обратная связь у `ForeignKey` — менеджер: `user.profile_set.get()`, а не объект `user.profile`, и Django предупреждает `fields.W342`, предлагая `OneToOneField`.

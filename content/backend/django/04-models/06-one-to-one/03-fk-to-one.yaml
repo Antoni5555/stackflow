@@ -1,0 +1,53 @@
+title: Два профиля у одного покупателя
+type: exercise
+difficulty: 2
+pitfall: ForeignKey разрешает много профилей на пользователя; 1:1 — это OneToOneField с UNIQUE в базе.
+statement: |
+  Из-за двойного клика у некоторых покупателей появилось по два профиля, и страница показывает то один телефон, то другой. Исправьте модель так, чтобы база не позволяла второй профиль, а профиль был доступен как `user.profile`.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Profile(models.Model):
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        phone = models.CharField(max_length=20, blank=True)
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  anna = User.objects.create_user("anna", "anna@shop.example", "x")
+  Profile.objects.create(user=anna, phone="+79001112233")
+solution:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Profile(models.Model):
+        user = models.OneToOneField(User, on_delete=models.CASCADE)
+        phone = models.CharField(max_length=20, blank=True)
+check:
+  type: django
+  tests:
+    - code: |
+        from django.db import IntegrityError, transaction
+        anna = User.objects.get(username="anna")
+        try:
+            with transaction.atomic():
+                Profile.objects.create(user=anna, phone="+79000000000")
+        except IntegrityError:
+            pass
+        assert Profile.objects.filter(user=anna).count() == 1
+      fail: "База позволила создать второй профиль тому же пользователю — нужна связь один к одному."
+    - code: |
+        anna = User.objects.get(username="anna")
+        assert anna.profile.phone == "+79001112233"
+      fail: Профиль должен быть доступен как user.profile.
+hints:
+  - "Какое поле связи добавляет в базу `UNIQUE` на `user_id`?"
+  - "`models.OneToOneField(User, on_delete=models.CASCADE)`."
+explanation: |
+  `ForeignKey` — это «многие к одному»: у пользователя может быть сколько угодно профилей, и обратная связь — менеджер `user.profile_set`. `OneToOneField` добавляет `UNIQUE` на `user_id`, и второй профиль база отвергает `IntegrityError`, даже если два запроса пришли одновременно. Проверка в коде «нет ли уже профиля» от такой гонки не защитила бы.

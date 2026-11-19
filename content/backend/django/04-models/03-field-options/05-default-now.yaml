@@ -1,0 +1,43 @@
+title: Все визиты в одну секунду
+type: exercise
+difficulty: 2
+pitfall: default=timezone.now() вычисляется один раз при загрузке models.py — у всех объектов одинаковое время.
+statement: |
+  Журнал посещений сохраняет время визита, но у всех записей оно одно и то же — время запуска сервера. Исправьте модель.
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Visit(models.Model):
+        page = models.CharField(max_length=200)
+        at = models.DateTimeField(default=timezone.now())
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+solution:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Visit(models.Model):
+        page = models.CharField(max_length=200)
+        at = models.DateTimeField(default=timezone.now)
+check:
+  type: django
+  tests:
+    - code: |
+        import time
+        first = Visit.objects.create(page="/catalog/")
+        time.sleep(0.01)
+        second = Visit.objects.create(page="/cart/")
+        assert second.at > first.at
+      fail: "Время визитов одинаковое: значение по умолчанию вычислено один раз при загрузке модели."
+hints:
+  - "Когда вычисляется выражение `timezone.now()` в строке с `default=…`?"
+  - "Передайте функцию без скобок: `default=timezone.now`."
+explanation: |
+  `timezone.now()` со скобками выполняется в момент загрузки `models.py`, и в `default` попадает готовое время — одно на все объекты. Функцию без скобок Django вызывает при создании каждого объекта. `manage.py check` предупреждает о таком поле (`fields.W161 Fixed default value provided`), но работать не мешает — поэтому ошибку легко пропустить.

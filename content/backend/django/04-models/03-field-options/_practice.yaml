@@ -1,0 +1,62 @@
+- title: Статус товара
+  text: |
+    Добавьте товару статус «В продаже» / «Снят с продажи» через `TextChoices`, по умолчанию — «В продаже». Снимите товар с продажи и выведите подпись статуса до и после.
+  answer: |
+    Ответ:
+
+    Файл `models.py`:
+    ```python
+    from django.db import models
+
+
+    class Product(models.Model):
+        class Status(models.TextChoices):
+            ACTIVE = "active", "В продаже"
+            ARCHIVED = "archived", "Снят с продажи"
+
+        name = models.CharField(max_length=200)
+        status = models.CharField(
+            max_length=20, choices=Status, default=Status.ACTIVE
+        )
+    ```
+
+    Файл `orm.py`:
+    ```python
+    p = Product.objects.create(name="Мышь")
+    print(p.get_status_display())
+    p.status = Product.Status.ARCHIVED
+    p.save()
+    print(p.get_status_display())
+    ```
+    Результат:
+    ```
+    В продаже
+    Снят с продажи
+    ```
+- title: null или blank
+  text: |
+    Расставьте параметры для необязательных полей заказа: комментарий (`TextField`), время доставки (`DateTimeField`), промокод — ссылка на модель `Promo` (`ForeignKey`).
+  answer: |
+    Комментарий — `blank=True` (пустое значение — `""`); время доставки — `null=True, blank=True`; промокод — `ForeignKey(Promo, on_delete=models.SET_NULL, null=True, blank=True)`. У строк одна «пустота», у дат и связей — только `NULL`.
+- title: Значение по умолчанию
+  text: |
+    Поле `expires_at` промокода должно по умолчанию быть «сейчас + 30 дней». Как это записать?
+  answer: |
+    Нужна функция, а не готовое значение:
+
+    Файл `models.py` (фрагмент):
+    ```python
+    from datetime import timedelta
+
+    from django.db import models
+    from django.utils import timezone
+
+
+    def in_30_days():
+        return timezone.now() + timedelta(days=30)
+
+
+    class Promo(models.Model):
+        expires_at = models.DateTimeField(default=in_30_days)
+    ```
+    `default=timezone.now() + timedelta(days=30)` посчитался бы один раз при запуске сервера. Лямбду в `default` не пишут: миграции не умеют её сохранить.

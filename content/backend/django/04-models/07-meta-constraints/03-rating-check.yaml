@@ -1,0 +1,85 @@
+title: Оценка 9 из 5
+type: exercise
+difficulty: 2
+pitfall: Проверка значения только в форме не защищает от записи в обход неё — правило нужно в базе (CheckConstraint).
+statement: |
+  Через импорт из старой системы в базу попали отзывы с оценкой 9 и 0. Добавьте в модель `Review` ограничение в базе: оценка от 1 до 5 включительно.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+    from django.db.models import Q
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+
+
+    class Review(models.Model):
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        product = models.ForeignKey(Product, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  anna = User.objects.create_user("anna")
+  Product.objects.create(name="Беспроводная мышь")
+  Product.objects.create(name="Коврик для мыши")
+solution:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+    from django.db.models import Q
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+
+
+    class Review(models.Model):
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        product = models.ForeignKey(Product, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+
+        class Meta:
+            constraints = [
+                models.CheckConstraint(
+                    condition=Q(rating__gte=1, rating__lte=5),
+                    name="review_rating_1_5",
+                ),
+            ]
+check:
+  type: django
+  tests:
+    - code: |
+        from django.db import IntegrityError, transaction
+        anna = User.objects.get(username="anna")
+        mouse = Product.objects.get(name="Беспроводная мышь")
+        for bad in (0, 9):
+            try:
+                with transaction.atomic():
+                    Review.objects.create(user=anna, product=mouse, rating=bad)
+            except IntegrityError:
+                pass
+        assert not Review.objects.exists()
+      fail: "Отзывы с оценкой 0 и 9 сохраняются — база должна их отклонять."
+    - code: |
+        anna = User.objects.get(username="anna")
+        mouse = Product.objects.get(name="Беспроводная мышь")
+        Review.objects.create(user=anna, product=mouse, rating=1)
+        Review.objects.create(user=anna, product=mouse, rating=5)
+        assert Review.objects.count() == 2
+      fail: Оценки 1 и 5 — допустимые границы, их нужно пропускать.
+hints:
+  - "Условие пишется объектом `Q` с теми же фильтрами, что в запросах: `rating__gte`, `rating__lte`."
+  - "`models.CheckConstraint(condition=Q(rating__gte=1, rating__lte=5), name=\"review_rating_1_5\")` в `Meta.constraints`."
+explanation: |
+  `CheckConstraint` становится `CHECK` в таблице: база проверяет каждую вставку и изменение — из формы, админки, импорта, `update()`. `Q(rating__gte=1, rating__lte=5)` — это `rating >= 1 AND rating <= 5`. `PositiveSmallIntegerField` сам по себе запрещает только отрицательные числа, а 0 и 9 пропускает.

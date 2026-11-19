@@ -1,0 +1,74 @@
+title: Удалили категорию — пропали товары
+type: exercise
+difficulty: 1
+pitfall: CASCADE у справочника удаляет вместе с ним все связанные строки.
+statement: |
+  Менеджер удалил в админке категорию «Мыши», и вместе с ней из каталога пропали все мыши. Сделайте так, чтобы категорию с товарами удалить было нельзя.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.CASCADE, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  mice = Category.objects.create(name="Мыши")
+  Product.objects.create(category=mice, name="Беспроводная мышь")
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+check:
+  type: django
+  tests:
+    - code: |
+        from django.db.models import ProtectedError
+        try:
+            Category.objects.get(name="Мыши").delete()
+        except ProtectedError:
+            pass
+        assert Product.objects.filter(name="Беспроводная мышь").exists()
+      fail: "Категория удалилась вместе с товарами — нужен запрет удаления, пока есть товары."
+    - code: |
+        empty = Category.objects.create(name="Пустая")
+        empty.delete()
+        assert not Category.objects.filter(name="Пустая").exists()
+      fail: Категорию без товаров удалить должно быть можно.
+hints:
+  - "Какое значение `on_delete` запрещает удаление, пока на объект ссылаются?"
+  - "`on_delete=models.PROTECT`."
+explanation: |
+  С `CASCADE` Django удаляет товары, а потом и всё, что ссылается на них с `CASCADE`. `PROTECT` проверяет, есть ли связанные товары, и выбрасывает `ProtectedError` — сначала товары нужно перенести в другую категорию. Пустую категорию удалить можно. Для справочников (категории, бренды, поставщики) это безопасный выбор.

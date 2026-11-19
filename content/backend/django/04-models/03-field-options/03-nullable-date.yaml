@@ -1,0 +1,49 @@
+title: Неоплаченный заказ не создаётся
+type: exercise
+difficulty: 2
+pitfall: blank=True разрешает пустое поле только формам — база без null=True не примет NULL.
+statement: |
+  `new_order(number)` из `queries.py` создаёт неоплаченный заказ — время оплаты пустое. Но функция падает с `IntegrityError: NOT NULL constraint failed: shop_order.paid_at`. Исправьте модель.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        paid_at = models.DateTimeField(blank=True)
+  queries.py: |
+    from .models import Order
+
+
+    def new_order(number):
+        return Order.objects.create(number=number, paid_at=None)
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        paid_at = models.DateTimeField(null=True, blank=True)
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import new_order
+        order = new_order("A-12")
+        order.refresh_from_db()
+        assert order.paid_at is None
+      fail: "База не принимает пустое время оплаты: для дат пустое значение — NULL, его нужно разрешить."
+    - code: |
+        assert Order._meta.get_field("paid_at").blank
+      fail: Время оплаты должно остаться необязательным и для форм (blank=True).
+hints:
+  - "`blank` и `null` — про один уровень или про разные?"
+  - "`models.DateTimeField(null=True, blank=True)`."
+explanation: |
+  `blank=True` говорит формам «поле можно не заполнять», но колонка по-прежнему `NOT NULL`. У даты нет «пустой строки», пустое значение — только `NULL`, и его нужно разрешить в базе: `null=True`. Для необязательных дат, чисел и связей ставят оба параметра.

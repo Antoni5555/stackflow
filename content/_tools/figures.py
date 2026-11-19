@@ -947,6 +947,129 @@ def static_flow():
     f.save(out(DJ3 / "04-static" / "img" / "static-flow.svg"))
 
 
+# ---------- Django 4: модели ----------
+DJ4 = ROOT / "django" / "04-models"
+
+
+def _table(f, x, y, title, cols, w=260, cls="box"):
+    f.box(x, y, w, 40 + 24 * len(cols), "", cls)
+    f.text(x + 14, y + 22, title, "c")
+    for i, c in enumerate(cols):
+        f.text(x + 14, y + 48 + i * 24, c, "cs")
+
+
+def model_table():
+    f = Figure(860, 330, "Модель — таблица, поле — колонка, объект — строка; менеджер objects превращает вызовы в SQL")
+    f.box(20, 20, 300, 150, "", "box2")
+    f.text(36, 44, "class Product(models.Model):", "cs")
+    f.text(52, 70, "name = CharField(max_length=200)", "cs")
+    f.text(52, 94, "price = DecimalField(10, 2)", "cs")
+    f.text(52, 118, "stock = PositiveIntegerField()", "cs")
+    f.text(36, 152, "id добавляет Django", "s")
+    f.arrow("M320 95H376")
+    _table(f, 380, 20, "shop_product", ["id bigint", "name varchar(200)", "price numeric(10, 2)", "stock integer"], w=240)
+    f.box(640, 40, 200, 90, "", "ok")
+    f.text(656, 64, "строка 1:", "s")
+    f.text(656, 88, "1, «Мышь»,", "cs")
+    f.text(656, 108, "1499.00, 40", "cs")
+    f.arrow("M620 85H636", "lnd")
+    f.box(20, 200, 300, 50, "mouse = Product.objects.get(…)", "box", "cs")
+    f.text(20, 280, "объект mouse = строка 1:", "s")
+    f.text(20, 300, "mouse.name, mouse.price — значения колонок", "s")
+    f.box(380, 200, 460, 110, "", "acc")
+    f.text(396, 226, "create(…) → INSERT", "onacc")
+    f.text(396, 250, "all() → SELECT; count() → COUNT(*)", "onacc")
+    f.text(396, 274, "obj.save() → UPDATE всех полей", "onacc")
+    f.text(396, 298, "obj.delete() → DELETE", "onacc")
+    f.save(out(DJ4 / "01-model-table" / "img" / "model-table.svg"))
+
+
+def null_blank():
+    f = Figure(860, 280, "Одни параметры поля меняют таблицу в базе, другие работают только в проверке форм и full_clean")
+    f.box(20, 20, 400, 200, "", "acc")
+    f.text(36, 46, "база (SQL)", "onacc")
+    for i, t in enumerate(["null=True → NULL вместо NOT NULL", "unique=True → UNIQUE", "db_index=True → CREATE INDEX",
+                           "default → значение при сохранении"]):
+        f.text(36, 82 + i * 32, t, "onacc")
+    f.box(440, 20, 400, 200, "", "box2")
+    f.text(456, 46, "формы и full_clean()", "t")
+    for i, t in enumerate(["blank=True → можно не заполнять", "choices → только допустимые значения",
+                           "max_length → длина строки", "verbose_name, help_text → подписи"]):
+        f.text(456, 82 + i * 32, t, "cs")
+    f.text(20, 256, "Строке — blank=True; дате, числу, связи — null=True, blank=True. choices база не проверяет.", "t")
+    f.save(out(DJ4 / "03-field-options" / "img" / "null-blank.svg"))
+
+
+def foreign_key():
+    f = Figure(860, 300, "ForeignKey — колонка category_id у товара; доступ в обе стороны; on_delete решает судьбу товаров")
+    _table(f, 20, 20, "shop_category", ["id = 1", "name = «Мыши»"], w=240)
+    _table(f, 520, 20, "shop_product", ["id = 4", "category_id = 1", "name = «Мышь»"], w=320)
+    f.arrow("M516 92H264")
+    f.text(300, 82, "FOREIGN KEY + индекс", "s")
+    f.box(520, 150, 320, 40, "product.category → объект (SELECT)", "ok", "cs")
+    f.box(20, 150, 300, 40, "category.products.all()", "ok", "cs")
+    f.text(20, 236, "удаление категории с товарами:", "t")
+    f.text(20, 262, "CASCADE — удалить товары;  PROTECT — ProtectedError;  SET_NULL — category_id = NULL (null=True)", "cs")
+    f.text(20, 288, "Правило выполняет Django: сам отправляет DELETE или UPDATE перед удалением категории.", "s")
+    f.save(out(DJ4 / "04-foreign-key" / "img" / "foreign-key.svg"))
+
+
+def many_to_many():
+    f = Figure(860, 300, "Простая связь — таблица-связка от Django; связь с данными — своя модель OrderItem")
+    _table(f, 20, 20, "shop_product", ["id", "name"], w=200)
+    _table(f, 330, 20, "shop_product_tags", ["product_id", "tag_id", "UNIQUE (product_id, tag_id)"], w=260)
+    _table(f, 680, 20, "shop_tag", ["id", "name"], w=160)
+    f.arrow("M326 70H224"); f.arrow("M590 70H676")
+    f.text(330, 156, "tags = ManyToManyField(Tag) — таблицу создаёт Django", "s")
+    _table(f, 20, 170, "shop_order", ["id", "number"], w=200)
+    _table(f, 330, 170, "shop_orderitem", ["order_id, product_id", "quantity", "price"], w=260, cls="ok")
+    f.text(620, 196, "своя модель OrderItem:", "s")
+    f.text(620, 220, "ManyToManyField(Product,", "cs")
+    f.text(620, 240, '  through="OrderItem")', "cs")
+    f.arrow("M326 220H224")
+    f.save(out(DJ4 / "05-many-to-many" / "img" / "many-to-many.svg"))
+
+
+def meta_constraints():
+    f = Figure(860, 300, "Что из Meta становится SQL, а что работает только в Python")
+    f.box(20, 20, 380, 250, "", "box2")
+    f.text(36, 46, "class Meta:", "cs")
+    rows = ["ordering = [\"name\"]", "indexes = [Index(…)]", "UniqueConstraint(user, product)",
+            "CheckConstraint(rating 1–5)", "verbose_name = \"отзыв\""]
+    for i, r in enumerate(rows):
+        f.text(52, 82 + i * 40, r, "cs")
+    outs = [("ORDER BY в каждом запросе", "box"), ("CREATE INDEX", "acc"), ("CONSTRAINT … UNIQUE (…)", "acc"),
+            ("CONSTRAINT … CHECK (…)", "acc"), ("только админка и формы", "box")]
+    for i, (t, cls) in enumerate(outs):
+        y = 62 + i * 40
+        f.arrow(f"M400 {y + 16}H456", "lnd")
+        f.box(460, y, 380, 32, t, cls, "onacc" if cls == "acc" else "cs")
+    f.text(20, 292, "Ограничения проверяет база (IntegrityError) и заранее — full_clean() (ValidationError).", "s")
+    f.save(out(DJ4 / "07-meta-constraints" / "img" / "meta.svg"))
+
+
+def model_inheritance():
+    f = Figure(860, 320, "Три вида наследования моделей и их таблицы")
+    f.text(20, 24, "абстрактная", "h")
+    f.box(20, 36, 250, 50, "TimeStampedModel (abstract)", "dash", "cs")
+    f.text(20, 106, "таблицы нет — поля копируются", "s")
+    f.arrow("M250 86V140", "lnd")
+    _table(f, 20, 144, "shop_product", ["id, created_at, updated_at", "name, price"], w=250)
+    f.text(300, 24, "многотабличная", "h")
+    f.box(300, 36, 250, 50, "class EBook(Product)", "box2", "cs")
+    _table(f, 300, 144, "shop_ebook", ["product_ptr_id → shop_product", "file_size_mb"], w=270)
+    f.arrow("M425 86V140")
+    f.arrow("M300 190H274")
+    f.text(300, 250, "создание — 2 INSERT, чтение — JOIN", "s")
+    f.text(600, 24, "прокси", "h")
+    f.box(600, 36, 240, 50, "CheapProduct (proxy)", "box2", "cs")
+    f.text(600, 106, "та же таблица shop_product:", "s")
+    f.text(600, 126, "свои методы, ordering, менеджер", "s")
+    f.arrow("M830 86V136H274", "lnd")
+    f.text(20, 300, "Общие поля — абстрактная модель; подтипы в общем списке — многотабличная; другое поведение — прокси.", "t")
+    f.save(out(DJ4 / "08-model-inheritance" / "img" / "inheritance.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2419,6 +2542,7 @@ if __name__ == "__main__":
                   request_flow, project_structure, first_page,
                   route_params, url_reverse, request_response,
                   render_flow, extends_include, filters_flow, static_flow,
+                  model_table, null_blank, foreign_key, many_to_many, meta_constraints, model_inheritance,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

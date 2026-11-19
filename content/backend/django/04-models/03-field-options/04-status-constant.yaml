@@ -1,0 +1,62 @@
+title: Опечатка в статусе
+type: exercise
+difficulty: 2
+pitfall: Строка статуса с опечаткой в коде молча даёт False; сравнивают с константой TextChoices.
+statement: |
+  `paid_orders()` из `queries.py` должна возвращать номера оплаченных заказов, но возвращает пустой список. Исправьте функцию так, чтобы такая опечатка была невозможна.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+            CANCELLED = "cancelled", "Отменён"
+
+        number = models.CharField(max_length=20, unique=True)
+        status = models.CharField(
+            max_length=20, choices=Status, default=Status.NEW
+        )
+  queries.py: |
+    from .models import Order
+
+
+    def paid_orders():
+        return [o.number for o in Order.objects.all() if o.status == "piad"]
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  Order.objects.create(number="A-12", status="paid")
+  Order.objects.create(number="A-13")
+  Order.objects.create(number="A-14", status="paid")
+solution:
+  queries.py: |
+    from .models import Order
+
+
+    def paid_orders():
+        return [
+            o.number for o in Order.objects.all()
+            if o.status == Order.Status.PAID
+        ]
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import paid_orders
+        assert sorted(paid_orders()) == ["A-12", "A-14"]
+      fail: Функция должна вернуть номера оплаченных заказов A-12 и A-14.
+    - code: |
+        import inspect
+        from shop import queries
+        assert "Order.Status.PAID" in inspect.getsource(queries)
+      fail: "Сравнивайте с константой Order.Status.PAID, а не со строкой — опечатку в константе Python поймает сразу."
+hints:
+  - "Найдите опечатку — и подумайте, как сделать, чтобы следующую поймал Python."
+  - "`o.status == Order.Status.PAID`."
+explanation: |
+  `"piad"` — правильная строка Python, просто её нет среди статусов, поэтому сравнение молча даёт `False`. С константой `Order.Status.PAID` опечатка (`Order.Status.PIAD`) сразу даст `AttributeError`. К тому же значение статуса задаётся в одном месте — в модели. Отбирать заказы по статусу лучше запросом к базе (`filter`) — это раздел «ORM: чтение данных».

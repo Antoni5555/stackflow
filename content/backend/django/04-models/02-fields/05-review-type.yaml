@@ -1,0 +1,15 @@
+title: Поле для отзыва
+type: quiz
+kind: single
+difficulty: 1
+pitfall: CharField ограничивает длину — длинный отзыв не поместится; для длинного текста есть TextField.
+statement: |
+  Покупатели пишут отзывы — от пары слов до нескольких абзацев. Какое поле выбрать для текста отзыва?
+options:
+  - "`CharField(max_length=255)`"
+  - "`TextField()`"
+  - "`SlugField()`"
+  - "`CharField(max_length=100000)`"
+answer: [1]
+explanation: |
+  `TextField` — `text` в базе, без ограничения длины, а в формах — многострочное поле. `CharField(max_length=255)` обрежет развёрнутый отзыв проверкой длины, а огромный `max_length` — это `TextField`, только с лишней проверкой. `SlugField` — для адресов, он не пропустит пробелы и кириллицу.

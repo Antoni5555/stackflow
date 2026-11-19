@@ -1,0 +1,67 @@
+title: Лишние запросы ради номера
+type: exercise
+difficulty: 2
+pitfall: product.category.id загружает категорию отдельным запросом ради числа, которое уже есть в category_id.
+statement: |
+  `category_ids()` из `queries.py` собирает номера категорий всех товаров — для фильтра каталога. На 3 товарах она делает 4 SQL-запроса. Сделайте так, чтобы хватало одного, не меняя результат.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+  queries.py: |
+    from .models import Product
+
+
+    def category_ids():
+        return sorted({p.category.id for p in Product.objects.all()})
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  Product.objects.create(category=mice, name="Беспроводная мышь")
+  Product.objects.create(category=mice, name="Проводная мышь")
+  Product.objects.create(category=pads, name="Коврик")
+solution:
+  queries.py: |
+    from .models import Product
+
+
+    def category_ids():
+        return sorted({p.category_id for p in Product.objects.all()})
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import category_ids
+        ids = sorted(Category.objects.values_list("id", flat=True))
+        assert category_ids() == ids
+      fail: Функция должна вернуть номера обеих категорий.
+    - code: |
+        from shop.queries import category_ids
+        with max_queries(1):
+            category_ids()
+      fail: "Для номера категории её не нужно загружать: он уже лежит в строке товара."
+hints:
+  - "Какое значение уже есть в строке товара и не требует запроса к категориям?"
+  - "`p.category_id`."
+explanation: |
+  `p.category` загружает объект категории отдельным `SELECT` — по одному на товар: 1 запрос товаров + 3 запроса категорий. А номер категории — это колонка `category_id` самого товара, она уже пришла первым запросом. Когда нужны данные категории (название), лишние запросы убирает `select_related` — раздел «ORM: связи и N+1».

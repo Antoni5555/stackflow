@@ -35,6 +35,7 @@
 | 04 | Статические файлы | `{% static %}`, `STATIC_URL`, `STATICFILES_DIRS`, `collectstatic` | подключить CSS и логотип | ✅ PRJ §5 |
 
 ## 4. Модели ●○○
+✅ Написан: `content/backend/django/04-models` — 8 уроков, 30 задач (22 `exercise` `check.type: django`, 8 `quiz`), 6 рисунков, задачники — 24 упражнения. SQL моделей в уроках — настоящий DDL PostgreSQL, сгенерированный schema editor Django без подключения к базе (`scratchpad/pgddl.py`); запросы ORM и SQL — из тренажёра (SQLite). Темы 07–08 — уровень ●●○.
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|
 | 01 | Модель = таблица | что такое ORM, модель, объект = строка; SQL и ORM рядом | `Product` и таблица `products` | ❌ |

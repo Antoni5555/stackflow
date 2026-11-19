@@ -1,0 +1,52 @@
+title: Поставщик ушёл — товар остался
+type: exercise
+difficulty: 2
+pitfall: SET_NULL требует null=True — иначе проверки Django не пропустят поле (fields.E320).
+statement: |
+  Когда удаляют поставщика, его товары должны остаться в каталоге — просто без поставщика. Разработчик выбрал `on_delete=models.SET_NULL`, но проект не запускается: `fields.E320 Field specifies on_delete=SET_NULL, but cannot be null.` Исправьте модель.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Supplier(models.Model):
+        name = models.CharField(max_length=100)
+
+
+    class Product(models.Model):
+        supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL)
+        name = models.CharField(max_length=200)
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  acme = Supplier.objects.create(name="ООО Мышки")
+  Product.objects.create(supplier=acme, name="Беспроводная мышь")
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class Supplier(models.Model):
+        name = models.CharField(max_length=100)
+
+
+    class Product(models.Model):
+        supplier = models.ForeignKey(
+            Supplier, on_delete=models.SET_NULL, null=True, blank=True
+        )
+        name = models.CharField(max_length=200)
+check:
+  type: django
+  tests:
+    - code: |
+        Supplier.objects.get().delete()
+        product = Product.objects.get()
+        assert product.supplier is None
+      fail: После удаления поставщика товар должен остаться, а ссылка на поставщика — стать пустой.
+hints:
+  - "Чем Django заменит ссылку при `SET_NULL` — и может ли колонка это хранить?"
+  - "Добавьте полю `null=True` (и `blank=True`, чтобы формы разрешали пустое значение)."
+explanation: |
+  `SET_NULL` записывает в `supplier_id` значение `NULL`, а колонка по умолчанию `NOT NULL`. Django замечает это противоречие до запуска (`fields.E320`). `null=True` разрешает пустую ссылку в базе, `blank=True` — товар без поставщика в формах и админке.

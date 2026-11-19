@@ -1,0 +1,71 @@
+title: Распродажа пустая
+type: exercise
+difficulty: 2
+pitfall: Наследник без proxy=True получает свою пустую таблицу — товаров в ней нет.
+statement: |
+  `CheapProduct` должен показывать **те же** товары, что `Product`, но отсортированные по цене и с методом `is_bargain()` (дешевле 500 ₽). Сейчас `CheapProduct.objects.all()` пуст. Исправьте модель.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+
+
+    class CheapProduct(Product):
+        class Meta:
+            ordering = ["price"]
+
+        def is_bargain(self):
+            return self.price < 500
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  Product.objects.create(name="Беспроводная мышь", price="1499.00")
+  Product.objects.create(name="Коврик для мыши", price="490.00")
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+
+
+    class CheapProduct(Product):
+        class Meta:
+            proxy = True
+            ordering = ["price"]
+
+        def is_bargain(self):
+            return self.price < 500
+check:
+  type: django
+  tests:
+    - code: |
+        names = [p.name for p in CheapProduct.objects.all()]
+        assert names == ["Коврик для мыши", "Беспроводная мышь"]
+      fail: "CheapProduct должен читать те же строки, что Product, — сейчас у него своя пустая таблица."
+    - code: |
+        assert [p.is_bargain() for p in CheapProduct.objects.all()] == [True, False]
+      fail: is_bargain() должен быть True только для товаров дешевле 500 ₽.
+    - code: |
+        from django.db import connection
+        assert "shop_cheapproduct" not in connection.introspection.table_names()
+      fail: Отдельной таблицы shop_cheapproduct быть не должно.
+hints:
+  - "Какой вид наследования использует ту же таблицу, что и родитель?"
+  - "`proxy = True` в `Meta` наследника."
+explanation: |
+  Без `proxy = True` `CheapProduct` — многотабличный наследник: у него своя таблица `shop_cheapproduct`, и в ней только товары, созданные как `CheapProduct`. Прокси-модель работает с таблицей родителя и добавляет поведение — сортировку и методы. Пример похожего использования — отдельный раздел админки для тех же товаров с другими колонками.

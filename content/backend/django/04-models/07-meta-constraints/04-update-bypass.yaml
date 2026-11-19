@@ -1,0 +1,15 @@
+title: update в обход ограничения
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Ограничения Meta — это база; update() их не обходит, в отличие от проверок формы.
+statement: |
+  У `Product` в `Meta` — `CheckConstraint(condition=Q(price__gte=0), name="product_price_gte_0")`. Что сделает `Product.objects.filter(name="Мышь").update(price=-100)`?
+options:
+  - "Обновит цену: `update()` не вызывает проверки модели"
+  - "Выбросит `ValidationError` с текстом ограничения"
+  - "Выбросит `IntegrityError` от базы: CHECK constraint product_price_gte_0"
+  - "Тихо пропустит строку и вернёт 0"
+answer: [2]
+explanation: |
+  `update()` действительно не вызывает `save()` и `full_clean()`, поэтому `ValidationError` не будет. Но `CheckConstraint` — это `CHECK` в самой таблице, и база отклонит `UPDATE` с `IntegrityError`. В этом и смысл ограничений в базе: их не обойти ни одним способом записи.

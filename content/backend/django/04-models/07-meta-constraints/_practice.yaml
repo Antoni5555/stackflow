@@ -1,0 +1,65 @@
+- title: Артикул среди активных
+  text: |
+    Артикул товара должен быть уникальным только среди активных товаров: у архивного товара его можно повторить. Задайте ограничение и проверьте.
+  answer: |
+    Ответ:
+
+    Файл `models.py`:
+    ```python
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        sku = models.CharField(max_length=20)
+        is_active = models.BooleanField(default=True)
+
+        class Meta:
+            constraints = [
+                models.UniqueConstraint(
+                    fields=["sku"],
+                    condition=models.Q(is_active=True),
+                    name="unique_active_sku",
+                ),
+            ]
+    ```
+
+    Файл `orm.py`:
+    ```python
+    Product.objects.create(
+        name="Мышь", sku="M-1", is_active=False
+    )
+    Product.objects.create(name="Мышь 2", sku="M-1")
+    print(Product.objects.count())
+    Product.objects.create(name="Мышь 3", sku="M-1")
+    ```
+    Результат:
+    ```
+    2
+    django.db.utils.IntegrityError: UNIQUE constraint failed: shop_product.sku
+    ```
+    Архивный и активный с одним артикулом уживаются, второй активный — нет. В PostgreSQL это частичный уникальный индекс (курс SQL, «Виды индексов»).
+- title: Скидка не больше цены
+  text: |
+    У товара есть `price` и `sale_price` (может быть пустой). Как запретить в базе цену со скидкой больше обычной?
+  answer: |
+    Сравнение полей — через `F`:
+
+    Файл `models.py` (фрагмент `Meta`):
+    ```python
+    constraints = [
+        models.CheckConstraint(
+            condition=(
+                models.Q(sale_price__isnull=True)
+                | models.Q(sale_price__lte=models.F("price"))
+            ),
+            name="sale_price_lte_price",
+        ),
+    ]
+    ```
+    `Q(…) | Q(…)` — «или»: скидки нет вовсе или она не больше цены. `F("price")` — значение другого поля той же строки (подробно — раздел «ORM: чтение данных»).
+- title: Подписи в админке
+  text: |
+    Админка показывает раздел «Order items». Как сделать «Позиции заказа»?
+  answer: |
+    В `Meta` модели `OrderItem` — `verbose_name = "позиция заказа"` и `verbose_name_plural = "позиции заказа"`. Без `verbose_name_plural` Django добавил бы к названию букву «s».
