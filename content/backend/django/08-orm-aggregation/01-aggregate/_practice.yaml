@@ -1,0 +1,56 @@
+- title: Средняя оценка
+  text: |
+    Посчитайте среднюю оценку всех отзывов магазина и число отзывов одним запросом. Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Avg, Count
+    stats = Review.objects.aggregate(
+        avg=Avg("rating"), n=Count("id")
+    )
+    print(stats)
+    ```
+    Результат:
+    ```
+    {'avg': 4.0, 'n': 5}
+    ```
+    Один `SELECT AVG(…), COUNT(…)` — словарь с двумя ключами.
+- title: Мыши на складе
+  text: |
+    Сколько всего мышей (категория «Мыши») на складе и какой у них самый маленький остаток?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Min, Sum
+    mice = Product.objects.filter(category__name="Мыши")
+    print(mice.aggregate(
+        total=Sum("stock"), least=Min("stock")
+    ))
+    ```
+    Результат:
+    ```
+    {'total': 40, 'least': 0}
+    ```
+    Сначала `filter` — какие товары считать, потом `aggregate`.
+- title: Сколько покупателей
+  text: |
+    Сколько разных покупателей сделали хотя бы один заказ? Посчитайте по таблице заказов.
+  hint: 'У одного покупателя бывает несколько заказов.'
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Count
+    n = Order.objects.aggregate(n=Count("user", distinct=True))
+    print(n)
+    ```
+    Результат:
+    ```
+    {'n': 3}
+    ```
+    Без `distinct=True` получилось бы число заказов — 6.

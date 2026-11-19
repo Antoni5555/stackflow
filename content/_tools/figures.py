@@ -1292,6 +1292,78 @@ def prefetch_fig():
     f.save(out(DJ7 / "05-prefetch-related" / "img" / "prefetch.svg"))
 
 
+# ---------- Django 8: агрегация ----------
+DJ8 = ROOT / "django" / "08-orm-aggregation"
+
+
+def aggregate_annotate():
+    f = Figure(860, 280, "aggregate сворачивает выборку в одно число, annotate добавляет число к каждому объекту")
+    f.text(20, 24, 'aggregate(Avg("rating"))', "cs")
+    f.box(20, 40, 300, 50, "{'rating__avg': 4.0}", "ok", "cs")
+    f.text(20, 116, "один словарь на всю выборку", "s")
+    f.text(360, 24, 'annotate(n=Count("reviews"))', "cs")
+    rows = [("Ноутбук Aster 14", 1), ("Беспроводная мышь", 3), ("Игровая мышь", 0),
+            ("Коврик для мыши", 1), ("Подставка для ноутбука", 0)]
+    for i, (name, n) in enumerate(rows):
+        y = 40 + i * 36
+        f.box(360, y, 340, 30, "", "box2")
+        f.text(374, y + 20, name, "cs")
+        f.box(710, y, 130, 30, f"n = {n}", "ok", "cs")
+    f.text(20, 250, "QuerySet: у каждого товара атрибут p.n; по нему можно filter (HAVING) и order_by.", "s")
+    f.save(out(DJ8 / "02-annotate" / "img" / "aggregate-annotate.svg"))
+
+
+def group_by_fig():
+    f = Figure(860, 300, "values(\"status\").annotate(n=Count(\"id\")): строки заказов собираются в группы по статусу")
+    orders = [("A-10", "shipped"), ("A-11", "cancelled"), ("A-12", "paid"),
+              ("A-13", "paid"), ("A-14", "shipped"), ("A-15", "new")]
+    for i, (num, st) in enumerate(orders):
+        f.box(20, 30 + i * 36, 260, 30, f"{num} · {st}", "box2", "cs")
+    f.arrow("M290 130H420")
+    f.text(355, 118, "GROUP BY status", "cs", "middle")
+    for i, (st, n) in enumerate([("cancelled", 1), ("new", 1), ("paid", 2), ("shipped", 2)]):
+        f.box(430, 48 + i * 40, 260, 32, f"{st}: n = {n}", "ok", "cs")
+    f.text(20, 268, 'order_by("created_at") добавил бы дату в GROUP BY — снова шесть строк по одной.', "s")
+    f.save(out(DJ8 / "03-grouping" / "img" / "group-by.svg"))
+
+
+def double_join():
+    f = Figure(860, 300, "Два JOIN через разные связи перемножают строки: 3 отзыва × 2 позиции = 6")
+    f.text(20, 24, "отзывы мыши", "s")
+    for i, r in enumerate([5, 4, 2]):
+        f.box(20, 36 + i * 40, 150, 32, f"rating {r}", "box2", "cs")
+    f.text(200, 24, "позиции мыши", "s")
+    for i, q in enumerate([("A-10", 1), ("A-12", 2)]):
+        f.box(200, 56 + i * 40, 150, 32, f"{q[0]} × {q[1]}", "box2", "cs")
+    f.arrow("M360 96H420")
+    f.text(390, 84, "JOIN", "cs", "middle")
+    k = 0
+    for r in [5, 4, 2]:
+        for q in [1, 2]:
+            f.box(430, 30 + k * 34, 200, 28, f"rating {r} · qty {q}", "err", "cs")
+            k += 1
+    f.text(650, 60, "COUNT = 6 (верно 3)", "t")
+    f.text(650, 90, "SUM(qty) = 9 (верно 3)", "t")
+    f.text(20, 268, "Count(…, distinct=True) исправляет счётчик; сумму считают подзапросом.", "s")
+    f.save(out(DJ8 / "03-grouping" / "img" / "double-join.svg"))
+
+
+def subquery_fig():
+    f = Figure(860, 280, "Подзапрос выполняется для каждой строки внешнего запроса; OuterRef(\"pk\") подставляет её id")
+    f.text(20, 24, "auth_user (внешний запрос)", "s")
+    users = [("anna", 1, "A-13"), ("boris", 2, "A-14"), ("gleb", 4, "None")]
+    for i, (name, uid, res) in enumerate(users):
+        y = 36 + i * 56
+        f.box(20, y, 170, 40, f"{name} · id {uid}", "box2", "cs")
+        f.arrow(f"M190 {y + 20}H226")
+        f.box(230, y, 450, 40, f"SELECT number … WHERE user_id = {uid} … LIMIT 1", "box", "cs")
+        f.arrow(f"M680 {y + 20}H716")
+        f.box(720, y, 120, 40, res, "err" if res == "None" else "ok", "cs")
+    f.text(20, 230, "Одна колонка (values) и не больше одной строки ([:1]); нет строк — None.", "t")
+    f.text(20, 256, "Exists(…) — то же, но ответ «есть ли строки»: True / False.", "s")
+    f.save(out(DJ8 / "05-subqueries" / "img" / "subquery.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2768,6 +2840,7 @@ if __name__ == "__main__":
                   migrations_flow, merge_flow, admin_flow, admin_setup,
                   lazy_queryset, pagination, f_race,
                   join_duplicates, n_plus_1, select_related_fig, prefetch_fig,
+                  aggregate_annotate, group_by_fig, double_join, subquery_fig,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

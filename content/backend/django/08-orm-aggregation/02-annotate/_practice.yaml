@@ -1,0 +1,62 @@
+- title: Товаров в категории
+  text: |
+    Выведите категории по `id` и число товаров в каждой.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Count
+    qs = Category.objects.annotate(n=Count("products"))
+    for c in qs.order_by("id"):
+        print(c.name, c.n)
+    ```
+    Результат:
+    ```
+    Ноутбуки 2
+    Мыши 2
+    Коврики 1
+    ```
+    Обратная связь `products` — `LEFT OUTER JOIN` и `GROUP BY` по категории.
+- title: Постоянные покупатели
+  text: |
+    Выведите покупателей, у которых не меньше двух заказов, — от большего числа заказов к меньшему, при равенстве по имени.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Count
+    qs = (
+        User.objects.annotate(n=Count("orders"))
+        .filter(n__gte=2)
+        .order_by("-n", "username")
+    )
+    print([(u.username, u.n) for u in qs])
+    ```
+    Результат:
+    ```
+    [('anna', 2), ('boris', 2), ('vera', 2)]
+    ```
+    У Глеба заказов нет — `HAVING COUNT(…) >= 2` его отсёк.
+- title: Хорошие отзывы
+  text: |
+    Для каждого товара по `id` посчитайте все отзывы и отзывы с оценкой 4 и выше — одним запросом.
+  hint: 'Count(…, filter=Q(…)).'
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Count, Q
+    qs = Product.objects.annotate(
+        total=Count("reviews"),
+        good=Count("reviews", filter=Q(reviews__rating__gte=4)),
+    ).order_by("id")
+    print([(p.name, p.total, p.good) for p in qs])
+    ```
+    Результат:
+    ```
+    [('Ноутбук Aster 14', 1, 1), ('Беспроводная мышь', 3, 2), ('Игровая мышь', 0, 0), ('Коврик для мыши', 1, 1), ('Подставка для ноутбука', 0, 0)]
+    ```
+    `filter=Q(…)` внутри `Count` считает только подходящие отзывы и не убирает товары.

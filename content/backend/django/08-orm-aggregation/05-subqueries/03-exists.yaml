@@ -1,0 +1,162 @@
+title: "Покупатели дважды"
+type: exercise
+difficulty: 2
+pitfall: "Фильтр через «многие» размножает строки; «есть хоть один» — Exists, без дублей."
+statement: |
+  Рассылка «Спасибо за покупку» берёт адресатов со страницы `/thanks/` — покупателей, у которых есть оплаченный или отправленный заказ. Анна в списке дважды и получит два письма. Исправьте view: каждый покупатель один раз, по имени.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+            SHIPPED = "shipped", "Отправлен"
+            CANCELLED = "cancelled", "Отменён"
+
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20)
+        status = models.CharField(
+            max_length=10, choices=Status, default=Status.NEW
+        )
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+  views.py: |
+    from django.contrib.auth.models import User
+    from django.shortcuts import render
+
+    from .models import Order
+
+
+    def thanks(request):
+        users = User.objects.filter(
+            orders__status__in=["paid", "shipped"]
+        ).order_by("username")
+        return render(request, "shop/thanks.html", {"users": users})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("thanks/", views.thanks),
+    ]
+  templates/shop/thanks.html: |
+    <ul>
+      {% for u in users %}
+        <li>{{ u.username }}</li>
+      {% endfor %}
+    </ul>
+setup: |
+  from datetime import datetime
+  from django.utils import timezone
+
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", price="3490.00", stock=0)
+  pad = Product.objects.create(category=pads, name="Коврик для мыши", price="490.00", stock=25)
+  stand = Product.objects.create(category=laptops, name="Подставка для ноутбука", price="2190.00", stock=7)
+  anna = User.objects.create_user("anna", "anna@shop.example")
+  boris = User.objects.create_user("boris", "boris@shop.example")
+  vera = User.objects.create_user("vera", "vera@shop.example")
+  gleb = User.objects.create_user("gleb", "gleb@shop.example")
+  orders = [
+      ("A-10", anna, "shipped", (2026, 10, 3, 14), [(aster, 1), (mouse, 1)]),
+      ("A-11", boris, "cancelled", (2026, 10, 12, 9), [(gaming, 1)]),
+      ("A-12", vera, "paid", (2026, 10, 28, 19), [(mouse, 2), (pad, 2)]),
+      ("A-13", anna, "paid", (2026, 11, 2, 11), [(pad, 1)]),
+      ("A-14", boris, "shipped", (2026, 11, 5, 16), [(gaming, 1), (pad, 1)]),
+      ("A-15", vera, "new", (2026, 11, 9, 20), [(aster, 1)]),
+  ]
+  for number, user, status, when, items in orders:
+      order = Order.objects.create(
+          user=user, number=number, status=status,
+          created_at=timezone.make_aware(datetime(*when)),
+      )
+      for product, qty in items:
+          OrderItem.objects.create(order=order, product=product, quantity=qty, price=product.price)
+  Review.objects.create(product=mouse, user=anna, rating=5)
+  Review.objects.create(product=mouse, user=vera, rating=4)
+  Review.objects.create(product=mouse, user=boris, rating=2)
+  Review.objects.create(product=aster, user=anna, rating=5)
+  Review.objects.create(product=pad, user=vera, rating=4)
+solution:
+  views.py: |
+    from django.contrib.auth.models import User
+    from django.db.models import Exists, OuterRef
+    from django.shortcuts import render
+
+    from .models import Order
+
+
+    def thanks(request):
+        paid = Order.objects.filter(
+            user=OuterRef("pk"), status__in=["paid", "shipped"]
+        )
+        users = User.objects.filter(Exists(paid)).order_by("username")
+        return render(request, "shop/thanks.html", {"users": users})
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/thanks/").content.decode()
+        assert html.count("anna") == 1
+      fail: "Анна в списке дважды — у неё два подходящих заказа."
+    - code: |
+        html = client.get("/thanks/").content.decode()
+        assert "boris" in html and "vera" in html and "gleb" not in html
+      fail: "В списке — Анна, Борис и Вера; у Глеба заказов нет."
+hints:
+  - "Сколько строк даёт JOIN покупателя с двумя подходящими заказами?"
+  - "`User.objects.filter(Exists(Order.objects.filter(user=OuterRef(\"pk\"), status__in=[…])))`."
+explanation: |
+  Условие через обратную связь — `JOIN` с заказами, и покупатель повторяется для каждого подходящего заказа. `Exists(…)` строит `WHERE EXISTS (SELECT 1 … LIMIT 1)`: строка покупателя одна, база прекращает поиск на первом найденном заказе. `.distinct()` тоже убрал бы дубли, но через `JOIN` и сортировку всей выборки.

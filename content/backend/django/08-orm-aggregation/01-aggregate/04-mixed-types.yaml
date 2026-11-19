@@ -1,0 +1,22 @@
+title: "Ноль для суммы"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "В Coalesce аргументы одного типа: для DecimalField — Decimal(\"0\"), а не 0."
+statement: |
+  Что выведет код, если у заказа `X` нет позиций? `price` — `DecimalField`.
+
+  ```python
+  from django.db.models import Sum
+  from django.db.models.functions import Coalesce
+  qs = OrderItem.objects.filter(order__number="X")
+  print(qs.aggregate(t=Coalesce(Sum("price"), 0)))
+  ```
+options:
+  - "`{'t': 0}`"
+  - "`{'t': None}`"
+  - "`{'t': Decimal('0')}`"
+  - "`FieldError: Expression contains mixed types: DecimalField, IntegerField. You must set output_field.`"
+answer: [3]
+explanation: |
+  Django выводит тип выражения из аргументов: `Sum("price")` — `DecimalField`, `0` — `IntegerField`. Типы разные — `FieldError` ещё до запроса. Правильно — `Coalesce(Sum("price"), Decimal("0"))`, тогда результат `{'t': Decimal('0')}`. Проверено в тренажёре.

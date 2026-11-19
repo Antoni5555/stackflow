@@ -1,0 +1,68 @@
+- title: Мало на складе
+  text: |
+    Выведите товары по `id` с меткой остатка: 0 — «нет», меньше 10 — «мало», остальное — «много».
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Case, Value, When
+    qs = Product.objects.annotate(
+        left=Case(
+            When(stock=0, then=Value("нет")),
+            When(stock__lt=10, then=Value("мало")),
+            default=Value("много"),
+        )
+    ).order_by("id")
+    print([(p.name, p.left) for p in qs])
+    ```
+    Результат:
+    ```
+    [('Ноутбук Aster 14', 'мало'), ('Беспроводная мышь', 'много'), ('Игровая мышь', 'нет'), ('Коврик для мыши', 'много'), ('Подставка для ноутбука', 'мало')]
+    ```
+    Ветка `stock=0` стоит первой: ноль тоже меньше 10.
+- title: Условная сумма
+  text: |
+    Посчитайте одним запросом, сколько заказов отменено и сколько нет, — через `Sum` и `Case`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Case, Sum, Value, When
+    yes = Case(When(status="cancelled", then=Value(1)),
+               default=Value(0))
+    no = Case(When(status="cancelled", then=Value(0)),
+              default=Value(1))
+    print(Order.objects.aggregate(
+        cancelled=Sum(yes), rest=Sum(no)
+    ))
+    ```
+    Результат:
+    ```
+    {'cancelled': 1, 'rest': 5}
+    ```
+    Каждая строка даёт 1 или 0, сумма — число подходящих. То же короче — `Count("id", filter=Q(status="cancelled"))`.
+- title: Скидка залежавшимся
+  text: |
+    Одним `update()` снизьте на 10 % цену товаров, которых нет на складе (`stock = 0`), остальные цены не меняйте. Выведите новую цену игровой мыши.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from decimal import Decimal
+    from django.db.models import Case, F, When
+    n = Product.objects.update(
+        price=Case(
+            When(stock=0, then=F("price") * Decimal("0.9")),
+            default=F("price"),
+        )
+    )
+    print(n, Product.objects.get(name="Игровая мышь").price)
+    ```
+    Результат:
+    ```
+    5 3141.00
+    ```
+    `update` прошёл по всем 5 строкам, но цену изменил только у одной. Множитель — `Decimal`: с `Value("0.9")` (строка) Django не выведет тип умножения.

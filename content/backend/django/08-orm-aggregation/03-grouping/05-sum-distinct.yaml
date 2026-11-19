@@ -1,0 +1,15 @@
+title: "Sum с distinct"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "Sum(…, distinct=True) складывает разные значения, а не разные строки."
+statement: |
+  Коврик есть в трёх позициях заказов: 2, 1 и 1 штука. Что вернёт для него `Sum("order_items__quantity", distinct=True)` в `annotate`?
+options:
+  - "`4`"
+  - "`3`"
+  - "`1`"
+  - "`2`"
+answer: [1]
+explanation: |
+  `SUM(DISTINCT quantity)` складывает различные **значения**: {2, 1} → 3. Две позиции по одной штуке совпали и посчитались один раз. Верную сумму 4 даёт обычный `Sum` без двойного JOIN или подзапрос. Проверено в тренажёре.

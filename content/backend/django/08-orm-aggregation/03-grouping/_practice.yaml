@@ -1,0 +1,61 @@
+- title: Отзывы по оценкам
+  text: |
+    Сколько отзывов с каждой оценкой? От высокой оценки к низкой.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Count
+    qs = Review.objects.values("rating").annotate(n=Count("id"))
+    print(list(qs.order_by("-rating")))
+    ```
+    Результат:
+    ```
+    [{'rating': 5, 'n': 2}, {'rating': 4, 'n': 2}, {'rating': 2, 'n': 1}]
+    ```
+    `values("rating")` перед `annotate` — `GROUP BY rating`.
+- title: Продано по категориям
+  text: |
+    Сколько штук продано в каждой категории (по всем позициям заказов)? По названию категории.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import F, Sum
+    cat = F("product__category__name")
+    qs = (
+        OrderItem.objects.values(category=cat)
+        .annotate(qty=Sum("quantity"))
+        .order_by("category")
+    )
+    print(list(qs))
+    ```
+    Результат:
+    ```
+    [{'category': 'Коврики', 'qty': 4}, {'category': 'Мыши', 'qty': 5}, {'category': 'Ноутбуки', 'qty': 2}]
+    ```
+    Группировка по полю через две связи; `F(…)` в `values` задаёт короткий ключ.
+- title: Частые статусы
+  text: |
+    Выведите статусы, в которых не меньше двух заказов.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Count
+    qs = (
+        Order.objects.values("status")
+        .annotate(n=Count("id"))
+        .filter(n__gte=2)
+        .order_by("status")
+    )
+    print(list(qs))
+    ```
+    Результат:
+    ```
+    [{'status': 'paid', 'n': 2}, {'status': 'shipped', 'n': 2}]
+    ```
+    Фильтр по агрегату после группировки — `HAVING`.

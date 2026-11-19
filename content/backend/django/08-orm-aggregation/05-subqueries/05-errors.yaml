@@ -1,0 +1,15 @@
+title: "Где упадёт подзапрос"
+type: quiz
+kind: multiple
+difficulty: 3
+pitfall: "Subquery — одна колонка и не больше одной строки; QuerySet с OuterRef выполняется только внутри внешнего запроса."
+statement: |
+  Проект работает на PostgreSQL. `last = Order.objects.filter(user=OuterRef("pk")).order_by("-created_at")`. Какие строки закончатся ошибкой (у покупателей бывает по несколько заказов)?
+options:
+  - "`list(User.objects.annotate(x=Subquery(last.values(\"number\", \"created_at\")[:1])))`"
+  - "`list(last)`"
+  - "`list(User.objects.annotate(x=Subquery(last.values(\"number\"))))`"
+  - "`list(User.objects.annotate(x=Subquery(last.values(\"number\")[:1])))` — для покупателя без заказов"
+answer: [0, 1, 2]
+explanation: |
+  Две колонки — `OutputFieldIsNoneError: Cannot resolve expression type, unknown output_field`. `list(last)` — `ValueError: This queryset contains a reference to an outer query and may only be used in a subquery.` Без `[:1]` PostgreSQL падает: `more than one row returned by a subquery used as an expression` (SQLite молча берёт первую строку). Подзапрос без строк — не ошибка: значение `None`.

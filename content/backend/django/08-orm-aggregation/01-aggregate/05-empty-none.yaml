@@ -1,0 +1,15 @@
+title: "Что вернёт пустота"
+type: quiz
+kind: multiple
+difficulty: 1
+pitfall: "На пустой выборке Count даёт 0, а Sum, Avg, Min и Max — None."
+statement: |
+  Выборка пустая: `qs = Order.objects.filter(number="X")`. Какие из значений в `qs.aggregate(…)` будут `None`?
+options:
+  - "`Sum(\"id\")`"
+  - "`Avg(\"id\")`"
+  - "`Count(\"id\")`"
+  - "`Max(\"created_at\")`"
+answer: [0, 1, 3]
+explanation: |
+  В SQL `COUNT` пустого набора — `0`, а `SUM`, `AVG`, `MIN`, `MAX` — `NULL`, в Python `None`. Проверено: `{'id__sum': None, 'id__count': 0}`.

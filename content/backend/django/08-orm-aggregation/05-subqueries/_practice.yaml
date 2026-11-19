@@ -1,0 +1,60 @@
+- title: Ни разу не заказывали
+  text: |
+    Найдите товары, которых нет ни в одной позиции заказов.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Exists, OuterRef
+    items = OrderItem.objects.filter(product=OuterRef("pk"))
+    qs = Product.objects.filter(~Exists(items))
+    print(list(qs.values_list("name", flat=True)))
+    ```
+    Результат:
+    ```
+    ['Подставка для ноутбука']
+    ```
+    `NOT EXISTS` — без `JOIN` и без дублей.
+- title: Есть пятёрка
+  text: |
+    Выведите товары по `id` с отметкой, есть ли у товара отзыв с оценкой 5.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Exists, OuterRef
+    five = Review.objects.filter(
+        product=OuterRef("pk"), rating=5
+    )
+    qs = Product.objects.annotate(has_five=Exists(five))
+    print([(p.name, p.has_five) for p in qs.order_by("id")])
+    ```
+    Результат:
+    ```
+    [('Ноутбук Aster 14', True), ('Беспроводная мышь', True), ('Игровая мышь', False), ('Коврик для мыши', False), ('Подставка для ноутбука', False)]
+    ```
+    `Exists` в `annotate` — флаг `True`/`False` у каждого объекта.
+- title: Первый заказ
+  text: |
+    Выведите для каждого покупателя по имени номер его **первого** заказа.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import OuterRef, Subquery
+    first = Order.objects.filter(user=OuterRef("pk")).order_by(
+        "created_at"
+    )
+    qs = User.objects.annotate(
+        first=Subquery(first.values("number")[:1])
+    ).order_by("username")
+    print([(u.username, u.first) for u in qs])
+    ```
+    Результат:
+    ```
+    [('anna', 'A-10'), ('boris', 'A-11'), ('gleb', None), ('vera', 'A-12')]
+    ```
+    Сортировка в подзапросе по возрастанию даты и `[:1]` — самый ранний заказ; у Глеба — `None`.

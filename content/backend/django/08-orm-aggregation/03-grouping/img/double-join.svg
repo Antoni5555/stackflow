@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 300" width="860" height="300" class="fig" role="img" aria-labelledby="t"><title id="t">Два JOIN через разные связи перемножают строки: 3 отзыва × 2 позиции = 6</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<text x="20" y="24" text-anchor="start" class="fig-s">отзывы мыши</text>
+<rect x="20" y="36" width="150" height="32" rx="12" class="fig-box2"/>
+<text x="95.0" y="57.0" text-anchor="middle" class="fig-cs">rating 5</text>
+<rect x="20" y="76" width="150" height="32" rx="12" class="fig-box2"/>
+<text x="95.0" y="97.0" text-anchor="middle" class="fig-cs">rating 4</text>
+<rect x="20" y="116" width="150" height="32" rx="12" class="fig-box2"/>
+<text x="95.0" y="137.0" text-anchor="middle" class="fig-cs">rating 2</text>
+<text x="200" y="24" text-anchor="start" class="fig-s">позиции мыши</text>
+<rect x="200" y="56" width="150" height="32" rx="12" class="fig-box2"/>
+<text x="275.0" y="77.0" text-anchor="middle" class="fig-cs">A-10 × 1</text>
+<rect x="200" y="96" width="150" height="32" rx="12" class="fig-box2"/>
+<text x="275.0" y="117.0" text-anchor="middle" class="fig-cs">A-12 × 2</text>
+<path d="M360 96H420" class="fig-ln" marker-end="url(#a)"/>
+<text x="390" y="84" text-anchor="middle" class="fig-cs">JOIN</text>
+<rect x="430" y="30" width="200" height="28" rx="12" class="fig-err"/>
+<text x="530.0" y="49.0" text-anchor="middle" class="fig-cs">rating 5 · qty 1</text>
+<rect x="430" y="64" width="200" height="28" rx="12" class="fig-err"/>
+<text x="530.0" y="83.0" text-anchor="middle" class="fig-cs">rating 5 · qty 2</text>
+<rect x="430" y="98" width="200" height="28" rx="12" class="fig-err"/>
+<text x="530.0" y="117.0" text-anchor="middle" class="fig-cs">rating 4 · qty 1</text>
+<rect x="430" y="132" width="200" height="28" rx="12" class="fig-err"/>
+<text x="530.0" y="151.0" text-anchor="middle" class="fig-cs">rating 4 · qty 2</text>
+<rect x="430" y="166" width="200" height="28" rx="12" class="fig-err"/>
+<text x="530.0" y="185.0" text-anchor="middle" class="fig-cs">rating 2 · qty 1</text>
+<rect x="430" y="200" width="200" height="28" rx="12" class="fig-err"/>
+<text x="530.0" y="219.0" text-anchor="middle" class="fig-cs">rating 2 · qty 2</text>
+<text x="650" y="60" text-anchor="start" class="fig-t">COUNT = 6 (верно 3)</text>
+<text x="650" y="90" text-anchor="start" class="fig-t">SUM(qty) = 9 (верно 3)</text>
+<text x="20" y="268" text-anchor="start" class="fig-s">Count(…, distinct=True) исправляет счётчик; сумму считают подзапросом.</text>
+</svg>

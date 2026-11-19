@@ -1,0 +1,22 @@
+title: "Сколько заказов у Анны"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "filter по связи после annotate не меняет посчитанное — он отбирает объекты отдельным JOIN."
+statement: |
+  У Анны два заказа: A-10 (`shipped`) и A-13 (`paid`). Что будет в `u.n` для Анны?
+
+  ```python
+  qs = (
+      User.objects.annotate(n=Count("orders"))
+      .filter(orders__status="paid")
+  )
+  ```
+options:
+  - "`1` — посчитаны только оплаченные"
+  - "`2` — посчитаны все заказы"
+  - "`0`"
+  - "Анны не будет в выборке"
+answer: [1]
+explanation: |
+  `annotate` стоит первым — `Count` считает все заказы покупателя (2). `filter(orders__status="paid")` после него присоединяет таблицу заказов второй раз (`INNER JOIN … T3`) и только отбирает покупателей, у которых есть оплаченный заказ, — Анна остаётся с `n = 2`. Чтобы посчитать только оплаченные, `filter` ставят до `annotate` или пишут `Count("orders", filter=Q(orders__status="paid"))`. Проверено в тренажёре.

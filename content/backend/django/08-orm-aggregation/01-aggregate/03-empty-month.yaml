@@ -1,0 +1,167 @@
+title: "«None ₽» за пустой месяц"
+type: exercise
+difficulty: 2
+pitfall: "Sum по пустой выборке возвращает None; ноль подставляют Coalesce с нулём того же типа."
+statement: |
+  Страница `/month/<год>/<месяц>/` показывает выручку за месяц. За месяц без заказов там написано «None ₽». Исправьте view: в таком месяце — «0 ₽».
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+            SHIPPED = "shipped", "Отправлен"
+            CANCELLED = "cancelled", "Отменён"
+
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20)
+        status = models.CharField(
+            max_length=10, choices=Status, default=Status.NEW
+        )
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        user = models.ForeignKey(User, on_delete=models.CASCADE)
+        rating = models.PositiveSmallIntegerField()
+  views.py: |
+    from django.db.models import F, Sum
+    from django.shortcuts import render
+
+    from .models import OrderItem
+
+
+    def month(request, year, month):
+        items = OrderItem.objects.filter(
+            order__status__in=["paid", "shipped"],
+            order__created_at__year=year,
+            order__created_at__month=month,
+        )
+        revenue = items.aggregate(t=Sum(F("price") * F("quantity")))["t"]
+        return render(request, "shop/month.html", {"revenue": revenue})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("month/<int:year>/<int:month>/", views.month),
+    ]
+  templates/shop/month.html: |
+    <p>Выручка: {{ revenue }} ₽</p>
+setup: |
+  from datetime import datetime
+  from django.utils import timezone
+
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", price="3490.00", stock=0)
+  pad = Product.objects.create(category=pads, name="Коврик для мыши", price="490.00", stock=25)
+  stand = Product.objects.create(category=laptops, name="Подставка для ноутбука", price="2190.00", stock=7)
+  anna = User.objects.create_user("anna", "anna@shop.example")
+  boris = User.objects.create_user("boris", "boris@shop.example")
+  vera = User.objects.create_user("vera", "vera@shop.example")
+  gleb = User.objects.create_user("gleb", "gleb@shop.example")
+  orders = [
+      ("A-10", anna, "shipped", (2026, 10, 3, 14), [(aster, 1), (mouse, 1)]),
+      ("A-11", boris, "cancelled", (2026, 10, 12, 9), [(gaming, 1)]),
+      ("A-12", vera, "paid", (2026, 10, 28, 19), [(mouse, 2), (pad, 2)]),
+      ("A-13", anna, "paid", (2026, 11, 2, 11), [(pad, 1)]),
+      ("A-14", boris, "shipped", (2026, 11, 5, 16), [(gaming, 1), (pad, 1)]),
+      ("A-15", vera, "new", (2026, 11, 9, 20), [(aster, 1)]),
+  ]
+  for number, user, status, when, items in orders:
+      order = Order.objects.create(
+          user=user, number=number, status=status,
+          created_at=timezone.make_aware(datetime(*when)),
+      )
+      for product, qty in items:
+          OrderItem.objects.create(order=order, product=product, quantity=qty, price=product.price)
+  Review.objects.create(product=mouse, user=anna, rating=5)
+  Review.objects.create(product=mouse, user=vera, rating=4)
+  Review.objects.create(product=mouse, user=boris, rating=2)
+  Review.objects.create(product=aster, user=anna, rating=5)
+  Review.objects.create(product=pad, user=vera, rating=4)
+solution:
+  views.py: |
+    from decimal import Decimal
+
+    from django.db.models import F, Sum
+    from django.db.models.functions import Coalesce
+    from django.shortcuts import render
+
+    from .models import OrderItem
+
+
+    def month(request, year, month):
+        items = OrderItem.objects.filter(
+            order__status__in=["paid", "shipped"],
+            order__created_at__year=year,
+            order__created_at__month=month,
+        )
+        revenue = items.aggregate(
+            t=Coalesce(Sum(F("price") * F("quantity")), Decimal("0"))
+        )["t"]
+        return render(request, "shop/month.html", {"revenue": revenue})
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/month/2026/9/").content.decode()
+        assert "Выручка: 0 ₽" in html
+      fail: "За сентябрь заказов нет — должно быть «0 ₽», а не «None ₽»."
+    - code: |
+        html = client.get("/month/2026/11/").content.decode()
+        assert "Выручка: 4470 ₽" in html
+      fail: "Выручка за ноябрь — 4470 ₽."
+hints:
+  - "Что возвращает SUM, если строк нет?"
+  - "`Coalesce(Sum(…), Decimal(\"0\"))` — ноль того же типа, что сумма денег."
+explanation: |
+  Агрегаты, кроме `Count`, на пустой выборке дают `NULL` → `None`, и шаблон выводит «None». `Coalesce(Sum(…), Decimal("0"))` подставляет ноль прямо в запросе. Ноль должен быть `Decimal`: с целым `0` Django не знает тип результата — `FieldError: Expression contains mixed types`. Подойдёт и `… ["t"] or 0` в Python.
