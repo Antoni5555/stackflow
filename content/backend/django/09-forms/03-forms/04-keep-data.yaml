@@ -1,0 +1,165 @@
+title: "Ошибки пропадают"
+type: exercise
+difficulty: 2
+pitfall: "При ошибках рисуют ту же форму, что проверяли: в ней введённые значения и сообщения."
+statement: |
+  Если в форме `/feedback/` ошибка, страница показывает пустую форму без сообщений — пользователь не понимает, что не так, и набирает всё заново. Исправьте view.
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  forms.py: |
+    from django import forms
+
+
+    class FeedbackForm(forms.Form):
+        name = forms.CharField(label="Имя", max_length=100)
+        email = forms.EmailField(label="Почта")
+        message = forms.CharField(label="Сообщение", widget=forms.Textarea)
+  views.py: |
+    from django.shortcuts import redirect, render
+
+    from .forms import FeedbackForm
+
+
+    def feedback(request):
+        if request.method == "POST":
+            form = FeedbackForm(request.POST)
+            if form.is_valid():
+                return redirect("thanks")
+            form = FeedbackForm()
+        else:
+            form = FeedbackForm()
+        return render(request, "shop/feedback.html", {"form": form})
+
+
+    def thanks(request):
+        return render(request, "shop/thanks.html")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("feedback/", views.feedback, name="feedback"),
+        path("thanks/", views.thanks, name="thanks"),
+    ]
+  templates/shop/feedback.html: |
+    <h1>Обратная связь</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Отправить</button>
+    </form>
+  templates/shop/thanks.html: |
+    <p>Спасибо! Мы ответим на почту.</p>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.shortcuts import redirect, render
+
+    from .forms import FeedbackForm
+
+
+    def feedback(request):
+        if request.method == "POST":
+            form = FeedbackForm(request.POST)
+            if form.is_valid():
+                return redirect("thanks")
+        else:
+            form = FeedbackForm()
+        return render(request, "shop/feedback.html", {"form": form})
+
+
+    def thanks(request):
+        return render(request, "shop/thanks.html")
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.post("/feedback/", {"name": "Анна", "email": "anna@", "message": "Где мой заказ?"})
+        html = r.content.decode()
+        assert "Введите правильный адрес электронной почты." in html
+      fail: "При неверной почте на странице должно быть сообщение об ошибке."
+    - code: |
+        r = client.post("/feedback/", {"name": "Анна", "email": "anna@", "message": "Где мой заказ?"})
+        html = r.content.decode()
+        assert 'value="Анна"' in html and "Где мой заказ?" in html
+      fail: "Введённые значения должны остаться в полях."
+    - code: |
+        assert client.post("/feedback/", {"name": "Анна", "email": "anna@shop.example", "message": "Где мой заказ?"}).status_code == 302
+      fail: "Верная форма по-прежнему перенаправляет на /thanks/."
+hints:
+  - "Какой объект формы попадает в шаблон, если is_valid() вернул False?"
+  - "Уберите `form = FeedbackForm()` из ветки POST."
+explanation: |
+  Ошибки и введённые значения хранит объект формы, созданный из `request.POST` и проверенный `is_valid()`. Новый `FeedbackForm()` — пустая несвязанная форма. При ошибках в шаблон передают ту же форму, которую проверяли.

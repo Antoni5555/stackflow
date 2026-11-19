@@ -101,6 +101,8 @@
 | 06 | Загрузка файлов | `FileField`, `ImageField`, `upload_to`, `MEDIA_ROOT/URL` | фото товара | 🟡 D4.4 |
 | 07 | Набор форм | `formset`, `inlineformset_factory` | изменить количество всех позиций корзины одной формой | 🟡 D2.8 |
 
+✅ Написан: `content/backend/django/09-forms` — 7 уроков, 28 задач (20 `exercise` `check.type: django`, 8 `quiz`), 6 рисунков, задачники — 21 упражнение. Учебная модель — `Category`, `Product` (`slug`, `stock`, `is_active`), `Order`/`OrderItem` (`CASCADE`/`PROTECT`), `Promo` (`SALE10` до 2099 года — чтобы задачи не устарели), `Review`. Тема 06: Pillow в тренажёре нет, поэтому загрузка — на `FileField`, `ImageField` — как ошибка `fields.E210`; задачам с файлами — `settings: MEDIA_ROOT /tmp/shop-media, MEDIA_URL /media/`.
+
 ## 10. Class-based views ●●○
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|

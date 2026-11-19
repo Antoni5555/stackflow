@@ -1,0 +1,138 @@
+title: "Сто промокодов"
+type: exercise
+difficulty: 2
+pitfall: "Много однотипных объектов — bulk_create одним INSERT, а не create() в цикле."
+statement: |
+  POST на `/promos/generate/` с `count=N` создаёт N промокодов `PROMO-001`, `PROMO-002`, … со скидкой 5 % до 31.12.2099. Сейчас это N запросов. Перепишите: не больше двух запросов на 100 промокодов.
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Promo
+
+
+    def generate(request):
+        if request.method == "POST":
+            count = int(request.POST["count"])
+            for i in range(1, count + 1):
+                Promo.objects.create(
+                    code=f"PROMO-{i:03}", discount=5, valid_until="2099-12-31"
+                )
+            return redirect("/")
+        return render(request, "shop/generate.html")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("promos/generate/", views.generate, name="generate"),
+    ]
+  templates/shop/generate.html: |
+    <form method="post">{% csrf_token %}<input name="count"><button>Создать</button></form>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Promo
+
+
+    def generate(request):
+        if request.method == "POST":
+            count = int(request.POST["count"])
+            Promo.objects.bulk_create(
+                Promo(code=f"PROMO-{i:03}", discount=5, valid_until="2099-12-31")
+                for i in range(1, count + 1)
+            )
+            return redirect("/")
+        return render(request, "shop/generate.html")
+check:
+  type: django
+  tests:
+    - code: |
+        client.post("/promos/generate/", {"count": "100"})
+        assert Promo.objects.filter(code__startswith="PROMO-").count() == 100
+        assert Promo.objects.filter(code="PROMO-001", discount=5).exists() and Promo.objects.filter(code="PROMO-100").exists()
+      fail: "Должно появиться 100 промокодов от PROMO-001 до PROMO-100 со скидкой 5 %."
+    - code: |
+        with max_queries(2):
+            client.post("/promos/generate/", {"count": "100"})
+      fail: "Промокоды создаются запросом на каждый — используйте bulk_create."
+hints:
+  - "Как вставить много строк одним запросом?"
+  - "`Promo.objects.bulk_create(Promo(…) for i in range(…))`."
+explanation: |
+  `create()` в цикле — `INSERT` на каждый промокод. `bulk_create(список)` собирает их в один `INSERT` с множеством строк (большие списки — пачками по `batch_size` или по пределу параметров базы). `save()` модели и сигналы при этом не вызываются — здесь их нет, так что разницы нет.

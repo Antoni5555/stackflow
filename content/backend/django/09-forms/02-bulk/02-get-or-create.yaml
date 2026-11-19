@@ -1,0 +1,140 @@
+title: "Дубли категорий"
+type: exercise
+difficulty: 1
+pitfall: "Создать, только если нет, — get_or_create; он возвращает кортеж (объект, created)."
+statement: |
+  Страница `/import/` принимает список категорий (по одной в строке) и показывает, сколько создано. Повторяющиеся и уже существующие категории создаются ещё раз. Исправьте view: новых категорий — столько, сколько действительно новых названий.
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Category
+
+
+    def import_categories(request):
+        created = 0
+        if request.method == "POST":
+            for name in request.POST["names"].splitlines():
+                name = name.strip()
+                if not name:
+                    continue
+                Category.objects.create(name=name)
+                created += 1
+        return render(request, "shop/import.html", {"created": created})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("import/", views.import_categories, name="import"),
+    ]
+  templates/shop/import.html: |
+    <p>Создано: {{ created }}</p>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Category
+
+
+    def import_categories(request):
+        created = 0
+        if request.method == "POST":
+            for name in request.POST["names"].splitlines():
+                name = name.strip()
+                if not name:
+                    continue
+                _, is_new = Category.objects.get_or_create(name=name)
+                if is_new:
+                    created += 1
+        return render(request, "shop/import.html", {"created": created})
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.post("/import/", {"names": "Мыши\nКоврики\nКоврики"})
+        assert "Создано: 1" in r.content.decode()
+      fail: "Новая здесь только одна категория — «Коврики»; должно быть «Создано: 1»."
+    - code: |
+        client.post("/import/", {"names": "Мыши\nКоврики\nКоврики"})
+        assert Category.objects.filter(name="Мыши").count() == 1 and Category.objects.filter(name="Коврики").count() == 1
+      fail: "Каждая категория должна быть в базе один раз."
+hints:
+  - "Какой метод находит объект или создаёт его?"
+  - "`_, is_new = Category.objects.get_or_create(name=name)`."
+explanation: |
+  `get_or_create(name=name)` ищет категорию по имени и создаёт её, только если не нашёл. Возвращает кортеж `(объект, created)`: `created` — `True` у только что созданной, по нему и считаем новые. Если бы поле `name` было `unique`, `create` упал бы с `IntegrityError`; без `unique` — молча плодит дубли.

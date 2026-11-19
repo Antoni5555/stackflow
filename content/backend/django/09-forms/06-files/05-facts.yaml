@@ -1,0 +1,15 @@
+title: "Файлы: что верно"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "ImageField требует Pillow; одинаковые имена получают суффикс; старые файлы сами не удаляются."
+statement: |
+  Что из этого верно для `FileField`/`ImageField` в Django?
+options:
+  - "`ImageField` без установленного Pillow не проходит системную проверку (`fields.E210`)"
+  - "Файл с уже существующим именем перезаписывает старый"
+  - "При замене файла у объекта старый файл с диска не удаляется"
+  - "Загруженные файлы кладут в `STATIC_ROOT` и собирают `collectstatic`"
+answer: [0, 2]
+explanation: |
+  Без Pillow — `fields.E210 Cannot use ImageField because Pillow is not installed.`. Одинаковое имя не перезаписывается: Django добавляет суффикс (`aster_P7Dcn5B.pdf`). Старые файлы чистят отдельно. Пользовательские файлы — `MEDIA_ROOT`, а `STATIC_ROOT` — для файлов проекта.

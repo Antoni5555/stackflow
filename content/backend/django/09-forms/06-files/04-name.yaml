@@ -1,0 +1,15 @@
+title: "Что в колонке"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "В базе у FileField — путь относительно MEDIA_ROOT; адрес и путь на диске вычисляются."
+statement: |
+  `manual = models.FileField(upload_to="manuals/")`, `MEDIA_ROOT = "/srv/media"`, `MEDIA_URL = "/media/"`. Загрузили `aster.pdf`. Что записано в колонку `manual` таблицы товаров?
+options:
+  - "содержимое файла"
+  - "`manuals/aster.pdf`"
+  - "`/media/manuals/aster.pdf`"
+  - "`/srv/media/manuals/aster.pdf`"
+answer: [1]
+explanation: |
+  В колонке — путь относительно `MEDIA_ROOT` (`p.manual.name`). `/media/manuals/aster.pdf` — это `p.manual.url` (`MEDIA_URL` + путь), `/srv/media/manuals/aster.pdf` — `p.manual.path`. Содержимое лежит на диске.

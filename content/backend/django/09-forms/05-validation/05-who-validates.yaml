@@ -1,0 +1,16 @@
+title: "Кто вызывает валидаторы"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Валидаторы модели запускают full_clean(), ModelForm и админка; save() и update() — нет."
+statement: |
+  У поля `Review.rating` — `MaxValueValidator(5)`. При каком действии оценка 9 будет отклонена с ошибкой валидации?
+options:
+  - "`ReviewForm({…, \"rating\": 9}).is_valid()` (ModelForm)"
+  - "`Review(…, rating=9).save()`"
+  - "`Review(…, rating=9).full_clean()`"
+  - "Сохранение в админке Django"
+  - "`Review.objects.filter(…).update(rating=9)`"
+answer: [0, 2, 3]
+explanation: |
+  ModelForm при `is_valid()` вызывает `full_clean()` объекта, админка — тоже через ModelForm. `save()` и `update()` валидаторы не запускают: в тренажёре `Review(rating=9).save()` записал 9. Жёсткое правило дублируют `CheckConstraint` в базе.

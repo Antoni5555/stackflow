@@ -1,0 +1,162 @@
+title: "Правка создаёт копию"
+type: exercise
+difficulty: 2
+pitfall: "Форма редактирования — с instance; без него save() делает INSERT нового объекта."
+statement: |
+  Страница `/reviews/<pk>/edit/` должна изменять отзыв, а после сохранения появляется второй отзыв с новыми данными, старый остаётся. Исправьте view.
+files:
+  models.py: |
+    from django.core.validators import MaxValueValidator, MinValueValidator
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField(
+            validators=[MinValueValidator(1), MaxValueValidator(5)]
+        )
+        text = models.TextField(blank=True)
+  forms.py: |
+    from django import forms
+
+    from .models import Review
+
+
+    class ReviewForm(forms.ModelForm):
+        class Meta:
+            model = Review
+            fields = ["author", "rating", "text"]
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .forms import ReviewForm
+    from .models import Review
+
+
+    def edit(request, pk):
+        review = get_object_or_404(Review, pk=pk)
+        if request.method == "POST":
+            form = ReviewForm(request.POST)
+            if form.is_valid():
+                form.save()
+                return redirect("edit", pk=pk)
+        else:
+            form = ReviewForm(instance=review)
+        return render(request, "shop/edit.html", {"form": form})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("reviews/<int:pk>/edit/", views.edit, name="edit"),
+    ]
+  templates/shop/edit.html: |
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Сохранить</button>
+    </form>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .forms import ReviewForm
+    from .models import Review
+
+
+    def edit(request, pk):
+        review = get_object_or_404(Review, pk=pk)
+        if request.method == "POST":
+            form = ReviewForm(request.POST, instance=review)
+            if form.is_valid():
+                form.save()
+                return redirect("edit", pk=pk)
+        else:
+            form = ReviewForm(instance=review)
+        return render(request, "shop/edit.html", {"form": form})
+check:
+  type: django
+  tests:
+    - code: |
+        r = Review.objects.get(author="Анна")
+        client.post(f"/reviews/{r.pk}/edit/", {"author": "Анна", "rating": "4", "text": "Удобная, но шумная"})
+        assert Review.objects.count() == 1
+        r.refresh_from_db()
+        assert r.rating == 4 and r.text == "Удобная, но шумная"
+      fail: "Отзыв должен измениться, а не скопироваться: отзывов по-прежнему один."
+    - code: |
+        r = Review.objects.get(author="Анна")
+        html = client.get(f"/reviews/{r.pk}/edit/").content.decode()
+        assert 'value="Анна"' in html and "Удобная" in html
+      fail: "Форма редактирования показывает текущие значения отзыва."
+hints:
+  - "Как форма узнаёт, какой объект обновлять?"
+  - "`ReviewForm(request.POST, instance=review)`."
+explanation: |
+  ModelForm без `instance` создаёт новый объект — `save()` делает `INSERT`. С `instance=review` форма заполняет поля существующего отзыва, и `save()` делает `UPDATE` по его `pk`. `instance` нужен в обеих ветках: в GET — чтобы показать текущие значения, в POST — чтобы обновить.

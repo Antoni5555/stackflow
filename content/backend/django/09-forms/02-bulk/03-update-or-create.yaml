@@ -1,0 +1,149 @@
+title: "Прайс поставщика"
+type: exercise
+difficulty: 2
+pitfall: "В условиях get_or_create/update_or_create — то, по чему ищут; изменяемые поля — в defaults."
+statement: |
+  Страница `/prices/` принимает прайс строками `slug;название;цена`: у существующих товаров нужно обновить цену, новых — создать в категории «Мыши». Если в прайсе есть уже существующий товар с новой ценой, страница падает с ошибкой 500. Исправьте view.
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Category, Product
+
+
+    def import_prices(request):
+        if request.method == "POST":
+            mice = Category.objects.get(name="Мыши")
+            for line in request.POST["csv"].splitlines():
+                slug, name, price = line.split(";")
+                Product.objects.get_or_create(
+                    slug=slug, name=name, price=price,
+                    defaults={"category": mice},
+                )
+            return redirect("import")
+        return render(request, "shop/import.html")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("prices/", views.import_prices, name="import"),
+    ]
+  templates/shop/import.html: |
+    <form method="post">{% csrf_token %}<textarea name="csv"></textarea><button>Загрузить</button></form>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Category, Product
+
+
+    def import_prices(request):
+        if request.method == "POST":
+            mice = Category.objects.get(name="Мыши")
+            for line in request.POST["csv"].splitlines():
+                slug, name, price = line.split(";")
+                Product.objects.update_or_create(
+                    slug=slug,
+                    defaults={"price": price},
+                    create_defaults={"name": name, "price": price, "category": mice},
+                )
+            return redirect("import")
+        return render(request, "shop/import.html")
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.post("/prices/", {"csv": "aster-14;Ноутбук Aster 14;59990.00"})
+        assert r.status_code == 302
+        assert str(Product.objects.get(slug="aster-14").price) == "59990.00"
+      fail: "Цена существующего товара должна обновиться: сейчас get_or_create не находит товар со старой ценой и пытается создать второй aster-14."
+    - code: |
+        client.post("/prices/", {"csv": "mouse-pad;Коврик для мыши;490.00"})
+        p = Product.objects.get(slug="mouse-pad")
+        assert p.name == "Коврик для мыши" and p.category.name == "Мыши" and str(p.price) == "490.00"
+      fail: "Новый товар создаётся в категории «Мыши» с названием и ценой из прайса."
+    - code: |
+        client.post("/prices/", {"csv": "aster-14;Aster;59990.00\nmouse-pad;Коврик;490.00"})
+        assert Product.objects.count() == 4
+        assert Product.objects.get(slug="aster-14").name == "Ноутбук Aster 14"
+      fail: "Существующему товару меняется только цена — название остаётся прежним; лишних товаров не появляется."
+hints:
+  - "По какому полю товар находится однозначно?"
+  - "`update_or_create(slug=slug, defaults={\"price\": price}, create_defaults={…})`."
+explanation: |
+  В условиях `get_or_create` были цена и название: товара «aster-14 за 59990» нет, и Django пытается создать второй с тем же `slug` — `IntegrityError`. Искать нужно по уникальному `slug`, а изменяемое — в `defaults`. `update_or_create` у найденного записывает `defaults` (только цену), а новый создаёт с `create_defaults` — там название и категория.

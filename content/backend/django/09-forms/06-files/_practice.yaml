@@ -1,0 +1,73 @@
+- title: Атрибуты файла
+  text: |
+    Какие значения дадут `name` и `url` у поля файла, если в колонке записан путь `manuals/aster.pdf`, а `MEDIA_URL = "/media/"`? Проверьте, не загружая файл: запишите путь в поле напрямую.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    p = Product.objects.get(slug="aster-14")
+    p.manual = "manuals/aster.pdf"
+    print(repr(p.manual.name), p.manual.url, bool(p.manual))
+    gaming = Product.objects.get(slug="gaming-mouse")
+    print(bool(gaming.manual))
+    ```
+    Результат:
+    ```
+    'manuals/aster.pdf' /media/manuals/aster.pdf True
+    False
+    ```
+    В колонке — только путь; `url` = `MEDIA_URL` + путь. У товара без файла поле ложно — `{% if product.manual %}`.
+- title: Только PDF
+  text: |
+    Разрешите в поле инструкции только PDF: валидатор `FileExtensionValidator`. Проверьте форму на `aster.docx`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+    from django.core.files.uploadedfile import (
+        SimpleUploadedFile,
+    )
+    from django.core.validators import FileExtensionValidator
+
+
+    class ManualForm(forms.Form):
+        manual = forms.FileField(
+            validators=[FileExtensionValidator(["pdf"])]
+        )
+
+
+    f = SimpleUploadedFile("aster.docx", b"...")
+    form = ManualForm({}, {"manual": f})
+    print(form.is_valid(), form.errors.as_data())
+    ```
+    Результат:
+    ```
+    False {'manual': [ValidationError(['Расширение файлов “docx” не поддерживается. Разрешенные расширения: pdf.'])]}
+    ```
+    Файлы — второй аргумент формы (`files`), как `request.FILES` во view. Расширение — только первая линия защиты: проверять стоит и содержимое.
+- title: Файл не пришёл
+  text: |
+    Что ответит форма с обязательным файлом, если файлы ей не передали (как без `request.FILES` во view)?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+
+
+    class ManualForm(forms.Form):
+        manual = forms.FileField()
+
+
+    form = ManualForm({"manual": "aster.pdf"})
+    print(form.is_valid(), form.errors.as_data())
+    ```
+    Результат:
+    ```
+    False {'manual': [ValidationError(['Обязательное поле.'])]}
+    ```
+    Имя файла в обычных данных форме не нужно: она ищет файл в `files`.

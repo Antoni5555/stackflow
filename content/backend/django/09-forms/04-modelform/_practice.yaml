@@ -1,0 +1,84 @@
+- title: Форма товара
+  text: |
+    Сделайте ModelForm товара с полями категории, названия, slug и цены. Каким полем стала категория?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+
+
+    class ProductForm(forms.ModelForm):
+        class Meta:
+            model = Product
+            fields = ["category", "name", "slug", "price"]
+
+
+    f = ProductForm()
+    print(type(f.fields["category"]).__name__)
+    print(list(f.fields["category"].queryset))
+    ```
+    Результат:
+    ```
+    ModelChoiceField
+    [<Category: Ноутбуки>, <Category: Мыши>]
+    ```
+    `ForeignKey` → `ModelChoiceField`: выпадающий список объектов `queryset`.
+- title: Уникальный slug
+  text: |
+    Проверьте форму товара на slug `aster-14`, который уже занят.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+
+
+    class ProductForm(forms.ModelForm):
+        class Meta:
+            model = Product
+            fields = ["category", "name", "slug", "price"]
+
+
+    data = {"category": 2, "name": "Дубль",
+            "slug": "aster-14", "price": "1"}
+    f = ProductForm(data)
+    print(f.is_valid(), f.errors.as_data())
+    ```
+    Результат:
+    ```
+    False {'slug': [ValidationError(['Product с таким Slug уже существует.'])]}
+    ```
+    ModelForm проверил `unique` запросом к базе ещё до сохранения. В сообщении — имя модели и поля, потому что у них нет `verbose_name`.
+- title: Сохранить отзыв
+  text: |
+    Сохраните отзыв из формы (имя, оценка, текст) к ноутбуку Aster 14.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+
+
+    class ReviewForm(forms.ModelForm):
+        class Meta:
+            model = Review
+            fields = ["author", "rating", "text"]
+
+
+    f = ReviewForm({"author": "Вера", "rating": 5})
+    print(f.is_valid())
+    review = f.save(commit=False)
+    review.product = Product.objects.get(slug="aster-14")
+    review.save()
+    print(review.pk, review.product, review.text == "")
+    ```
+    Результат:
+    ```
+    True
+    2 Ноутбук Aster 14 True
+    ```
+    Товара в форме нет — его ставят между `save(commit=False)` и `save()`. Пустой необязательный текст — пустая строка.

@@ -1,0 +1,181 @@
+title: "Отзыв к чужому товару"
+type: exercise
+difficulty: 3
+pitfall: "fields = \"__all__\" принимает от пользователя и поля, которых нет на странице; список полей — явно."
+statement: |
+  В форме отзыва `fields = "__all__"`, поэтому на странице товара есть выпадающий список «Product», а подменив его значение, отзыв можно прикрепить к любому товару. Исправьте форму и view: пользователь присылает только имя, оценку и текст, а товар — всегда тот, что на странице.
+files:
+  models.py: |
+    from django.core.validators import MaxValueValidator, MinValueValidator
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField(
+            validators=[MinValueValidator(1), MaxValueValidator(5)]
+        )
+        text = models.TextField(blank=True)
+  forms.py: |
+    from django import forms
+
+    from .models import Review
+
+
+    class ReviewForm(forms.ModelForm):
+        class Meta:
+            model = Review
+            fields = "__all__"
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .forms import ReviewForm
+    from .models import Product
+
+
+    def product(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        if request.method == "POST":
+            form = ReviewForm(request.POST)
+            if form.is_valid():
+                form.save()
+                return redirect("product", slug=slug)
+        else:
+            form = ReviewForm()
+        return render(request, "shop/product.html", {"product": product, "form": form})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/", views.product, name="product"),
+    ]
+  templates/shop/product.html: |
+    <h1>{{ product.name }}</h1>
+    <ul>
+      {% for r in product.reviews.all %}
+        <li>{{ r.author }}: {{ r.rating }}</li>
+      {% endfor %}
+    </ul>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Оставить отзыв</button>
+    </form>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  forms.py: |
+    from django import forms
+
+    from .models import Review
+
+
+    class ReviewForm(forms.ModelForm):
+        class Meta:
+            model = Review
+            fields = ["author", "rating", "text"]
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .forms import ReviewForm
+    from .models import Product
+
+
+    def product(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        if request.method == "POST":
+            form = ReviewForm(request.POST)
+            if form.is_valid():
+                review = form.save(commit=False)
+                review.product = product
+                review.save()
+                return redirect("product", slug=slug)
+        else:
+            form = ReviewForm()
+        return render(request, "shop/product.html", {"product": product, "form": form})
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/products/aster-14/").content.decode()
+        assert 'name="product"' not in html
+      fail: "В форме не должно быть поля product."
+    - code: |
+        mouse = Product.objects.get(slug="wireless-mouse")
+        client.post("/products/aster-14/", {"author": "Вера", "rating": "5", "text": "", "product": mouse.pk})
+        assert Review.objects.filter(author="Вера", product__slug="aster-14").exists()
+      fail: "Отзыв со страницы Aster 14 должен попасть к Aster 14, даже если в запросе подставлен другой product."
+    - code: |
+        client.post("/products/aster-14/", {"author": "Вера", "rating": "5", "text": ""})
+        assert Review.objects.filter(author="Вера").count() == 1
+      fail: "Отзыв без поля product в запросе тоже должен сохраняться."
+hints:
+  - "Какие поля пользователь должен присылать сам?"
+  - "`fields = [\"author\", \"rating\", \"text\"]` и `save(commit=False)` во view."
+explanation: |
+  `"__all__"` превращает в поля формы всё, что есть в модели, включая связь с товаром. Пользователь может прислать любое значение — защитой не является то, что поле «не видно». Явный список `fields` принимает только безопасные поля, а товар ставит view из адреса страницы.

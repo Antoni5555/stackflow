@@ -1,0 +1,75 @@
+- title: Форма подписки
+  text: |
+    Опишите форму подписки на рассылку с одним полем почты и проверьте её на `anna@shop.example` и `anna@`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+
+
+    class SubscribeForm(forms.Form):
+        email = forms.EmailField(label="Почта")
+
+
+    for email in ["anna@shop.example", "anna@"]:
+        f = SubscribeForm({"email": email})
+        print(f.is_valid(), f.errors.get("email"))
+    ```
+    Результат:
+    ```
+    True None
+    False <ul class="errorlist" id="id_email_error"><li>Введите правильный адрес электронной почты.</li></ul>
+    ```
+    Ошибки поля — список; в шаблоне его выводит `{{ form.email.errors }}`.
+- title: Количество в корзину
+  text: |
+    Форма «Добавить в корзину» с полем количества от 1 до 10. Что окажется в `cleaned_data` для «3» и что будет для «0»?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+
+
+    class AddForm(forms.Form):
+        quantity = forms.IntegerField(min_value=1, max_value=10)
+
+
+    f = AddForm({"quantity": "3"})
+    print(f.is_valid(), f.cleaned_data)
+    f = AddForm({"quantity": "0"})
+    print(f.is_valid(), f.errors.as_data())
+    ```
+    Результат:
+    ```
+    True {'quantity': 3}
+    False {'quantity': [ValidationError(['Убедитесь, что это значение больше либо равно 1.'])]}
+    ```
+    Строка «3» из POST стала `int` 3.
+- title: Необязательное поле
+  text: |
+    Добавьте к форме обратной связи необязательный телефон. Что будет в `cleaned_data`, если его не прислать?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+
+
+    class F(forms.Form):
+        email = forms.EmailField()
+        phone = forms.CharField(required=False)
+
+
+    f = F({"email": "anna@shop.example"})
+    print(f.is_valid(), f.cleaned_data)
+    ```
+    Результат:
+    ```
+    True {'email': 'anna@shop.example', 'phone': ''}
+    ```
+    Необязательное пустое текстовое поле — пустая строка, а не `None`.

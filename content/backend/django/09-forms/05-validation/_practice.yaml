@@ -1,0 +1,94 @@
+- title: Только латиница
+  text: |
+    Поле slug в своей форме: только строчные латинские буквы, цифры и дефис. Сообщение — «Только a–z, 0–9 и дефис.».
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    import re
+    from django import forms
+
+
+    class SlugForm(forms.Form):
+        slug = forms.CharField()
+
+        def clean_slug(self):
+            slug = self.cleaned_data["slug"].lower()
+            if not re.fullmatch(r"[a-z0-9-]+", slug):
+                raise forms.ValidationError(
+                    "Только a–z, 0–9 и дефис."
+                )
+            return slug
+
+
+    for s in ["Mouse-Pad", "коврик"]:
+        f = SlugForm({"slug": s})
+        print(f.is_valid(), f.cleaned_data.get("slug"))
+        print(f.errors.get("slug"))
+    ```
+    Результат:
+    ```
+    True mouse-pad
+    None
+    False None
+    <ul class="errorlist" id="id_slug_error"><li>Только a–z, 0–9 и дефис.</li></ul>
+    ```
+    «Mouse-Pad» прошёл и стал строчным — `clean_slug` вернул нормализованное значение.
+- title: Пароль дважды
+  text: |
+    Форма смены пароля: два поля, пароли должны совпадать. Ошибку привяжите ко второму полю.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+
+
+    class PasswordForm(forms.Form):
+        password = forms.CharField()
+        password2 = forms.CharField()
+
+        def clean(self):
+            cleaned = super().clean()
+            first = cleaned.get("password")
+            if first != cleaned.get("password2"):
+                msg = "Пароли не совпадают."
+                self.add_error("password2", msg)
+            return cleaned
+
+
+    data = {"password": "abc12345", "password2": "abc"}
+    f = PasswordForm(data)
+    print(f.is_valid(), f.errors.as_data())
+    ```
+    Результат:
+    ```
+    False {'password2': [ValidationError(['Пароли не совпадают.'])]}
+    ```
+    Сравнение двух полей — в `clean()`; `add_error` ставит ошибку у поля, а не общую.
+- title: full_clean перед save
+  text: |
+    Создайте отзыв с оценкой 0 в коде и сохраните его, только если он проходит проверки модели.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.core.exceptions import ValidationError
+    r = Review(product=Product.objects.first(),
+               author="Глеб", rating=0)
+    try:
+        r.full_clean()
+        r.save()
+    except ValidationError as e:
+        print(e.message_dict)
+    print(Review.objects.count())
+    ```
+    Результат:
+    ```
+    {'rating': ['Убедитесь, что это значение больше либо равно 1.']}
+    1
+    ```
+    `save()` сам валидаторы не вызывает — проверяет `full_clean()`. Отзыв не сохранён: по-прежнему один.

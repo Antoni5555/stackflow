@@ -1,0 +1,15 @@
+title: "Что вернёт delete()"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "delete() возвращает число удалённых строк всего и по моделям — вместе с каскадом."
+statement: |
+  У заказа A-12 две позиции, `OrderItem.order` — `on_delete=CASCADE`. Что выведет `print(Order.objects.get(number="A-12").delete())`?
+options:
+  - "`(1, {'shop.Order': 1})`"
+  - "`(3, {'shop.OrderItem': 2, 'shop.Order': 1})`"
+  - "`None`"
+  - "`ProtectedError`"
+answer: [1]
+explanation: |
+  `delete()` удаляет заказ и, по `CASCADE`, его позиции и возвращает кортеж: всего строк и сколько каждой модели. `ProtectedError` был бы при `PROTECT`. Проверено в тренажёре.

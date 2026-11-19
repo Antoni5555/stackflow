@@ -1364,6 +1364,106 @@ def subquery_fig():
     f.save(out(DJ8 / "05-subqueries" / "img" / "subquery.svg"))
 
 
+# ---------- Django 9: изменение данных и формы ----------
+DJ9 = ROOT / "django" / "09-forms"
+
+
+def lost_update():
+    f = Figure(860, 300, "Второй save() записывает все поля из памяти и затирает остаток, который сохранил первый")
+    f.box(20, 30, 250, 40, "база: stock 40, price 1499", "box2", "cs")
+    f.text(20, 100, "a = get(…)  →  stock 40", "cs")
+    f.text(20, 124, "b = get(…)  →  stock 40", "cs")
+    f.box(300, 30, 260, 40, "a.stock = 39; a.save()", "box", "cs")
+    f.box(300, 82, 260, 40, "база: stock 39, price 1499", "ok", "cs")
+    f.box(300, 134, 260, 40, "b.price = 1399; b.save()", "box", "cs")
+    f.box(300, 186, 260, 40, "база: stock 40, price 1399", "err", "cs")
+    f.arrow("M430 70V80"); f.arrow("M430 122V132"); f.arrow("M430 174V184")
+    f.text(590, 52, "UPDATE … stock = 39 …", "cs")
+    f.text(590, 156, "UPDATE … stock = 40, price = 1399", "cs")
+    f.text(590, 208, "списание пропало", "t")
+    f.text(20, 270, 'b.save(update_fields=["price"]) — UPDATE только price, остаток 39 остался бы.', "s")
+    f.save(out(DJ9 / "01-create-update-delete" / "img" / "lost-update.svg"))
+
+
+def form_flow():
+    f = Figure(860, 300, "Один view формы: GET — пустая форма, POST с ошибками — та же форма, верный POST — redirect")
+    rows = [("GET /feedback/", "FeedbackForm()", "200: пустая форма", "box2"),
+            ("POST, почта anna@", "is_valid() → False", "200: форма с ошибками и введённым", "err"),
+            ("POST, всё верно", "is_valid() → True", "302 → /thanks/", "ok")]
+    for i, (req, step, res, cls) in enumerate(rows):
+        y = 30 + i * 70
+        f.box(20, y, 210, 44, req, "box2", "cs")
+        f.arrow(f"M230 {y + 22}H266")
+        f.box(270, y, 220, 44, step, "box", "cs")
+        f.arrow(f"M490 {y + 22}H526")
+        f.box(530, y, 310, 44, res, cls, "cs")
+    f.text(20, 260, "После 302 браузер делает GET /thanks/ — обновление страницы не отправит форму повторно.", "s")
+    f.save(out(DJ9 / "03-forms" / "img" / "form-flow.svg"))
+
+
+def modelform_fig():
+    f = Figure(860, 300, "ModelForm берёт поля из модели; товар приходит из адреса и ставится перед сохранением")
+    _table(f, 20, 30, "модель Review", ["product → Product", "author: CharField(100)", "rating: валидаторы 1–5", "text: blank=True"], 270, "box2")
+    f.arrow("M300 100H346")
+    _table(f, 350, 30, 'ReviewForm: fields = [...]', ["author — обязательное", "rating — проверка 1–5", "text — необязательное"], 260, "box")
+    f.box(640, 30, 200, 40, "form.save(commit=False)", "box", "cs")
+    f.box(640, 82, 200, 40, "review.product = product", "ok", "cs")
+    f.box(640, 134, 200, 40, "review.save() → INSERT", "box", "cs")
+    f.arrow("M740 70V80"); f.arrow("M740 122V132")
+    f.text(20, 236, "product в форме нет: его пользователь не присылает — его берёт view из /products/<slug>/.", "t")
+    f.text(20, 262, "instance=review — та же форма для правки: save() делает UPDATE.", "s")
+    f.save(out(DJ9 / "04-modelform" / "img" / "modelform.svg"))
+
+
+def validation_order():
+    f = Figure(860, 280, "Порядок проверок в is_valid(): каждое поле, затем clean() формы")
+    steps = [("приведение к типу", "to_python"), ("встроенные проверки", "required, длина, валидаторы"),
+             ("clean_<поле>()", "ошибка — у поля"), ("clean()", "ошибка — non_field_errors")]
+    for i, (a, b) in enumerate(steps):
+        x = 20 + i * 210
+        cls = "ok" if i == 3 else "box2"
+        f.box(x, 40, 190, 64, "", cls)
+        f.text(x + 95, 66, a, "cs", "middle")
+        f.text(x + 95, 88, b, "s", "middle")
+        if i < 3:
+            f.arrow(f"M{x + 190} 72H{x + 206}")
+    f.text(20, 136, "первые три шага — для каждого поля по порядку объявления", "s")
+    f.line("M20 120H620", "lnd")
+    f.text(20, 190, "Поле, не прошедшее свои проверки, в cleaned_data отсутствует — в clean() берут через .get().", "t")
+    f.text(20, 218, "ModelForm затем вызывает full_clean() модели и проверку unique.", "s")
+    f.save(out(DJ9 / "05-validation" / "img" / "validation-order.svg"))
+
+
+def media_files():
+    f = Figure(860, 280, "Файл — на диске в MEDIA_ROOT, в базе — путь, в браузере — адрес из MEDIA_URL")
+    f.box(20, 60, 220, 60, "", "box2")
+    f.text(130, 84, "<form enctype=", "cs", "middle")
+    f.text(130, 106, "multipart/form-data>", "cs", "middle")
+    f.arrow("M240 90H316"); f.text(278, 80, "aster.pdf", "s", "middle")
+    f.box(320, 20, 380, 40, "диск: MEDIA_ROOT/manuals/aster.pdf", "ok", "cs")
+    f.box(320, 70, 380, 40, "база: manual = 'manuals/aster.pdf'", "box", "cs")
+    f.box(320, 120, 380, 40, "product.manual.url: /media/manuals/aster.pdf", "box", "cs")
+    f.text(20, 200, "Во view файлы — в request.FILES: Form(request.POST, request.FILES, instance=…).", "t")
+    f.text(20, 228, "Отдаёт файлы по MEDIA_URL в разработке Django, на сервере — Nginx.", "s")
+    f.save(out(DJ9 / "06-files" / "img" / "media-files.svg"))
+
+
+def formset_fig():
+    f = Figure(860, 300, "Набор форм позиций: management form и формы с префиксами items-0, items-1")
+    f.box(20, 30, 330, 64, "", "box2")
+    f.text(36, 54, "items-TOTAL_FORMS = 2", "cs")
+    f.text(36, 78, "items-INITIAL_FORMS = 2", "cs")
+    f.box(20, 106, 330, 40, "items-0: id 1 · Aster · qty 1 · DELETE ✓", "err", "cs")
+    f.box(20, 156, 330, 40, "items-1: id 2 · мышь · qty 3", "box", "cs")
+    f.arrow("M360 150H426")
+    f.text(393, 140, "save()", "cs", "middle")
+    f.box(430, 106, 300, 40, "DELETE позиции 1", "err", "cs")
+    f.box(430, 156, 300, 40, "UPDATE позиции 2: quantity = 3", "ok", "cs")
+    f.text(20, 236, "По id формы Django понимает, какую позицию меняет форма; TOTAL_FORMS — сколько форм прислано.", "t")
+    f.text(20, 262, "В шаблоне: {{ formset.management_form }} и {{ form.id }} в каждой форме.", "s")
+    f.save(out(DJ9 / "07-formsets" / "img" / "formset.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2841,6 +2941,7 @@ if __name__ == "__main__":
                   lazy_queryset, pagination, f_race,
                   join_duplicates, n_plus_1, select_related_fig, prefetch_fig,
                   aggregate_annotate, group_by_fig, double_join, subquery_fig,
+                  lost_update, form_flow, modelform_fig, validation_order, media_files, formset_fig,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

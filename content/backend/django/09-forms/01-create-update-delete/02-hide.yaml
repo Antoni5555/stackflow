@@ -1,0 +1,150 @@
+title: "Снять с продажи"
+type: exercise
+difficulty: 1
+pitfall: "Товар с историей заказов не удаляют (PROTECT), а снимают с продажи — is_active = False."
+statement: |
+  Кнопка «Снять с продажи» отправляет POST на `/products/<slug>/hide/`. Для ноутбука Aster 14 страница падает с ошибкой 500. Исправьте view: товар остаётся в базе, но снят с продажи (`is_active = False`).
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Product
+
+
+    def hide(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        if request.method == "POST":
+            product.delete()
+            return redirect("product", slug=slug)
+        return render(request, "shop/product.html", {"product": product})
+
+
+    def product(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        return render(request, "shop/product.html", {"product": product})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/", views.product, name="product"),
+        path("products/<slug:slug>/hide/", views.hide, name="hide"),
+    ]
+  templates/shop/product.html: |
+    <h1>{{ product.name }}</h1>
+    {% if not product.is_active %}<p>Снят с продажи</p>{% endif %}
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Product
+
+
+    def hide(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        if request.method == "POST":
+            product.is_active = False
+            product.save(update_fields=["is_active"])
+            return redirect("product", slug=slug)
+        return render(request, "shop/product.html", {"product": product})
+
+
+    def product(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        return render(request, "shop/product.html", {"product": product})
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.post("/products/aster-14/hide/")
+        assert r.status_code == 302
+      fail: "Страница падает: ProtectedError — товар есть в заказе, удалить его нельзя."
+    - code: |
+        client.post("/products/aster-14/hide/")
+        p = Product.objects.get(slug="aster-14")
+        assert p.is_active is False
+      fail: "Товар должен остаться в базе с is_active = False."
+    - code: |
+        client.post("/products/gaming-mouse/hide/")
+        assert Product.objects.filter(slug="gaming-mouse", is_active=False).exists()
+        assert Product.objects.filter(is_active=True).count() == 2
+      fail: "Снимается только выбранный товар, и он не удаляется — даже если его нет в заказах."
+hints:
+  - "Почему Django не даёт удалить товар из заказа?"
+  - "`product.is_active = False` и `product.save()`."
+explanation: |
+  У `OrderItem.product` стоит `on_delete=PROTECT`: товар из заказа удалить нельзя — `ProtectedError`, и это правильно: история заказов должна остаться. Товар снимают с продажи флагом `is_active`. `save(update_fields=["is_active"])` пишет только это поле и не затрёт цену или остаток, если их успели изменить.

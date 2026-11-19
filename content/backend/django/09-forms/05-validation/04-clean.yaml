@@ -1,0 +1,151 @@
+title: "Адрес или самовывоз"
+type: exercise
+difficulty: 2
+pitfall: "Правило, связывающее поля, — в clean(); в clean_<поле> другое поле может быть ещё не обработано."
+statement: |
+  Форма доставки `/delivery/`: нужно выбрать самовывоз или указать адрес. При любой отправке страница падает с ошибкой 500 (`KeyError: 'address'`). Исправьте форму: если нет ни того, ни другого — общая ошибка «Укажите адрес или выберите самовывоз.».
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  forms.py: |
+    from django import forms
+
+
+    class DeliveryForm(forms.Form):
+        pickup = forms.BooleanField(label="Самовывоз", required=False)
+        address = forms.CharField(label="Адрес", required=False)
+
+        def clean_pickup(self):
+            pickup = self.cleaned_data["pickup"]
+            if not pickup and not self.cleaned_data["address"]:
+                raise forms.ValidationError("Укажите адрес или выберите самовывоз.")
+            return pickup
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .forms import DeliveryForm
+
+
+    def delivery(request):
+        if request.method == "POST":
+            form = DeliveryForm(request.POST)
+            if form.is_valid():
+                return redirect("delivery")
+        else:
+            form = DeliveryForm()
+        return render(request, "shop/delivery.html", {"form": form})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("delivery/", views.delivery, name="delivery"),
+    ]
+  templates/shop/delivery.html: |
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Дальше</button>
+    </form>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  forms.py: |
+    from django import forms
+
+
+    class DeliveryForm(forms.Form):
+        pickup = forms.BooleanField(label="Самовывоз", required=False)
+        address = forms.CharField(label="Адрес", required=False)
+
+        def clean(self):
+            cleaned = super().clean()
+            if not cleaned.get("pickup") and not cleaned.get("address"):
+                raise forms.ValidationError("Укажите адрес или выберите самовывоз.")
+            return cleaned
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.post("/delivery/", {})
+        assert r.status_code == 200 and "Укажите адрес или выберите самовывоз." in r.content.decode()
+      fail: "Без адреса и самовывоза — та же страница с ошибкой «Укажите адрес или выберите самовывоз.»."
+    - code: |
+        assert client.post("/delivery/", {"pickup": "on"}).status_code == 302
+        assert client.post("/delivery/", {"address": "Москва, ул. Ленина, 1"}).status_code == 302
+      fail: "С самовывозом или с адресом форма проходит."
+hints:
+  - "В каком порядке Django вызывает clean_pickup и clean_address?"
+  - "Метод `clean(self)`: `cleaned = super().clean()`, `cleaned.get(\"pickup\")`, `cleaned.get(\"address\")`."
+explanation: |
+  `clean_<поле>` вызываются по порядку полей: в `clean_pickup` поля `address` в `cleaned_data` ещё нет — `KeyError`. Правило для нескольких полей — в `clean()`: он вызывается после всех полей. Значения берут через `.get()` — поле, не прошедшее свою проверку, в `cleaned_data` отсутствует. Ошибка из `clean()` — общая для формы, `{{ form.as_p }}` выводит её над полями.

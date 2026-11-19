@@ -1,0 +1,87 @@
+- title: Набор обычных форм
+  text: |
+    Набор из двух пустых форм «Почта друга» — сколько форм и какой префикс у полей?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+    from django.forms import formset_factory
+
+
+    class FriendForm(forms.Form):
+        email = forms.EmailField()
+
+
+    FriendFormSet = formset_factory(FriendForm, extra=2)
+    fs = FriendFormSet()
+    print(len(fs.forms), fs.forms[1]["email"].html_name)
+    ```
+    Результат:
+    ```
+    2 form-1-email
+    ```
+    Префикс по умолчанию у `formset_factory` — `form`, поля — `form-0-email`, `form-1-email`.
+- title: Цены одной формой
+  text: |
+    Наберите формы цен всех мышей через `modelformset_factory` и сохраните новые цены 1399 и 3290.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.forms import modelformset_factory
+    PriceFormSet = modelformset_factory(
+        Product, fields=["price"], extra=0
+    )
+    qs = Product.objects.filter(category__name="Мыши")
+    data = {
+        "form-TOTAL_FORMS": "2", "form-INITIAL_FORMS": "2",
+        "form-0-id": "2", "form-0-price": "1399",
+        "form-1-id": "3", "form-1-price": "3290",
+    }
+    fs = PriceFormSet(data, queryset=qs)
+    print(fs.is_valid(), len(fs.save()))
+    print(dict(qs.values_list("slug", "price")))
+    ```
+    Результат:
+    ```
+    True 2
+    {'wireless-mouse': Decimal('1399.00'), 'gaming-mouse': Decimal('3290.00')}
+    ```
+    `save()` вернул список изменённых объектов.
+- title: Новая позиция
+  text: |
+    Добавьте в заказ A-12 новую позицию (игровая мышь, 1 шт.) через inline-набор с одной пустой формой.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.forms import inlineformset_factory
+    ItemFormSet = inlineformset_factory(
+        Order, OrderItem,
+        fields=["product", "quantity"], extra=1,
+    )
+    order = Order.objects.get(number="A-12")
+    data = {
+        "items-TOTAL_FORMS": "3", "items-INITIAL_FORMS": "2",
+        "items-0-id": "1", "items-0-product": "1",
+        "items-0-quantity": "1",
+        "items-1-id": "2", "items-1-product": "2",
+        "items-1-quantity": "2",
+        "items-2-product": "3", "items-2-quantity": "1",
+    }
+    fs = ItemFormSet(data, instance=order)
+    print(fs.is_valid())
+    fs.save()
+    items = order.items.values_list("product__slug", "quantity")
+    print(list(items))
+    ```
+    Результат:
+    ```
+    True
+    [('aster-14', 1), ('wireless-mouse', 2), ('gaming-mouse', 1)]
+    ```
+    `TOTAL_FORMS` = 3 (две старые + новая), `INITIAL_FORMS` = 2; у новой формы нет `id`, заказ ей подставил набор.

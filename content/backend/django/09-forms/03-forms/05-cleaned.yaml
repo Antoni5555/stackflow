@@ -1,0 +1,20 @@
+title: "cleaned_data раньше времени"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "cleaned_data появляется только после is_valid()."
+statement: |
+  Что выведет код?
+
+  ```python
+  f = FeedbackForm({"name": "Анна", "email": "anna@shop.example", "message": "x"})
+  print(f.cleaned_data)
+  ```
+options:
+  - "`{'name': 'Анна', 'email': 'anna@shop.example', 'message': 'x'}`"
+  - "`{}`"
+  - "`AttributeError: 'FeedbackForm' object has no attribute 'cleaned_data'. Did you mean: 'changed_data'?`"
+  - "`None`"
+answer: [2]
+explanation: |
+  Атрибут `cleaned_data` создаёт `is_valid()` (через `full_clean()`). До проверки его нет, даже если данные верные. Проверено в тренажёре.

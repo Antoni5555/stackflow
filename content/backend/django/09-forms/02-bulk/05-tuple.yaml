@@ -1,0 +1,20 @@
+title: "Что в p"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "get_or_create и update_or_create возвращают кортеж — его распаковывают."
+statement: |
+  Что выведет код?
+
+  ```python
+  p = Product.objects.get_or_create(slug="aster-14")
+  print(p.name)
+  ```
+options:
+  - "`Ноутбук Aster 14`"
+  - "`AttributeError: 'tuple' object has no attribute 'name'`"
+  - "`True`"
+  - "`IntegrityError`"
+answer: [1]
+explanation: |
+  `get_or_create` возвращает кортеж `(объект, created)`. Без распаковки в `p` — кортеж, у него нет `name`. Правильно: `p, created = Product.objects.get_or_create(…)`. Проверено в тренажёре.

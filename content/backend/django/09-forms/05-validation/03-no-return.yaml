@@ -1,0 +1,164 @@
+title: "Скидка пропала"
+type: exercise
+difficulty: 1
+pitfall: "clean_<поле>() должен вернуть значение — иначе в cleaned_data окажется None."
+statement: |
+  После добавления проверки промокода даже верный `SALE10` даёт «Скидка 0%». Найдите ошибку в форме.
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  forms.py: |
+    from django import forms
+    from django.utils import timezone
+
+    from .models import Promo
+
+
+    class PromoForm(forms.Form):
+        code = forms.CharField(label="Промокод", max_length=20)
+
+        def clean_code(self):
+            code = self.cleaned_data["code"].strip().upper()
+            promo = Promo.objects.filter(code=code).first()
+            if promo is None:
+                raise forms.ValidationError("Такого промокода нет.")
+            if promo.valid_until < timezone.localdate():
+                raise forms.ValidationError("Срок действия промокода истёк.")
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .forms import PromoForm
+    from .models import Promo
+
+
+    def promo(request):
+        discount = None
+        if request.method == "POST":
+            form = PromoForm(request.POST)
+            if form.is_valid():
+                found = Promo.objects.filter(code=form.cleaned_data["code"]).first()
+                discount = found.discount if found else 0
+        else:
+            form = PromoForm()
+        return render(request, "shop/promo.html", {"form": form, "discount": discount})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("promo/", views.promo, name="promo"),
+    ]
+  templates/shop/promo.html: |
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Применить</button>
+    </form>
+    {% if discount is not None %}<p>Скидка {{ discount }}%</p>{% endif %}
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  forms.py: |
+    from django import forms
+    from django.utils import timezone
+
+    from .models import Promo
+
+
+    class PromoForm(forms.Form):
+        code = forms.CharField(label="Промокод", max_length=20)
+
+        def clean_code(self):
+            code = self.cleaned_data["code"].strip().upper()
+            promo = Promo.objects.filter(code=code).first()
+            if promo is None:
+                raise forms.ValidationError("Такого промокода нет.")
+            if promo.valid_until < timezone.localdate():
+                raise forms.ValidationError("Срок действия промокода истёк.")
+            return code
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.post("/promo/", {"code": "SALE10"}).content.decode()
+        assert "Скидка 10%" in html
+      fail: "Для SALE10 должна быть скидка 10%: в cleaned_data сейчас None."
+    - code: |
+        html = client.post("/promo/", {"code": "OLD5"}).content.decode()
+        assert "Срок действия промокода истёк." in html
+      fail: "Проверка просроченного кода должна остаться."
+hints:
+  - "Что попадает в cleaned_data после clean_code?"
+  - "В конце `clean_code` — `return code`."
+explanation: |
+  В `cleaned_data["code"]` записывается то, что вернул `clean_code`. Без `return` функция возвращает `None` — форма «верная», а промокода нет, и поиск во view ничего не находит.

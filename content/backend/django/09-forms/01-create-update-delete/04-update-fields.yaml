@@ -1,0 +1,131 @@
+title: "Цена затёрла остаток"
+type: exercise
+difficulty: 2
+pitfall: "save() пишет все поля из памяти и затирает чужие изменения; меняете одно поле — update_fields."
+statement: |
+  Менеджер меняет цену через POST на `/products/<slug>/price/`, а склад в это же время списывает остаток. После сохранения цены списание иногда пропадает: `save()` записывает все поля, включая старый `stock`. Исправьте view: сохраняйте только цену.
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Product
+
+
+    def set_price(request, slug):
+        if request.method == "POST":
+            product = get_object_or_404(Product, slug=slug)
+            product.price = request.POST["price"]
+            product.save()
+        return redirect("/")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/price/", views.set_price, name="price"),
+    ]
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Product
+
+
+    def set_price(request, slug):
+        if request.method == "POST":
+            product = get_object_or_404(Product, slug=slug)
+            product.price = request.POST["price"]
+            product.save(update_fields=["price"])
+        return redirect("/")
+check:
+  type: django
+  tests:
+    - code: |
+        client.post("/products/aster-14/price/", {"price": "59990.00"})
+        assert str(Product.objects.get(slug="aster-14").price) == "59990.00"
+      fail: "Цена должна измениться на присланную."
+    - code: |
+        with max_queries(2) as queries:
+            client.post("/products/aster-14/price/", {"price": "59990.00"})
+        update = [q["sql"] for q in queries if q["sql"].startswith("UPDATE")][0]
+        assert '"stock"' not in update and '"name"' not in update
+      fail: "UPDATE записывает все поля товара — сохраните только price (update_fields)."
+hints:
+  - "Какие колонки перечислены в UPDATE после save()?"
+  - "`product.save(update_fields=[\"price\"])`."
+explanation: |
+  `save()` у загруженного объекта — `UPDATE` всех колонок значениями из памяти. Если между загрузкой и сохранением кто-то изменил `stock`, старое значение вернётся. `save(update_fields=["price"])` даёт `UPDATE "shop_product" SET "price" = … WHERE id = …` — остальные поля не трогаются.

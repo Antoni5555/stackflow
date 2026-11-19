@@ -1,0 +1,60 @@
+- title: Категория из импорта
+  text: |
+    Получите категорию «Мыши» и создайте «Коврики», если их нет, — одним методом на каждую. Выведите, какие созданы.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    for name in ["Мыши", "Коврики"]:
+        cat, created = Category.objects.get_or_create(name=name)
+        print(cat, created)
+    ```
+    Результат:
+    ```
+    Мыши False
+    Коврики True
+    ```
+    «Мыши» уже были — `created` = `False`.
+- title: Остатки со склада
+  text: |
+    Склад прислал остатки `{"aster-14": 2, "gaming-mouse": 10}`. Обновите их одним `UPDATE`, загрузив товары списком.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    stock = {"aster-14": 2, "gaming-mouse": 10}
+    items = list(Product.objects.filter(slug__in=stock))
+    for p in items:
+        p.stock = stock[p.slug]
+    print(Product.objects.bulk_update(items, ["stock"]))
+    print(dict(Product.objects.values_list("slug", "stock")))
+    ```
+    Результат:
+    ```
+    2
+    {'aster-14': 2, 'wireless-mouse': 40, 'gaming-mouse': 10}
+    ```
+    Разные значения для разных строк — `bulk_update`; беспроводной мыши в словаре нет — её остаток не тронут.
+- title: Промокоды без дублей
+  text: |
+    Создайте промокоды `SALE10` и `NEW15` (скидка 15 %, до 31.12.2099) одним `bulk_create`, пропустив уже существующие.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    until = "2099-12-31"
+    rows = [
+        Promo(code="SALE10", discount=10, valid_until=until),
+        Promo(code="NEW15", discount=15, valid_until=until),
+    ]
+    Promo.objects.bulk_create(rows, ignore_conflicts=True)
+    print(list(Promo.objects.values_list("code", "discount")))
+    ```
+    Результат:
+    ```
+    [('SALE10', 10), ('OLD5', 5), ('NEW15', 15)]
+    ```
+    `ignore_conflicts=True` пропустил `SALE10`: `code` уникален. Без него — `IntegrityError`, и не создался бы ни один.

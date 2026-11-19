@@ -1,0 +1,15 @@
+title: "TOTAL_FORMS"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "TOTAL_FORMS — сколько форм прислано; INITIAL_FORMS — сколько из них существующие объекты."
+statement: |
+  В корзине две позиции, JavaScript на странице добавил строку для новой позиции. Какими должны быть `TOTAL_FORMS` и `INITIAL_FORMS` в POST?
+options:
+  - "`TOTAL_FORMS=2`, `INITIAL_FORMS=3`"
+  - "`TOTAL_FORMS=3`, `INITIAL_FORMS=2`"
+  - "`TOTAL_FORMS=3`, `INITIAL_FORMS=3`"
+  - "`TOTAL_FORMS=1`, `INITIAL_FORMS=2`"
+answer: [1]
+explanation: |
+  `TOTAL_FORMS` — все формы в запросе (2 позиции + 1 новая), `INITIAL_FORMS` — формы существующих объектов (2). Скрипт, добавляющий форму, увеличивает `TOTAL_FORMS`, иначе новую строку сервер не прочитает.

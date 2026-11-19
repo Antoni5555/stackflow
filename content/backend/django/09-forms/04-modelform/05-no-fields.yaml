@@ -1,0 +1,21 @@
+title: "ModelForm без fields"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "У ModelForm обязателен fields или exclude — иначе класс не создаётся."
+statement: |
+  Что произойдёт при импорте `forms.py` с такой формой?
+
+  ```python
+  class ReviewForm(forms.ModelForm):
+      class Meta:
+          model = Review
+  ```
+options:
+  - "Форма получит все поля модели"
+  - "Форма получит ноль полей"
+  - "`ImproperlyConfigured: Creating a ModelForm without either the 'fields' attribute or the 'exclude' attribute is prohibited; form ReviewForm needs updating.`"
+  - "Ошибка появится только при `is_valid()`"
+answer: [2]
+explanation: |
+  Django требует явно сказать, какие поля принимает форма: `fields = [...]`, `fields = "__all__"` или `exclude = [...]`. Без этого класс не создаётся уже при импорте модуля. Проверено в тренажёре.

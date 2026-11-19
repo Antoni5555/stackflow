@@ -1,0 +1,53 @@
+- title: Новая категория с товаром
+  text: |
+    Создайте категорию «Коврики» и в ней товар «Коврик для мыши» (`mouse-pad`, 490 ₽, на складе 25). Выведите товар, его категорию и число товаров. Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    pads = Category.objects.create(name="Коврики")
+    p = Product.objects.create(
+        category=pads, name="Коврик для мыши",
+        slug="mouse-pad", price="490.00", stock=25,
+    )
+    print(p, p.category, Product.objects.count())
+    ```
+    Результат:
+    ```
+    Коврик для мыши Коврики 4
+    ```
+    `create` сразу делает `INSERT` и возвращает объект с `pk`.
+- title: Обнулить остаток
+  text: |
+    Одним запросом снимите с продажи все товары, которых нет на складе (`stock = 0`). Выведите число изменённых строк и активные товары.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    n = Product.objects.filter(stock=0).update(is_active=False)
+    active = Product.objects.filter(is_active=True)
+    print(n, list(active.values_list("slug", flat=True)))
+    ```
+    Результат:
+    ```
+    1 ['aster-14', 'wireless-mouse']
+    ```
+    `update` возвращает число строк и не загружает объекты.
+- title: Удалить отзывы
+  text: |
+    Удалите все отзывы о беспроводной мыши одним запросом. Что вернёт `delete()`?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    qs = Review.objects.filter(product__slug="wireless-mouse")
+    print(qs.delete())
+    ```
+    Результат:
+    ```
+    (1, {'shop.Review': 1})
+    ```
+    Кортеж: всего удалено и по моделям. Связанных с отзывами строк нет — каскада нет.

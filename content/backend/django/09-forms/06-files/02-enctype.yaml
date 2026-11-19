@@ -1,0 +1,155 @@
+title: "Файл не доходит"
+type: exercise
+difficulty: 1
+pitfall: "Без enctype=\"multipart/form-data\" браузер отправляет имя файла, а не содержимое."
+statement: |
+  На странице `/products/<slug>/manual/` выбирают PDF и нажимают «Загрузить», но инструкция у товара не появляется. View в порядке. Исправьте шаблон.
+files:
+  models.py: |
+    from django.db import models
+    from django.utils import timezone
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        manual = models.FileField(upload_to="manuals/", blank=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        created_at = models.DateTimeField(default=timezone.now)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField(default=1)
+
+
+    class Promo(models.Model):
+        code = models.CharField(max_length=20, unique=True)
+        discount = models.PositiveSmallIntegerField()
+        valid_until = models.DateField()
+
+        def __str__(self):
+            return self.code
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField()
+        text = models.TextField(blank=True)
+  forms.py: |
+    from django import forms
+
+    from .models import Product
+
+
+    class ManualForm(forms.ModelForm):
+        class Meta:
+            model = Product
+            fields = ["manual"]
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .forms import ManualForm
+    from .models import Product
+
+
+    def manual(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        if request.method == "POST":
+            form = ManualForm(request.POST, request.FILES, instance=product)
+            if form.is_valid():
+                form.save()
+                return redirect("manual", slug=slug)
+        else:
+            form = ManualForm(instance=product)
+        return render(request, "shop/manual.html", {"form": form, "product": product})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/manual/", views.manual, name="manual"),
+    ]
+  templates/shop/manual.html: |
+    <h1>{{ product.name }}</h1>
+    {% if product.manual %}<p><a href="{{ product.manual.url }}">Инструкция</a></p>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Загрузить</button>
+    </form>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  gaming = Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1)
+  OrderItem.objects.create(order=order, product=mouse, quantity=2)
+  Promo.objects.create(code="SALE10", discount=10, valid_until="2099-12-31")
+  Promo.objects.create(code="OLD5", discount=5, valid_until="2026-01-31")
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  templates/shop/manual.html: |
+    <h1>{{ product.name }}</h1>
+    {% if product.manual %}<p><a href="{{ product.manual.url }}">Инструкция</a></p>{% endif %}
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Загрузить</button>
+    </form>
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/products/aster-14/manual/").content.decode()
+        assert 'enctype="multipart/form-data"' in html
+      fail: "У формы нет enctype=\"multipart/form-data\" — браузер не отправит содержимое файла."
+    - code: |
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        f = SimpleUploadedFile("aster.pdf", b"%PDF-1.4 test")
+        r = client.post("/products/aster-14/manual/", {"manual": f})
+        p = Product.objects.get(slug="aster-14")
+        assert r.status_code == 302 and p.manual.name.startswith("manuals/aster")
+      fail: "Загруженный файл должен сохраниться у товара в папке manuals/."
+hints:
+  - "Какой атрибут формы отвечает за отправку файлов?"
+  - "`<form method=\"post\" enctype=\"multipart/form-data\">`."
+explanation: |
+  По умолчанию браузер кодирует форму как `application/x-www-form-urlencoded`: только пары «имя=значение», и у поля файла значение — его имя. `enctype="multipart/form-data"` отправляет содержимое файлов отдельными частями — Django кладёт их в `request.FILES`.
+settings:
+  MEDIA_ROOT: "/tmp/shop-media"
+  MEDIA_URL: "/media/"
