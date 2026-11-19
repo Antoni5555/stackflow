@@ -125,6 +125,7 @@ jobs:
           scp docker-compose.prod.yml "$SSH_TARGET:$DEPLOY_DIR/docker-compose.yml"
           scp deploy/deploy.sh "$SSH_TARGET:$DEPLOY_DIR/deploy.sh"
           scp deploy/backup.sh "$SSH_TARGET:$DEPLOY_DIR/backup.sh"
+          scp deploy/monitor.sh "$SSH_TARGET:$DEPLOY_DIR/monitor.sh"
       - name: Вход сервера в GHCR
         # Временный токен этого запуска CI: им сервер скачает образы
         run: |

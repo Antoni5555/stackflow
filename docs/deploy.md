@@ -17,6 +17,7 @@ git push в main
 | `docker-compose.prod.yml` | сервисы на сервере: db, redis, web, nginx, certbot |
 | `deploy/deploy.sh` | выкатить версию: `sh deploy.sh <sha>` (CI и ручной откат) |
 | `deploy/backup.sh` | копия базы в `~/backups` (cron раз в день, см. «Резервные копии») |
+| `deploy/monitor.sh` | раз в 10 минут: диск ≥ 80 %, база не healthy или главная не 200 → сообщение в Telegram (бот публикаций, `~/contentflow-bot/.env`) |
 | `.env.prod.example` | пример `.env` для сервера |
 | `.github/workflows/ci.yml` | job `images` (сборка и отправка образов), job `deploy` |
 
@@ -26,7 +27,7 @@ git push в main
 - **Миграции и `load_content` — отдельными шагами** перед запуском новой версии. Если они упали, сайт остаётся на старой версии.
 - Наружу открыт только Nginx (порты 80 и 443). База и Redis доступны только внутри Docker.
 
-Job `deploy` включается переменной `DEPLOY_ENABLED`; без неё пропускается. Он же копирует на сервер `docker-compose.prod.yml`, `deploy.sh` и `backup.sh`.
+Job `deploy` включается переменной `DEPLOY_ENABLED`; без неё пропускается. Он же копирует на сервер `docker-compose.prod.yml`, `deploy.sh`, `backup.sh` и `monitor.sh`.
 
 ## Сервер: один раз
 
