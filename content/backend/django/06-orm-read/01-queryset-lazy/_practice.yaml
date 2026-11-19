@@ -1,0 +1,44 @@
+- title: Фильтры по шагам
+  text: |
+    Напишите функцию `catalog(category=None, max_price=None)`: активные товары по возрастанию цены, а категорию и максимальную цену применяйте, только если их передали. Сколько запросов сделает каждый вызов? Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    def catalog(category=None, max_price=None):
+        qs = Product.objects.filter(is_active=True)
+        if category:
+            qs = qs.filter(category__name=category)
+        if max_price:
+            qs = qs.filter(price__lte=max_price)
+        return [p.name for p in qs.order_by("price")]
+
+    print(catalog(category="Мыши"))
+    print(catalog(category="Мыши", max_price=2000))
+    ```
+    Результат:
+    ```
+    ['Беспроводная мышь', 'Игровая мышь']
+    ['Беспроводная мышь']
+    ```
+    По одному запросу на вызов: все `filter` сложились в один `WHERE … AND …`, а запрос ушёл при переборе в последней строке функции.
+- title: Посмотреть SQL
+  text: |
+    Как увидеть, какой SQL построит `Product.objects.exclude(stock=0).order_by("-price")`, не выполняя запрос?
+  answer: |
+    `print(Product.objects.exclude(stock=0).order_by("-price").query)` — текст SQL без выполнения: `… WHERE NOT ("shop_product"."stock" = 0) ORDER BY "shop_product"."price" DESC`. Значения в нём подставлены приблизительно (строки без кавычек), для отладки этого достаточно.
+- title: Сколько запросов
+  text: |
+    Сколько SQL-запросов выполнит этот код?
+
+    Файл `orm.py`:
+    ```python
+    qs = Product.objects.filter(is_active=True)
+    total = qs.count()
+    names = [p.name for p in qs]
+    cheap = [p for p in qs if p.price < 1000]
+    first = qs.first()
+    ```
+  answer: |
+    Три. `count()` — отдельный `COUNT(*)`; первый перебор `qs` — `SELECT` (строки попадут в кэш); второй перебор — из кэша, без запроса; `first()` — снова в базу (`ORDER BY id LIMIT 1`), кэш он не использует. Если `total` и `first` нужны вместе со списком, их можно взять из уже загруженного: `len(names)` и `names[0]`.

@@ -1,0 +1,15 @@
+title: "Сортировка в Python"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "sorted() по QuerySet загружает всю таблицу — сортировать и ограничивать должна база."
+statement: |
+  `sorted(Product.objects.all(), key=lambda p: p.price)[:10]` и `Product.objects.order_by("price")[:10]` дают одинаковый список. Чем плох первый вариант на каталоге из 100 000 товаров?
+options:
+  - "Ничем: Python сортирует быстрее базы"
+  - "Загружает все 100 000 строк и объектов, сортирует их в Python и выбрасывает 99 990"
+  - "`sorted` не умеет сортировать Decimal"
+  - "Первый вариант делает 10 запросов"
+answer: [1]
+explanation: |
+  `sorted()` вычисляет QuerySet целиком: база отдаёт все строки, Django создаёт 100 000 объектов, и только потом Python сортирует и отрезает 10. `order_by("price")[:10]` — `ORDER BY price LIMIT 10`: база вернёт 10 строк и, если есть индекс по цене, даже не будет сортировать всю таблицу.

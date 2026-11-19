@@ -1,0 +1,96 @@
+title: "Поиск по всем словам"
+type: exercise
+difficulty: 2
+pitfall: "Условие, собранное через |=, находит товары с любым из слов, а не со всеми."
+statement: |
+  `search_words(text)` из `queries.py` ищет товары, в названии которых есть **все** слова запроса, и возвращает slug по алфавиту. По запросу «мышь игровая» она находит все мыши, а нужна только игровая.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+
+        def __str__(self):
+            return self.name
+  queries.py: |
+    from django.db.models import Q
+
+    from .models import Product
+
+
+    def search_words(text):
+        query = Q()
+        for word in text.split():
+            query |= Q(name__icontains=word)
+        qs = Product.objects.filter(query)
+        return sorted(qs.values_list("slug", flat=True))
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+solution:
+  queries.py: |
+    from django.db.models import Q
+
+    from .models import Product
+
+
+    def search_words(text):
+        query = Q()
+        for word in text.split():
+            query &= Q(name__icontains=word)
+        qs = Product.objects.filter(query)
+        return sorted(qs.values_list("slug", flat=True))
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import search_words
+        assert search_words("мышь Игровая") == ["gaming-mouse"]
+      fail: "По «мышь Игровая» нужна только игровая мышь — в названии должны быть все слова."
+    - code: |
+        from shop.queries import search_words
+        assert search_words("мышь") == ["gaming-mouse", "wired-mouse", "wireless-mouse"]
+      fail: "По одному слову — все товары с ним."
+hints:
+  - "Каким оператором соединить условия, если нужны все слова сразу?"
+  - "`query &= Q(name__icontains=word)`."
+explanation: |
+  `|=` дописывает к условию «или»: `мышь OR Игровая` — подходит любая мышь. Для «все слова» условия соединяют «и»: `query &= …`. Пустой `Q()` в начале ничего не меняет — он нужен, чтобы было к чему присоединять первое слово. В тренажёре база — SQLite, и регистр русских букв в `icontains` в ней важен; поэтому в проверке «Игровая» с заглавной.

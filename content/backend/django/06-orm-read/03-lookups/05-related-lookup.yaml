@@ -1,0 +1,15 @@
+title: "Фильтр по категории"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Путь по связи пишут двойным подчёркиванием: связь, поле, lookup."
+statement: |
+  Как выбрать товары, у категории которых в названии есть «мыш» без учёта регистра?
+options:
+  - "`Product.objects.filter(category=\"мыш\")`"
+  - "`Product.objects.filter(category.name__icontains=\"мыш\")`"
+  - "`Product.objects.filter(category__name__icontains=\"мыш\")`"
+  - "`Product.objects.filter(name__icontains=\"мыш\")`"
+answer: [2]
+explanation: |
+  Путь в условии — через двойное подчёркивание: поле связи `category`, поле `name` связанной модели и lookup `icontains`. Django добавит `JOIN shop_category`. Точка внутри имени аргумента — синтаксическая ошибка Python, а `name__icontains` ищет по названию товара, а не категории.

@@ -1,0 +1,15 @@
+title: "Что вернёт запрос"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "get() не возвращает None — при отсутствии строки он выбрасывает DoesNotExist."
+statement: |
+  В базе нет товара со slug `samovar`. Что вернёт `Product.objects.get(slug="samovar")`?
+options:
+  - "`None`"
+  - "Пустой QuerySet"
+  - "Выбросит `Product.DoesNotExist`"
+  - "Выбросит `Http404`"
+answer: [2]
+explanation: |
+  `get()` обещает ровно один объект и при нуле строк выбрасывает `Product.DoesNotExist: Product matching query does not exist.` `None` вернёт `filter(slug="samovar").first()`, пустой QuerySet — `filter(...)`, а `Http404` выбросит `get_object_or_404`.

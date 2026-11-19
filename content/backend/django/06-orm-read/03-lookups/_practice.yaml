@@ -1,0 +1,33 @@
+- title: Подзапрос через __in
+  text: |
+    Посчитайте товары категории «Мыши», передав в `category_id__in` QuerySet с id категорий. Какой получится SQL? Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    mice_ids = Category.objects.filter(
+        name="Мыши"
+    ).values_list("id", flat=True)
+    mice = Product.objects.filter(category_id__in=mice_ids)
+    print(mice.count())
+    ```
+    Результат:
+    ```
+    3
+    ```
+    SQL — один запрос с подзапросом:
+    ```
+    SELECT COUNT(*) AS "__count" FROM "shop_product" WHERE "shop_product"."category_id" IN (SELECT U0."id" AS "id" FROM "shop_category" U0 WHERE U0."name" = 'Мыши')
+    ```
+    QuerySet в `__in` не загружается в Python — Django встраивает его в SQL.
+- title: Начинается с
+  text: |
+    Найдите товары, у которых slug начинается с `wire`.
+  answer: |
+    `Product.objects.filter(slug__startswith="wire")` → беспроводная (`wireless-mouse`) и проводная (`wired-mouse`) мыши; SQL — `"slug" LIKE 'wire%'`. Такой шаблон без `%` в начале может использовать индекс по slug (в PostgreSQL — индекс `varchar_pattern_ops`, который Django создаёт для `SlugField`).
+- title: Товары марта
+  text: |
+    Выберите товары, добавленные в марте 2026 года.
+  answer: |
+    `Product.objects.filter(created_at__year=2026, created_at__month=3)` → «Ноутбук Aster 14». Год Django превратил в диапазон дат, месяц — в функцию извлечения месяца по московскому времени. Для индекса лучше один диапазон: `created_at__gte="2026-03-01", created_at__lt="2026-04-01"` (строки дат Django поймёт в часовом поясе сайта).

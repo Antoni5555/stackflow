@@ -1,0 +1,31 @@
+- title: Видимые товары
+  text: |
+    Найдите товар через `get_object_or_404`, но только среди активных **и** имеющихся на складе. Что будет для закончившегося Nimbus Air? Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.shortcuts import get_object_or_404
+    visible = Product.objects.filter(
+        is_active=True, stock__gt=0
+    )
+    print(get_object_or_404(visible, slug="gaming-mouse"))
+    get_object_or_404(visible, slug="nimbus-air")
+    ```
+    Результат:
+    ```
+    Игровая мышь
+    django.http.response.Http404: No Product matches the given query.
+    ```
+    Первым аргументом можно передать QuerySet — условия из него и из аргументов складываются в один `WHERE`.
+- title: Мыши без снятых с продажи
+  text: |
+    Выберите мыши, исключив снятые с продажи, двумя способами — через `exclude` и через `filter`. Какой SQL получится?
+  answer: |
+    `Product.objects.filter(category__name="Мыши").exclude(is_active=False)` даёт `… AND NOT (NOT "is_active")` — двойное отрицание. `Product.objects.filter(category__name="Мыши", is_active=True)` — `… AND "is_active"`. Результат одинаковый (беспроводная и игровая мыши), второй вариант проще читать.
+- title: Объект или None
+  text: |
+    Нужно получить промокод по коду из формы: если такого нет — `None`, без исключений. Как?
+  answer: |
+    `Promo.objects.filter(code=code).first()` — объект или `None`. `get()` пришлось бы оборачивать в `try/except Promo.DoesNotExist`. Если код уникален, а «не найдено» — штатная ситуация (покупатель ошибся), `filter().first()` проще; если это ошибка программы — `get()` честно её покажет.

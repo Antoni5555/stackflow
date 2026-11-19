@@ -1,0 +1,84 @@
+title: "Товары без описания не находятся"
+type: exercise
+difficulty: 1
+pitfall: "У строки без null=True пустое значение — \"\", поиск __isnull=True ничего не найдёт."
+statement: |
+  `without_description()` из `queries.py` должна вернуть slug товаров без описания — контент-менеджер их заполняет. Она возвращает пустой список, хотя описаний нет ни у одного товара, кроме ноутбука Aster 14.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+
+        def __str__(self):
+            return self.name
+  queries.py: |
+    from .models import Product
+
+
+    def without_description():
+        qs = Product.objects.filter(description__isnull=True)
+        return sorted(qs.values_list("slug", flat=True))
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+  Product.objects.filter(slug="aster-14").update(description="Лёгкий ноутбук")
+solution:
+  queries.py: |
+    from .models import Product
+
+
+    def without_description():
+        qs = Product.objects.filter(description="")
+        return sorted(qs.values_list("slug", flat=True))
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import without_description
+        result = without_description()
+        assert len(result) == 5 and "aster-14" not in result
+      fail: "Описание есть только у aster-14 — остальные 5 товаров должны попасть в список."
+hints:
+  - "Какое значение хранится в `TextField(blank=True)`, если описание не заполнено?"
+  - "`filter(description=\"\")`."
+explanation: |
+  У `description` нет `null=True`, поэтому `NULL` в колонке не бывает — незаполненное описание хранится пустой строкой `""`. `__isnull=True` ищет `IS NULL` и ничего не находит. `__isnull` нужен для дат, чисел и связей; если в старых данных встречается и то, и другое, — `Q(description="") | Q(description__isnull=True)`.

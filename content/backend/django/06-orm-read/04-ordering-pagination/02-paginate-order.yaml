@@ -1,0 +1,103 @@
+title: "Каталог по цене, по две на странице"
+type: exercise
+difficulty: 2
+pitfall: "Paginator без order_by не гарантирует порядок — товары могут переезжать между страницами."
+statement: |
+  Каталог выводит активные товары по два на странице, но в случайном порядке, и Django предупреждает `UnorderedObjectListWarning`. Отсортируйте каталог по возрастанию цены (при равной — по `id`).
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+
+        def __str__(self):
+            return self.name
+  views.py: |
+    from django.core.paginator import Paginator
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def catalog(request):
+        products = Product.objects.filter(is_active=True)
+        page = Paginator(products, 2).get_page(request.GET.get("page"))
+        return render(request, "shop/catalog.html", {"page": page})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog),
+    ]
+  templates/shop/catalog.html: |
+    <ul>
+      {% for p in page %}<li>{{ p.name }}</li>{% endfor %}
+    </ul>
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+solution:
+  views.py: |
+    from django.core.paginator import Paginator
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def catalog(request):
+        products = Product.objects.filter(is_active=True).order_by("price", "id")
+        page = Paginator(products, 2).get_page(request.GET.get("page"))
+        return render(request, "shop/catalog.html", {"page": page})
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/catalog/").content.decode()
+        assert html.index("Коврик для мыши") < html.index("Беспроводная мышь")
+        assert "Игровая мышь" not in html
+      fail: "На первой странице — два самых дешёвых активных товара: коврик, потом беспроводная мышь."
+    - code: |
+        html = client.get("/catalog/", {"page": 3}).content.decode()
+        assert "Ноутбук Aster 14" in html and "Nimbus" not in html
+      fail: "На третьей странице — только самый дорогой, Aster 14."
+hints:
+  - "Что Paginator считает «второй страницей», если у QuerySet нет порядка?"
+  - "`.order_by(\"price\", \"id\")` перед `Paginator`."
+explanation: |
+  Страница — это `LIMIT … OFFSET …`, и без `ORDER BY` база вправе вернуть строки в любом порядке: один и тот же товар может оказаться на двух страницах или ни на одной. Сортировка по цене плюс уникальное поле в конце (`id`) делает порядок полностью определённым, даже когда цены совпадают.

@@ -1,0 +1,99 @@
+title: "Продажа товара, которого нет"
+type: exercise
+difficulty: 2
+pitfall: "F не проверяет, хватает ли остатка: условие «если есть» нужно добавить в фильтр и проверить число обновлённых строк."
+statement: |
+  `try_sell(slug)` из `queries.py` списывает одну штуку и возвращает `True`, а если товара нет на складе — `False`, ничего не меняя. Сейчас для закончившегося Nimbus Air она падает с `IntegrityError: CHECK constraint failed: stock`. Сделайте проверку и списание одним запросом.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+
+        def __str__(self):
+            return self.name
+  queries.py: |
+    from django.db.models import F
+
+    from .models import Product
+
+
+    def try_sell(slug):
+        Product.objects.filter(slug=slug).update(stock=F("stock") - 1)
+        return True
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+solution:
+  queries.py: |
+    from django.db.models import F
+
+    from .models import Product
+
+
+    def try_sell(slug):
+        updated = Product.objects.filter(slug=slug, stock__gte=1).update(
+            stock=F("stock") - 1
+        )
+        return updated == 1
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import try_sell
+        assert try_sell("aster-14") is True
+        assert Product.objects.get(slug="aster-14").stock == 4
+      fail: "Товар в наличии: True и остаток уменьшился на 1."
+    - code: |
+        from shop.queries import try_sell
+        assert try_sell("nimbus-air") is False
+        assert Product.objects.get(slug="nimbus-air").stock == 0
+      fail: "Товара нет на складе: функция должна вернуть False и ничего не менять."
+    - code: |
+        from shop.queries import try_sell
+        with max_queries(1):
+            try_sell("aster-14")
+      fail: "Проверка и списание — одним запросом UPDATE, без отдельного чтения."
+hints:
+  - "Что возвращает `QuerySet.update()`?"
+  - "Добавьте `stock__gte=1` в `filter` и верните `updated == 1`."
+explanation: |
+  `update()` возвращает число изменённых строк. Если условие `stock >= 1` в том же `WHERE`, база спишет товар только при наличии, и это атомарно: два покупателя последней штуки не получат её оба — второй `UPDATE` найдёт 0 строк. Отдельное чтение «а сколько осталось?» перед списанием оставляет окно для гонки.

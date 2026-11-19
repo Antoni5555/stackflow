@@ -1,0 +1,116 @@
+title: "Три запроса вместо одного"
+type: exercise
+difficulty: 2
+pitfall: "Каждый новый QuerySet — новый запрос; кэш есть только у того объекта, который уже вычислен."
+statement: |
+  Страница «Хиты» делает три SQL-запроса: view отдельно считает товары, проверяет, есть ли они, и выводит их. Сделайте так, чтобы хватало одного запроса и страница выглядела так же.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+
+        def __str__(self):
+            return self.name
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def hits(request):
+        context = {
+            "products": Product.objects.filter(is_active=True, stock__gt=0),
+            "count": Product.objects.filter(is_active=True, stock__gt=0).count(),
+            "has_any": Product.objects.filter(is_active=True, stock__gt=0).exists(),
+        }
+        return render(request, "shop/hits.html", context)
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("hits/", views.hits),
+    ]
+  templates/shop/hits.html: |
+    {% if has_any %}
+      <p>Хитов: {{ count }}</p>
+      <ul>
+        {% for p in products %}<li>{{ p.name }}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <p>Хитов пока нет.</p>
+    {% endif %}
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+solution:
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def hits(request):
+        products = Product.objects.filter(is_active=True, stock__gt=0)
+        return render(request, "shop/hits.html", {"products": products})
+  templates/shop/hits.html: |
+    {% if products %}
+      <p>Хитов: {{ products|length }}</p>
+      <ul>
+        {% for p in products %}<li>{{ p.name }}</li>{% endfor %}
+      </ul>
+    {% else %}
+      <p>Хитов пока нет.</p>
+    {% endif %}
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/hits/").content.decode()
+        assert "Хитов: 4" in html and "Игровая мышь" in html
+      fail: "На странице должны быть число хитов (4) и их список."
+    - code: |
+        with max_queries(1):
+            client.get("/hits/")
+      fail: "Страница делает несколько запросов: передайте в шаблон один QuerySet и используйте его и для проверки, и для числа, и для списка."
+hints:
+  - "Что происходит с QuerySet после `{% if products %}` — и сделает ли следующий `{% for %}` новый запрос?"
+  - "Передайте один `products`; в шаблоне — `{% if products %}`, `{{ products|length }}` и цикл по нему же."
+explanation: |
+  Три одинаковых `Product.objects.filter(...)` — три разных объекта, у каждого свой запрос. `{% if products %}` вычисляет QuerySet целиком и кладёт строки в его кэш; `|length` и `{% for %}` берут их оттуда. Получается один `SELECT` вместо `COUNT`, `EXISTS` и `SELECT`. Это хорошо, когда строки всё равно выводятся, — для одного только числа `count()` дешевле.

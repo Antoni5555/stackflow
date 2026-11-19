@@ -1169,6 +1169,63 @@ def admin_setup():
     f.save(out(DJ5 / "04-admin-setup" / "img" / "admin-setup.svg"))
 
 
+# ---------- Django 6: ORM, чтение ----------
+DJ6 = ROOT / "django" / "06-orm-read"
+
+
+def lazy_queryset():
+    f = Figure(860, 300, "QuerySet копит условия и идёт в базу один раз — когда нужны данные; повторный перебор берёт кэш")
+    steps = [("qs = Product.objects.filter(is_active=True)", "box2"), ("qs = qs.exclude(stock=0)", "box2"),
+             ("for p in qs: …", "acc"), ("for p in qs: …  (ещё раз)", "ok")]
+    for i, (t, cls) in enumerate(steps):
+        y = 20 + i * 62
+        f.box(20, y, 380, 46, t, cls, "onacc" if cls == "acc" else "cs")
+    notes = ["запроса нет — описание", "запроса нет — + условие", "один SELECT … WHERE is_active AND NOT stock = 0",
+             "кэш qs — без запроса"]
+    for i, t in enumerate(notes):
+        y = 20 + i * 62 + 28
+        f.arrow(f"M400 {y - 5}H436", "lnd")
+        f.text(444, y, t, "cs" if i == 2 else "s")
+    f.text(20, 282, "count(), exists(), get(), first() и новый filter() — всегда отдельный запрос.", "t")
+    f.save(out(DJ6 / "01-queryset-lazy" / "img" / "lazy.svg"))
+
+
+def pagination():
+    f = Figure(860, 280, "Paginator делит упорядоченный список на страницы: COUNT считает строки, LIMIT/OFFSET берёт одну страницу")
+    items = ["Коврик 490", "Беспроводная 1499", "Игровая 3490", "Nimbus 54990", "Aster 64990"]
+    for i, t in enumerate(items):
+        page = i // 2
+        x = 20 + page * 280
+        y = 40 + (i % 2) * 48
+        f.box(x, y, 240, 40, t, "ok" if page == 1 else "box2", "cs")
+    for page in range(3):
+        f.text(20 + page * 280, 28, f"страница {page + 1}", "h")
+    f.box(20, 160, 820, 70, "", "acc")
+    f.text(36, 186, 'SELECT COUNT(*) … WHERE is_active  → 5 товаров, 3 страницы', "onacc")
+    f.text(36, 212, 'SELECT … WHERE is_active ORDER BY price ASC LIMIT 2 OFFSET 2  → страница 2', "onacc")
+    f.text(20, 262, "Без order_by порядок не определён — товары переезжают между страницами.", "s")
+    f.save(out(DJ6 / "04-ordering-pagination" / "img" / "pagination.svg"))
+
+
+def f_race():
+    f = Figure(860, 300, "Прочитать — изменить — сохранить теряет списание при одновременных заказах; F считает в базе")
+    f.text(20, 24, "p.stock -= 1; p.save()", "cs")
+    rows = [("заказ 1: читает 5", "заказ 2: читает 5"), ("пишет 4", "пишет 4")]
+    for i, (a, b) in enumerate(rows):
+        y = 36 + i * 54
+        f.box(20, y, 190, 40, a, "box2", "cs")
+        f.box(220, y, 190, 40, b, "box2", "cs")
+    f.box(20, 150, 390, 40, "итог: 4 — одно списание потеряно", "err", "errt")
+    f.text(450, 24, "update(stock=F(\"stock\") - 1)", "cs")
+    rows2 = ["заказ 1: SET stock = stock - 1  → 4", "заказ 2: SET stock = stock - 1  → 3"]
+    for i, t in enumerate(rows2):
+        f.box(450, 36 + i * 54, 390, 40, t, "box2", "cs")
+    f.box(450, 150, 390, 40, "итог: 3 — оба списания учтены", "ok", "cs")
+    f.text(20, 236, "База выполняет UPDATE по очереди и каждый раз вычитает из текущего значения.", "t")
+    f.text(20, 262, "Чтобы не уйти в минус: filter(pk=…, stock__gte=1).update(…) и проверка числа обновлённых строк.", "s")
+    f.save(out(DJ6 / "07-f-expressions" / "img" / "f-race.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2643,6 +2700,7 @@ if __name__ == "__main__":
                   render_flow, extends_include, filters_flow, static_flow,
                   model_table, null_blank, foreign_key, many_to_many, meta_constraints, model_inheritance,
                   migrations_flow, merge_flow, admin_flow, admin_setup,
+                  lazy_queryset, pagination, f_race,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

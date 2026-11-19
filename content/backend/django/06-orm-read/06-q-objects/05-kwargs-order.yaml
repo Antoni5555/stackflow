@@ -1,0 +1,15 @@
+title: "Порядок аргументов"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Позиционные аргументы (Q) в Python идут раньше именованных."
+statement: |
+  Разработчик написал `Product.objects.filter(is_active=True, Q(price__lt=1000) | Q(stock=0))`. Что произойдёт?
+options:
+  - "Всё сработает: Django сам переставит условия"
+  - "`SyntaxError: positional argument follows keyword argument` ещё до запуска"
+  - "Условие `is_active` будет проигнорировано"
+  - "`FieldError`"
+answer: [1]
+explanation: |
+  Это ограничение самого Python: позиционный аргумент (здесь `Q`) нельзя ставить после именованного. Файл даже не загрузится. Правильно — `filter(Q(price__lt=1000) | Q(stock=0), is_active=True)`: сначала `Q`, потом именованные условия, которые соединятся через И.

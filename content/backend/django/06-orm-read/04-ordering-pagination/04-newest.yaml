@@ -1,0 +1,88 @@
+title: "Три новинки"
+type: exercise
+difficulty: 1
+pitfall: "QuerySet не поддерживает отрицательные индексы — «последние» берут сортировкой по убыванию."
+statement: |
+  `newest()` из `queries.py` должна вернуть slug трёх самых новых товаров, начиная с самого нового. Сейчас она падает с `ValueError: Negative indexing is not supported.`
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+
+        def __str__(self):
+            return self.name
+  queries.py: |
+    from .models import Product
+
+
+    def newest():
+        qs = Product.objects.order_by("created_at")[-3:]
+        return [p.slug for p in qs]
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+solution:
+  queries.py: |
+    from .models import Product
+
+
+    def newest():
+        qs = Product.objects.order_by("-created_at")[:3]
+        return [p.slug for p in qs]
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import newest
+        assert newest() == ["gaming-mouse", "nimbus-air", "aster-14"]
+      fail: "Нужны три самых новых: gaming-mouse, nimbus-air, aster-14 — именно в этом порядке."
+    - code: |
+        from shop.queries import newest
+        with max_queries(1) as queries:
+            newest()
+        assert "LIMIT 3" in queries[0]["sql"]
+      fail: "Возьмите три строки в базе (LIMIT 3), а не все."
+hints:
+  - "Как превратить «последние три по возрастанию» в «первые три по убыванию»?"
+  - "`order_by(\"-created_at\")[:3]`."
+explanation: |
+  Срез QuerySet — это `LIMIT`/`OFFSET`, а у SQL нет «последних N без сортировки», поэтому отрицательные индексы Django не поддерживает. Последние по дате — первые по убыванию даты: `order_by("-created_at")[:3]` — один запрос с `LIMIT 3`.

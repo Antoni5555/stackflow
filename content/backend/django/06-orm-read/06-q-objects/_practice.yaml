@@ -1,0 +1,42 @@
+- title: Дешёвое или коврики
+  text: |
+    Выберите slug товаров, которые дешевле 1000 **или** из категории «Коврики». Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import Q
+    qs = Product.objects.filter(
+        Q(price__lt=1000) | Q(category__name="Коврики")
+    )
+    print(sorted(qs.values_list("slug", flat=True)))
+    ```
+    Результат:
+    ```
+    ['mouse-pad', 'wired-mouse']
+    ```
+    Коврик подходит под оба условия, но в ответе один раз.
+- title: exclude и два ~Q
+  text: |
+    Сравните `exclude(category__name="Мыши", is_active=False)` и `filter(~Q(category__name="Мыши"), ~Q(is_active=False))`. Сколько товаров вернёт каждый?
+  answer: |
+    5 и 3. `exclude` с двумя условиями убирает строки, где выполнены **оба**: только неактивные мыши (одна проводная). Два `~Q` через запятую — «не мышь **и** активен»: остаются два ноутбука и коврик. SQL: `NOT (name = 'Мыши' AND NOT is_active)` против `NOT (name = 'Мыши') AND NOT (NOT is_active)`.
+- title: Фильтр из формы
+  text: |
+    Форма каталога присылает необязательные `q` (текст) и `max_price`. Соберите условие так, чтобы пустые поля ничего не добавляли.
+  answer: |
+    Ответ:
+
+    Файл `views.py` (фрагмент):
+    ```python
+    condition = Q(is_active=True)
+    if q:
+        condition &= Q(name__icontains=q) | Q(
+            description__icontains=q
+        )
+    if max_price:
+        condition &= Q(price__lte=max_price)
+    products = Product.objects.filter(condition)
+    ```
+    Начальное условие — то, что нужно всегда; остальные присоединяются через `&=` только при заполненном поле.

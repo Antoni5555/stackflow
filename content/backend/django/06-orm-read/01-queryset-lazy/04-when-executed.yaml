@@ -1,0 +1,17 @@
+title: "Когда уходит запрос"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Методы, которые возвращают QuerySet, запрос не выполняют — он уходит при использовании данных."
+statement: |
+  Какие строки сами по себе отправляют SQL-запрос в базу (`qs = Product.objects.filter(is_active=True)` уже создан, но ни разу не использован)?
+options:
+  - "`qs = qs.exclude(stock=0)`"
+  - "`qs = qs.order_by(\"price\")[:10]`"
+  - "`if qs:`"
+  - "`print(qs.query)`"
+  - "`first = qs[0]`"
+  - "`qs.count()`"
+answer: [2, 4, 5]
+explanation: |
+  `exclude`, `order_by` и срез без шага только достраивают запрос, а `qs.query` — текст SQL без выполнения. `if qs:` вычисляет QuerySet целиком, `qs[0]` сразу выполняет `LIMIT 1`, `count()` отправляет `SELECT COUNT(*)`.

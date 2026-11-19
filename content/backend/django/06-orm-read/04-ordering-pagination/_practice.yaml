@@ -1,0 +1,43 @@
+- title: Свойства страницы
+  text: |
+    Разбейте каталог (по цене, затем по `id`) на страницы по 4 товара и выведите для второй страницы: номер, число страниц и товаров, есть ли предыдущая и следующая, номера первого и последнего товара на странице. Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.core.paginator import Paginator
+    products = Product.objects.order_by("price", "id")
+    page = Paginator(products, 4).get_page(2)
+    print(page.number, page.paginator.num_pages,
+          page.paginator.count)
+    print(page.has_previous(), page.has_next(),
+          page.start_index(), page.end_index())
+    print([p.name for p in page])
+    ```
+    Результат:
+    ```
+    2 2 6
+    True False 5 6
+    ['Ноутбук Nimbus Air', 'Ноутбук Aster 14']
+    ```
+    Для последней страницы Django берёт только оставшиеся строки: `LIMIT 2 OFFSET 4`.
+- title: Три самых дешёвых активных
+  text: |
+    Выведите три самых дешёвых активных товара одним запросом.
+  answer: |
+    `Product.objects.filter(is_active=True).order_by("price")[:3]` → коврик, беспроводная мышь, игровая мышь. SQL — `… WHERE is_active ORDER BY price ASC LIMIT 3`. Проводная мышь дешевле, но снята с продажи.
+- title: Ссылки «Назад» и «Вперёд»
+  text: |
+    Как в шаблоне вывести ссылки на соседние страницы, только если они есть?
+  answer: |
+    Ответ:
+    ```html
+    {% if page.has_previous %}
+      <a href="?page={{ page.previous_page_number }}">Назад</a>
+    {% endif %}
+    {% if page.has_next %}
+      <a href="?page={{ page.next_page_number }}">Вперёд</a>
+    {% endif %}
+    ```
+    `previous_page_number` на первой странице выбросит `EmptyPage`, поэтому ссылку прячут под проверку.

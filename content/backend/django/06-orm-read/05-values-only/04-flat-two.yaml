@@ -1,0 +1,15 @@
+title: "flat для двух полей"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "flat=True разрешён только для одного поля."
+statement: |
+  Что вернёт `Product.objects.values_list("name", "stock", flat=True)`?
+options:
+  - "Список названий и остатков подряд: `[\"Ноутбук Aster 14\", 5, …]`"
+  - "Список кортежей `[(\"Ноутбук Aster 14\", 5), …]`"
+  - "`TypeError: 'flat' is not valid when values_list is called with more than one field.`"
+  - "Список словарей"
+answer: [2]
+explanation: |
+  `flat=True` превращает кортеж из одного элемента в само значение, поэтому с двумя полями он не имеет смысла — Django сразу выбрасывает `TypeError`. Для пар — `values_list("name", "stock")` без `flat`, для словарей — `values("name", "stock")`.

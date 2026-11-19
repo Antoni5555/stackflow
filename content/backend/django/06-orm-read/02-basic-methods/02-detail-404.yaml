@@ -1,0 +1,97 @@
+title: "Неизвестный товар — 500, скрытый — открывается"
+type: exercise
+difficulty: 1
+pitfall: "get() во view даёт 500 на несуществующий адрес; условие видимости нужно добавить к поиску."
+statement: |
+  Страница товара `/products/<slug>/` падает с 500 на несуществующем адресе, а снятый с продажи товар (`is_active=False`) открывается по прямой ссылке. Оба случая должны давать 404.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+
+        def __str__(self):
+            return self.name
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def product_detail(request, slug):
+        product = Product.objects.get(slug=slug)
+        return render(request, "shop/product.html", {"product": product})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/", views.product_detail),
+    ]
+  templates/shop/product.html: |
+    <h1>{{ product.name }}</h1>
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Product
+
+
+    def product_detail(request, slug):
+        product = get_object_or_404(Product, slug=slug, is_active=True)
+        return render(request, "shop/product.html", {"product": product})
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/products/aster-14/").status_code == 200
+      fail: "Активный товар должен открываться."
+    - code: |
+        assert client.get("/products/nope/").status_code == 404
+      fail: "Несуществующий адрес даёт 500 — нужен ответ 404."
+    - code: |
+        assert client.get("/products/wired-mouse/").status_code == 404
+      fail: "Снятый с продажи товар (wired-mouse) открывается — добавьте условие is_active к поиску."
+hints:
+  - "Какая функция из `django.shortcuts` превращает «не найдено» в 404?"
+  - "`get_object_or_404(Product, slug=slug, is_active=True)`."
+explanation: |
+  `get()` выбрасывает `Product.DoesNotExist`, и без обработки это ошибка 500. `get_object_or_404` делает тот же `get()`, но превращает «не найдено» в `Http404`. Условия видимости передают туда же: снятый с продажи товар для покупателя «не существует», и ответ на него — тоже 404.

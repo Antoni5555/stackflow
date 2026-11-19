@@ -1,0 +1,84 @@
+title: "Главный товар категории"
+type: exercise
+difficulty: 2
+pitfall: "get() по неуникальному полю падает с MultipleObjectsReturned, как только подходящих строк станет больше одной."
+statement: |
+  Функция `first_product(category_name)` из `queries.py` должна вернуть первый товар категории (с наименьшим `id`) или `None`, если товаров нет. Сейчас для «Мышей» она падает с `MultipleObjectsReturned`, а для пустой категории — с `DoesNotExist`.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+
+        def __str__(self):
+            return self.name
+  queries.py: |
+    from .models import Product
+
+
+    def first_product(category_name):
+        return Product.objects.get(category__name=category_name)
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+solution:
+  queries.py: |
+    from .models import Product
+
+
+    def first_product(category_name):
+        return Product.objects.filter(category__name=category_name).first()
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import first_product
+        assert first_product("Мыши").slug == "wireless-mouse"
+      fail: "Для «Мышей» нужен первый товар — Беспроводная мышь; get() не годится, когда строк несколько."
+    - code: |
+        from shop.queries import first_product
+        assert first_product("Пустая") is None
+      fail: "Для категории без товаров функция должна вернуть None, а не упасть."
+hints:
+  - "Какой метод возвращает объект или `None` и не боится, что строк несколько?"
+  - "`filter(category__name=...).first()`."
+explanation: |
+  `get()` годится только для уникальных условий: `pk`, `slug`. Для «один из многих» — `filter(...).first()`: Django добавит `ORDER BY id LIMIT 1` и вернёт `None`, если строк нет. Если важен другой порядок — `order_by(...)` перед `first()`.

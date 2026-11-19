@@ -1,0 +1,21 @@
+title: "Остаток после F"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "После obj.field = F(...) и save() в атрибуте лежит выражение — значение нужно перечитать."
+statement: |
+  ```python
+  product = Product.objects.get(slug="aster-14")   # остаток 5
+  product.stock = F("stock") - 1
+  product.save()
+  print(product.stock)
+  ```
+  Что напечатает последняя строка?
+options:
+  - "`4`"
+  - "`5`"
+  - "`F(stock) - Value(1)`"
+  - "`None`"
+answer: [2]
+explanation: |
+  Django отправил в базу `SET stock = stock - 1`, но объект не перечитал: в атрибуте осталось выражение — `F(stock) - Value(1)`. Чтобы увидеть 4, нужен `product.refresh_from_db()`. Если вызвать `save()` ещё раз без перечитывания, выражение применится снова и остаток станет 3.

@@ -1,0 +1,95 @@
+title: "Скидка дороже цены"
+type: exercise
+difficulty: 1
+pitfall: "Сравнить две колонки одной строки можно только F-выражением — Python-фильтр загружает всю таблицу."
+statement: |
+  `broken_sales()` из `queries.py` ищет ошибки менеджеров: товары, у которых цена со скидкой (`sale_price`) **больше** обычной цены. Сейчас она загружает весь каталог и сравнивает в Python. Перенесите сравнение в базу.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(max_length=200, unique=True)
+        description = models.TextField(blank=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+        created_at = models.DateTimeField()
+        sale_price = models.DecimalField(
+            max_digits=10, decimal_places=2, null=True, blank=True
+        )
+
+        def __str__(self):
+            return self.name
+  queries.py: |
+    from .models import Product
+
+
+    def broken_sales():
+        products = Product.objects.exclude(sale_price=None).order_by("slug")
+        return [p.slug for p in products if p.sale_price > p.price]
+  urls.py: |
+    from django.urls import path
+
+    urlpatterns = []
+setup: |
+  from datetime import datetime, timezone as tz
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  rows = [
+      (laptops, "Ноутбук Aster 14", "aster-14", "64990.00", 5, True, "2026-03-01"),
+      (laptops, "Ноутбук Nimbus Air", "nimbus-air", "54990.00", 0, True, "2026-04-15"),
+      (mice, "Беспроводная мышь", "wireless-mouse", "1499.00", 40, True, "2026-01-10"),
+      (mice, "Проводная мышь", "wired-mouse", "590.00", 30, False, "2025-11-20"),
+      (mice, "Игровая мышь", "gaming-mouse", "3490.00", 3, True, "2026-05-02"),
+      (pads, "Коврик для мыши", "mouse-pad", "490.00", 100, True, "2025-12-05"),
+  ]
+  for cat, name, slug, price, stock, active, day in rows:
+      Product.objects.create(
+          category=cat, name=name, slug=slug, price=price, stock=stock,
+          is_active=active,
+          created_at=datetime.fromisoformat(day + "T12:00").replace(tzinfo=tz.utc),
+      )
+  Product.objects.filter(slug="wireless-mouse").update(sale_price="1299.00")
+  Product.objects.filter(slug="wired-mouse").update(sale_price="790.00")
+solution:
+  queries.py: |
+    from django.db.models import F
+
+    from .models import Product
+
+
+    def broken_sales():
+        qs = Product.objects.filter(sale_price__gt=F("price")).order_by("slug")
+        return list(qs.values_list("slug", flat=True))
+check:
+  type: django
+  tests:
+    - code: |
+        from shop.queries import broken_sales
+        assert broken_sales() == ["wired-mouse"]
+      fail: "Скидка больше цены только у проводной мыши."
+    - code: |
+        from shop.queries import broken_sales
+        with max_queries(1) as queries:
+            broken_sales()
+        assert '"sale_price" > ' in queries[0]["sql"]
+      fail: "Сравнение должно быть в SQL — sale_price > price через F(\"price\")."
+hints:
+  - "Что подставить справа в `sale_price__gt=…`, чтобы это было значение другой колонки?"
+  - "`filter(sale_price__gt=F(\"price\"))`."
+explanation: |
+  `F("price")` — значение колонки `price` той же строки: `WHERE sale_price > price`. База сравнивает и возвращает только нужные строки, а `NULL` в `sale_price` отсеивается сам — сравнение с `NULL` не даёт истины. `values_list` загружает только slug.

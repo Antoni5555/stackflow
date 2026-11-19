@@ -1,0 +1,32 @@
+- title: Поднять цены на 10%
+  text: |
+    Поднимите цены всех мышей на 10% одним запросом и выведите новые цены. Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  hint: |
+    Повторный `mice` в последней строке — новый запрос: у `update` нет кэша.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import F
+    mice = Product.objects.filter(category__name="Мыши")
+    print(mice.update(price=F("price") * 1.1))
+    prices = mice.order_by("id").values_list("price", flat=True)
+    print(list(prices))
+    ```
+    Результат:
+    ```
+    3
+    [Decimal('1648.90'), Decimal('649.00'), Decimal('3839.00')]
+    ```
+    `update` вернул число изменённых строк. Для фильтра через связь Django обновил строки подзапросом: `WHERE "id" IN (SELECT … JOIN shop_category …)`.
+- title: Остаток меньше резерва
+  text: |
+    У товара есть поля `stock` и `reserved` (сколько отложено в корзинах). Как найти товары, которых на складе меньше, чем отложено?
+  answer: |
+    `Product.objects.filter(stock__lt=F("reserved"))` — `WHERE stock < reserved`, сравнение двух колонок одной строки. С запасом в 5 штук — `filter(stock__lt=F("reserved") + 5)`.
+- title: Счётчик просмотров
+  text: |
+    Страница товара должна увеличивать счётчик просмотров `views_count`. Как сделать это без потерь при одновременных просмотрах?
+  answer: |
+    `Product.objects.filter(pk=product.pk).update(views_count=F("views_count") + 1)` — база прибавит 1 к текущему значению, и одновременные просмотры не перезапишут друг друга. `product.views_count += 1; product.save()` терял бы просмотры и переписывал все поля товара при каждом показе страницы.

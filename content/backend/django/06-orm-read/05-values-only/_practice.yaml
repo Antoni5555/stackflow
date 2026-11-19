@@ -1,0 +1,30 @@
+- title: Через связь
+  text: |
+    Выведите мыши по возрастанию цены словарями с названием товара и названием категории. Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных или проверьте на своих.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    rows = (
+        Product.objects.filter(category__name="Мыши")
+        .order_by("price")
+        .values("name", "category__name")
+    )
+    print(list(rows))
+    ```
+    Результат:
+    ```
+    [{'name': 'Проводная мышь', 'category__name': 'Мыши'}, {'name': 'Беспроводная мышь', 'category__name': 'Мыши'}, {'name': 'Игровая мышь', 'category__name': 'Мыши'}]
+    ```
+    Один запрос с `JOIN`, только две колонки.
+- title: Без описания
+  text: |
+    Загрузите товар без тяжёлого поля `description`. Какие колонки уйдут в `SELECT`?
+  answer: |
+    `Product.objects.defer("description").get(slug="mouse-pad")` — все колонки, кроме `description`: `id`, `category_id`, `name`, `slug`, `price`, `stock`, `is_active`, `created_at`. Обращение к `p.description` догрузит его отдельным запросом.
+- title: Данные для JSON
+  text: |
+    Нужно отдать список товаров JSON-ом: название и цена. Что передать в `JsonResponse`?
+  answer: |
+    `JsonResponse({"products": list(Product.objects.values("name", "price"))})` — QuerySet нужно превратить в список, а словари `values()` сериализуются сразу. `Decimal` цены `JsonResponse` запишет строкой (`"1499.00"`) — его кодировщик понимает `Decimal`. Объекты модели в JSON без преобразования не сериализуются.
