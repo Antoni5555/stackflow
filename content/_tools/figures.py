@@ -1464,6 +1464,78 @@ def formset_fig():
     f.save(out(DJ9 / "07-formsets" / "img" / "formset.svg"))
 
 
+# ---------- Django 10: class-based views ----------
+DJ10 = ROOT / "django" / "10-cbv"
+
+
+def cbv_dispatch():
+    f = Figure(860, 280, "Запрос к CBV: as_view() → новый объект → dispatch() → метод по имени HTTP-метода")
+    f.box(20, 40, 170, 50, "Hello.as_view()", "box2", "cs")
+    f.arrow("M190 65H226")
+    f.box(230, 40, 190, 50, "", "box")
+    f.text(325, 60, "объект Hello()", "cs", "middle")
+    f.text(325, 80, "request, kwargs", "s", "middle")
+    f.arrow("M420 65H456")
+    f.box(460, 40, 120, 50, "dispatch()", "box", "cs")
+    f.arrow("M580 55H626"); f.arrow("M580 75L626 125")
+    f.box(630, 30, 210, 40, "GET → get() → 200", "ok", "cs")
+    f.box(630, 110, 210, 40, "POST → нет post() → 405", "err", "cs")
+    f.text(630, 172, "Allow: GET, HEAD, OPTIONS", "cs")
+    f.text(20, 230, "Объект создаётся заново на каждый запрос; атрибуты класса — общие для всех.", "t")
+    f.save(out(DJ10 / "01-fbv-cbv" / "img" / "cbv-dispatch.svg"))
+
+
+def list_detail():
+    f = Figure(860, 300, "ListView и DetailView: запрос, шаблон и имена в контексте — по соглашениям")
+    f.text(20, 24, "ListView: model = Product", "cs")
+    steps = ["get_queryset(): Product.objects.all() + ordering", "шаблон shop/product_list.html", "контекст: product_list, object_list, page_obj"]
+    for i, t in enumerate(steps):
+        f.box(20, 36 + i * 46, 390, 38, t, "box2", "cs")
+    f.text(450, 24, "DetailView: model = Product", "cs")
+    steps2 = ["slug из адреса → поиск в get_queryset()", "нет → 404; есть → shop/product_detail.html", "контекст: product, object"]
+    for i, t in enumerate(steps2):
+        f.box(450, 36 + i * 46, 390, 38, t, "ok" if i == 2 else "box2", "cs")
+    f.text(20, 210, "Свой запрос — get_queryset(), свои данные — get_context_data() с super().", "t")
+    f.text(20, 238, "Другие имена — template_name, context_object_name, slug_url_kwarg.", "s")
+    f.save(out(DJ10 / "02-list-detail" / "img" / "list-detail.svg"))
+
+
+def create_view():
+    f = Figure(860, 300, "CreateView: GET — пустая форма, POST — проверка, form_valid или form_invalid")
+    f.box(20, 30, 200, 40, "GET", "box2", "cs")
+    f.arrow("M220 50H266")
+    f.box(270, 30, 300, 40, "шаблон review_form.html, form", "box", "cs")
+    f.box(20, 110, 200, 40, "POST", "box2", "cs")
+    f.arrow("M220 130H266")
+    f.box(270, 110, 160, 40, "is_valid()?", "box", "cs")
+    f.arrow("M430 120L476 90"); f.arrow("M430 140L476 170")
+    f.box(480, 70, 360, 40, "form_invalid → шаблон с ошибками", "err", "cs")
+    f.box(480, 150, 360, 40, "form_valid → save() → redirect", "ok", "cs")
+    f.text(480, 216, "адрес: success_url, get_success_url()", "cs")
+    f.text(480, 238, "или get_absolute_url() объекта", "cs")
+    f.text(20, 272, "Поля вне формы ставят в form_valid: form.instance.product = …, затем super().form_valid(form).", "s")
+    f.save(out(DJ10 / "03-edit-views" / "img" / "create-view.svg"))
+
+
+def mixin_mro():
+    f = Figure(860, 280, "MRO ProductList(InStockMixin, CategoriesMixin, ListView): super() идёт слева направо")
+    chain = ["ProductList", "InStockMixin", "CategoriesMixin", "ListView"]
+    for i, t in enumerate(chain):
+        x = 20 + i * 210
+        f.box(x, 40, 190, 40, t, "ok" if 0 < i < 3 else "box2", "cs")
+        if i < 3:
+            f.arrow(f"M{x + 190} 60H{x + 206}")
+    f.text(230, 112, "get_queryset():", "cs")
+    f.text(230, 134, ".filter(stock__gt=0)", "cs")
+    f.text(440, 112, "get_context_data():", "cs")
+    f.text(440, 134, "+ categories", "cs")
+    f.text(650, 112, "запрос и контекст", "cs")
+    f.text(650, 134, "по умолчанию", "cs")
+    f.text(20, 196, "Каждый миксин вызывает super() и дополняет результат следующего класса.", "t")
+    f.text(20, 224, "ListView первым — методы найдутся в нём, миксины молча не сработают.", "s")
+    f.save(out(DJ10 / "04-mixins" / "img" / "mixin-mro.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2942,6 +3014,7 @@ if __name__ == "__main__":
                   join_duplicates, n_plus_1, select_related_fig, prefetch_fig,
                   aggregate_annotate, group_by_fig, double_join, subquery_fig,
                   lost_update, form_flow, modelform_fig, validation_order, media_files, formset_fig,
+                  cbv_dispatch, list_detail, create_view, mixin_mro,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

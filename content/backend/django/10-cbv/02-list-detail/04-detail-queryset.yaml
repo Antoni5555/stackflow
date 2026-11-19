@@ -1,0 +1,102 @@
+title: "Нет в наличии — нет страницы"
+type: exercise
+difficulty: 2
+pitfall: "DetailView ищет объект внутри get_queryset(): ограничение запроса скрывает и карточку."
+statement: |
+  Карточка товара `/products/<slug>/` должна открываться только для товаров в наличии (`stock > 0`); для остальных — 404. Сейчас по прямой ссылке открывается и игровая мышь, которой нет на складе.
+files:
+  models.py: |
+    from django.core.validators import MaxValueValidator, MinValueValidator
+    from django.db import models
+    from django.urls import reverse
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+        def get_absolute_url(self):
+            return reverse("product", kwargs={"slug": self.slug})
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField(
+            validators=[MinValueValidator(1), MaxValueValidator(5)]
+        )
+        text = models.TextField(blank=True)
+
+        def __str__(self):
+            return f"{self.author}: {self.rating}"
+  views.py: |
+    from django.views.generic import DetailView
+
+    from .models import Product
+
+
+    class ProductDetail(DetailView):
+        model = Product
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/", views.ProductDetail.as_view(), name="product"),
+    ]
+  templates/shop/product_detail.html: |
+    <h1>{{ product.name }}</h1>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  Product.objects.create(category=laptops, name="Подставка для ноутбука", slug="laptop-stand", price="2190.00", stock=7)
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.views.generic import DetailView
+
+    from .models import Product
+
+
+    class ProductDetail(DetailView):
+        model = Product
+
+        def get_queryset(self):
+            return Product.objects.filter(stock__gt=0)
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/products/gaming-mouse/").status_code == 404
+      fail: "Игровой мыши нет на складе — её карточка должна отвечать 404."
+    - code: |
+        r = client.get("/products/aster-14/")
+        assert r.status_code == 200 and "Ноутбук Aster 14" in r.content.decode()
+      fail: "Товары в наличии открываются как прежде."
+hints:
+  - "Где DetailView ищет объект по slug?"
+  - "`get_queryset()` с `filter(stock__gt=0)`."
+explanation: |
+  `get_object()` фильтрует по `slug` результат `get_queryset()`. Если товара нет в этом QuerySet, он «не существует» — `Http404`. Так одной правкой ограничивают и карточку; так же делают «только свои заказы» с `filter(user=self.request.user)`.

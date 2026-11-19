@@ -1,0 +1,111 @@
+title: "Удаление по ссылке"
+type: exercise
+difficulty: 2
+pitfall: "Удаление — только на POST; DeleteView показывает подтверждение на GET."
+statement: |
+  Ссылка «Удалить» ведёт на `/reviews/<pk>/delete/`, и отзыв удаляется сразу при открытии адреса — его может удалить даже переход по ссылке из письма. Перепишите view на `DeleteView`: GET — страница подтверждения (шаблон уже есть), POST — удаление и переход в каталог.
+files:
+  models.py: |
+    from django.core.validators import MaxValueValidator, MinValueValidator
+    from django.db import models
+    from django.urls import reverse
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+        def get_absolute_url(self):
+            return reverse("product", kwargs={"slug": self.slug})
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField(
+            validators=[MinValueValidator(1), MaxValueValidator(5)]
+        )
+        text = models.TextField(blank=True)
+
+        def __str__(self):
+            return f"{self.author}: {self.rating}"
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect
+    from django.views import View
+
+    from .models import Review
+
+
+    class ReviewDelete(View):
+        def get(self, request, pk):
+            get_object_or_404(Review, pk=pk).delete()
+            return redirect("catalog")
+  urls.py: |
+    from django.http import HttpResponse
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", lambda request: HttpResponse("каталог"), name="catalog"),
+        path("reviews/<int:pk>/delete/", views.ReviewDelete.as_view(), name="review_delete"),
+    ]
+  templates/shop/review_confirm_delete.html: |
+    <form method="post">{% csrf_token %}<p>Удалить отзыв «{{ object }}»?</p><button>Удалить</button></form>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  Product.objects.create(category=laptops, name="Подставка для ноутбука", slug="laptop-stand", price="2190.00", stock=7)
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.urls import reverse_lazy
+    from django.views.generic import DeleteView
+
+    from .models import Review
+
+
+    class ReviewDelete(DeleteView):
+        model = Review
+        success_url = reverse_lazy("catalog")
+check:
+  type: django
+  tests:
+    - code: |
+        r = Review.objects.get(author="Анна")
+        resp = client.get(f"/reviews/{r.pk}/delete/")
+        assert resp.status_code == 200 and "Удалить отзыв «Анна: 5»?" in resp.content.decode()
+        assert Review.objects.filter(pk=r.pk).exists()
+      fail: "GET должен показывать подтверждение и ничего не удалять."
+    - code: |
+        r = Review.objects.get(author="Анна")
+        resp = client.post(f"/reviews/{r.pk}/delete/")
+        assert resp.status_code == 302 and resp["Location"] == "/catalog/"
+        assert not Review.objects.filter(pk=r.pk).exists()
+      fail: "POST удаляет отзыв и перенаправляет в каталог."
+hints:
+  - "Какой класс показывает подтверждение на GET и удаляет на POST?"
+  - "`DeleteView` с `model = Review` и `success_url = reverse_lazy(\"catalog\")`."
+explanation: |
+  GET-запросы должны быть безопасными: их выполняют переход по ссылке, предзагрузка браузера, поисковый робот. `DeleteView` на GET рендерит `<модель>_confirm_delete.html` с `object`, а удаляет только на POST из формы — с CSRF-токеном.

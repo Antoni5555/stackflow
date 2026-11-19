@@ -1,0 +1,103 @@
+title: "Проект не запускается"
+type: exercise
+difficulty: 1
+pitfall: "В urls.py передают Класс.as_view(), а не сам класс."
+statement: |
+  Каталог переписали на класс `Catalog`, и проект перестал запускаться: системная проверка сообщает `urls.E009`. Исправьте маршрут `/catalog/`.
+files:
+  models.py: |
+    from django.core.validators import MaxValueValidator, MinValueValidator
+    from django.db import models
+    from django.urls import reverse
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+        def get_absolute_url(self):
+            return reverse("product", kwargs={"slug": self.slug})
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField(
+            validators=[MinValueValidator(1), MaxValueValidator(5)]
+        )
+        text = models.TextField(blank=True)
+
+        def __str__(self):
+            return f"{self.author}: {self.rating}"
+  views.py: |
+    from django.shortcuts import render
+    from django.views import View
+
+    from .models import Product
+
+
+    class Catalog(View):
+        def get(self, request):
+            products = Product.objects.order_by("name")
+            return render(request, "shop/catalog.html", {"products": products})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.Catalog, name="catalog"),
+    ]
+  templates/shop/catalog.html: |
+    <ul>
+      {% for p in products %}
+        <li>{{ p.name }}</li>
+      {% endfor %}
+    </ul>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  Product.objects.create(category=laptops, name="Подставка для ноутбука", slug="laptop-stand", price="2190.00", stock=7)
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.Catalog.as_view(), name="catalog"),
+    ]
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.get("/catalog/")
+        assert r.status_code == 200 and "Игровая мышь" in r.content.decode()
+      fail: "Маршрут должен вести на функцию, которую строит Catalog.as_view()."
+hints:
+  - "Что Django ожидает во втором аргументе path()?"
+  - "`path(\"catalog/\", views.Catalog.as_view(), name=\"catalog\")`."
+explanation: |
+  `path()` ждёт функцию-view: `view(request, **kwargs)`. Класс сам по себе ею не является — `as_view()` строит функцию, которая на каждый запрос создаёт объект класса и вызывает `dispatch()`. Поэтому системная проверка и подсказывает: `pass Catalog.as_view() instead of Catalog`.

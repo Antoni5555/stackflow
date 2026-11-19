@@ -1,0 +1,104 @@
+- title: Два фильтра
+  text: |
+    Два миксина — «в наличии» и «дешевле 5000» — в одном ListView. Какие товары останутся?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.views.generic import ListView
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class InStockMixin:
+        def get_queryset(self):
+            return super().get_queryset().filter(stock__gt=0)
+
+
+    class CheapMixin:
+        def get_queryset(self):
+            return super().get_queryset().filter(price__lt=5000)
+
+
+    class ProductList(InStockMixin, CheapMixin, ListView):
+        model = Product
+        ordering = ["name"]
+
+
+    r = ProductList.as_view()(rf.get("/"))
+    print([p.slug for p in r.context_data["object_list"]])
+    ```
+    Результат:
+    ```
+    ['wireless-mouse', 'mouse-pad', 'laptop-stand']
+    ```
+    Фильтры сложились: каждый миксин дополняет QuerySet следующего по MRO.
+- title: Заголовок страницы
+  text: |
+    Миксин `TitleMixin` кладёт в контекст атрибут `title` класса. Подключите его к ListView и DetailView.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.views.generic import DetailView, ListView
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class TitleMixin:
+        title = ""
+
+        def get_context_data(self, **kwargs):
+            context = super().get_context_data(**kwargs)
+            context["title"] = self.title
+            return context
+
+
+    class ProductList(TitleMixin, ListView):
+        model = Product
+        title = "Каталог"
+
+
+    class ProductDetail(TitleMixin, DetailView):
+        model = Product
+        title = "Товар"
+
+
+    r1 = ProductList.as_view()(rf.get("/"))
+    r2 = ProductDetail.as_view()(rf.get("/"), slug="aster-14")
+    print(r1.context_data["title"], r2.context_data["title"])
+    ```
+    Результат:
+    ```
+    Каталог Товар
+    ```
+    Миксин не знает модель — работает с любым view, у которого есть `get_context_data`.
+- title: MRO карточки
+  text: |
+    Выведите первые четыре класса MRO у `ProductDetail(InStockMixin, DetailView)`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.views.generic import DetailView
+
+
+    class InStockMixin:
+        def get_queryset(self):
+            return super().get_queryset().filter(stock__gt=0)
+
+
+    class ProductDetail(InStockMixin, DetailView):
+        model = Product
+
+
+    print([c.__name__ for c in ProductDetail.__mro__][:4])
+    ```
+    Результат:
+    ```
+    ['ProductDetail', 'InStockMixin', 'DetailView', 'SingleObjectTemplateResponseMixin']
+    ```
+    `super().get_queryset()` в миксине вызывает следующий класс — `DetailView` и его родителей (`SingleObjectMixin`).

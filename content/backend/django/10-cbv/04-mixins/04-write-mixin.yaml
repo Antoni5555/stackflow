@@ -1,0 +1,129 @@
+title: "Свой миксин"
+type: exercise
+difficulty: 2
+pitfall: "Общее поведение нескольких view — миксин с super(); копия метода в каждом классе расходится."
+statement: |
+  Каталог `/catalog/` скрывает товары без остатка своим `get_queryset`, а карточку `/products/<slug>/` забыли — по прямой ссылке открывается игровая мышь. Вынесите фильтр «в наличии» в миксин `InStockMixin` и подключите его к обоим классам.
+files:
+  models.py: |
+    from django.core.validators import MaxValueValidator, MinValueValidator
+    from django.db import models
+    from django.urls import reverse
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+        def get_absolute_url(self):
+            return reverse("product", kwargs={"slug": self.slug})
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField(
+            validators=[MinValueValidator(1), MaxValueValidator(5)]
+        )
+        text = models.TextField(blank=True)
+
+        def __str__(self):
+            return f"{self.author}: {self.rating}"
+  views.py: |
+    from django.views.generic import DetailView, ListView
+
+    from .models import Product
+
+
+    class ProductList(ListView):
+        model = Product
+        ordering = ["name"]
+
+        def get_queryset(self):
+            return Product.objects.filter(stock__gt=0).order_by("name")
+
+
+    class ProductDetail(DetailView):
+        model = Product
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.ProductList.as_view(), name="catalog"),
+        path("products/<slug:slug>/", views.ProductDetail.as_view(), name="product"),
+    ]
+  templates/shop/product_list.html: |
+    <ul>
+      {% for p in product_list %}
+        <li>{{ p.name }}</li>
+      {% endfor %}
+    </ul>
+  templates/shop/product_detail.html: |
+    <h1>{{ product.name }}</h1>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  Product.objects.create(category=laptops, name="Подставка для ноутбука", slug="laptop-stand", price="2190.00", stock=7)
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.views.generic import DetailView, ListView
+
+    from .models import Product
+
+
+    class InStockMixin:
+        def get_queryset(self):
+            return super().get_queryset().filter(stock__gt=0)
+
+
+    class ProductList(InStockMixin, ListView):
+        model = Product
+        ordering = ["name"]
+
+
+    class ProductDetail(InStockMixin, DetailView):
+        model = Product
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/products/gaming-mouse/").status_code == 404
+        assert client.get("/products/aster-14/").status_code == 200
+      fail: "Карточка товара без остатка должна отвечать 404, остальные — открываться."
+    - code: |
+        html = client.get("/catalog/").content.decode()
+        assert "Игровая мышь" not in html and "Коврик для мыши" in html
+      fail: "В каталоге — только товары в наличии."
+    - code: |
+        import shop.views as v
+        assert issubclass(v.ProductList, v.InStockMixin) and issubclass(v.ProductDetail, v.InStockMixin)
+      fail: "Оба класса должны использовать миксин InStockMixin."
+hints:
+  - "Как миксину получить базовый QuerySet любого view?"
+  - "Миксин с `super().get_queryset().filter(stock__gt=0)`, классы — `(InStockMixin, ListView)` и `(InStockMixin, DetailView)`."
+explanation: |
+  Скопированный метод легко забыть в одном из классов — что и случилось с карточкой. Миксин с `super().get_queryset()` работает с любым view, у которого есть `model`: `ListView` фильтрует список, `DetailView` ищет объект внутри отфильтрованного QuerySet и отвечает 404. Порядок в объявлении класса прежний: миксин слева, базовый view последним.

@@ -1,0 +1,85 @@
+- title: Сначала дорогие
+  text: |
+    ListView товаров от дорогих к дешёвым: выведите список из контекста.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.views.generic import ListView
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class ProductList(ListView):
+        model = Product
+        ordering = ["-price"]
+
+
+    r = ProductList.as_view()(rf.get("/catalog/"))
+    print([p.name for p in r.context_data["product_list"]])
+    ```
+    Результат:
+    ```
+    ['Ноутбук Aster 14', 'Игровая мышь', 'Подставка для ноутбука', 'Беспроводная мышь', 'Коврик для мыши']
+    ```
+    Ответ — `TemplateResponse`: контекст доступен до отрисовки шаблона.
+- title: Вторая страница
+  text: |
+    Каталог по 2 товара по цене — что в контексте на `?page=2`?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.views.generic import ListView
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class ProductList(ListView):
+        model = Product
+        ordering = ["price"]
+        paginate_by = 2
+
+
+    r = ProductList.as_view()(rf.get("/catalog/?page=2"))
+    page = r.context_data["page_obj"]
+    pages = page.paginator.num_pages
+    print(page.number, page.has_next(), pages)
+    print([p.name for p in r.context_data["object_list"]])
+    ```
+    Результат:
+    ```
+    2 True 3
+    ['Подставка для ноутбука', 'Игровая мышь']
+    ```
+    `object_list` — только товары страницы; `is_paginated` тоже в контексте.
+- title: Поиск по своему параметру
+  text: |
+    В маршруте параметр называется `code`, а не `slug`. Настройте DetailView, чтобы он искал товар по нему.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.views.generic import DetailView
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class ProductDetail(DetailView):
+        model = Product
+        slug_url_kwarg = "code"
+
+
+    view = ProductDetail.as_view()
+    r = view(rf.get("/p/mouse-pad/"), code="mouse-pad")
+    ctx = r.context_data
+    print(ctx["product"], ctx["object"].price)
+    ```
+    Результат:
+    ```
+    Коврик для мыши 490.00
+    ```
+    `slug_url_kwarg` — имя параметра адреса, `slug_field` — поле модели (по умолчанию `slug`).

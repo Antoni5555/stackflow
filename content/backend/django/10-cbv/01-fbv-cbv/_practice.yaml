@@ -1,0 +1,91 @@
+- title: Методы класса
+  text: |
+    Напишите класс с методами `get` и `post`, вызовите его через `as_view()` запросами GET, POST и PUT и выведите статусы. Модели и данные — как в уроке. Классы можно объявить прямо во вкладке `orm.py` и вызвать через `RequestFactory` — так тренажёр выполнит view без маршрута и шаблона.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.http import HttpResponse
+    from django.views import View
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class Cart(View):
+        def get(self, request):
+            return HttpResponse("корзина")
+
+        def post(self, request):
+            return HttpResponse("добавлено")
+
+
+    view = Cart.as_view()
+    for make in [rf.get, rf.post, rf.put]:
+        print(view(make("/cart/")).status_code)
+    ```
+    Результат:
+    ```
+    200
+    200
+    405
+    ```
+    PUT — метода `put` нет, ответ 405.
+- title: Параметры адреса
+  text: |
+    Параметр маршрута `slug` приходит в метод аргументом и лежит в `self.kwargs`. Проверьте оба способа.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.http import HttpResponse
+    from django.views import View
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class ProductPage(View):
+        def get(self, request, slug):
+            same = self.kwargs["slug"] == slug
+            return HttpResponse(f"{slug} {same}")
+
+
+    view = ProductPage.as_view()
+    r = view(rf.get("/p/aster-14/"), slug="aster-14")
+    print(r.content.decode())
+    ```
+    Результат:
+    ```
+    aster-14 True
+    ```
+    Функция из `as_view()` принимает параметры маршрута именованными аргументами — как их передаёт `path()`.
+- title: Только GET
+  text: |
+    Ограничьте класс методом GET через `http_method_names` и посмотрите заголовок `Allow` в ответе на POST.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.http import HttpResponse
+    from django.views import View
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class Catalog(View):
+        http_method_names = ["get"]
+
+        def get(self, request):
+            return HttpResponse("каталог")
+
+
+    r = Catalog.as_view()(rf.post("/catalog/"))
+    print(r.status_code, r["Allow"])
+    ```
+    Результат:
+    ```
+    405 GET
+    ```
+    Методы `head` и `options` выпали из `Allow`: их нет в `http_method_names`.

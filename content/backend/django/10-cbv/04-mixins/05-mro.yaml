@@ -1,0 +1,28 @@
+title: "Чей get_queryset"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "super() вызывает следующий класс по MRO, а не «родителя» из объявления."
+statement: |
+  ```python
+  class InStockMixin:
+      def get_queryset(self):
+          return super().get_queryset().filter(stock__gt=0)
+
+  class CheapMixin:
+      def get_queryset(self):
+          return super().get_queryset().filter(price__lt=5000)
+
+  class ProductList(InStockMixin, CheapMixin, ListView):
+      model = Product
+  ```
+
+  Какие товары покажет каталог?
+options:
+  - "Только в наличии"
+  - "Только дешевле 5000"
+  - "В наличии и дешевле 5000"
+  - "Все товары"
+answer: [2]
+explanation: |
+  MRO: `ProductList` → `InStockMixin` → `CheapMixin` → `ListView`. `InStockMixin.get_queryset` через `super()` вызывает `CheapMixin.get_queryset`, тот — `ListView`. Фильтры складываются: `Product.objects.all().filter(price__lt=5000).filter(stock__gt=0)`.

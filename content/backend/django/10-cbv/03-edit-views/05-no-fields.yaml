@@ -1,0 +1,20 @@
+title: "CreateView без fields"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "CreateView и UpdateView строят ModelForm и требуют fields или form_class."
+statement: |
+  Что произойдёт при открытии страницы с таким view?
+
+  ```python
+  class ReviewCreate(CreateView):
+      model = Review
+  ```
+options:
+  - "Форма со всеми полями модели"
+  - "`ImproperlyConfigured: Using ModelFormMixin (base class of ReviewCreate) without the 'fields' attribute is prohibited.`"
+  - "Пустая форма без полей"
+  - "`TemplateDoesNotExist`"
+answer: [1]
+explanation: |
+  Как и ModelForm, `CreateView` требует явный список полей — `fields` — или готовую форму `form_class`. Ошибка появляется при открытии страницы, когда класс строит форму. Проверено в тренажёре.

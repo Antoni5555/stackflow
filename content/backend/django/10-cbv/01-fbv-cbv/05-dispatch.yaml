@@ -1,0 +1,23 @@
+title: "Что вызовет dispatch"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "dispatch вызывает метод по имени HTTP-метода; нет метода — 405 с заголовком Allow."
+statement: |
+  Класс в `urls.py` подключён через `as_view()`:
+
+  ```python
+  class Hello(View):
+      def get(self, request):
+          return HttpResponse("каталог")
+  ```
+
+  Что ответит `POST` на его адрес?
+options:
+  - "`200 OK` с текстом «каталог»"
+  - "`405 Method Not Allowed`, заголовок `Allow: GET, HEAD, OPTIONS`"
+  - "`404 Not Found`"
+  - "`500`: метод post не найден"
+answer: [1]
+explanation: |
+  `dispatch()` ищет метод `post`; его нет — `http_method_not_allowed()` возвращает 405 с перечнем реализованных методов: `get`, `head` (Django отвечает на него через `get`) и `options` (есть у любого `View`). Проверено в тренажёре.

@@ -1,0 +1,112 @@
+title: "Миксин не работает"
+type: exercise
+difficulty: 1
+pitfall: "Миксины пишут слева от базового view — иначе его методы находятся раньше."
+statement: |
+  В каталог `/catalog/` подключили миксин «только в наличии», но игровая мышь (остаток 0) всё ещё в списке. Ошибок нет. Исправьте view.
+files:
+  models.py: |
+    from django.core.validators import MaxValueValidator, MinValueValidator
+    from django.db import models
+    from django.urls import reverse
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+        def get_absolute_url(self):
+            return reverse("product", kwargs={"slug": self.slug})
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField(
+            validators=[MinValueValidator(1), MaxValueValidator(5)]
+        )
+        text = models.TextField(blank=True)
+
+        def __str__(self):
+            return f"{self.author}: {self.rating}"
+  views.py: |
+    from django.views.generic import ListView
+
+    from .models import Product
+
+
+    class InStockMixin:
+        def get_queryset(self):
+            return super().get_queryset().filter(stock__gt=0)
+
+
+    class ProductList(ListView, InStockMixin):
+        model = Product
+        ordering = ["name"]
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.ProductList.as_view(), name="catalog"),
+    ]
+  templates/shop/product_list.html: |
+    <ul>
+      {% for p in product_list %}
+        <li>{{ p.name }}</li>
+      {% endfor %}
+    </ul>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  Product.objects.create(category=laptops, name="Подставка для ноутбука", slug="laptop-stand", price="2190.00", stock=7)
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.views.generic import ListView
+
+    from .models import Product
+
+
+    class InStockMixin:
+        def get_queryset(self):
+            return super().get_queryset().filter(stock__gt=0)
+
+
+    class ProductList(InStockMixin, ListView):
+        model = Product
+        ordering = ["name"]
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/catalog/").content.decode()
+        assert "Игровая мышь" not in html and "Беспроводная мышь" in html
+      fail: "Игровой мыши нет на складе — в каталоге её быть не должно."
+hints:
+  - "В каком порядке Python ищет get_queryset среди родителей?"
+  - "`class ProductList(InStockMixin, ListView)`."
+explanation: |
+  Метод ищется по MRO слева направо. При `(ListView, InStockMixin)` `get_queryset` находится в `ListView`, и миксин не вызывается. Миксин слева перехватывает вызов, добавляет фильтр и через `super()` получает базовый QuerySet от `ListView`.

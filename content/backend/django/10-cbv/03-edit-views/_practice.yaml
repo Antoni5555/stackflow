@@ -1,0 +1,101 @@
+- title: Создать отзыв
+  text: |
+    CreateView отзыва к Aster 14: отправьте POST и посмотрите, куда он перенаправит.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.views.generic import CreateView
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class ReviewCreate(CreateView):
+        model = Review
+        fields = ["author", "rating"]
+
+        def form_valid(self, form):
+            slug = self.kwargs["slug"]
+            product = Product.objects.get(slug=slug)
+            form.instance.product = product
+            return super().form_valid(form)
+
+        def get_success_url(self):
+            return self.object.product.get_absolute_url()
+
+
+    view = ReviewCreate.as_view()
+    req = rf.post("/r/", {"author": "Вера", "rating": 5})
+    r = view(req, slug="aster-14")
+    print(r.status_code, r["Location"])
+    aster = Review.objects.filter(product__slug="aster-14")
+    print(aster.count())
+    ```
+    Результат:
+    ```
+    302 /products/aster-14/
+    1
+    ```
+    `RequestFactory` вызывает view напрямую, без middleware, поэтому CSRF здесь не проверяется — в браузере токен нужен.
+- title: Форма правки
+  text: |
+    Что видит UpdateView в форме отзыва Анны при GET?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.views.generic import UpdateView
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class ReviewUpdate(UpdateView):
+        model = Review
+        fields = ["rating", "text"]
+
+
+    pk = Review.objects.get(author="Анна").pk
+    r = ReviewUpdate.as_view()(rf.get("/e/"), pk=pk)
+    form = r.context_data["form"]
+    print(form.initial, r.context_data["object"])
+    ```
+    Результат:
+    ```
+    {'rating': 5, 'text': 'Удобная'} Анна: 5
+    ```
+    Форма построена с `instance=` — значения полей взяты из объекта.
+- title: FormView с ошибкой
+  text: |
+    FormView обратной связи: что вернёт неверный POST?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django import forms
+    from django.views.generic import FormView
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class F(forms.Form):
+        email = forms.EmailField()
+
+
+    class Feedback(FormView):
+        form_class = F
+        template_name = "shop/feedback.html"
+        success_url = "/thanks/"
+
+
+    r = Feedback.as_view()(rf.post("/f/", {"email": "x"}))
+    errors = r.context_data["form"].errors
+    print(r.status_code, errors.as_data())
+    ```
+    Результат:
+    ```
+    200 {'email': [ValidationError(['Введите правильный адрес электронной почты.'])]}
+    ```
+    Неверная форма идёт в `form_invalid`: ответ 200 с той же формой и ошибками. Шаблон не отрисовывался — его нет, но `context_data` уже есть.

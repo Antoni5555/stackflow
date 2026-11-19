@@ -1,0 +1,117 @@
+title: "405 при отправке отзыва"
+type: exercise
+difficulty: 1
+pitfall: "CBV обрабатывает только методы, которые у него определены; на остальные — 405."
+statement: |
+  На странице товара `/products/<slug>/` (класс `ProductPage`) есть форма отзыва, но её отправка отвечает «405 Method Not Allowed». Добавьте обработку POST: создать отзыв с `author` и `rating` из формы и перенаправить на страницу товара.
+files:
+  models.py: |
+    from django.core.validators import MaxValueValidator, MinValueValidator
+    from django.db import models
+    from django.urls import reverse
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+        def get_absolute_url(self):
+            return reverse("product", kwargs={"slug": self.slug})
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        rating = models.PositiveSmallIntegerField(
+            validators=[MinValueValidator(1), MaxValueValidator(5)]
+        )
+        text = models.TextField(blank=True)
+
+        def __str__(self):
+            return f"{self.author}: {self.rating}"
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+    from django.views import View
+
+    from .models import Product, Review
+
+
+    class ProductPage(View):
+        def get(self, request, slug):
+            product = get_object_or_404(Product, slug=slug)
+            return render(request, "shop/product.html", {"product": product})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/", views.ProductPage.as_view(), name="product"),
+    ]
+  templates/shop/product.html: |
+    <h1>{{ product.name }}</h1>
+    <ul>{% for r in product.reviews.all %}<li>{{ r }}</li>{% endfor %}</ul>
+    <form method="post">{% csrf_token %}<input name="author"><input name="rating" type="number"><button>Отправить</button></form>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  Product.objects.create(category=laptops, name="Подставка для ноутбука", slug="laptop-stand", price="2190.00", stock=7)
+  Review.objects.create(product=mouse, author="Анна", rating=5, text="Удобная")
+solution:
+  views.py: |
+    from django.shortcuts import get_object_or_404, redirect, render
+    from django.views import View
+
+    from .models import Product, Review
+
+
+    class ProductPage(View):
+        def get(self, request, slug):
+            product = get_object_or_404(Product, slug=slug)
+            return render(request, "shop/product.html", {"product": product})
+
+        def post(self, request, slug):
+            product = get_object_or_404(Product, slug=slug)
+            Review.objects.create(
+                product=product,
+                author=request.POST["author"],
+                rating=int(request.POST["rating"]),
+            )
+            return redirect("product", slug=slug)
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.post("/products/aster-14/", {"author": "Борис", "rating": "4"})
+        assert r.status_code == 302 and r["Location"] == "/products/aster-14/"
+      fail: "POST должен обрабатываться и перенаправлять на страницу товара."
+    - code: |
+        client.post("/products/aster-14/", {"author": "Борис", "rating": "4"})
+        assert Review.objects.filter(product__slug="aster-14", author="Борис", rating=4).exists()
+      fail: "Отзыв должен сохраниться у товара страницы."
+hints:
+  - "Какой метод класса Django вызовет на POST?"
+  - "Метод `def post(self, request, slug)` рядом с `get`."
+explanation: |
+  `dispatch()` вызывает метод с именем HTTP-метода в нижнем регистре. У класса был только `get` — на POST ответ 405 с `Allow: GET, HEAD, OPTIONS`. Метод `post` с теми же аргументами (`slug` из адреса) обрабатывает отправку формы; после успеха — redirect, как в функции.
