@@ -1,0 +1,84 @@
+title: Только неоплаченные
+type: exercise
+difficulty: 1
+pitfall: Без list_filter менеджер ищет нужные записи глазами по всему списку.
+statement: |
+  Менеджеру каждое утро нужны только новые (неоплаченные) заказы. Добавьте в список заказов фильтр по статусу.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20)
+        status = models.CharField(
+            max_length=20, choices=Status, default=Status.NEW
+        )
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Order
+
+
+    @admin.register(Order)
+    class OrderAdmin(admin.ModelAdmin):
+        list_display = ["number", "status"]
+  urls.py: |
+    from django.contrib import admin
+    from django.urls import path
+
+    urlpatterns = [
+        path("admin/", admin.site.urls),
+    ]
+setup: |
+  mouse = Product.objects.create(name="Беспроводная мышь")
+  a = Order.objects.create(number="A-12")
+  Order.objects.create(number="A-13")
+  Order.objects.create(number="A-14", status="paid")
+  OrderItem.objects.create(order=a, product=mouse, quantity=2)
+solution:
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Order
+
+
+    @admin.register(Order)
+    class OrderAdmin(admin.ModelAdmin):
+        list_display = ["number", "status"]
+        list_filter = ["status"]
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        html = client.get("/admin/shop/order/").content.decode()
+        assert "?status__exact=new" in html and "?status__exact=paid" in html
+      fail: "Справа нет фильтра по статусу — задайте list_filter."
+hints:
+  - "Панель фильтров справа задаёт атрибут `list_filter`."
+  - "`list_filter = [\"status\"]` — для поля с `choices` варианты появятся сами."
+explanation: |
+  Для поля с `choices` `list_filter` строит готовые варианты по подписям: «Новый», «Оплачен». Выбранный фильтр попадает в адрес (`?status__exact=new`) — такую ссылку можно сохранить в закладки. Фильтровать можно и по связям (`"category"`), и по датам (`"created_at"` — «Сегодня», «Последние 7 дней»…).

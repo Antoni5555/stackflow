@@ -1,0 +1,15 @@
+title: Две миграции 0005
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Две ветки от одной миграции дают две «последних» — migrate отказывается работать, пока их не свести.
+statement: |
+  После слияния веток `migrate` пишет: `CommandError: Conflicting migrations detected; multiple leaf nodes in the migration graph: (0005_product_color, 0005_product_weight in catalog).` Обе миграции добавляют разные поля и уже применены у авторов веток. Что сделать?
+options:
+  - "Переименовать одну из них в `0006_…`"
+  - "Удалить одну миграцию и создать её заново `makemigrations`"
+  - "`python manage.py makemigrations --merge` — миграция-слияние, зависящая от обеих"
+  - "`python manage.py migrate --fake`"
+answer: [2]
+explanation: |
+  Миграции уже применены у авторов веток — их имена записаны в `django_migrations`, поэтому переименование или пересоздание разведёт историю. `--merge` создаёт миграцию без операций с двумя зависимостями, и граф снова сходится. Номера тут ни при чём: важны зависимости, а не цифры в начале имени.

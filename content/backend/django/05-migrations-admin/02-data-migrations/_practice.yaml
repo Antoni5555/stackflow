@@ -1,0 +1,43 @@
+- title: Пустая миграция
+  text: |
+    Создайте пустую миграцию с понятным именем для заполнения slug. Какой файл получится?
+  answer: |
+    Команды:
+    ```bash
+    python manage.py makemigrations catalog --empty --name fill_slugs
+    ```
+    Результат:
+    ```
+    Migrations for 'catalog':
+      catalog/migrations/0004_fill_slugs.py
+    ```
+    В файле — `dependencies` на предыдущую миграцию и пустой список `operations`, куда пишут `RunPython`. Без `--name` имя было бы `0004_auto_<дата>` — непонятно, что внутри.
+- title: Заполнить статусы
+  text: |
+    В модель заказа добавили поле `status` с `default="new"`, но старые оплаченные заказы (у них заполнено `paid_at`) должны получить `"paid"`. Напишите функцию миграции данных и операцию с откатом.
+  hint: |
+    Модель — через `apps.get_model`, обновление — одним `update()`.
+  answer: |
+    Ответ:
+
+    Файл `catalog/migrations/0007_fill_paid_status.py` (фрагмент):
+    ```python
+    def fill_paid(apps, schema_editor):
+        Order = apps.get_model("catalog", "Order")
+        Order.objects.filter(paid_at__isnull=False).update(
+            status="paid"
+        )
+
+
+    operations = [
+        migrations.RunPython(
+            fill_paid, migrations.RunPython.noop
+        ),
+    ]
+    ```
+    `update()` — один запрос на все строки, без загрузки объектов. `paid_at__isnull=False` — фильтр «поле заполнено» (раздел «ORM: чтение данных»).
+- title: Почему slugify съел название
+  text: |
+    `slugify("Ноутбук Aster 14")` вернул `aster-14`. Почему, и что делать магазину с русскими названиями?
+  answer: |
+    `slugify` по умолчанию оставляет только латиницу, цифры, `-` и `_` — кириллица отбрасывается. Варианты: `slugify(name, allow_unicode=True)` → `ноутбук-aster-14` (кириллица в адресе), транслитерация отдельной библиотекой (`noutbuk-aster-14`) или slug с номером, как в уроке: `aster-14-1` — уникально, даже если от названия ничего не осталось.

@@ -48,6 +48,7 @@
 | 08 | Наследование моделей | абстрактная модель, multi-table, proxy | общие поля `created_at/updated_at` | ❌ |
 
 ## 5. Миграции и админка ●○○
+✅ Написан: `content/backend/django/05-migrations-admin` — 4 урока, 17 задач (7 `exercise` по админке `check.type: django`, 7 `quiz`, 3 `fix`), 4 рисунка, задачники — 12 упражнений. Вывод `makemigrations`/`migrate`/`showmigrations`/`--merge`/`--fake` — настоящий Django 5.2.18 (SQLite) во временном проекте; `sqlmigrate` для PostgreSQL — `scratchpad/pgsqlmigrate.py` (без подключения, простые DEFAULT подставляются сами). Темы 02 и 04 — уровень ●●○.
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|
 | 01 | Миграции | `makemigrations`, `migrate`, `sqlmigrate`, `showmigrations`, что лежит в файле миграции | какой SQL создаст новое поле | 🟡 D1.8 |

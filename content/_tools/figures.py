@@ -1070,6 +1070,105 @@ def model_inheritance():
     f.save(out(DJ4 / "08-model-inheritance" / "img" / "inheritance.svg"))
 
 
+# ---------- Django 5: миграции и админка ----------
+DJ5 = ROOT / "django" / "05-migrations-admin"
+
+
+def migrations_flow():
+    f = Figure(860, 300, "makemigrations пишет файл миграции по изменениям модели; migrate выполняет его в базе и отмечает в django_migrations")
+    f.box(20, 30, 220, 80, "", "box2")
+    f.text(36, 56, "models.py", "c")
+    f.text(36, 82, "+ stock = …Field()", "cs")
+    f.arrow("M240 70H346")
+    f.text(248, 60, "makemigrations", "s")
+    f.box(350, 30, 220, 80, "", "box")
+    f.text(366, 56, "0002_product_stock.py", "cs")
+    f.text(366, 82, "AddField(…)", "cs")
+    f.text(350, 128, "файл в git — у всех одинаковый", "s")
+    f.arrow("M570 70H626")
+    f.text(578, 60, "migrate", "s")
+    f.box(630, 30, 210, 80, "", "acc")
+    f.text(646, 56, "база", "onacc")
+    f.text(646, 82, "ALTER TABLE … ADD", "onacc")
+    f.arrow("M735 110V166")
+    f.box(560, 170, 280, 60, "", "ok")
+    f.text(576, 194, "django_migrations", "cs")
+    f.text(576, 216, "catalog | 0002_product_stock", "cs")
+    f.text(20, 200, "showmigrations — что уже применено [X];", "s")
+    f.text(20, 222, "sqlmigrate — какой SQL выполнится, без применения.", "s")
+    f.text(20, 282, "Модель — как должно быть; миграции — путь базы от состояния к состоянию.", "t")
+    f.save(out(DJ5 / "01-migrations" / "img" / "migrations-flow.svg"))
+
+
+def merge_flow():
+    f = Figure(860, 300, "Две ветки создали миграции от одной; makemigrations --merge сводит их миграцией без операций")
+    f.box(20, 120, 180, 50, "0004_fill_slugs", "box", "cs")
+    f.arrow("M200 145C240 145 240 70 276 70")
+    f.arrow("M200 145C240 145 240 220 276 220")
+    f.box(280, 45, 230, 50, "0005_product_weight", "box2", "cs")
+    f.box(280, 195, 230, 50, "0005_product_color", "box2", "cs")
+    f.text(280, 34, "ветка 1", "s")
+    f.text(280, 266, "ветка 2", "s")
+    f.arrow("M510 70C560 70 560 145 596 145")
+    f.arrow("M510 220C560 220 560 145 596 145")
+    f.box(600, 115, 240, 60, "", "ok")
+    f.text(616, 140, "0006_merge_…", "cs")
+    f.text(616, 160, "operations = []", "cs")
+    f.text(600, 210, "до слияния migrate пишет:", "s")
+    f.text(600, 230, "Conflicting migrations detected", "cs")
+    f.save(out(DJ5 / "02-data-migrations" / "img" / "merge.svg"))
+
+
+def admin_flow():
+    f = Figure(860, 280, "Что нужно, чтобы модель появилась в админке")
+    f.box(20, 20, 250, 60, "", "box2")
+    f.text(36, 44, "urls.py", "c")
+    f.text(36, 66, 'path("admin/", admin.site.urls)', "cs")
+    f.box(20, 100, 250, 80, "", "box2")
+    f.text(36, 124, "admin.py", "c")
+    f.text(36, 146, "@admin.register(Product)", "cs")
+    f.text(36, 166, "list_display = […]", "cs")
+    f.box(20, 200, 250, 60, "", "box2")
+    f.text(36, 224, "createsuperuser", "c")
+    f.text(36, 246, "is_staff + is_superuser", "cs")
+    for y in (50, 140, 230):
+        f.arrow(f"M270 {y}C320 {y} 320 140 356 140")
+    f.box(360, 40, 480, 200, "", "ok")
+    f.text(376, 66, "/admin/shop/product/", "cs")
+    for i, row in enumerate(["Коврик для мыши · Коврики · 490,00", "Проводная мышь · Мыши · 590,00",
+                             "Беспроводная мышь · Мыши · 1499,00"]):
+        f.text(376, 104 + i * 30, row, "cs")
+    f.text(376, 216, "колонки — list_display, подписи — __str__", "s")
+    f.save(out(DJ5 / "03-admin" / "img" / "admin.svg"))
+
+
+def admin_setup():
+    f = Figure(860, 340, "Настроенная админка: поиск, фильтры и действия в списке, позиции на странице заказа")
+    f.box(20, 20, 520, 190, "", "box")
+    f.text(36, 44, "Заказы", "t")
+    f.box(36, 56, 300, 30, "", "box2"); f.text(48, 76, "поиск: search_fields", "s")
+    f.box(36, 96, 300, 30, "", "acc"); f.text(48, 116, "действие: Отметить оплаченными", "onacc")
+    for i, r in enumerate(["☐ A-12 · Новый", "☐ A-13 · Новый", "☐ A-14 · Оплачен"]):
+        f.text(48, 150 + i * 22, r, "cs")
+    f.box(360, 56, 164, 140, "", "box2")
+    f.text(372, 78, "list_filter", "s")
+    f.text(372, 104, "Статус:", "cs")
+    for i, r in enumerate(["Все", "Новый", "Оплачен"]):
+        f.text(384, 128 + i * 22, r, "cs")
+    f.box(560, 20, 280, 240, "", "box")
+    f.text(576, 44, "Заказ A-12", "t")
+    f.text(576, 76, "номер: A-12", "cs")
+    f.text(576, 100, "статус: Новый", "cs")
+    f.box(576, 120, 248, 120, "", "ok")
+    f.text(588, 142, "inline: позиции", "s")
+    f.text(588, 168, "товар (id) · кол-во", "cs")
+    f.text(588, 192, "4 · 2", "cs")
+    f.text(588, 222, "raw_id_fields — id вместо списка", "s")
+    f.text(20, 250, "список: list_display, list_filter, search_fields, actions", "s")
+    f.text(20, 272, "страница: inlines, raw_id_fields, readonly_fields", "s")
+    f.save(out(DJ5 / "04-admin-setup" / "img" / "admin-setup.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -2543,6 +2642,7 @@ if __name__ == "__main__":
                   route_params, url_reverse, request_response,
                   render_flow, extends_include, filters_flow, static_flow,
                   model_table, null_blank, foreign_key, many_to_many, meta_constraints, model_inheritance,
+                  migrations_flow, merge_flow, admin_flow, admin_setup,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

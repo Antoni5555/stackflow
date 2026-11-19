@@ -1,0 +1,61 @@
+title: Товаров нет в админке
+type: exercise
+difficulty: 1
+pitfall: Модель, не зарегистрированная в admin.py, в админке не появляется — без ошибки и подсказки.
+statement: |
+  Менеджер входит в админку, но раздела с товарами там нет. Добавьте товары в админку.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(Category, on_delete=models.PROTECT)
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+  admin.py: |
+    from django.contrib import admin
+  urls.py: |
+    from django.contrib import admin
+    from django.urls import path
+
+    urlpatterns = [
+        path("admin/", admin.site.urls),
+    ]
+setup: |
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  Product.objects.create(category=mice, name="Беспроводная мышь", price="1499.00")
+  Product.objects.create(category=pads, name="Коврик для мыши", price="490.00")
+solution:
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Product
+
+    admin.site.register(Product)
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        response = client.get("/admin/shop/product/")
+        assert response.status_code == 200
+        assert "Беспроводная мышь" in response.content.decode()
+      fail: "Страницы /admin/shop/product/ нет — модель Product не зарегистрирована в admin.py."
+hints:
+  - "Где Django узнаёт, какие модели показывать в админке?"
+  - "`admin.site.register(Product)` в `admin.py`."
+explanation: |
+  Админка показывает только модели, зарегистрированные в `admin.py` приложений. `admin.site.register(Product)` добавляет раздел со списком, поиском объекта и формами создания и изменения. Настройки отображения передают классом-наследником `admin.ModelAdmin`.

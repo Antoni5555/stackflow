@@ -1,0 +1,42 @@
+- title: Первая миграция у себя
+  text: |
+    В своём проекте опишите модель `Product` (название, цена), создайте миграцию, посмотрите, применена ли она, и примените. Упражнение для вашего терминала: в тренажёре миграций нет.
+  answer: |
+    Команды:
+    ```bash
+    python manage.py makemigrations
+    python manage.py showmigrations catalog
+    python manage.py migrate catalog
+    python manage.py showmigrations catalog
+    ```
+    Результат (кроме вывода `migrate`):
+    ```
+    Migrations for 'catalog':
+      catalog/migrations/0001_initial.py
+        + Create model Product
+    catalog
+     [ ] 0001_initial
+    catalog
+     [X] 0001_initial
+    ```
+    `[X]` — миграция записана в `django_migrations`.
+- title: SQL новой колонки
+  text: |
+    В модель добавили `stock = models.PositiveIntegerField(default=0)`. Какой SQL выполнит миграция на PostgreSQL? Как проверить, не применяя её?
+  answer: |
+    `python manage.py sqlmigrate catalog 0002` — команда только выводит SQL. Для PostgreSQL:
+    ```
+    BEGIN;
+    --
+    -- Add field stock to product
+    --
+    ALTER TABLE "catalog_product" ADD COLUMN "stock" integer DEFAULT 0 NOT NULL CHECK ("stock" >= 0);
+    ALTER TABLE "catalog_product" ALTER COLUMN "stock" DROP DEFAULT;
+    COMMIT;
+    ```
+    Django не оставляет `DEFAULT` в базе: значение по умолчанию подставляет сам при создании объектов.
+- title: Откат
+  text: |
+    Миграция `0002_product_stock` оказалась лишней. Как откатить базу к `0001` и что потом сделать с файлом?
+  answer: |
+    `python manage.py migrate catalog 0001` — Django выполнит обратную операцию (удалит колонку) и уберёт отметку из `django_migrations`. Если миграция ещё не попала к коллегам и на сервер, файл `0002_…` удаляют вместе с полем из модели. Если попала — откатывают не файлом, а новой миграцией.

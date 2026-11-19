@@ -1,0 +1,15 @@
+title: Колонки нет, а migrate молчит
+type: quiz
+kind: single
+difficulty: 1
+pitfall: migrate применяет только файлы миграций — изменённая модель без makemigrations для него не существует.
+statement: |
+  Разработчик добавил в модель поле `color` и запустил `python manage.py migrate` — тот ответил `No migrations to apply.` А страница товара падает: `column catalog_product.color does not exist`. Что пропущено?
+options:
+  - "Нужно перезапустить базу данных"
+  - "Не создан файл миграции — `makemigrations`"
+  - "`migrate` нужно запускать с `--fake`"
+  - "Поле нужно добавить в `admin.py`"
+answer: [1]
+explanation: |
+  `migrate` не смотрит на модели — он применяет файлы из папки `migrations/`, которых ещё нет в `django_migrations`. Новой миграции нет, значит, и применять нечего. `makemigrations` запишет добавление колонки в файл, и следующий `migrate` его выполнит.

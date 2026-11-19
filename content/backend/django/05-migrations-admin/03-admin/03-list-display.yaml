@@ -1,0 +1,72 @@
+title: В списке не видно цен
+type: exercise
+difficulty: 1
+pitfall: Без list_display список админки показывает одну колонку — str(объект).
+statement: |
+  В списке товаров админки только названия, а менеджерам нужно видеть категорию и цену, не открывая каждый товар. Добавьте колонки: название, категория, цена, активен.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(Category, on_delete=models.PROTECT)
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Product
+
+    admin.site.register(Product)
+  urls.py: |
+    from django.contrib import admin
+    from django.urls import path
+
+    urlpatterns = [
+        path("admin/", admin.site.urls),
+    ]
+setup: |
+  mice = Category.objects.create(name="Мыши")
+  pads = Category.objects.create(name="Коврики")
+  Product.objects.create(category=mice, name="Беспроводная мышь", price="1499.00")
+  Product.objects.create(category=pads, name="Коврик для мыши", price="490.00")
+solution:
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Product
+
+
+    @admin.register(Product)
+    class ProductAdmin(admin.ModelAdmin):
+        list_display = ["name", "category", "price", "is_active"]
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        html = client.get("/admin/shop/product/").content.decode()
+        assert '<td class="field-price">1499,00</td>' in html
+      fail: "В списке нет колонки с ценой — задайте колонки в ModelAdmin.list_display."
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        html = client.get("/admin/shop/product/").content.decode()
+        assert '<td class="field-category nowrap">Мыши</td>' in html and "field-is_active" in html
+      fail: В списке должны быть ещё категория и флаг «активен».
+hints:
+  - "Регистрацию с настройками делают классом `ModelAdmin` и декоратором `@admin.register`."
+  - "`list_display = [\"name\", \"category\", \"price\", \"is_active\"]`."
+explanation: |
+  `list_display` перечисляет колонки списка: поля модели, а также методы. Для `ForeignKey` выводится `str()` связанного объекта, для `BooleanField` — значок. Цена отформатирована по-русски, с запятой.

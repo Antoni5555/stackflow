@@ -1,0 +1,36 @@
+title: CI не может создать миграцию
+type: fix
+difficulty: 1
+pitfall: Обязательное поле без default в таблице с данными требует ответа на вопрос makemigrations — в CI отвечать некому.
+statement: |
+  В модель добавили остаток, и проверка в CI (`makemigrations --noinput`) падает: `Field 'stock' on model 'product' not migrated: it is impossible to add a non-nullable field without specifying a default.` Для существующих товаров остаток должен быть `0`. Исправьте модель.
+files:
+  catalog/models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField()
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*stock\s*=\s*models\.PositiveIntegerField\([^)]*default\s*=\s*0[^)]*\)'
+      fail: "Задайте остатку значение по умолчанию 0 — им заполнятся существующие строки."
+    - must_not_match: 'stock\s*=.*null\s*=\s*True'
+      fail: Остаток — число, а не «неизвестно»; NULL здесь не нужен.
+solution:
+  catalog/models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+hints:
+  - "Чем база заполнит новую колонку `NOT NULL` в строках, которые уже есть?"
+  - "`models.PositiveIntegerField(default=0)`."
+explanation: |
+  Новая колонка `NOT NULL` должна получить значение во всех существующих строках. Интерактивный `makemigrations` спросит его, а в CI задать вопрос некому — и команда отказывается работать. `default=0` в модели решает вопрос заранее: миграция добавит колонку с `DEFAULT 0`, и новые товары без указанного остатка тоже получат 0.

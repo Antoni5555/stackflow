@@ -1,0 +1,51 @@
+- title: Колонка-метод
+  text: |
+    Добавьте в список товаров колонку «В наличии» значком: да, если остаток больше нуля. Отсортируйте список по цене.
+  answer: |
+    Ответ:
+
+    Файл `admin.py`:
+    ```python
+    from django.contrib import admin
+
+    from .models import Product
+
+
+    @admin.register(Product)
+    class ProductAdmin(admin.ModelAdmin):
+        list_display = ["name", "price", "in_stock"]
+        ordering = ["price"]
+
+        @admin.display(description="В наличии", boolean=True)
+        def in_stock(self, obj):
+            return obj.stock > 0
+    ```
+    Строки списка (значок показан как `True`/`False`):
+    ```
+    ['Коврик для мыши', '490,00', 'True']
+    ['USB-хаб', '1499,00', 'False']
+    ['Беспроводная мышь', '1499,00', 'True']
+    ```
+    `boolean=True` рисует значок вместо текста. При равных ценах админка добавила свой порядок — в SQL `ORDER BY "shop_product"."price" ASC, "shop_product"."id" DESC`.
+- title: Суперпользователь в тренажёре
+  text: |
+    Как войти в админку в песочнице Django, где нет `createsuperuser`?
+  answer: |
+    Во вкладке `orm.py` создать пользователя: `User.objects.create_superuser("admin", "admin@shop.example", "пароль")` — но база песочницы создаётся заново при каждом запуске. Поэтому суперпользователя кладут в учебные данные или в тестах входят без пароля: `client.force_login(User.objects.create_superuser(...))`.
+- title: Подписи по-русски
+  text: |
+    Раздел админки называется «Products», а поле — «Price». Как сделать «Товары» и «Цена»?
+  answer: |
+    В модели — `verbose_name` у полей и в `Meta`.
+
+    Файл `models.py` (фрагмент модели `Product`):
+    ```python
+    price = models.DecimalField(
+        "цена", max_digits=10, decimal_places=2
+    )
+
+    class Meta:
+        verbose_name = "товар"
+        verbose_name_plural = "товары"
+    ```
+    Первый позиционный аргумент поля — его `verbose_name`. Админка сама сделает первую букву заглавной.

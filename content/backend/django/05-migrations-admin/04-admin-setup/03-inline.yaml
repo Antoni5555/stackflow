@@ -1,0 +1,96 @@
+title: Позиции заказа на его странице
+type: exercise
+difficulty: 2
+pitfall: Без inline позиции заказа живут в отдельном разделе — менеджер не видит их рядом с заказом.
+statement: |
+  Чтобы проверить заказ, менеджер открывает его, а потом отдельно ищет позиции. Покажите позиции заказа таблицей прямо на странице заказа, без пустых строк для новых позиций.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20)
+        status = models.CharField(
+            max_length=20, choices=Status, default=Status.NEW
+        )
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Order
+
+
+    @admin.register(Order)
+    class OrderAdmin(admin.ModelAdmin):
+        list_display = ["number", "status"]
+  urls.py: |
+    from django.contrib import admin
+    from django.urls import path
+
+    urlpatterns = [
+        path("admin/", admin.site.urls),
+    ]
+setup: |
+  mouse = Product.objects.create(name="Беспроводная мышь")
+  a = Order.objects.create(number="A-12")
+  Order.objects.create(number="A-13")
+  Order.objects.create(number="A-14", status="paid")
+  OrderItem.objects.create(order=a, product=mouse, quantity=2)
+solution:
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Order, OrderItem
+
+
+    class OrderItemInline(admin.TabularInline):
+        model = OrderItem
+        extra = 0
+
+
+    @admin.register(Order)
+    class OrderAdmin(admin.ModelAdmin):
+        list_display = ["number", "status"]
+        inlines = [OrderItemInline]
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        order = Order.objects.get(number="A-12")
+        html = client.get(f"/admin/shop/order/{order.pk}/change/").content.decode()
+        assert 'name="items-TOTAL_FORMS"' in html and 'name="items-0-quantity"' in html
+      fail: "На странице заказа нет позиций — подключите OrderItem через inlines."
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        order = Order.objects.get(number="A-12")
+        html = client.get(f"/admin/shop/order/{order.pk}/change/").content.decode()
+        assert 'name="items-TOTAL_FORMS" value="1"' in html
+      fail: Лишние пустые строки для новых позиций не нужны — extra = 0.
+hints:
+  - "Связанные объекты на странице родителя — класс `admin.TabularInline` с `model = OrderItem`."
+  - "`inlines = [OrderItemInline]` в `OrderAdmin`, у inline — `extra = 0`."
+explanation: |
+  Inline показывает объекты, которые ссылаются на родителя через `ForeignKey`, прямо на его странице. Они редактируются набором форм — отсюда поля `items-TOTAL_FORMS` и `items-0-…`: префикс `items` — это `related_name`. `extra` — сколько пустых форм добавить для новых позиций; по умолчанию 3.

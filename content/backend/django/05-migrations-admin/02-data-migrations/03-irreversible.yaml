@@ -1,0 +1,60 @@
+title: Миграцию нельзя откатить
+type: fix
+difficulty: 1
+pitfall: RunPython без функции отката делает миграцию необратимой — откатить нельзя и всё, что после неё.
+statement: |
+  Новая версия сайта сломалась, и её нужно откатить вместе с миграциями, но `migrate catalog 0003` падает: `IrreversibleError: Operation <RunPython …> in catalog.0004_fill_slugs is not reversible`. При откате с данными ничего делать не нужно. Исправьте миграцию.
+files:
+  catalog/migrations/0004_fill_slugs.py: |
+    from django.db import migrations
+    from django.utils.text import slugify
+
+
+    def fill_slugs(apps, schema_editor):
+        Product = apps.get_model("catalog", "Product")
+        for product in Product.objects.filter(slug=""):
+            product.slug = f"{slugify(product.name) or 'product'}-{product.pk}"
+            product.save(update_fields=["slug"])
+
+
+    class Migration(migrations.Migration):
+
+        dependencies = [
+            ("catalog", "0003_product_slug"),
+        ]
+
+        operations = [
+            migrations.RunPython(fill_slugs),
+        ]
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*migrations\.RunPython\(\s*fill_slugs\s*,\s*(reverse_code\s*=\s*)?migrations\.RunPython\.noop\s*\)'
+      fail: "Передайте вторым аргументом функцию отката — здесь «ничего не делать»: migrations.RunPython.noop."
+solution:
+  catalog/migrations/0004_fill_slugs.py: |
+    from django.db import migrations
+    from django.utils.text import slugify
+
+
+    def fill_slugs(apps, schema_editor):
+        Product = apps.get_model("catalog", "Product")
+        for product in Product.objects.filter(slug=""):
+            product.slug = f"{slugify(product.name) or 'product'}-{product.pk}"
+            product.save(update_fields=["slug"])
+
+
+    class Migration(migrations.Migration):
+
+        dependencies = [
+            ("catalog", "0003_product_slug"),
+        ]
+
+        operations = [
+            migrations.RunPython(fill_slugs, migrations.RunPython.noop),
+        ]
+hints:
+  - "Какой второй аргумент принимает `RunPython`?"
+  - "`migrations.RunPython(fill_slugs, migrations.RunPython.noop)`."
+explanation: |
+  Без второго аргумента Django не знает, что делать при откате, и считает операцию необратимой — откатить нельзя ни её, ни всё, что идёт раньше в обратном порядке. `RunPython.noop` — готовая функция «ничего не делать»: при откате заполненные slug просто останутся, а дальнейший откат `0003` удалит само поле.

@@ -1,0 +1,54 @@
+title: Product object (1) в админке
+type: exercise
+difficulty: 1
+pitfall: Без __str__ админка подписывает объекты «Product object (1)» — в списке, связях и истории изменений.
+statement: |
+  В админке товары подписаны «Product object (1)», «Product object (2)» — менеджеры не понимают, какой где. Сделайте так, чтобы в списке были названия товаров (без изменения `admin.py`).
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Product
+
+    admin.site.register(Product)
+  urls.py: |
+    from django.contrib import admin
+    from django.urls import path
+
+    urlpatterns = [
+        path("admin/", admin.site.urls),
+    ]
+setup: |
+  Product.objects.create(name="Беспроводная мышь", price="1499.00")
+  Product.objects.create(name="Коврик для мыши", price="490.00")
+solution:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        html = client.get("/admin/shop/product/").content.decode()
+        assert "Беспроводная мышь" in html and "Product object" not in html
+      fail: "В списке всё ещё «Product object (…)»: админка подписывает объекты через str()."
+hints:
+  - "Какой метод модели админка вызывает, чтобы подписать объект?"
+  - "`def __str__(self): return self.name` в модели."
+explanation: |
+  Без `list_display` админка выводит в списке `str(объект)`, а у `models.Model` это «Имя object (pk)». Тот же `__str__` используется в выпадающих списках связей, в заголовке страницы изменения и в истории действий, поэтому его пишут каждой модели, даже если в списке есть `list_display`.

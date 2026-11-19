@@ -1,0 +1,103 @@
+title: Оплатить двадцать заказов
+type: exercise
+difficulty: 2
+pitfall: Без массового действия менеджер меняет статус каждого заказа отдельно.
+statement: |
+  После сверки с банком менеджеру нужно отметить оплаченными сразу много заказов. Добавьте в список заказов действие «Отметить оплаченными»: оно меняет статус выбранных заказов на `paid` одним запросом.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20)
+        status = models.CharField(
+            max_length=20, choices=Status, default=Status.NEW
+        )
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Order
+
+
+    @admin.register(Order)
+    class OrderAdmin(admin.ModelAdmin):
+        list_display = ["number", "status"]
+  urls.py: |
+    from django.contrib import admin
+    from django.urls import path
+
+    urlpatterns = [
+        path("admin/", admin.site.urls),
+    ]
+setup: |
+  mouse = Product.objects.create(name="Беспроводная мышь")
+  a = Order.objects.create(number="A-12")
+  Order.objects.create(number="A-13")
+  Order.objects.create(number="A-14", status="paid")
+  OrderItem.objects.create(order=a, product=mouse, quantity=2)
+solution:
+  admin.py: |
+    from django.contrib import admin
+
+    from .models import Order
+
+
+    @admin.register(Order)
+    class OrderAdmin(admin.ModelAdmin):
+        list_display = ["number", "status"]
+        actions = ["mark_paid"]
+
+        @admin.action(description="Отметить оплаченными")
+        def mark_paid(self, request, queryset):
+            updated = queryset.update(status=Order.Status.PAID)
+            self.message_user(request, f"Оплачено заказов: {updated}")
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        html = client.get("/admin/shop/order/").content.decode()
+        assert '<option value="mark_paid">Отметить оплаченными</option>' in html
+      fail: "В списке действий нет «Отметить оплаченными» (имя действия — mark_paid)."
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        ids = list(Order.objects.filter(number__in=["A-12", "A-13"]).values_list("pk", flat=True))
+        client.post("/admin/shop/order/", {"action": "mark_paid", "_selected_action": ids})
+        assert set(Order.objects.values_list("number", "status")) == {
+            ("A-12", "paid"), ("A-13", "paid"), ("A-14", "paid")
+        }
+      fail: Действие должно перевести выбранные заказы в статус paid.
+    - code: |
+        client.force_login(User.objects.create_superuser("admin", "admin@shop.example", "x"))
+        ids = list(Order.objects.values_list("pk", flat=True))
+        with max_queries(8):
+            client.post("/admin/shop/order/", {"action": "mark_paid", "_selected_action": ids})
+      fail: Обновите заказы одним запросом — queryset.update(), а не save() в цикле.
+hints:
+  - "Действие — метод `ModelAdmin` с аргументами `(self, request, queryset)` и декоратором `@admin.action(description=…)`."
+  - "Внутри — `queryset.update(status=Order.Status.PAID)`; имя метода добавьте в `actions`."
+explanation: |
+  В `queryset` приходят выбранные в списке заказы; `update()` меняет их одним `UPDATE`, сколько бы их ни было. `description` — подпись в выпадающем списке, `message_user` — сообщение над списком после выполнения. Помните: `update()` не вызывает `save()` — если при оплате должны отправляться письма, их нужно вызвать явно.

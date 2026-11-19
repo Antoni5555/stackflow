@@ -1,0 +1,15 @@
+title: Страница позиции открывается 10 секунд
+type: quiz
+kind: single
+difficulty: 2
+pitfall: Поле ForeignKey в форме — выпадающий список всех объектов; на большой таблице страница грузится очень долго.
+statement: |
+  В магазине 200 000 товаров. Страница позиции заказа в админке открывается 10 секунд и весит несколько мегабайт. Что поможет?
+options:
+  - "`list_per_page = 20` у позиций"
+  - "`raw_id_fields = [\"product\"]` (или `autocomplete_fields`)"
+  - "`search_fields` у позиций"
+  - "Убрать `__str__` у товара"
+answer: [1]
+explanation: |
+  Поле `product` по умолчанию — `<select>` со всеми 200 000 товарами: их нужно выбрать из базы, вызвать `__str__` и отдать в HTML. `raw_id_fields` заменяет список полем для id с окном поиска, `autocomplete_fields` — поиском с подсказками (у `ProductAdmin` нужен `search_fields`). `list_per_page` влияет на список, а не на форму.

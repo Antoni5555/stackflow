@@ -1,0 +1,63 @@
+title: Миграция импортирует модель
+type: fix
+difficulty: 2
+pitfall: Модель, импортированная в миграцию, — текущая, а не та, что была в этот момент истории.
+statement: |
+  Через год после написания миграция заполнения slug упала на свежей базе: модель `Product` с тех пор получила новые поля. Исправьте миграцию, чтобы она работала с моделью того момента истории.
+files:
+  catalog/migrations/0004_fill_slugs.py: |
+    from django.db import migrations
+    from django.utils.text import slugify
+
+    from catalog.models import Product
+
+
+    def fill_slugs(apps, schema_editor):
+        for product in Product.objects.filter(slug=""):
+            product.slug = f"{slugify(product.name) or 'product'}-{product.pk}"
+            product.save(update_fields=["slug"])
+
+
+    class Migration(migrations.Migration):
+
+        dependencies = [
+            ("catalog", "0003_product_slug"),
+        ]
+
+        operations = [
+            migrations.RunPython(fill_slugs, migrations.RunPython.noop),
+        ]
+check:
+  type: rules
+  rules:
+    - must_not_match: '^\s*from\s+catalog\.models\s+import|^\s*from\s+\.+models\s+import|^\s*import\s+catalog\.models'
+      fail: "Модель импортирована из models.py — миграция получит её текущую версию."
+    - must_match: '^\s*Product\s*=\s*apps\.get_model\(\s*["'']catalog["'']\s*,\s*["'']Product["'']\s*\)'
+      fail: "Возьмите историческую модель внутри функции: Product = apps.get_model(\"catalog\", \"Product\")."
+solution:
+  catalog/migrations/0004_fill_slugs.py: |
+    from django.db import migrations
+    from django.utils.text import slugify
+
+
+    def fill_slugs(apps, schema_editor):
+        Product = apps.get_model("catalog", "Product")
+        for product in Product.objects.filter(slug=""):
+            product.slug = f"{slugify(product.name) or 'product'}-{product.pk}"
+            product.save(update_fields=["slug"])
+
+
+    class Migration(migrations.Migration):
+
+        dependencies = [
+            ("catalog", "0003_product_slug"),
+        ]
+
+        operations = [
+            migrations.RunPython(fill_slugs, migrations.RunPython.noop),
+        ]
+hints:
+  - "Первый аргумент функции миграции — `apps`. Для чего он?"
+  - "`Product = apps.get_model(\"catalog\", \"Product\")` первой строкой функции; импорт из `catalog.models` удалите."
+explanation: |
+  Миграция описывает момент в прошлом, а `catalog.models` — код сегодняшнего дня. На свежей базе миграция `0004` выполняется, когда таблица ещё без полей, добавленных позже, а импортированная модель пытается читать их — и запрос падает. `apps.get_model` собирает модель из состояния миграций ровно на этот момент.
