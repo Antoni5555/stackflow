@@ -1,0 +1,16 @@
+title: "Где сигнал не придёт"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "post_save посылают save() и create(); update(), bulk_create() и bulk_update() — нет."
+statement: |
+  На `post_save` модели `Order` подписан приёмник. Какие операции его **не** вызовут?
+options:
+  - "`Order.objects.create(…)`"
+  - "`order.save()`"
+  - "`Order.objects.filter(…).update(status=\"paid\")`"
+  - "`Order.objects.bulk_create([...])`"
+  - "`Order.objects.get_or_create(number=\"A-50\", defaults={…})` — заказа ещё нет"
+answer: [2, 3]
+explanation: |
+  `create()` и `get_or_create()` (при создании) вызывают `save()`, а с ним — `post_save`. `update()` и `bulk_create()` — один SQL-запрос мимо `save()`, сигналов нет. В тренажёре `update(status="paid")` не отправил письмо.

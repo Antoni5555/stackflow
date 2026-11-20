@@ -1,0 +1,58 @@
+- title: Заголовки ответа
+  text: |
+    Какие заголовки получает ответ на запрос к любой странице? Отправьте запрос тестовым клиентом на несуществующий адрес. Классы и функции можно объявить прямо во вкладке `orm.py` и вызвать вручную — без `settings` и маршрутов.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.test import Client
+    r = Client().get("/nope/")
+    print(r.status_code)
+    print(r["X-Content-Type-Options"], r["Referrer-Policy"])
+    ```
+    Результат:
+    ```
+    404
+    nosniff same-origin
+    ```
+    Заголовки безопасности `SecurityMiddleware` ставит на все ответы, включая 404.
+- title: APPEND_SLASH
+  text: |
+    Что ответит сайт на адрес без завершающего слеша, если маршрут объявлен со слешем? В `urls.py` — маршрут `path("catalog/", …)`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.conf import settings
+    from django.test import Client
+    print(settings.APPEND_SLASH)
+    r = Client().get("/catalog")
+    print(r.status_code, r["Location"])
+    ```
+    Результат:
+    ```
+    True
+    301 /catalog/
+    ```
+    `CommonMiddleware` при 404 проверяет адрес со слешем и, если такой маршрут есть, перенаправляет (301). Для POST так не выйдет — данные формы потеряются, поэтому в `action` формы пишут адрес со слешем.
+- title: Где request.user
+  text: |
+    В каком порядке стоят middleware сессии и аутентификации в настройках?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.conf import settings
+    names = [m.rsplit(".", 1)[1] for m in settings.MIDDLEWARE]
+    s = names.index("SessionMiddleware")
+    a = names.index("AuthenticationMiddleware")
+    print(s, a, s < a)
+    ```
+    Результат:
+    ```
+    1 4 True
+    ```
+    Сессия раньше аутентификации: пользователь берётся из сессии.

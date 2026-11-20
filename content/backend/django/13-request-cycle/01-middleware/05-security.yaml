@@ -1,0 +1,16 @@
+title: "Что добавляет SecurityMiddleware"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "SecurityMiddleware ставит заголовки безопасности к каждому ответу и может перенаправлять на HTTPS."
+statement: |
+  View вернул `HttpResponse("ok")`. Какие заголовки в ответе добавит `SecurityMiddleware` с настройками по умолчанию?
+options:
+  - "`X-Content-Type-Options: nosniff`"
+  - "`Referrer-Policy: same-origin`"
+  - "`Cross-Origin-Opener-Policy: same-origin`"
+  - "`Strict-Transport-Security`"
+  - "`Set-Cookie: sessionid=…`"
+answer: [0, 1, 2]
+explanation: |
+  В тренажёре ответ получил `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin` и `Cross-Origin-Opener-Policy: same-origin`. HSTS (`Strict-Transport-Security`) появляется только с `SECURE_HSTS_SECONDS`; cookie сессии ставит `SessionMiddleware` и только если сессию меняли.

@@ -1,0 +1,16 @@
+title: "Почему переменной нет"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Процессор не работает без request при отрисовке и пока не указан в context_processors."
+statement: |
+  Контекст-процессор `cart` возвращает `{"cart_count": …}`. В каких случаях `{{ cart_count }}` в шаблоне будет пустым?
+options:
+  - "`render(request, \"shop/home.html\")`, процессор в `context_processors`"
+  - "`render_to_string(\"shop/home.html\")` без `request`"
+  - "`Template(\"{{ cart_count }}\").render(Context({}))`"
+  - "процессор написан, но не добавлен в `context_processors`"
+  - "CBV `TemplateView` с `template_name = \"shop/home.html\"`"
+answer: [1, 2, 3]
+explanation: |
+  `render(request, …)` и CBV (они отдают `TemplateResponse` с запросом) вызывают процессоры. `render_to_string` без `request=` и `Template().render(Context())` — нет: в тренажёре там пусто. Неподключённый процессор Django просто не знает.

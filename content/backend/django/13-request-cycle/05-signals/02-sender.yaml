@@ -1,0 +1,24 @@
+title: "Проект не запускается"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "@receiver без sender срабатывает для всех моделей, включая служебные записи миграций."
+statement: |
+  В `models.py` добавили приёмник:
+
+  ```python
+  @receiver(post_save)
+  def order_saved(sender, instance, **kwargs):
+      if instance.status == Order.Status.PAID:
+          send_mail(...)
+  ```
+
+  После этого база перестала создаваться: `migrate` падает. Почему?
+options:
+  - "`post_save` нельзя использовать в `models.py`"
+  - "Приёмник без `sender` получает сигнал от всех моделей — в том числе от служебной модели миграций, которую сохраняет `migrate`; у неё нет `status`: `AttributeError: 'Migration' object has no attribute 'status'`"
+  - "`send_mail` нельзя вызывать при миграциях"
+  - "Нужно было использовать `pre_save`"
+answer: [1]
+explanation: |
+  Без `sender` приёмник подписан на `post_save` каждой модели проекта: товаров, пользователей и `Migration` — её записи сохраняет `migrate`. Приёмник обращается к `instance.status` и падает на первом же чужом объекте. Исправление — `@receiver(post_save, sender=Order)`. Проверено в тренажёре.

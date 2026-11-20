@@ -1,0 +1,86 @@
+- title: created
+  text: |
+    Подпишитесь на `post_save` заказа и посмотрите аргумент `created` при создании и изменении.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models.signals import post_save
+    from django.dispatch import receiver
+
+
+    @receiver(post_save, sender=Order)
+    def saved(sender, instance, created, **kwargs):
+        print(instance.number, created)
+
+
+    o = Order.objects.create(number="A-50", email="x@s.ru")
+    o.status = "paid"
+    o.save()
+    ```
+    Результат:
+    ```
+    A-50 True
+    A-50 False
+    ```
+    `created=True` только при первом `INSERT`.
+- title: update без сигнала
+  text: |
+    Тот же приёмник — сработает ли он при `update()`?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models.signals import post_save
+    from django.dispatch import receiver
+
+
+    @receiver(post_save, sender=Order)
+    def saved(sender, instance, created, **kwargs):
+        print("сигнал", instance.number)
+
+
+    qs = Order.objects.filter(number="A-12")
+    n = qs.update(status="paid")
+    print("обновлено:", n)
+    ```
+    Результат:
+    ```
+    обновлено: 1
+    ```
+    Строка изменилась, приёмник молчит — `update()` идёт мимо `save()`.
+- title: pre_delete
+  text: |
+    Запретите удалять оплаченные заказы приёмником `pre_delete`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models.signals import pre_delete
+    from django.dispatch import receiver
+
+
+    @receiver(pre_delete, sender=Order)
+    def keep_paid(sender, instance, **kwargs):
+        if instance.status == "paid":
+            raise ValueError(f"{instance.number} оплачен")
+
+
+    o = Order.objects.create(number="A-51", email="x@s.ru")
+    o.status = "paid"
+    o.save()
+    try:
+        o.delete()
+    except ValueError as e:
+        print("нельзя:", e)
+    print(Order.objects.filter(number="A-51").exists())
+    ```
+    Результат:
+    ```
+    нельзя: A-51 оплачен
+    True
+    ```
+    Исключение в `pre_delete` останавливает удаление. Но `QuerySet.delete()` тоже посылает `pre_delete` для каждого объекта — в отличие от `update()`.

@@ -1,0 +1,17 @@
+title: "Порядок middleware"
+type: quiz
+kind: order
+difficulty: 2
+pitfall: "AuthenticationMiddleware берёт пользователя из сессии — после SessionMiddleware; SecurityMiddleware — первым."
+statement: |
+  Расставьте встроенные middleware в порядке, в котором их перечисляет `MIDDLEWARE` нового проекта (без `XFrameOptionsMiddleware`).
+options:
+  - "`django.contrib.auth.middleware.AuthenticationMiddleware`"
+  - "`django.middleware.security.SecurityMiddleware`"
+  - "`django.contrib.messages.middleware.MessageMiddleware`"
+  - "`django.contrib.sessions.middleware.SessionMiddleware`"
+  - "`django.middleware.csrf.CsrfViewMiddleware`"
+  - "`django.middleware.common.CommonMiddleware`"
+answer: [1, 3, 5, 4, 0, 2]
+explanation: |
+  `SecurityMiddleware` — первым: редирект на HTTPS и заголовки до любой работы. `SessionMiddleware` даёт `request.session`, без которой `AuthenticationMiddleware` не найдёт пользователя (иначе — `ImproperlyConfigured … requires session middleware`). `CommonMiddleware` и `CsrfViewMiddleware` — до аутентификации, `MessageMiddleware` — последним из встроенных: хранит сообщения в сессии.

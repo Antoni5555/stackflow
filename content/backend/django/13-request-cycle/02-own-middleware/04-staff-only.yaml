@@ -1,0 +1,107 @@
+title: "Раздел для сотрудников"
+type: exercise
+difficulty: 2
+pitfall: "Middleware может ответить само и не пустить запрос дальше; request.user есть, если оно стоит после AuthenticationMiddleware."
+statement: |
+  Все адреса, начинающиеся с `/tools/`, должны быть доступны только сотрудникам (`is_staff`); остальным — ответ 403 «Только для сотрудников». Остальной сайт открыт всем. Допишите `StaffOnlyMiddleware` (оно уже подключено и стоит после `AuthenticationMiddleware`).
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        status = models.CharField(max_length=10, choices=Status, default=Status.NEW)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.http import HttpResponse
+
+
+    def tools(request):
+        return HttpResponse("инструменты")
+
+
+    def catalog(request):
+        return HttpResponse("каталог")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("tools/", views.tools, name="tools"),
+        path("catalog/", views.catalog, name="catalog"),
+    ]
+  middleware.py: |
+    from django.http import HttpResponse
+
+
+    class StaffOnlyMiddleware:
+        def __init__(self, get_response):
+            self.get_response = get_response
+
+        def __call__(self, request):
+            return self.get_response(request)
+setup: |
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  Order.objects.create(number="A-12", email="anna@shop.example")
+solution:
+  middleware.py: |
+    from django.http import HttpResponse
+
+
+    class StaffOnlyMiddleware:
+        def __init__(self, get_response):
+            self.get_response = get_response
+
+        def __call__(self, request):
+            if request.path.startswith("/tools/") and not request.user.is_staff:
+                return HttpResponse("Только для сотрудников", status=403)
+            return self.get_response(request)
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.get("/tools/")
+        assert r.status_code == 403 and r.content.decode() == "Только для сотрудников"
+      fail: "Гостю на /tools/ — 403 «Только для сотрудников»."
+    - code: |
+        anna = User.objects.get(username="anna")
+        client.force_login(anna)
+        assert client.get("/tools/").status_code == 403
+        anna.is_staff = True
+        anna.save()
+        r = client.get("/tools/")
+        assert r.status_code == 200 and r.content.decode() == "инструменты"
+      fail: "Покупательнице — 403, сотруднику (is_staff) — страница инструментов."
+    - code: |
+        assert client.get("/catalog/").status_code == 200
+      fail: "Остальные страницы открыты всем."
+hints:
+  - "Как не пустить запрос к view?"
+  - "Если путь начинается с `/tools/` и `not request.user.is_staff` — `return HttpResponse(\"Только для сотрудников\", status=403)` до `get_response`."
+explanation: |
+  Middleware, вернувшее ответ до вызова `get_response`, обрывает цепочку: нижние слои и view не вызываются. `request.user` доступен, потому что middleware стоит после `AuthenticationMiddleware`. Для отдельных view то же делают декоратором; middleware удобно, когда правило — для целого раздела адресов.
+settings:
+  MIDDLEWARE:
+    - "shop.middleware.StaffOnlyMiddleware"

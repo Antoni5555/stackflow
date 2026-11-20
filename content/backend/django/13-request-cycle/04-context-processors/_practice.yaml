@@ -1,0 +1,71 @@
+- title: Процессор — просто функция
+  text: |
+    Вызовите свой контекст-процессор с запросом, в сессии которого лежит корзина.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.sessions.backends.db import SessionStore
+    from django.test import RequestFactory
+
+
+    def cart(request):
+        cart = request.session.get("cart", {})
+        return {"cart_count": sum(cart.values())}
+
+
+    request = RequestFactory().get("/")
+    request.session = SessionStore()
+    request.session["cart"] = {"aster-14": 1, "mouse-pad": 2}
+    print(cart(request))
+    ```
+    Результат:
+    ```
+    {'cart_count': 3}
+    ```
+    Процессор — функция `(request) -> dict`; Django вызывает её при отрисовке шаблона с запросом.
+- title: Встроенные процессоры
+  text: |
+    Какие контекст-процессоры включены в тренажёре?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.conf import settings
+    opts = settings.TEMPLATES[0]["OPTIONS"]
+    for cp in opts["context_processors"]:
+        print(cp)
+    ```
+    Результат:
+    ```
+    django.template.context_processors.request
+    django.contrib.auth.context_processors.auth
+    django.contrib.messages.context_processors.messages
+    ```
+    `request`, `auth` (`user`, `perms`) и `messages`.
+- title: render_to_string с запросом
+  text: |
+    Нарисуйте шаблон из строки с `RequestContext` и без него: виден ли `user`?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.auth.models import AnonymousUser
+    from django.template import Context, RequestContext
+    from django.template import Template
+    from django.test import RequestFactory
+    t = Template("[{{ user }}]")
+    request = RequestFactory().get("/")
+    request.user = AnonymousUser()
+    print(t.render(Context({})))
+    print(t.render(RequestContext(request, {})))
+    ```
+    Результат:
+    ```
+    []
+    [AnonymousUser]
+    ```
+    Процессор `auth` работает только в `RequestContext` — то же делает `render(request, …)`.

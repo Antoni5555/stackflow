@@ -1,0 +1,114 @@
+- title: Вызов вручную
+  text: |
+    Middleware — обычный класс. Создайте его с «view» вместо `get_response` и вызовите с запросом.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class Header:
+        def __init__(self, get_response):
+            self.get_response = get_response
+
+        def __call__(self, request):
+            response = self.get_response(request)
+            response["X-Shop"] = "stackflow"
+            return response
+
+
+    mw = Header(lambda request: HttpResponse("ok"))
+    r = mw(rf.get("/"))
+    print(r.status_code, r["X-Shop"], r.content)
+    ```
+    Результат:
+    ```
+    200 stackflow b'ok'
+    ```
+    `get_response` — любой вызываемый объект, принимающий запрос: следующий middleware или view.
+- title: Матрёшка из двух
+  text: |
+    Соберите цепочку из двух middleware вручную и посмотрите порядок.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    class Trace:
+        def __init__(self, get_response, name):
+            self.get_response = get_response
+            self.name = name
+
+        def __call__(self, request):
+            print(self.name, "до")
+            response = self.get_response(request)
+            print(self.name, "после")
+            return response
+
+
+    def view(request):
+        print("view")
+        return HttpResponse("ok")
+
+
+    chain = Trace(Trace(view, "B"), "A")
+    chain(rf.get("/"))
+    ```
+    Результат:
+    ```
+    A до
+    B до
+    view
+    B после
+    A после
+    <HttpResponse status_code=200, "text/html; charset=utf-8">
+    ```
+    Так Django и строит цепочку при старте: каждый слой получает следующий как `get_response`. Последняя строка — ответ, который вернула цепочка.
+- title: Ранний ответ
+  text: |
+    Middleware отвечает 503 на все запросы, пока идут работы, и не вызывает view.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+    rf = RequestFactory()
+
+
+    MAINTENANCE = True
+
+
+    class Maintenance:
+        def __init__(self, get_response):
+            self.get_response = get_response
+
+        def __call__(self, request):
+            if MAINTENANCE:
+                return HttpResponse("Работы", status=503)
+            return self.get_response(request)
+
+
+    def view(request):
+        print("view вызван")
+        return HttpResponse("ok")
+
+
+    r = Maintenance(view)(rf.get("/catalog/"))
+    print(r.status_code, r.content.decode())
+    ```
+    Результат:
+    ```
+    503 Работы
+    ```
+    «view вызван» не напечатано — запрос дальше middleware не прошёл.

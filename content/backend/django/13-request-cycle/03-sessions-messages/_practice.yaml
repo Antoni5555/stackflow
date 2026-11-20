@@ -1,0 +1,69 @@
+- title: Сессия без браузера
+  text: |
+    Создайте сессию через `SessionStore`, сохраните корзину и прочитайте её по ключу.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.sessions.backends.db import SessionStore
+    s = SessionStore()
+    s["cart"] = {"aster-14": 1}
+    s.save()
+    key = s.session_key
+    print(len(key))
+    print(SessionStore(session_key=key)["cart"])
+    ```
+    Результат:
+    ```
+    32
+    {'aster-14': 1}
+    ```
+    В cookie браузера лежал бы только этот ключ из 32 символов, данные — в таблице `django_session`.
+- title: modified
+  text: |
+    Измените вложенный словарь сессии и проверьте флаг `modified` до и после явной отметки.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.sessions.backends.db import SessionStore
+    s = SessionStore()
+    s["cart"] = {}
+    s.save()
+    s = SessionStore(session_key=s.session_key)
+    s["cart"]["mouse-pad"] = 1
+    print(s.modified)
+    s.modified = True
+    print(s.modified)
+    ```
+    Результат:
+    ```
+    False
+    True
+    ```
+    Изменение вложенного словаря не меняет флаг — без `modified = True` сессия не сохранится.
+- title: Уровни сообщений
+  text: |
+    Какие теги (`tags`) получают сообщения разных уровней?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib import messages
+    from django.contrib.messages.storage.base import Message
+    levels = [messages.INFO, messages.SUCCESS,
+              messages.WARNING, messages.ERROR]
+    for level in levels:
+        print(level, Message(level, "текст").tags)
+    ```
+    Результат:
+    ```
+    20 info
+    25 success
+    30 warning
+    40 error
+    ```
+    `tags` — готовый CSS-класс для шаблона: `<p class="{{ m.tags }}">`.

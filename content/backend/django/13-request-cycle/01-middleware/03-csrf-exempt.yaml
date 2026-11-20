@@ -1,0 +1,88 @@
+title: "Банк получает 403"
+type: exercise
+difficulty: 2
+pitfall: "Запросы от внешних сервисов не несут CSRF-токен — для конкретного view @csrf_exempt (и своя проверка подписи), а не отключение middleware."
+statement: |
+  Банк после оплаты отправляет POST на `/payments/webhook/` с номером заказа, но получает 403: у банка нет CSRF-токена вашего сайта. Разрешите этому view принимать POST без токена, не выключая защиту для остального сайта. (Проверку подписи банка в этой задаче опускаем.)
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        status = models.CharField(max_length=10, choices=Status, default=Status.NEW)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.http import HttpResponse
+
+    from .models import Order
+
+
+    def payment_webhook(request):
+        order = Order.objects.get(number=request.POST["order"])
+        order.status = Order.Status.PAID
+        order.save()
+        return HttpResponse("ok")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("payments/webhook/", views.payment_webhook, name="webhook"),
+    ]
+setup: |
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  Order.objects.create(number="A-12", email="anna@shop.example")
+solution:
+  views.py: |
+    from django.views.decorators.csrf import csrf_exempt
+    from django.http import HttpResponse
+
+    from .models import Order
+
+
+    @csrf_exempt
+    def payment_webhook(request):
+        order = Order.objects.get(number=request.POST["order"])
+        order.status = Order.Status.PAID
+        order.save()
+        return HttpResponse("ok")
+check:
+  type: django
+  tests:
+    - code: |
+        r = csrf_client.post("/payments/webhook/", {"order": "A-12"})
+        assert r.status_code == 200
+        assert Order.objects.get(number="A-12").status == "paid"
+      fail: "POST от банка без CSRF-токена должен проходить и отмечать заказ оплаченным."
+    - code: |
+        from django.conf import settings
+        assert "django.middleware.csrf.CsrfViewMiddleware" in settings.MIDDLEWARE
+      fail: "CsrfViewMiddleware для сайта должен остаться."
+hints:
+  - "Как отключить проверку CSRF для одного view?"
+  - "Декоратор `@csrf_exempt` из `django.views.decorators.csrf`."
+explanation: |
+  `CsrfViewMiddleware` защищает формы сайта: браузер пользователя присылает токен со страницы. Внешний сервис токена не знает — ему отвечают 403. `@csrf_exempt` снимает проверку только с этого view. Вместо CSRF такие запросы проверяют иначе: подписью (HMAC) или секретом в заголовке, которые даёт платёжная система.

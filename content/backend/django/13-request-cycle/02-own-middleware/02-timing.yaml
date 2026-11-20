@@ -1,0 +1,99 @@
+title: "Время ответа"
+type: exercise
+difficulty: 2
+pitfall: "Код до self.get_response(request) — по пути к view, после — по пути обратно; ответ нужно вернуть."
+statement: |
+  Middleware `TimingMiddleware` (уже подключено в `MIDDLEWARE`) должно добавлять к каждому ответу заголовок `X-Response-Time-ms` — сколько миллисекунд обрабатывался запрос, с одним знаком после точки (например, `3.2`). Допишите его.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        status = models.CharField(max_length=10, choices=Status, default=Status.NEW)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.http import HttpResponse
+
+
+    def product(request, slug):
+        return HttpResponse(f"товар {slug}")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("p/<slug:slug>/", views.product, name="product"),
+    ]
+  middleware.py: |
+    import time
+
+
+    class TimingMiddleware:
+        def __init__(self, get_response):
+            self.get_response = get_response
+
+        def __call__(self, request):
+            response = self.get_response(request)
+            return response
+setup: |
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  Order.objects.create(number="A-12", email="anna@shop.example")
+solution:
+  middleware.py: |
+    import time
+
+
+    class TimingMiddleware:
+        def __init__(self, get_response):
+            self.get_response = get_response
+
+        def __call__(self, request):
+            start = time.perf_counter()
+            response = self.get_response(request)
+            ms = (time.perf_counter() - start) * 1000
+            response["X-Response-Time-ms"] = f"{ms:.1f}"
+            return response
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.get("/p/aster-14/")
+        assert r.status_code == 200 and r.content.decode() == "товар aster-14"
+        assert "X-Response-Time-ms" in r
+      fail: "В ответе нет заголовка X-Response-Time-ms."
+    - code: |
+        import re
+        r = client.get("/p/aster-14/")
+        assert re.fullmatch(r"\d+\.\d", r["X-Response-Time-ms"])
+      fail: "Значение заголовка — миллисекунды с одним знаком после точки, например 3.2."
+hints:
+  - "Где засечь начало и где — конец обработки?"
+  - "Время до `self.get_response(request)` и после; `response[\"X-Response-Time-ms\"] = f\"{ms:.1f}\"`."
+explanation: |
+  `self.get_response(request)` проводит запрос через нижние middleware и view; всё время между засечками — обработка ниже этого слоя. `time.perf_counter()` — монотонный таймер для замеров. Заголовок ставят на ответ на обратном пути и обязательно возвращают ответ.
+settings:
+  MIDDLEWARE:
+    - "shop.middleware.TimingMiddleware"

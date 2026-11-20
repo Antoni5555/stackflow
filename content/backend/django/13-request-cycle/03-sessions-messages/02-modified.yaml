@@ -1,0 +1,107 @@
+title: "Корзина теряет товары"
+type: exercise
+difficulty: 2
+pitfall: "Изменение вложенного словаря сессии Django не замечает — присвойте ключ заново или session.modified = True."
+statement: |
+  Корзина гостя хранится в сессии как `{slug: количество}`. Добавили мышь дважды и коврик — а в корзине одна мышь. Исправьте `add_to_cart`.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        status = models.CharField(max_length=10, choices=Status, default=Status.NEW)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.contrib import messages
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Product
+
+
+    def add_to_cart(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        cart = request.session.setdefault("cart", {})
+        cart[slug] = cart.get(slug, 0) + 1
+        return redirect("cart")
+
+
+    def cart(request):
+        cart = request.session.get("cart", {})
+        return render(request, "shop/cart.html", {"cart": cart})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("cart/add/<slug:slug>/", views.add_to_cart, name="add"),
+        path("cart/", views.cart, name="cart"),
+    ]
+  templates/shop/cart.html: |
+    {% for m in messages %}<p class="{{ m.tags }}">{{ m }}</p>{% endfor %}
+    <ul>{% for slug, qty in cart.items %}<li>{{ slug }}: {{ qty }}</li>{% endfor %}</ul>
+setup: |
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  Order.objects.create(number="A-12", email="anna@shop.example")
+solution:
+  views.py: |
+    from django.contrib import messages
+    from django.shortcuts import get_object_or_404, redirect, render
+
+    from .models import Product
+
+
+    def add_to_cart(request, slug):
+        product = get_object_or_404(Product, slug=slug)
+        cart = request.session.get("cart", {})
+        cart[slug] = cart.get(slug, 0) + 1
+        request.session["cart"] = cart
+        return redirect("cart")
+
+
+    def cart(request):
+        cart = request.session.get("cart", {})
+        return render(request, "shop/cart.html", {"cart": cart})
+check:
+  type: django
+  tests:
+    - code: |
+        client.post("/cart/add/wireless-mouse/")
+        client.post("/cart/add/wireless-mouse/")
+        client.post("/cart/add/mouse-pad/")
+        html = client.get("/cart/").content.decode()
+        assert "wireless-mouse: 2" in html and "mouse-pad: 1" in html
+      fail: "В корзине должны быть 2 мыши и 1 коврик."
+    - code: |
+        client.post("/cart/add/wireless-mouse/")
+        client.post("/cart/add/wireless-mouse/")
+        client.post("/cart/add/mouse-pad/")
+        assert client.session["cart"] == {"wireless-mouse": 2, "mouse-pad": 1}
+      fail: "В сессии должно сохраниться {\"wireless-mouse\": 2, \"mouse-pad\": 1}."
+hints:
+  - "Когда Django сохраняет сессию?"
+  - "После изменения — `request.session[\"cart\"] = cart` (или `request.session.modified = True`)."
+explanation: |
+  Django помечает сессию изменённой при присваивании или удалении ключа верхнего уровня. `setdefault` создал ключ один раз — первое добавление сохранилось; дальше менялся вложенный словарь, и сессия не сохранялась. Присвоив ключ заново, мы сообщаем об изменении.

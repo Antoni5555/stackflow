@@ -1623,6 +1623,65 @@ def sql_injection():
     f.save(out(DJ12 / "04-raw-sql" / "img" / "sql-injection.svg"))
 
 
+# ---------- Django 13: цикл запроса ----------
+DJ13 = ROOT / "django" / "13-request-cycle"
+
+
+def middleware_chain():
+    f = Figure(860, 340, "Запрос проходит middleware сверху вниз, ответ — снизу вверх")
+    layers = [("SecurityMiddleware", "заголовки безопасности"), ("SessionMiddleware", "request.session / сохранить, cookie"),
+              ("CommonMiddleware", "APPEND_SLASH"), ("CsrfViewMiddleware", "проверка токена POST"),
+              ("AuthenticationMiddleware", "request.user"), ("MessageMiddleware", "messages")]
+    for i, (name, what) in enumerate(layers):
+        y = 20 + i * 44
+        f.box(160, y, 300, 36, name, "box2", "cs")
+        f.text(480, y + 23, what, "s")
+    f.box(160, 290, 300, 36, "view", "ok", "cs")
+    f.arrow("M120 30V318"); f.text(100, 170, "запрос", "s", "end")
+    f.arrow("M740 318V30"); f.text(760, 170, "ответ", "s")
+    f.save(out(DJ13 / "01-middleware" / "img" / "middleware-chain.svg"))
+
+
+def own_middleware():
+    f = Figure(860, 300, "Middleware A и B: каждое оборачивает следующее — «матрёшка»")
+    f.box(20, 30, 820, 200, "", "box2")
+    f.text(40, 56, "A: до", "cs"); f.text(40, 212, "A: после", "cs")
+    f.box(120, 70, 600, 140, "", "box")
+    f.text(140, 96, "B: до → B.process_view", "cs"); f.text(140, 196, "B: после", "cs")
+    f.box(300, 112, 240, 44, "view", "ok", "cs")
+    f.text(20, 262, "Если B вернёт ответ раньше get_response — view не вызывается, ответ идёт наружу через A.", "s")
+    f.save(out(DJ13 / "02-own-middleware" / "img" / "own-middleware.svg"))
+
+
+def session_cart():
+    f = Figure(860, 260, "Корзина в сессии: в браузере — только ключ, данные — на сервере")
+    f.box(20, 40, 260, 60, "", "box2")
+    f.text(150, 64, "браузер", "t", "middle")
+    f.text(150, 86, "cookie sessionid=ab12…", "cs", "middle")
+    f.arrow("M280 70H346"); f.text(313, 60, "ключ", "s", "middle")
+    f.box(350, 40, 490, 60, "", "ok")
+    f.text(366, 64, "django_session: ab12… →", "cs")
+    f.text(366, 86, "{\"cart\": {\"wireless-mouse\": 2, \"mouse-pad\": 1}}", "cs")
+    f.text(20, 150, "Изменили вложенный словарь — присвойте ключ заново: request.session[\"cart\"] = cart", "t")
+    f.text(20, 178, "Иначе Django не заметит изменения и не сохранит сессию.", "s")
+    f.save(out(DJ13 / "03-sessions-messages" / "img" / "session-cart.svg"))
+
+
+def signals_fig():
+    f = Figure(860, 280, "Кто посылает post_save, а кто идёт в базу мимо сигнала")
+    for i, t in enumerate(["order.save()", "Order.objects.create(…)"]):
+        f.box(20, 30 + i * 50, 260, 38, t, "box2", "cs")
+        f.arrow(f"M280 {49 + i * 50}H346")
+    f.box(350, 50, 180, 38, "post_save", "box", "cs")
+    f.arrow("M530 69H576")
+    f.box(580, 50, 260, 38, "order_saved(…) — письмо", "ok", "cs")
+    for i, t in enumerate(["QuerySet.update(…)", "bulk_create([…])"]):
+        f.box(20, 150 + i * 50, 260, 38, t, "box2", "cs")
+        f.arrow(f"M280 {169 + i * 50}H346")
+    f.box(350, 170, 490, 38, "сразу SQL — сигнала нет, приёмник не вызывается", "err", "cs")
+    f.save(out(DJ13 / "05-signals" / "img" / "signals.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3104,6 +3163,7 @@ if __name__ == "__main__":
                   cbv_dispatch, list_detail, create_view, mixin_mro,
                   session_login, permissions_fig, own_objects,
                   atomic_fig, sql_injection,
+                  middleware_chain, own_middleware, session_cart, signals_fig,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

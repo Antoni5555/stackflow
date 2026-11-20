@@ -1,0 +1,145 @@
+title: "Письмо дважды"
+type: exercise
+difficulty: 3
+pitfall: "post_save приходит на каждое сохранение — действие «при оплате» проверяет переход статуса, а не сам статус."
+statement: |
+  Покупатель получает письмо «Заказ оплачен» при каждом сохранении оплаченного заказа — например, когда менеджер меняет почту. Письмо должно уходить один раз — в момент перехода заказа в статус «оплачен» (в том числе если заказ сразу создан оплаченным). Исправьте `models.py`.
+files:
+  models.py: |
+    from django.core.mail import send_mail
+    from django.db import models
+    from django.db.models.signals import post_save, pre_save
+    from django.dispatch import receiver
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        status = models.CharField(max_length=10, choices=Status, default=Status.NEW)
+
+        def __str__(self):
+            return self.number
+
+
+    @receiver(post_save, sender=Order)
+    def order_saved(sender, instance, **kwargs):
+        if instance.status == Order.Status.PAID:
+            send_mail(f"Заказ {instance.number} оплачен", "Спасибо!", "shop@shop.example", [instance.email])
+  views.py: |
+    from django.http import HttpResponse
+
+    from .models import Order
+
+
+    def pay(request, number):
+        order = Order.objects.get(number=number)
+        order.status = Order.Status.PAID
+        order.save()
+        return HttpResponse("ok")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/<str:number>/pay/", views.pay, name="pay"),
+    ]
+setup: |
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25)
+  User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  Order.objects.create(number="A-12", email="anna@shop.example")
+solution:
+  models.py: |
+    from django.core.mail import send_mail
+    from django.db import models
+    from django.db.models.signals import post_save, pre_save
+    from django.dispatch import receiver
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        class Status(models.TextChoices):
+            NEW = "new", "Новый"
+            PAID = "paid", "Оплачен"
+
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        status = models.CharField(max_length=10, choices=Status, default=Status.NEW)
+
+        def __str__(self):
+            return self.number
+
+
+    @receiver(post_save, sender=Order)
+    def order_saved(sender, instance, **kwargs):
+        if instance.status == Order.Status.PAID and getattr(instance, "_was_paid", False) is False:
+            send_mail(f"Заказ {instance.number} оплачен", "Спасибо!", "shop@shop.example", [instance.email])
+
+
+    @receiver(pre_save, sender=Order)
+    def remember_status(sender, instance, **kwargs):
+        old = Order.objects.filter(pk=instance.pk).values_list("status", flat=True).first()
+        instance._was_paid = old == Order.Status.PAID
+check:
+  type: django
+  tests:
+    - code: |
+        from django.core import mail
+        mail.outbox = []
+        client.post("/orders/A-12/pay/")
+        client.post("/orders/A-12/pay/")
+        assert len(mail.outbox) == 1
+      fail: "Повторная оплата уже оплаченного заказа не должна слать второе письмо."
+    - code: |
+        from django.core import mail
+        mail.outbox = []
+        client.post("/orders/A-12/pay/")
+        o = Order.objects.get(number="A-12")
+        o.email = "anna.new@shop.example"
+        o.save()
+        assert len(mail.outbox) == 1
+      fail: "Правка почты у оплаченного заказа не должна слать письмо."
+    - code: |
+        from django.core import mail
+        mail.outbox = []
+        Order.objects.create(number="A-30", email="x@shop.example", status="paid")
+        assert len(mail.outbox) == 1
+      fail: "Заказ, созданный сразу оплаченным, — одно письмо."
+    - code: |
+        from django.core import mail
+        mail.outbox = []
+        o = Order.objects.get(number="A-12")
+        o.email = "x@shop.example"
+        o.save()
+        assert len(mail.outbox) == 0
+      fail: "Сохранение неоплаченного заказа — без письма."
+hints:
+  - "Как узнать в post_save, каким был статус до сохранения?"
+  - "Приёмник `pre_save` запоминает старый статус из базы в атрибуте объекта (`instance._was_paid`), `post_save` шлёт письмо, только если раньше заказ не был оплачен."
+explanation: |
+  `post_save` не знает, что изменилось, — он приходит на каждое сохранение. Старое значение есть в базе до записи: его читают в `pre_save` и кладут на объект. В `post_save` письмо уходит только при переходе «не оплачен → оплачен». Проще и нагляднее — явный метод `order.mark_paid()`, который проверяет статус сам; но если сигнал уже есть, проверяйте переход.
