@@ -1,0 +1,58 @@
+- title: Новый ключ
+  text: |
+    Сгенерируйте ключ для продакшена и проверьте его длину и отсутствие префикса `django-insecure-`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.core.management import utils
+    key = utils.get_random_secret_key()
+    print(len(key), key.startswith("django-insecure-"))
+    print(len(set(key)) > 5)
+    ```
+    Результат:
+    ```
+    50 False
+    True
+    ```
+    Сам ключ каждый раз новый; `check --deploy` требует не меньше 50 символов и больше 5 разных.
+- title: Обязательная переменная
+  text: |
+    Прочитайте переменную окружения так, чтобы её отсутствие было ошибкой, и сравните с `.get()`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    import os
+    print(repr(os.environ.get("SHOP_PAYMENT_KEY", "")))
+    try:
+        os.environ["SHOP_PAYMENT_KEY"]
+    except KeyError as e:
+        print("KeyError:", e)
+    ```
+    Результат:
+    ```
+    ''
+    KeyError: 'SHOP_PAYMENT_KEY'
+    ```
+    `.get()` с пустым значением тихо запускает сайт без ключа; `[…]` падает сразу при старте — это и нужно для секретов.
+- title: Настройки тренажёра
+  text: |
+    Какие `DEBUG`, `ALLOWED_HOSTS` и часовой пояс в тренажёре?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.conf import settings
+    print(settings.DEBUG, settings.ALLOWED_HOSTS)
+    print(settings.TIME_ZONE, settings.LANGUAGE_CODE)
+    ```
+    Результат:
+    ```
+    True ['*', 'testserver']
+    Europe/Moscow ru
+    ```
+    Тренажёр — среда разработки: `DEBUG = True` и любой хост. На сервере так нельзя.

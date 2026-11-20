@@ -1,0 +1,15 @@
+title: "DEBUG выключен, хостов нет"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "При DEBUG = False список ALLOWED_HOSTS обязателен."
+statement: |
+  В настройках `DEBUG = False` и `ALLOWED_HOSTS = []`. Что произойдёт при `python manage.py runserver`?
+options:
+  - "Сервер запустится и будет отвечать на любой домен"
+  - "Сервер запустится и будет отвечать только на localhost"
+  - "`CommandError: You must set settings.ALLOWED_HOSTS if DEBUG is False.`"
+  - "Django сам включит DEBUG"
+answer: [2]
+explanation: |
+  С `DEBUG = True` пустой список означает `localhost`, `127.0.0.1` и `[::1]`. С `DEBUG = False` Django требует явный список и отказывается стартовать. Проверено в проекте Django 5.2.

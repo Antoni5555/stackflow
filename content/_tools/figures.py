@@ -1682,6 +1682,48 @@ def signals_fig():
     f.save(out(DJ13 / "05-signals" / "img" / "signals.svg"))
 
 
+# ---------- Django 14: настройки и безопасность ----------
+DJ14 = ROOT / "django" / "14-settings-security"
+
+
+def settings_split():
+    f = Figure(860, 300, "Пакет настроек: общий base.py и два окружения; выбор — DJANGO_SETTINGS_MODULE")
+    _table(f, 300, 20, "config/settings/base.py", ["INSTALLED_APPS, MIDDLEWARE", "TEMPLATES, STATIC_ROOT", "BASE_DIR = …parent.parent.parent"], 260, "box2")
+    f.arrow("M360 124L190 170"); f.arrow("M500 124L670 170")
+    _table(f, 20, 172, "dev.py", ["DEBUG = True", "SECRET_KEY = \"dev-only…\"", "ALLOWED_HOSTS = [\"localhost\"]"], 340, "box")
+    _table(f, 500, 172, "prod.py", ["DEBUG = False", "SECRET_KEY = os.environ[…]", "ALLOWED_HOSTS из окружения"], 340, "ok")
+    f.save(out(DJ14 / "01-environments" / "img" / "settings-split.svg"))
+
+
+def xss_fig():
+    f = Figure(860, 280, "Имя автора с <script>: автоэкранирование показывает текст, |safe — выполняет код")
+    f.text(20, 24, "author = \"<script>alert('xss')</script>\"", "cs")
+    f.text(20, 64, "{{ r.author }}", "cs")
+    f.box(20, 76, 820, 40, "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt; → браузер показывает текст", "ok", "cs")
+    f.text(20, 150, "{{ r.author|safe }} / mark_safe(f\"…{name}…\")", "cs")
+    f.box(20, 162, 820, 40, "<script>alert('xss')</script> → браузер выполняет скрипт у каждого посетителя", "err", "cs")
+    f.text(20, 244, "HTML с подстановкой — format_html(\"<b>{}</b>\", name): разметка остаётся, данные экранируются.", "s")
+    f.save(out(DJ14 / "02-security" / "img" / "xss.svg"))
+
+
+def production_fig():
+    f = Figure(860, 280, "Запрос в продакшене: Nginx → Gunicorn → Django")
+    f.box(20, 100, 140, 50, "браузер", "box2", "cs")
+    f.arrow("M160 125H206"); f.text(183, 115, "HTTPS", "s", "middle")
+    f.box(210, 90, 180, 70, "", "box")
+    f.text(300, 116, "Nginx", "t", "middle"); f.text(300, 140, "сертификат, буфер", "s", "middle")
+    f.arrow("M300 90V56")
+    f.box(210, 16, 260, 40, "/static/, /media/ — файлы с диска", "ok", "cs")
+    f.arrow("M390 125H436"); f.text(413, 115, "HTTP", "s", "middle")
+    f.box(440, 90, 220, 70, "", "box")
+    f.text(550, 116, "Gunicorn 127.0.0.1:8000", "cs", "middle"); f.text(550, 140, "воркеры с Django", "s", "middle")
+    f.arrow("M660 125H706")
+    f.box(710, 100, 130, 50, "PostgreSQL", "box2", "cs")
+    f.text(20, 210, "Django: config.wsgi:application, DJANGO_SETTINGS_MODULE=config.settings.prod.", "t")
+    f.text(20, 238, "collectstatic → STATIC_ROOT; migrate — отдельным шагом выкатки.", "s")
+    f.save(out(DJ14 / "03-production" / "img" / "production.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3164,6 +3206,7 @@ if __name__ == "__main__":
                   session_login, permissions_fig, own_objects,
                   atomic_fig, sql_injection,
                   middleware_chain, own_middleware, session_cart, signals_fig,
+                  settings_split, xss_fig, production_fig,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

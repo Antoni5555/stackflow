@@ -1,0 +1,32 @@
+title: "Шаблоны не находятся"
+type: fix
+difficulty: 2
+pitfall: "После переноса settings.py в пакет settings/ файл стал на уровень глубже — BASE_DIR нужно поднять ещё на уровень."
+statement: |
+  `config/settings.py` перенесли в `config/settings/base.py`. После этого Django не находит шаблоны, а `collectstatic` собирает статику в `config/staticfiles`. Исправьте `BASE_DIR` — он должен указывать на корень проекта (папку с `manage.py`).
+files:
+  config/settings/base.py: |
+    from pathlib import Path
+
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+    TEMPLATES_DIR = BASE_DIR / "templates"
+    STATIC_ROOT = BASE_DIR / "staticfiles"
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*BASE_DIR\s*=\s*Path\(__file__\)\.resolve\(\)\.parent\.parent\.parent\s*$'
+      fail: "BASE_DIR должен подниматься на три уровня: base.py → settings → config → корень."
+solution:
+  config/settings/base.py: |
+    from pathlib import Path
+
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+    TEMPLATES_DIR = BASE_DIR / "templates"
+    STATIC_ROOT = BASE_DIR / "staticfiles"
+hints:
+  - "Сколько папок между base.py и корнем проекта?"
+  - "`BASE_DIR = Path(__file__).resolve().parent.parent.parent`."
+explanation: |
+  `Path(__file__).resolve()` — путь к `base.py`. `.parent` — `config/settings`, ещё `.parent` — `config`, ещё — корень проекта. Было два уровня, потому что раньше файл лежал прямо в `config/`. Все пути от `BASE_DIR` (шаблоны, статика, база SQLite) съехали на уровень внутрь.

@@ -152,6 +152,8 @@
 | 02 | Безопасность Django | CSRF, XSS и автоэкранирование (`mark_safe`), SQL-инъекции, clickjacking, HTTPS-настройки, `check --deploy` | аудит безопасности магазина | 🟡 D4.2 |
 | 03 | Django в продакшене | WSGI и ASGI, Gunicorn, статика и медиа в проде | что нужно магазину, чтобы работать не через `runserver` | 🟡 D4.7 |
 
+✅ Написан: `content/backend/django/14-settings-security` — 3 урока, 12 задач (3 `exercise` `check.type: django`, 4 `fix`, 5 `quiz`), 3 рисунка, задачники — 9 упражнений. Темы 01 и 03 — на `fix`/`quiz`; их выводы — из настоящего проекта Django 5.2 (`scratchpad/prod`: пакет `config/settings/`, `check --deploy` — 7 предупреждений на свежем проекте и 1 (`W021`) с `prod.py`, Gunicorn 26.2.0: 301 без `X-Forwarded-Proto`, 404 на статику, 400 на чужой Host, `collectstatic` — 127 файлов). В тренажёре: XSS (`|safe`, `mark_safe`/`format_html`), `XFrameOptionsMiddleware` через `settings: MIDDLEWARE`, `ALLOWED_HOSTS`, `SECURE_SSL_REDIRECT`, HSTS через `settings`.
+
 ## 15. Тесты в Django ●●●
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|

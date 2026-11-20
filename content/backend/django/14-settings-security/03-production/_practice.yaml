@@ -1,0 +1,72 @@
+- title: WSGI своими руками
+  text: |
+    Gunicorn вызывает `application(environ, start_response)`. Вызовите WSGI-приложение Django сами с запросом к `/page/`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    import io
+
+    from django.core.wsgi import get_wsgi_application
+    app = get_wsgi_application()
+    env = {
+        "REQUEST_METHOD": "GET", "PATH_INFO": "/page/",
+        "SERVER_NAME": "testserver", "SERVER_PORT": "80",
+        "wsgi.url_scheme": "http", "wsgi.input": io.BytesIO(),
+    }
+
+
+    def start_response(status, headers):
+        print(status, dict(headers)["Content-Type"])
+
+
+    print(b"".join(app(env, start_response)))
+    ```
+    Результат:
+    ```
+    200 OK text/html; charset=utf-8
+    b'ok'
+    ```
+    Вот и весь протокол: словарь с запросом на входе, статус и заголовки через `start_response`, тело — итератор байтов.
+- title: Статика и медиа
+  text: |
+    Какие настройки статики и медиа в тренажёре? Есть ли приложение `staticfiles`, которому принадлежит `collectstatic`?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.conf import settings
+    print(settings.STATIC_URL, settings.STATIC_ROOT)
+    print(repr(settings.MEDIA_URL), repr(settings.MEDIA_ROOT))
+    apps = settings.INSTALLED_APPS
+    print("django.contrib.staticfiles" in apps)
+    ```
+    Результат:
+    ```
+    /static/ None
+    '/' ''
+    False
+    ```
+    В тренажёре статики нет: `STATIC_ROOT` не задан, `staticfiles` не подключено. В проекте `STATIC_ROOT = BASE_DIR / "staticfiles"`, `collectstatic` собирает туда файлы, а `MEDIA_*` задают отдельно для загрузок пользователей.
+- title: Где ASGI
+  text: |
+    Получите ASGI-приложение Django и посмотрите, что это за объект.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.core.asgi import get_asgi_application
+    app = get_asgi_application()
+    print(type(app).__name__)
+    import inspect
+    print(inspect.iscoroutinefunction(app.__call__))
+    ```
+    Результат:
+    ```
+    ASGIHandler
+    True
+    ```
+    ASGI-приложение — асинхронный вызываемый объект `(scope, receive, send)`; его запускает Uvicorn или Daphne.

@@ -1,0 +1,16 @@
+title: "Что скажет check --deploy"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "check --deploy предупреждает о DEBUG, слабом SECRET_KEY, пустом ALLOWED_HOSTS, HTTPS и secure-cookie."
+statement: |
+  Проект только что создан `startproject` и ничего не менялось. О чём предупредит `python manage.py check --deploy`?
+options:
+  - "`DEBUG` включён"
+  - "`SECRET_KEY` начинается с `django-insecure-`"
+  - "`ALLOWED_HOSTS` пуст"
+  - "`SESSION_COOKIE_SECURE` и `CSRF_COOKIE_SECURE` не включены"
+  - "не задан `X_FRAME_OPTIONS`"
+answer: [0, 1, 2, 3]
+explanation: |
+  Свежий проект в Django 5.2 даёт 7 предупреждений: `W004` (HSTS), `W008` (`SECURE_SSL_REDIRECT`), `W009` (ключ), `W012` (cookie сессии), `W016` (cookie CSRF), `W018` (`DEBUG`), `W020` (`ALLOWED_HOSTS`). `XFrameOptionsMiddleware` в новом проекте уже подключён, а `X_FRAME_OPTIONS` по умолчанию `DENY` — предупреждения нет.

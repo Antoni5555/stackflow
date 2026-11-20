@@ -1,0 +1,36 @@
+title: "Любой Host"
+type: fix
+difficulty: 2
+pitfall: "ALLOWED_HOSTS = [\"*\"] отключает проверку заголовка Host; перечисляют домены сайта."
+statement: |
+  Чтобы сайт «точно открывался», в `prod.py` поставили `ALLOWED_HOSTS = ["*"]`. Берите список доменов из переменной окружения `DJANGO_ALLOWED_HOSTS` — через запятую, например `shop.example,www.shop.example`.
+files:
+  config/settings/prod.py: |
+    import os
+
+    from .base import *  # noqa: F403
+
+    DEBUG = False
+    SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+    ALLOWED_HOSTS = ["*"]
+check:
+  type: rules
+  rules:
+    - must_not_match: '^\s*ALLOWED_HOSTS\s*=\s*\[\s*["\'']\*["\'']\s*\]'
+      fail: "Звёздочка разрешает любой Host — уберите её."
+    - must_match: '^\s*ALLOWED_HOSTS\s*=\s*os\.environ\[\s*["\'']DJANGO_ALLOWED_HOSTS["\'']\s*\]\.split\(\s*["\''],["\'']\s*\)'
+      fail: "Список — из os.environ[\"DJANGO_ALLOWED_HOSTS\"], разделённый запятыми (.split(\",\"))."
+solution:
+  config/settings/prod.py: |
+    import os
+
+    from .base import *  # noqa: F403
+
+    DEBUG = False
+    SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+    ALLOWED_HOSTS = os.environ["DJANGO_ALLOWED_HOSTS"].split(",")
+hints:
+  - "Как превратить строку «a,b» в список?"
+  - "`ALLOWED_HOSTS = os.environ[\"DJANGO_ALLOWED_HOSTS\"].split(\",\")`."
+explanation: |
+  Django строит абсолютные ссылки (сброс пароля, письма) по заголовку `Host`, который присылает клиент. С `"*"` злоумышленник подставит свой домен, и пользователь получит ссылку сброса пароля на чужой сайт. С перечисленными доменами запрос с другим `Host` получает 400.

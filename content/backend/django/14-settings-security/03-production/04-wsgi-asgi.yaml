@@ -1,0 +1,16 @@
+title: "WSGI или ASGI"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "ASGI нужен для WebSocket, долгих соединений и async-view; обычному сайту хватает WSGI."
+statement: |
+  Для каких задач магазину понадобится ASGI (Uvicorn/Daphne), а не WSGI (Gunicorn с обычными воркерами)?
+options:
+  - "Чат с поддержкой на WebSocket"
+  - "Каталог и карточки товаров"
+  - "Живое обновление статуса заказа без перезагрузки (WebSocket)"
+  - "Форма оформления заказа"
+  - "Много `async def` view, ждущих внешние API"
+answer: [0, 2, 4]
+explanation: |
+  WSGI — один синхронный вызов на запрос, ответ целиком: этого хватает страницам и формам. WebSocket и другие долгие соединения, а также асинхронные view без блокировки воркера требуют ASGI (`config/asgi.py`). Gunicorn может запускать ASGI-приложение с воркерами Uvicorn.

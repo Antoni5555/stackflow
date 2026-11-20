@@ -1,0 +1,15 @@
+title: "Админка без стилей"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "При DEBUG = False Django не отдаёт статику: collectstatic собирает её в STATIC_ROOT, отдаёт Nginx или WhiteNoise."
+statement: |
+  На сервере с `DEBUG = False` и Gunicorn админка открывается без стилей: `/static/admin/css/base.css` — 404. Что сделать?
+options:
+  - "Включить `DEBUG = True`"
+  - "Выполнить `collectstatic` и отдавать `STATIC_ROOT` по `/static/` через Nginx (или подключить WhiteNoise)"
+  - "Скопировать папку `static` в каждое приложение"
+  - "Добавить `/static/` в `urls.py` как обычный маршрут"
+answer: [1]
+explanation: |
+  Отдачей статики Django занимается только в разработке (`DEBUG = True`). В продакшене `collectstatic` собирает файлы в `STATIC_ROOT` (в учебном проекте — 127 файлов админки), а отдаёт их Nginx (`location /static/`) или WhiteNoise. Включать `DEBUG` ради статики — открыть страницы ошибок всем.

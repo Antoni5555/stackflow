@@ -1,0 +1,78 @@
+title: "Виджет во фрейме"
+type: exercise
+difficulty: 2
+pitfall: "Исключение из X-Frame-Options делают для конкретного view декоратором, а не убирая middleware."
+statement: |
+  На сайте подключён `XFrameOptionsMiddleware`: все страницы отвечают `X-Frame-Options: DENY`. Виджет корзины `/widget/` нужно встраивать во фрейм на страницах самого магазина — ему нужен `SAMEORIGIN`. Остальные страницы (например, `/checkout/`) должны остаться с `DENY`.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        text = models.TextField()
+  views.py: |
+    from django.http import HttpResponse
+
+
+    def widget(request):
+        return HttpResponse("виджет корзины")
+
+
+    def checkout(request):
+        return HttpResponse("оформление")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("widget/", views.widget, name="widget"),
+        path("checkout/", views.checkout, name="checkout"),
+    ]
+setup: |
+  aster = Product.objects.create(name="Ноутбук Aster 14", slug="aster-14")
+  Review.objects.create(product=aster, author="Анна", text="Отличный <b>экран</b>")
+  Review.objects.create(product=aster, author="<script>alert('xss')</script>", text="<img src=x onerror=alert(1)>")
+solution:
+  views.py: |
+    from django.views.decorators.clickjacking import xframe_options_sameorigin
+    from django.http import HttpResponse
+
+
+    @xframe_options_sameorigin
+    def widget(request):
+        return HttpResponse("виджет корзины")
+
+
+    def checkout(request):
+        return HttpResponse("оформление")
+check:
+  type: django
+  tests:
+    - code: |
+        assert client.get("/widget/")["X-Frame-Options"] == "SAMEORIGIN"
+      fail: "У /widget/ должен быть заголовок X-Frame-Options: SAMEORIGIN."
+    - code: |
+        assert client.get("/checkout/")["X-Frame-Options"] == "DENY"
+      fail: "Остальные страницы — X-Frame-Options: DENY, middleware не убирать."
+hints:
+  - "Как изменить X-Frame-Options для одного view?"
+  - "Декоратор `@xframe_options_sameorigin` из `django.views.decorators.clickjacking`."
+explanation: |
+  `XFrameOptionsMiddleware` ставит заголовок из `X_FRAME_OPTIONS` (по умолчанию `DENY`) всем ответам, у которых его ещё нет. Декоратор `xframe_options_sameorigin` ставит `SAMEORIGIN` у одного view — встраивать можно только на страницах того же сайта. Страница оформления остаётся защищённой от clickjacking.
+settings:
+  MIDDLEWARE:
+    - "django.middleware.clickjacking.XFrameOptionsMiddleware"

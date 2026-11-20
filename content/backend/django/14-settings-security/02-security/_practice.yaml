@@ -1,0 +1,65 @@
+- title: escape и format_html
+  text: |
+    Сравните `escape`, `format_html` и `mark_safe` на имени `<i>Анна</i>`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.utils.html import escape, format_html
+    from django.utils.safestring import mark_safe
+    name = "<i>Анна</i>"
+    print(escape(name))
+    print(format_html("<b>{}</b>", name))
+    print(mark_safe(f"<b>{name}</b>"))
+    ```
+    Результат:
+    ```
+    &lt;i&gt;Анна&lt;/i&gt;
+    <b>&lt;i&gt;Анна&lt;/i&gt;</b>
+    <b><i>Анна</i></b>
+    ```
+    Только `format_html` даёт и разметку `<b>`, и безопасное имя.
+- title: Шаблон из строки
+  text: |
+    Отрисуйте шаблон с переменной `<script>` — с автоэкранированием, с `|safe` и с `|escape` после `mark_safe`.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.template import Context, Template
+    from django.utils.safestring import mark_safe
+    ctx = Context({"x": "<script>", "y": mark_safe("<b>")})
+    t = Template(
+        "{{ x }} {{ x|safe }} {{ y }} {{ y|force_escape }}"
+    )
+    print(t.render(ctx))
+    ```
+    Результат:
+    ```
+    &lt;script&gt; <script> <b> &lt;b&gt;
+    ```
+    `mark_safe` отключает автоэкранирование так же, как `|safe`; `force_escape` экранирует принудительно.
+- title: Безопасные заголовки
+  text: |
+    Какие заголовки безопасности тренажёр ставит на ответ и есть ли X-Frame-Options?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.test import Client
+    r = Client().get("/page/")
+    for h in ["X-Content-Type-Options", "Referrer-Policy",
+              "Cross-Origin-Opener-Policy", "X-Frame-Options"]:
+        print(h, r.get(h))
+    ```
+    Результат:
+    ```
+    X-Content-Type-Options nosniff
+    Referrer-Policy same-origin
+    Cross-Origin-Opener-Policy same-origin
+    X-Frame-Options None
+    ```
+    `XFrameOptionsMiddleware` в тренажёре не подключён — заголовка нет; в проекте после `startproject` он есть.

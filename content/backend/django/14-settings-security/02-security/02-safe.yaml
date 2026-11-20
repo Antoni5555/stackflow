@@ -1,0 +1,67 @@
+title: "Жирный шрифт ценой XSS"
+type: exercise
+difficulty: 2
+pitfall: "|safe отключает экранирование — к данным пользователя его не применяют."
+statement: |
+  Чтобы в отзывах работал жирный шрифт, в шаблон добавили `|safe`. Теперь отзыв с `<img src=x onerror=…>` выполняет код в браузере каждого покупателя. Уберите уязвимость: текст отзывов выводится как текст.
+files:
+  models.py: |
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Review(models.Model):
+        product = models.ForeignKey(
+            Product, on_delete=models.CASCADE, related_name="reviews"
+        )
+        author = models.CharField(max_length=100)
+        text = models.TextField()
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def reviews(request):
+        product = Product.objects.get(slug="aster-14")
+        return render(request, "shop/reviews.html", {"product": product})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("reviews/", views.reviews, name="reviews"),
+    ]
+  templates/shop/reviews.html: |
+    <ul>{% for r in product.reviews.all %}<li>{{ r.author }}: {{ r.text|safe }}</li>{% endfor %}</ul>
+setup: |
+  aster = Product.objects.create(name="Ноутбук Aster 14", slug="aster-14")
+  Review.objects.create(product=aster, author="Анна", text="Отличный <b>экран</b>")
+  Review.objects.create(product=aster, author="<script>alert('xss')</script>", text="<img src=x onerror=alert(1)>")
+solution:
+  templates/shop/reviews.html: |
+    <ul>{% for r in product.reviews.all %}<li>{{ r.author }}: {{ r.text }}</li>{% endfor %}</ul>
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/reviews/").content.decode()
+        assert "<img" not in html and "&lt;img src=x onerror=alert(1)&gt;" in html
+      fail: "Тег <img> из отзыва попадает в страницу — уберите |safe."
+    - code: |
+        html = client.get("/reviews/").content.decode()
+        assert "Отличный &lt;b&gt;экран&lt;/b&gt;" in html and "&lt;script&gt;" in html
+      fail: "Весь пользовательский текст экранируется."
+hints:
+  - "Что делает фильтр |safe?"
+  - "Уберите `|safe`: `{{ r.text }}`."
+explanation: |
+  Шаблоны Django экранируют переменные: `<` становится `&lt;`, браузер показывает текст. `|safe` говорит «здесь уже безопасный HTML» — и HTML от пользователя выполняется. Если форматирование действительно нужно, HTML отзыва очищают при сохранении белым списком тегов (`nh3.clean(text, tags={"b", "i"})`) и только после этого выводят без экранирования.
