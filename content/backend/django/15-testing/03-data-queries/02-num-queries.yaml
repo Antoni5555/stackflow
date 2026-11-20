@@ -1,0 +1,178 @@
+title: "Закрепить число запросов"
+type: exercise
+difficulty: 2
+pitfall: "N+1 не видно ни в браузере, ни в коде — assertNumQueries закрепляет число запросов страницы."
+statement: |
+  Каталог `/catalog/` делает один запрос: товары с категориями через `select_related`. Если кто-то уберёт `select_related` или добавит в выборку лишнее, страница станет медленнее, а существующий тест этого не заметит. Добавьте тест, который закрепит, что каталог делает ровно один запрос.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+
+        def __str__(self):
+            return self.number
+
+        def total(self):
+            return sum(i.price * i.quantity for i in self.items.all())
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  views.py: |
+    from django.contrib.auth.decorators import login_required
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Order, Product
+
+
+    def catalog(request):
+        products = (
+            Product.objects.filter(is_active=True)
+            .select_related("category")
+            .order_by("name")
+        )
+        return render(request, "shop/catalog.html", {"products": products})
+
+
+    @login_required
+    def order_detail(request, number):
+        order = get_object_or_404(Order, number=number, user=request.user)
+        return render(request, "shop/order.html", {"order": order})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog, name="catalog"),
+        path("orders/<str:number>/", views.order_detail, name="order"),
+    ]
+  templates/shop/catalog.html: |
+    <ul>{% for p in products %}<li>{{ p.name }} ({{ p.category.name }})</li>{% endfor %}</ul>
+  templates/shop/order.html: |
+    <h1>Заказ {{ order.number }}</h1>
+    <p>Итого: {{ order.total }} ₽</p>
+  tests.py: |
+    from django.test import TestCase
+
+    from .models import Category, Product
+
+
+    class CatalogTests(TestCase):
+        @classmethod
+        def setUpTestData(cls):
+            mice = Category.objects.create(name="Мыши")
+            pads = Category.objects.create(name="Коврики")
+            for i, cat in enumerate([mice, pads, mice]):
+                Product.objects.create(
+                    category=cat, name=f"Товар {i}", slug=f"p-{i}", price="100.00"
+                )
+
+        def test_catalog_lists_products(self):
+            self.assertContains(self.client.get("/catalog/"), "Товар 2 (Мыши)")
+solution:
+  tests.py: |
+    from django.test import TestCase
+
+    from .models import Category, Product
+
+
+    class CatalogTests(TestCase):
+        @classmethod
+        def setUpTestData(cls):
+            mice = Category.objects.create(name="Мыши")
+            pads = Category.objects.create(name="Коврики")
+            for i, cat in enumerate([mice, pads, mice]):
+                Product.objects.create(
+                    category=cat, name=f"Товар {i}", slug=f"p-{i}", price="100.00"
+                )
+
+        def test_catalog_lists_products(self):
+            self.assertContains(self.client.get("/catalog/"), "Товар 2 (Мыши)")
+
+        def test_catalog_queries(self):
+            with self.assertNumQueries(1):
+                self.client.get("/catalog/")
+check:
+  type: django
+  mutants:
+    - files:
+        views.py: |
+          from django.contrib.auth.decorators import login_required
+          from django.shortcuts import get_object_or_404, render
+
+          from .models import Order, Product
+
+
+          def catalog(request):
+              products = (
+                  Product.objects.filter(is_active=True)
+                  .order_by("name")
+              )
+              return render(request, "shop/catalog.html", {"products": products})
+
+
+          @login_required
+          def order_detail(request, number):
+              order = get_object_or_404(Order, number=number, user=request.user)
+              return render(request, "shop/order.html", {"order": order})
+      fail: "Ваши тесты не замечают, что категория каждого товара загружается отдельным запросом (N+1)."
+    - files:
+        views.py: |
+          from django.contrib.auth.decorators import login_required
+          from django.shortcuts import get_object_or_404, render
+
+          from .models import Order, Product
+
+
+          def catalog(request):
+              products = (
+                  Product.objects.filter(is_active=True)
+                  .prefetch_related("category")
+                  .order_by("name")
+              )
+              return render(request, "shop/catalog.html", {"products": products})
+
+
+          @login_required
+          def order_detail(request, number):
+              order = get_object_or_404(Order, number=number, user=request.user)
+              return render(request, "shop/order.html", {"order": order})
+      fail: "Ваши тесты не замечают, что категории загружаются вторым запросом."
+hints:
+  - "Какой метод TestCase считает запросы?"
+  - "`with self.assertNumQueries(1): self.client.get(\"/catalog/\")`."
+explanation: |
+  Без `select_related` каталог делает 1 + 3 запроса — по одному на категорию каждого из трёх товаров; с `prefetch_related` — два. Страница при этом выглядит так же, и тест содержимого проходит. `assertNumQueries(1)` падает и выводит список выполненных запросов. Данных в тесте несколько — на одном товаре N+1 был бы неотличим.

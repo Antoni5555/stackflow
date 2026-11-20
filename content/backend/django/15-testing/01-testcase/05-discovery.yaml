@@ -1,0 +1,15 @@
+title: "Тест, которого нет"
+type: quiz
+kind: multiple
+difficulty: 1
+pitfall: "unittest находит методы test_… в наследниках TestCase в модулях test*.py."
+statement: |
+  Какие из этих тестов **не** будут запущены `manage.py test`?
+options:
+  - "`def test_total(self)` в `class OrderTests(TestCase)` в `shop/tests.py`"
+  - "`def check_total(self)` в `class OrderTests(TestCase)` в `shop/tests.py`"
+  - "`def test_total(self)` в `class OrderTests` (без наследования от `TestCase`) в `shop/tests.py`"
+  - "`def test_total(self)` в `class OrderTests(TestCase)` в `shop/checks.py`"
+answer: [1, 2, 3]
+explanation: |
+  Запускаются методы с префиксом `test`, в классах-наследниках `unittest.TestCase` (в том числе `django.test.TestCase`), в модулях, подходящих под шаблон `test*.py`. Всё остальное молча пропускается — и тест «зелёный», потому что его нет.

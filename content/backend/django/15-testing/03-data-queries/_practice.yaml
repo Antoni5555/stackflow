@@ -1,0 +1,109 @@
+- title: Своя фабрика
+  text: |
+    Напишите фабрику `make_order(user=None, **kwargs)`, которая сама создаёт пользователя, если его не передали, и номер по счётчику. Создайте ей три заказа.
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from itertools import count
+
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Order
+
+    numbers = count(1)
+
+
+    def make_order(user=None, **kwargs):
+        n = next(numbers)
+        if user is None:
+            user = User.objects.create_user(f"user{n}")
+        kwargs.setdefault("number", f"T-{n}")
+        return Order.objects.create(user=user, **kwargs)
+
+
+    class FactoryTests(TestCase):
+        def test_three_orders(self):
+            for _ in range(3):
+                make_order()
+            self.assertEqual(Order.objects.count(), 3)
+            self.assertEqual(User.objects.count(), 3)
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_three_orders (shop.tests.FactoryTests.test_three_orders) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    OK
+    ```
+    Счётчик даёт уникальные номер и имя — `unique` не нарушается.
+- title: Сколько запросов у заказа
+  text: |
+    Закрепите, сколько запросов делает страница заказа вошедшего пользователя (сессия, пользователь, заказ, позиции).
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Category, Order, Product
+
+
+    class OrderQueriesTests(TestCase):
+        def test_order_page_queries(self):
+            anna = User.objects.create_user("anna")
+            Order.objects.create(user=anna, number="A-12")
+            self.client.force_login(anna)
+            with self.assertNumQueries(4):
+                self.client.get("/orders/A-12/")
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_order_page_queries (shop.tests.OrderQueriesTests.test_order_page_queries) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    OK
+    ```
+    Четыре запроса: сессия, пользователь, заказ и позиции для `order.total` в шаблоне. У вошедшего чтение сессии и пользователя — тоже запросы.
+- title: Где лишний запрос
+  text: |
+    Что покажет `assertNumQueries(1)` для каталога из двух товаров разных категорий, если во view нет `select_related`? Тест — на копии кода с этой поломкой.
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from django.test import TestCase
+
+    from .models import Category, Product
+
+
+    class CatalogQueriesTests(TestCase):
+        def test_queries(self):
+            for i, name in enumerate(["Мыши", "Коврики"]):
+                cat = Category.objects.create(name=name)
+                Product.objects.create(
+                    category=cat, name=f"P{i}",
+                    slug=f"p{i}", price="1",
+                )
+            with self.assertNumQueries(1):
+                self.client.get("/catalog/")
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_queries (shop.tests.CatalogQueriesTests.test_queries) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    OK
+    ```
+    Правильный каталог проходит этот тест. Если убрать `select_related`, будет «3 queries executed, 1 expected»: товары и по запросу на категорию каждого — проверьте сами, удалив строку во view.

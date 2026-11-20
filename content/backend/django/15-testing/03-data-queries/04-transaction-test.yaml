@@ -1,0 +1,15 @@
+title: "Проверить on_commit"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "В TestCase транзакция теста не коммитится — колбэки on_commit не выполняются без captureOnCommitCallbacks."
+statement: |
+  View отправляет письмо через `transaction.on_commit(...)`. Тест в `django.test.TestCase` вызывает view и проверяет `len(mail.outbox) == 1` — и падает: писем 0. Почему и как исправить?
+options:
+  - "Письма в тестах не отправляются вообще — проверить нельзя"
+  - "Транзакция теста не коммитится, поэтому on_commit не срабатывает; обернуть запрос в `with self.captureOnCommitCallbacks(execute=True):`"
+  - "Нужно вызвать `mail.send()` вручную"
+  - "Нужно добавить `time.sleep(1)`"
+answer: [1]
+explanation: |
+  `TestCase` откатывает транзакцию каждого теста, коммита нет — колбэки `on_commit` не вызываются. `captureOnCommitCallbacks(execute=True)` собирает их и выполняет на выходе из блока. Альтернатива — `TransactionTestCase`, где коммит настоящий, но тесты медленнее. Письма в тестах уходят в `mail.outbox` (бэкенд `locmem`).

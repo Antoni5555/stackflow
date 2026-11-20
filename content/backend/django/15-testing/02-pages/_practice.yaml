@@ -1,0 +1,99 @@
+- title: Шаблон каталога
+  text: |
+    Проверьте, что каталог рисует шаблон `shop/catalog.html` и отвечает 200.
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from django.test import TestCase
+
+
+    class CatalogTests(TestCase):
+        def test_template(self):
+            r = self.client.get("/catalog/")
+            self.assertEqual(r.status_code, 200)
+            self.assertTemplateUsed(r, "shop/catalog.html")
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_template (shop.tests.CatalogTests.test_template) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    OK
+    ```
+    Пустой каталог — тоже 200: товаров в тестовой базе нет.
+- title: Контекст страницы
+  text: |
+    Проверьте через `r.context`, что в каталог попал только активный товар.
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Category, Order, Product
+
+
+    class CatalogContextTests(TestCase):
+        def test_only_active(self):
+            cat = Category.objects.create(name="Мыши")
+            Product.objects.create(
+                category=cat, name="Мышь", slug="m",
+                price="1.00",
+            )
+            Product.objects.create(
+                category=cat, name="Старая", slug="o",
+                price="1.00",
+                is_active=False,
+            )
+            r = self.client.get("/catalog/")
+            names = [p.name for p in r.context["products"]]
+            self.assertEqual(names, ["Мышь"])
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_only_active (shop.tests.CatalogContextTests.test_only_active) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    OK
+    ```
+    `r.context` — контекст шаблона: проверка данных без разбора HTML.
+- title: Сумма на странице заказа
+  text: |
+    Проверьте, что владелец видит на странице заказа строку «Итого: 0 ₽» для пустого заказа.
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Category, Order, Product
+
+
+    class OrderPageTests(TestCase):
+        def test_total_on_page(self):
+            anna = User.objects.create_user("anna")
+            Order.objects.create(user=anna, number="A-12")
+            self.client.force_login(anna)
+            r = self.client.get("/orders/A-12/")
+            self.assertContains(r, "Итого: 0 ₽")
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_total_on_page (shop.tests.OrderPageTests.test_total_on_page) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    OK
+    ```
+    `force_login` — вход без пароля; `assertContains` проверяет и статус 200, и текст.

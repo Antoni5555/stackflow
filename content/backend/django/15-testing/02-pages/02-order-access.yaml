@@ -1,0 +1,196 @@
+title: "Тесты доступа к заказу"
+type: exercise
+difficulty: 2
+pitfall: "Тест «своё открывается» не ловит, что открывается и чужое: права проверяют отдельными тестами."
+statement: |
+  Страница заказа `/orders/<номер>/`: владелец видит заказ, чужой заказ — 404, гостя перенаправляет на `/accounts/login/?next=…`. Тест на свой заказ уже есть. Допишите тесты, которые заметят, если кто-то сломает права.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+
+        def __str__(self):
+            return self.number
+
+        def total(self):
+            return sum(i.price * i.quantity for i in self.items.all())
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  views.py: |
+    from django.contrib.auth.decorators import login_required
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Order, Product
+
+
+    def catalog(request):
+        products = (
+            Product.objects.filter(is_active=True)
+            .select_related("category")
+            .order_by("name")
+        )
+        return render(request, "shop/catalog.html", {"products": products})
+
+
+    @login_required
+    def order_detail(request, number):
+        order = get_object_or_404(Order, number=number, user=request.user)
+        return render(request, "shop/order.html", {"order": order})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog, name="catalog"),
+        path("orders/<str:number>/", views.order_detail, name="order"),
+    ]
+  templates/shop/catalog.html: |
+    <ul>{% for p in products %}<li>{{ p.name }} ({{ p.category.name }})</li>{% endfor %}</ul>
+  templates/shop/order.html: |
+    <h1>Заказ {{ order.number }}</h1>
+    <p>Итого: {{ order.total }} ₽</p>
+  tests.py: |
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Category, Order, Product
+
+
+    class PagesTests(TestCase):
+        @classmethod
+        def setUpTestData(cls):
+            cat = Category.objects.create(name="Мыши")
+            Product.objects.create(category=cat, name="Мышь", slug="mouse", price="1499.00")
+            Product.objects.create(
+                category=cat, name="Старая", slug="old", price="1.00", is_active=False
+            )
+            cls.anna = User.objects.create_user("anna")
+            cls.boris = User.objects.create_user("boris")
+            Order.objects.create(user=cls.anna, number="A-12")
+            Order.objects.create(user=cls.boris, number="A-13")
+
+        def test_own_order(self):
+            self.client.force_login(self.anna)
+            self.assertContains(self.client.get("/orders/A-12/"), "Заказ A-12")
+solution:
+  tests.py: |
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Category, Order, Product
+
+
+    class PagesTests(TestCase):
+        @classmethod
+        def setUpTestData(cls):
+            cat = Category.objects.create(name="Мыши")
+            Product.objects.create(category=cat, name="Мышь", slug="mouse", price="1499.00")
+            Product.objects.create(
+                category=cat, name="Старая", slug="old", price="1.00", is_active=False
+            )
+            cls.anna = User.objects.create_user("anna")
+            cls.boris = User.objects.create_user("boris")
+            Order.objects.create(user=cls.anna, number="A-12")
+            Order.objects.create(user=cls.boris, number="A-13")
+
+        def test_own_order(self):
+            self.client.force_login(self.anna)
+            self.assertContains(self.client.get("/orders/A-12/"), "Заказ A-12")
+
+        def test_foreign_order_404(self):
+            self.client.force_login(self.anna)
+            self.assertEqual(self.client.get("/orders/A-13/").status_code, 404)
+
+        def test_guest_redirected_to_login(self):
+            r = self.client.get("/orders/A-12/")
+            self.assertRedirects(
+                r, "/accounts/login/?next=/orders/A-12/", fetch_redirect_response=False
+            )
+check:
+  type: django
+  mutants:
+    - files:
+        views.py: |
+          from django.contrib.auth.decorators import login_required
+          from django.shortcuts import get_object_or_404, render
+
+          from .models import Order, Product
+
+
+          def catalog(request):
+              products = (
+                  Product.objects.filter(is_active=True)
+                  .select_related("category")
+                  .order_by("name")
+              )
+              return render(request, "shop/catalog.html", {"products": products})
+
+
+          @login_required
+          def order_detail(request, number):
+              order = get_object_or_404(Order, number=number)
+              return render(request, "shop/order.html", {"order": order})
+      fail: "Ваши тесты не замечают, что покупатель открывает чужой заказ."
+    - files:
+        views.py: |
+          from django.contrib.auth.decorators import login_required
+          from django.shortcuts import get_object_or_404, render
+
+          from .models import Order, Product
+
+
+          def catalog(request):
+              products = (
+                  Product.objects.filter(is_active=True)
+                  .select_related("category")
+                  .order_by("name")
+              )
+              return render(request, "shop/catalog.html", {"products": products})
+
+
+          def order_detail(request, number):
+              if not request.user.is_authenticated:
+                  return render(request, "shop/order.html", {"order": None})
+              order = get_object_or_404(Order, number=number, user=request.user)
+              return render(request, "shop/order.html", {"order": order})
+      fail: "Ваши тесты не замечают, что гостя больше не отправляют на страницу входа."
+hints:
+  - "Какие три вида посетителей есть у страницы заказа?"
+  - "Тест чужого заказа (`force_login(self.anna)`, `/orders/A-13/` → 404) и тест гостя (`assertRedirects(…, fetch_redirect_response=False)`)."
+explanation: |
+  Тест «владелец видит свой заказ» проходит и тогда, когда фильтр по пользователю убран, — это самая опасная поломка, и её ловит только тест на чужой заказ. Редирект гостя проверяет `assertRedirects`; `fetch_redirect_response=False` — потому что страницы входа в учебном проекте нет.

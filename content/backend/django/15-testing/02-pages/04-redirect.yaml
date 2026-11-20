@@ -1,0 +1,22 @@
+title: "assertContains на редирект"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "assertContains ждёт статус 200; редирект проверяют assertRedirects."
+statement: |
+  Тест гостя:
+
+  ```python
+  r = self.client.get("/orders/A-12/")
+  self.assertContains(r, "login")
+  ```
+
+  View отвечает гостю редиректом 302 на `/accounts/login/?next=/orders/A-12/`. Что будет с тестом?
+options:
+  - "Пройдёт: «login» есть в адресе"
+  - "Упадёт: `assertContains` ждёт статус 200, а пришёл 302"
+  - "Пройдёт, если тестовый клиент сам перешёл по редиректу"
+  - "Упадёт с ERROR: у ответа 302 нет содержимого"
+answer: [1]
+explanation: |
+  `assertContains` сначала проверяет статус (по умолчанию 200) — `AssertionError: 302 != 200 : Couldn't retrieve content: Response code was 302 (expected 200)`. Адрес редиректа лежит в заголовке `Location`, а не в теле. Для редиректов — `assertRedirects(r, "/accounts/login/?next=/orders/A-12/", fetch_redirect_response=False)`.

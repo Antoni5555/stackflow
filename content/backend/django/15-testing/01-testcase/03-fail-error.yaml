@@ -1,0 +1,22 @@
+title: "FAIL или ERROR"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "FAIL — не выполнилась проверка assert…, ERROR — тест упал исключением."
+statement: |
+  В выводе `manage.py test`:
+
+  ```
+  ERROR: test_guest_redirected (shop.tests.PagesTests.test_guest_redirected)
+  TypeError: Field 'id' expected a number but got <SimpleLazyObject: …AnonymousUser…>.
+  ```
+
+  Что это значит?
+options:
+  - "Проверка `assertRedirects` не выполнилась: редирект на другой адрес"
+  - "Тест упал исключением в коде — view обратился к базе с анонимным пользователем вместо редиректа на вход"
+  - "Тест пропущен"
+  - "Тестовая база не создалась"
+answer: [1]
+explanation: |
+  `FAIL` — проверка `self.assert…` не выполнилась. `ERROR` — исключение до проверки: здесь view без `@login_required` отфильтровал заказы по `AnonymousUser`, и Django не смог сравнить его с числовым `id`. Проверено в тренажёре.

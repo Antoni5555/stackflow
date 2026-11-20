@@ -1724,6 +1724,28 @@ def production_fig():
     f.save(out(DJ14 / "03-production" / "img" / "production.svg"))
 
 
+# ---------- Django 15: тесты ----------
+DJ15 = ROOT / "django" / "15-testing"
+
+
+def test_lifecycle():
+    f = Figure(860, 320, "manage.py test: тестовая база, данные класса и транзакция с откатом на каждый тест")
+    f.box(20, 20, 820, 36, "создать test_shop, применить миграции", "box2", "cs")
+    f.box(40, 70, 780, 36, "setUpTestData: категория, товар, пользователь — один раз на класс", "ok", "cs")
+    for i, name in enumerate(["test_empty_order_total_is_zero", "test_total_sums_items"]):
+        y = 120 + i * 60
+        f.box(60, y, 160, 44, "транзакция", "box", "cs")
+        f.arrow(f"M220 {y + 22}H246")
+        f.box(250, y, 120, 44, "setUp", "box", "cs")
+        f.arrow(f"M370 {y + 22}H396")
+        f.box(400, y, 290, 44, name, "box2", "cs")
+        f.arrow(f"M690 {y + 22}H716")
+        f.box(720, y, 100, 44, "откат", "err", "cs")
+    f.box(20, 250, 820, 36, "удалить тестовую базу", "box2", "cs")
+    f.text(20, 308, "Позиция, созданная во втором тесте, откатилась — первый тест её не видит, и наоборот.", "s")
+    f.save(out(DJ15 / "01-testcase" / "img" / "test-lifecycle.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3207,6 +3229,7 @@ if __name__ == "__main__":
                   atomic_fig, sql_injection,
                   middleware_chain, own_middleware, session_cart, signals_fig,
                   settings_split, xss_fig, production_fig,
+                  test_lifecycle,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

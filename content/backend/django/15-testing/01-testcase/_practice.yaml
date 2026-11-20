@@ -1,0 +1,103 @@
+- title: Строковое представление
+  text: |
+    Напишите тест, что `str(order)` — номер заказа. Модели и view — как в уроке; в тренажёре тесты пишут во вкладке `tests.py` и запускают кнопкой «Запустить тесты».
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Order
+
+
+    class OrderStrTests(TestCase):
+        def test_str_is_number(self):
+            user = User.objects.create_user("anna")
+            order = Order.objects.create(
+                user=user, number="A-12"
+            )
+            self.assertEqual(str(order), "A-12")
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_str_is_number (shop.tests.OrderStrTests.test_str_is_number) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    OK
+    ```
+    Данные, нужные одному тесту, создают прямо в нём.
+- title: Уникальный номер
+  text: |
+    Проверьте, что два заказа с одинаковым номером создать нельзя.
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from django.contrib.auth.models import User
+    from django.db import IntegrityError
+    from django.test import TestCase
+
+    from .models import Order
+
+
+    class OrderNumberTests(TestCase):
+        def test_number_is_unique(self):
+            user = User.objects.create_user("anna")
+            Order.objects.create(user=user, number="A-12")
+            with self.assertRaises(IntegrityError):
+                Order.objects.create(user=user, number="A-12")
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_number_is_unique (shop.tests.OrderNumberTests.test_number_is_unique) ... ok
+
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    OK
+    ```
+    `assertRaises` как контекстный менеджер — тест проходит, если внутри блока было это исключение.
+- title: Падающий тест
+  text: |
+    Что покажет тест, ожидающий у пустого заказа сумму 1?
+  answer: |
+    Ответ:
+
+    Файл `tests.py`:
+    ```python
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Order
+
+
+    class WrongTests(TestCase):
+        def test_empty_total(self):
+            user = User.objects.create_user("anna")
+            order = Order.objects.create(
+                user=user, number="A-1"
+            )
+            self.assertEqual(order.total(), 1)
+    ```
+    Вывод тестов (время — у вас своё):
+    ```
+    test_empty_total (shop.tests.WrongTests.test_empty_total) ... FAIL
+
+    ======================================================================
+    FAIL: test_empty_total (shop.tests.WrongTests.test_empty_total)
+    ----------------------------------------------------------------------
+    Traceback (most recent call last):
+      File "tests.py", line 13, in test_empty_total
+        self.assertEqual(order.total(), 1)
+    AssertionError: 0 != 1
+    ----------------------------------------------------------------------
+    Ran 1 test in …s
+
+    FAILED (failures=1)
+    ```
+    `sum([])` — `0`: слева то, что получилось, справа — ожидание теста. Здесь ошибается тест.

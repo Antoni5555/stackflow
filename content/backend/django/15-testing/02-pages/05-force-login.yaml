@@ -1,0 +1,15 @@
+title: "Войти в тесте"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "force_login входит без пароля и формы входа — быстро и не зависит от страницы входа."
+statement: |
+  Как в тесте войти под пользователем `anna`, созданным через `User.objects.create_user("anna")` (без пароля)?
+options:
+  - "`self.client.login(username=\"anna\", password=\"\")`"
+  - "`self.client.force_login(self.anna)`"
+  - "`self.client.post(\"/accounts/login/\", {...})`"
+  - "`request.user = self.anna`"
+answer: [1]
+explanation: |
+  `force_login` записывает пользователя в сессию клиента без проверки пароля и без запроса к странице входа. `client.login` проверяет пароль — у пользователя без пароля он непригоден. POST на форму входа тестирует саму форму, а не нужную страницу.

@@ -1,0 +1,302 @@
+title: "Тесты суммы заказа"
+type: exercise
+difficulty: 2
+pitfall: "Тест ловит ошибку, только если данные её проявляют: количество 2, цена позиции ≠ цене товара, две позиции."
+statement: |
+  `Order.total()` — сумма позиций заказа: цена **из позиции** (`OrderItem.price` — цена на момент покупки, она может отличаться от текущей цены товара) × количество. Тест для пустого заказа уже есть. Допишите в `tests.py` тесты так, чтобы они ловили ошибки в `total()`. Проверка запустит ваши тесты на правильном коде и на нескольких сломанных версиях `total()`.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        is_active = models.BooleanField(default=True)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+
+        def __str__(self):
+            return self.number
+
+        def total(self):
+            return sum(i.price * i.quantity for i in self.items.all())
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(Product, on_delete=models.PROTECT)
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  views.py: |
+    from django.contrib.auth.decorators import login_required
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Order, Product
+
+
+    def catalog(request):
+        products = (
+            Product.objects.filter(is_active=True)
+            .select_related("category")
+            .order_by("name")
+        )
+        return render(request, "shop/catalog.html", {"products": products})
+
+
+    @login_required
+    def order_detail(request, number):
+        order = get_object_or_404(Order, number=number, user=request.user)
+        return render(request, "shop/order.html", {"order": order})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog, name="catalog"),
+        path("orders/<str:number>/", views.order_detail, name="order"),
+    ]
+  templates/shop/catalog.html: |
+    <ul>{% for p in products %}<li>{{ p.name }} ({{ p.category.name }})</li>{% endfor %}</ul>
+  templates/shop/order.html: |
+    <h1>Заказ {{ order.number }}</h1>
+    <p>Итого: {{ order.total }} ₽</p>
+  tests.py: |
+    from decimal import Decimal
+
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Category, Order, OrderItem, Product
+
+
+    class OrderTotalTests(TestCase):
+        @classmethod
+        def setUpTestData(cls):
+            cat = Category.objects.create(name="Мыши")
+            cls.mouse = Product.objects.create(
+                category=cat, name="Мышь", slug="mouse", price="1499.00"
+            )
+            cls.user = User.objects.create_user("anna")
+
+        def setUp(self):
+            self.order = Order.objects.create(user=self.user, number="A-12")
+
+        def test_empty_order_total_is_zero(self):
+            self.assertEqual(self.order.total(), 0)
+solution:
+  tests.py: |
+    from decimal import Decimal
+
+    from django.contrib.auth.models import User
+    from django.test import TestCase
+
+    from .models import Category, Order, OrderItem, Product
+
+
+    class OrderTotalTests(TestCase):
+        @classmethod
+        def setUpTestData(cls):
+            cat = Category.objects.create(name="Мыши")
+            cls.mouse = Product.objects.create(
+                category=cat, name="Мышь", slug="mouse", price="1499.00"
+            )
+            cls.user = User.objects.create_user("anna")
+
+        def setUp(self):
+            self.order = Order.objects.create(user=self.user, number="A-12")
+
+        def test_empty_order_total_is_zero(self):
+            self.assertEqual(self.order.total(), 0)
+
+        def test_total_counts_quantity(self):
+            OrderItem.objects.create(
+                order=self.order, product=self.mouse, quantity=2, price="1499.00"
+            )
+            self.assertEqual(self.order.total(), Decimal("2998.00"))
+
+        def test_total_uses_price_from_item(self):
+            OrderItem.objects.create(
+                order=self.order, product=self.mouse, quantity=1, price="999.00"
+            )
+            self.assertEqual(self.order.total(), Decimal("999.00"))
+
+        def test_total_sums_all_items(self):
+            pad = Product.objects.create(
+                category=self.mouse.category, name="Коврик", slug="pad", price="490.00"
+            )
+            OrderItem.objects.create(order=self.order, product=self.mouse, quantity=1, price="1499.00")
+            OrderItem.objects.create(order=self.order, product=pad, quantity=1, price="490.00")
+            self.assertEqual(self.order.total(), Decimal("1989.00"))
+check:
+  type: django
+  mutants:
+    - files:
+        models.py: |
+          from django.contrib.auth.models import User
+          from django.db import models
+
+
+          class Category(models.Model):
+              name = models.CharField(max_length=100)
+
+              def __str__(self):
+                  return self.name
+
+
+          class Product(models.Model):
+              category = models.ForeignKey(
+                  Category, on_delete=models.PROTECT, related_name="products"
+              )
+              name = models.CharField(max_length=200)
+              slug = models.SlugField(unique=True)
+              price = models.DecimalField(max_digits=10, decimal_places=2)
+              is_active = models.BooleanField(default=True)
+
+              def __str__(self):
+                  return self.name
+
+
+          class Order(models.Model):
+              user = models.ForeignKey(
+                  User, on_delete=models.PROTECT, related_name="orders"
+              )
+              number = models.CharField(max_length=20, unique=True)
+
+              def __str__(self):
+                  return self.number
+
+              def total(self):
+                  return sum(i.price for i in self.items.all())
+
+
+          class OrderItem(models.Model):
+              order = models.ForeignKey(
+                  Order, on_delete=models.CASCADE, related_name="items"
+              )
+              product = models.ForeignKey(Product, on_delete=models.PROTECT)
+              quantity = models.PositiveIntegerField()
+              price = models.DecimalField(max_digits=10, decimal_places=2)
+      fail: "Ваши тесты не замечают, что количество не учитывается."
+    - files:
+        models.py: |
+          from django.contrib.auth.models import User
+          from django.db import models
+
+
+          class Category(models.Model):
+              name = models.CharField(max_length=100)
+
+              def __str__(self):
+                  return self.name
+
+
+          class Product(models.Model):
+              category = models.ForeignKey(
+                  Category, on_delete=models.PROTECT, related_name="products"
+              )
+              name = models.CharField(max_length=200)
+              slug = models.SlugField(unique=True)
+              price = models.DecimalField(max_digits=10, decimal_places=2)
+              is_active = models.BooleanField(default=True)
+
+              def __str__(self):
+                  return self.name
+
+
+          class Order(models.Model):
+              user = models.ForeignKey(
+                  User, on_delete=models.PROTECT, related_name="orders"
+              )
+              number = models.CharField(max_length=20, unique=True)
+
+              def __str__(self):
+                  return self.number
+
+              def total(self):
+                  return sum(i.product.price * i.quantity for i in self.items.all())
+
+
+          class OrderItem(models.Model):
+              order = models.ForeignKey(
+                  Order, on_delete=models.CASCADE, related_name="items"
+              )
+              product = models.ForeignKey(Product, on_delete=models.PROTECT)
+              quantity = models.PositiveIntegerField()
+              price = models.DecimalField(max_digits=10, decimal_places=2)
+      fail: "Ваши тесты не замечают, что берётся текущая цена товара, а не цена из позиции."
+    - files:
+        models.py: |
+          from django.contrib.auth.models import User
+          from django.db import models
+
+
+          class Category(models.Model):
+              name = models.CharField(max_length=100)
+
+              def __str__(self):
+                  return self.name
+
+
+          class Product(models.Model):
+              category = models.ForeignKey(
+                  Category, on_delete=models.PROTECT, related_name="products"
+              )
+              name = models.CharField(max_length=200)
+              slug = models.SlugField(unique=True)
+              price = models.DecimalField(max_digits=10, decimal_places=2)
+              is_active = models.BooleanField(default=True)
+
+              def __str__(self):
+                  return self.name
+
+
+          class Order(models.Model):
+              user = models.ForeignKey(
+                  User, on_delete=models.PROTECT, related_name="orders"
+              )
+              number = models.CharField(max_length=20, unique=True)
+
+              def __str__(self):
+                  return self.number
+
+              def total(self):
+                  return sum(i.price * i.quantity for i in self.items.all()[:1])
+
+
+          class OrderItem(models.Model):
+              order = models.ForeignKey(
+                  Order, on_delete=models.CASCADE, related_name="items"
+              )
+              product = models.ForeignKey(Product, on_delete=models.PROTECT)
+              quantity = models.PositiveIntegerField()
+              price = models.DecimalField(max_digits=10, decimal_places=2)
+      fail: "Ваши тесты не замечают, что считается только первая позиция."
+hints:
+  - "Какие данные заказа нужны, чтобы ошибка в количестве или цене изменила сумму?"
+  - "Позиция с `quantity=2`; позиция с ценой, отличной от цены товара; заказ из двух позиций."
+explanation: |
+  Тест ловит ошибку, только если входные данные её проявляют: при `quantity=1` «забыть количество» незаметно, при цене позиции, равной цене товара, — «взять цену товара», при одной позиции — «посчитать только первую». Поэтому эталон проверяет количество 2, цену позиции 999.00 при цене товара 1499.00 и сумму двух позиций. Каждый тест — одно поведение, его имя говорит, какое.
