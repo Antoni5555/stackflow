@@ -21,6 +21,7 @@
 Тайм-аут здесь не реализован: в браузере зависшую программу останавливает
 главная страница (перезапуском Web Worker), в check_tasks.py — signal.alarm через guard.
 """
+import asyncio
 import builtins
 import contextlib
 import importlib
@@ -31,6 +32,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import traceback
 
 
@@ -110,6 +112,86 @@ def reset_logging():
             logger.disabled = False
 
 
+# --- asyncio.run() в браузере ---
+# В Pyodide свой цикл событий (WebLoop) работает поверх JS, и asyncio.run() из обычного
+# (не async) вызова падает: «Cannot stack switch…». Код ученика выполняется именно так,
+# поэтому asyncio.run() подменяется циклом ниже: обычный цикл asyncio, у которого
+# «ожидание событий» — просто пауза до ближайшего таймера. Настоящего ввода-вывода
+# (сокетов) в тренажёре нет: сеть — через httpx.MockTransport, файлы — синхронно.
+
+DEADLOCK = 'все задачи ждут друг друга, и разбудить их некому — программа зависла бы'
+
+
+class _PauseSelector:
+    """«Селектор» без сокетов: ждёт до ближайшего таймера и событий не возвращает."""
+
+    def select(self, timeout):
+        if timeout is None:
+            raise RuntimeError(DEADLOCK)
+        if timeout > 0:
+            time.sleep(timeout)    # asyncio.sleep(1) идёт секунду — как в терминале
+        return []
+
+    def close(self):
+        pass
+
+
+class SyncLoop(asyncio.BaseEventLoop):
+    """Цикл событий без ввода-вывода: run_until_complete работает из обычного кода."""
+
+    def __init__(self):
+        super().__init__()
+        self._selector = _PauseSelector()
+
+    def _process_events(self, event_list):
+        pass
+
+    def _write_to_self(self):
+        pass
+
+
+def run_coroutine(main, *, debug=None):
+    """asyncio.run() на SyncLoop: те же правила — новый цикл, в конце отмена задач."""
+    if not asyncio.iscoroutine(main):
+        raise ValueError(f'a coroutine was expected, got {main!r}')
+    loop = SyncLoop()
+    if debug is not None:
+        loop.set_debug(debug)
+    # WebLoop Pyodide числится запущенным всегда — иначе свой цикл не стартует
+    outer = asyncio.events._get_running_loop()
+    asyncio.events._set_running_loop(None)
+    try:
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(main)
+    finally:
+        try:
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            if pending:
+                cancelled = asyncio.gather(*pending, return_exceptions=True)
+                loop.run_until_complete(cancelled)
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        finally:
+            asyncio.set_event_loop(None)
+            loop.close()
+            asyncio.events._set_running_loop(outer)
+
+
+@contextlib.contextmanager
+def sync_asyncio():
+    """В браузере asyncio.run() — на SyncLoop; в обычном Python — как есть."""
+    if sys.platform != 'emscripten':
+        yield
+        return
+    saved = asyncio.run
+    asyncio.run = run_coroutine
+    try:
+        yield
+    finally:
+        asyncio.run = saved
+
+
 STDIN_EOF = 'EOF when reading a line — строки в поле «Ввод» закончились'
 # Введённое значение в выводе — между этими символами: песочница покажет его серым,
 # как набранное с клавиатуры, и отличит от того, что напечатала программа
@@ -165,7 +247,7 @@ def execute(code, inputs='', override=None, guard=contextlib.nullcontext, stdin=
     try:
         reader = stdin_lines(stdin) if stdin is not None else contextlib.nullcontext()
         with guard(), recursion_limit(), contextlib.redirect_stdout(buffer), \
-                contextlib.redirect_stderr(buffer), reader:
+                contextlib.redirect_stderr(buffer), reader, sync_asyncio():
             exec(compile(code, STUDENT_FILE, 'exec'), ns)
         error = None
     except BaseException as exc:  # нужна любая ошибка ученика, даже SystemExit
@@ -208,7 +290,7 @@ def run_tests(code, task, guard=contextlib.nullcontext):
         for test in task['check']['tests']:
             env = {**ns, 'source': code, 'run': run}
             try:
-                with guard(), recursion_limit():
+                with guard(), recursion_limit(), sync_asyncio():
                     exec(test['code'], env)
             except TimeoutError:
                 failed.append(TIMEOUT_MESSAGE)
@@ -273,7 +355,7 @@ def run_pytest(files, test_file, guard=contextlib.nullcontext):
                     file.write(text)
             reset_logging()
             with guard(), contextlib.redirect_stdout(buffer), \
-                    contextlib.redirect_stderr(buffer):
+                    contextlib.redirect_stderr(buffer), sync_asyncio():
                 code = pytest.main([*PYTEST_ARGS, f'--rootdir={path}', test_file])
     except TimeoutError:
         return None, TIMEOUT_MESSAGE

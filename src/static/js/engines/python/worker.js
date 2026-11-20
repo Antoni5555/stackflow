@@ -77,6 +77,8 @@ let tzdataLoaded = false;
 // pytest с зависимостями (~1,4 МБ) — для запуска тестов ученика или если код его импортирует
 const PYTEST_ACTIONS = new Set(['tests', 'pytestCheck']);
 let pytestLoaded = false;
+// httpx (~0,3 МБ) — запросы к учебному API через httpx.MockTransport, без сети
+let httpxLoaded = false;
 
 async function loadExtraPackages(data) {
   const text = [data.code, data.inputs, JSON.stringify(data.task || ''), JSON.stringify(data.files || '')]
@@ -88,6 +90,10 @@ async function loadExtraPackages(data) {
   if (!pytestLoaded && (PYTEST_ACTIONS.has(data.action) || text.includes('pytest'))) {
     await self.pyodide.loadPackage('pytest');
     pytestLoaded = true;
+  }
+  if (!httpxLoaded && text.includes('httpx')) {
+    await self.pyodide.loadPackage('httpx');
+    httpxLoaded = true;
   }
 }
 

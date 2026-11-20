@@ -6,6 +6,7 @@
 import builtins
 import contextlib
 import importlib.util
+import io
 import signal
 import sys
 from pathlib import Path
@@ -338,3 +339,68 @@ def test_content_pytest_task(task):
     starter = runner.check_tests(
         {test_file: '', **task['files']}, test_file, mutants, guard=timeout_guard)
     assert starter['failed'], 'заготовка тестов ловит все сломанные версии'
+
+
+# --- asyncio.run() и httpx: в браузере asyncio.run() идёт на SyncLoop ---
+
+SHOP_API = (
+    'import httpx\n\n'
+    'def handler(request):\n'
+    '    if request.url.path == "/products/1":\n'
+    '        return httpx.Response(200, json={"id": 1, "name": "Чайник"})\n'
+    '    return httpx.Response(404, json={"detail": "Not found"})\n\n'
+    'transport = httpx.MockTransport(handler)\n'
+    'URL = "https://api.shop.test"\n'
+)
+
+
+@pytest.fixture
+def browser(monkeypatch):
+    """Как в Pyodide: sync_asyncio подменяет asyncio.run на run_coroutine."""
+    monkeypatch.setattr(runner.sys, 'platform', 'emscripten')
+
+
+def test_sync_loop_runs_tasks_timers_and_cancels_the_rest():
+    import asyncio
+
+    async def work(n, delay):
+        await asyncio.sleep(delay)
+        print(n)
+        return n
+
+    async def main():
+        asyncio.create_task(asyncio.sleep(10))      # не дождались — отменится
+        return await asyncio.gather(work(1, 0.03), work(2, 0.01))
+
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        assert runner.run_coroutine(main()) == [1, 2]
+    assert output.getvalue() == '2\n1\n'           # раньше проснулась короткая пауза
+
+    async def stuck():
+        await asyncio.get_running_loop().create_future()
+
+    with pytest.raises(RuntimeError, match='разбудить их некому'):
+        runner.run_coroutine(stuck())
+
+
+def test_asyncio_run_in_browser_and_httpx_mock_transport(browser):
+    import asyncio
+    original = asyncio.run
+    code = (
+        'import asyncio\n\n'
+        'async def main():\n'
+        '    async with httpx.AsyncClient(transport=transport, base_url=URL) as c:\n'
+        '        found, missing = await asyncio.gather(\n'
+        '            c.get("/products/1"), c.get("/products/2"))\n'
+        '    print(found.json()["name"], missing.status_code)\n\n'
+        'asyncio.run(main())\n'
+        'with httpx.Client(transport=transport, base_url=URL) as c:\n'
+        '    c.get("/products/2").raise_for_status()\n'
+    )
+    result = runner.run_program(code, SHOP_API)
+
+    assert result['output'] == 'Чайник 404\n'
+    assert result['error'].splitlines()[-2].startswith('httpx.HTTPStatusError')
+    assert 'File "main.py", line 11' in result['error']
+    assert asyncio.run is original          # подмена — только на время запуска
