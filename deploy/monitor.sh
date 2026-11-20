@@ -1,47 +1,78 @@
 #!/bin/sh
-# Раз в 10 минут (cron): диск, база и главная страница. О проблеме пишет в Telegram
-# один раз, когда она появилась, и ещё раз — когда прошла.
+# Раз в 10 минут (cron): диск, контейнеры и главная страница. О проблеме пишет
+# в Telegram (notify.sh) один раз, когда она появилась, и ещё раз — когда прошла.
 #
-#   */10 * * * * sh ~/stackflow/monitor.sh
+#   */10 * * * * sh ~/stackflow/monitor.sh >> ~/monitor.log 2>&1
 #
-# Токен и чат — из файла с TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID (MONITOR_ENV).
+# Токен и чат — в ~/.notify.env (TG_TOKEN, TG_CHAT_ID; права 600).
 set -u
 
-ENV_FILE="${MONITOR_ENV:-$HOME/contentflow-bot/.env}"
+cd "$(dirname "$0")"
+. "${NOTIFY_ENV:-$HOME/.notify.env}"
+export TG_TOKEN TG_CHAT_ID
 STATE="$HOME/.monitor-state"
 DISK_LIMIT="${DISK_LIMIT:-80}"
-cd "$(dirname "$0")"
+SITE_URL="${SITE_URL:-https://stack-flow.ru}"
 
-TOKEN=$(grep '^TELEGRAM_BOT_TOKEN=' "$ENV_FILE" | cut -d= -f2-)
-CHAT=$(grep '^TELEGRAM_CHAT_ID=' "$ENV_FILE" | cut -d= -f2-)
+esc() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'; }
 
-problems=""
-disk=$(df --output=pcent / | tail -1 | tr -dc 0-9)
-[ "$disk" -ge "$DISK_LIMIT" ] && problems="$problems
-• диск занят на $disk% (порог $DISK_LIMIT%)"
-
-db=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q db)" 2>/dev/null)
-[ "$db" = "healthy" ] || problems="$problems
-• база: ${db:-не запущена}"
-
-code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://stack-flow.ru/)
-[ "$code" = "200" ] || problems="$problems
-• главная страница отвечает $code"
-
-send() {
-    # Telegram с сервера иногда рвёт соединение — три попытки
-    for _ in 1 2 3; do
-        curl -s --max-time 20 -o /dev/null -f "https://api.telegram.org/bot$TOKEN/sendMessage" \
-            --data-urlencode "chat_id=$CHAT" --data-urlencode "text=$1" && return 0
-        sleep 10
+# Проблемы — по строке: «down|…» сайт не работает, «warn|…» пока работает
+check() {
+    disk=$(df --output=pcent / | tail -1 | tr -dc 0-9)
+    [ "$disk" -ge "$DISK_LIMIT" ] && echo "warn|Диск занят на $disk % (порог $DISK_LIMIT %)"
+    for svc in db web nginx redis; do
+        id=$(docker compose ps -q "$svc" 2>/dev/null)
+        st=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id" 2>/dev/null)
+        case "$st" in healthy|running) ;; *) echo "down|Контейнер $svc: ${st:-не запущен}" ;; esac
     done
-    return 1
+    res=$(curl -s -o /dev/null -w '%{http_code} %{time_total}' --max-time 20 "$SITE_URL/")
+    [ "${res%% *}" = "200" ] || echo "down|Главная страница: HTTP ${res%% *} (за ${res#* } с)"
+}
+
+problems=$(check)
+# Перезапуск контейнера при деплое занимает до минуты — тревога, только если не прошло
+if [ -n "$problems" ] && [ "$problems" != "$(cat "$STATE" 2>/dev/null)" ]; then
+    sleep 90
+    problems=$(check)
+fi
+
+server_state() {
+    df -h --output=pcent,avail,size / | tail -1 | awk '{print "Диск: " $1 " (свободно " $2 " из " $3 ")"}'
+    free -m | awk '/^Mem:/ {printf "Память: занято %d из %d МБ\n", $3, $2}'
+    echo "Нагрузка: $(cut -d' ' -f1-3 /proc/loadavg) · без перезагрузки $(awk '{print int($1/86400)}' /proc/uptime) дн."
+    printf 'Контейнеры: '
+    for svc in web nginx db redis; do
+        st=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+            "$(docker compose ps -q "$svc" 2>/dev/null)" 2>/dev/null)
+        case "$st" in healthy|running) printf '%s ✅ ' "$svc" ;; *) printf '%s ❌ ' "$svc" ;; esac
+    done
+    echo
 }
 
 if [ -n "$problems" ]; then
     # одно и то же не повторяем; новое сообщение — если набор проблем изменился
     [ "$problems" = "$(cat "$STATE" 2>/dev/null)" ] && exit 0
-    send "⚠️ stack-flow.ru:$problems" && printf '%s' "$problems" > "$STATE"
+    if echo "$problems" | grep -q '^down|'; then level=down; event='Сайт не работает'
+    else level=warn; event='Нужно внимание'; fi
+    {
+        echo '<b>Проблемы</b>'
+        echo "$problems" | cut -d'|' -f2- | esc | sed 's/^/• /'
+        echo
+        echo '<b>Сервер</b>'
+        server_state | esc
+        echo
+        echo 'Проверить: <code>ssh deploy@2.58.127.115</code> → <code>cd ~/stackflow &amp;&amp; docker compose ps</code>'
+    } | sh notify.sh "$level" "$event" && { printf '%s' "$problems" > "$STATE"; date +%s > "$STATE.since"; }
 elif [ -s "$STATE" ]; then
-    send "✅ stack-flow.ru: всё снова в порядке (диск $disk%)" && : > "$STATE"
+    since=$(cat "$STATE.since" 2>/dev/null || date +%s)
+    mins=$(( ($(date +%s) - since) / 60 ))
+    {
+        echo '<b>Было</b>'
+        cut -d'|' -f2- "$STATE" | esc | sed 's/^/• /'
+        echo
+        echo "Длительность сбоя: около $mins мин"
+        echo
+        echo '<b>Сервер</b>'
+        server_state | esc
+    } | sh notify.sh up 'Снова работает' && { : > "$STATE"; rm -f "$STATE.since"; }
 fi

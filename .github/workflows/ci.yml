@@ -125,7 +125,7 @@ jobs:
           scp docker-compose.prod.yml "$SSH_TARGET:$DEPLOY_DIR/docker-compose.yml"
           scp deploy/deploy.sh "$SSH_TARGET:$DEPLOY_DIR/deploy.sh"
           scp deploy/backup.sh "$SSH_TARGET:$DEPLOY_DIR/backup.sh"
-          scp deploy/monitor.sh "$SSH_TARGET:$DEPLOY_DIR/monitor.sh"
+          scp deploy/monitor.sh deploy/notify.sh "$SSH_TARGET:$DEPLOY_DIR/"
       - name: Вход сервера в GHCR
         # Временный токен этого запуска CI: им сервер скачает образы
         run: |
@@ -137,3 +137,46 @@ jobs:
         # Токен уже не действует после этого запуска — не оставляем его на сервере
         if: always()
         run: ssh "$SSH_TARGET" docker logout ghcr.io
+
+  # Итог запуска в Telegram (docs/notifications.md): всегда после пуша в main —
+  # и при успехе, и при падении любого этапа. Без секрета TG_TOKEN пропускается.
+  notify:
+    needs: [lint, tests, images, deploy]
+    if: >-
+      always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    env:
+      TG_TOKEN: ${{ secrets.TG_TOKEN }}
+      TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # сообщение коммита — через env, а не подстановкой в скрипт
+      COMMIT_MSG: ${{ github.event.head_commit.message }}
+      R_LINT: ${{ needs.lint.result }}
+      R_TESTS: ${{ needs.tests.result }}
+      R_IMAGES: ${{ needs.images.result }}
+      R_DEPLOY: ${{ needs.deploy.result }}
+    steps:
+      - uses: actions/checkout@v7
+        if: env.TG_TOKEN != ''
+      - name: Сообщение
+        if: env.TG_TOKEN != ''
+        run: |
+          mark() { case "$1" in success) echo '✅' ;; skipped) echo '⏭' ;; cancelled) echo '⏹' ;; *) echo '❌' ;; esac; }
+          esc() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'; }
+          started=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)
+          secs=$(( $(date +%s) - $(date -d "$started" +%s) ))
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          commit_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+          if [ "$R_DEPLOY" = success ]; then level=ok; event='Деплой завершён'
+          elif [ "$R_DEPLOY" = skipped ] && [ "$R_IMAGES" = success ]; then level=info; event='Сборка без деплоя'
+          else level=fail; event='Деплой не прошёл'; fi
+          {
+            echo "Коммит: <a href=\"$commit_url\">${GITHUB_SHA:0:7}</a> — $(printf '%s' "$COMMIT_MSG" | head -1 | esc)"
+            echo "Автор: $GITHUB_ACTOR · ветка ${GITHUB_REF_NAME}"
+            echo "Этапы: проверка $(mark "$R_LINT") · тесты $(mark "$R_TESTS") · образы $(mark "$R_IMAGES") · выкатка $(mark "$R_DEPLOY")"
+            echo "Длительность: $((secs / 60)) мин $((secs % 60)) с"
+            [ "$level" = fail ] && echo && echo "Сайт работает на прошлой версии. Что упало — в логе сборки."
+          } | LINKS="<a href=\"https://stack-flow.ru\">Открыть сайт</a> · <a href=\"$run_url\">Лог сборки</a>" \
+            sh deploy/notify.sh "$level" "$event"
