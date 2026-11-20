@@ -5,6 +5,7 @@ runner.py настраивает Django своими settings.configure(), а в
 Вход (stdin) — [{name, files, solution, setup?, settings?, check}],
 выход — {name: [замечания]}.
 """
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -72,5 +73,7 @@ def verify(task):
 
 if __name__ == '__main__':
     tasks = json.load(sys.stdin)
-    found = {task['name']: verify(task) for task in tasks}
+    # print() в коде задачи не должен попасть в stdout: там только JSON с результатом
+    with contextlib.redirect_stdout(sys.stderr):
+        found = {task['name']: verify(task) for task in tasks}
     print(json.dumps(found, ensure_ascii=False))

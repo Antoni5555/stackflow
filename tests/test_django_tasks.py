@@ -90,9 +90,12 @@ def test_example_tasks_are_verified():
              'fail': 'то же самое'}]}},
         {'name': 'syntax', **tests_task, 'check': {'type': 'django', 'mutants': [
             {'files': {'views.py': 'def product_list(\n'}, 'fail': 'не собирается'}]}},
+        # print() в коде задачи не портит JSON с результатом
+        {'name': 'prints', **good, 'solution': {'views.py': FIXED_VIEWS.replace(
+            '(request):\n', '(request):\n    print("hi")\n')}},
     ])
 
-    assert result['good'] == [] and result['tests'] == []
+    assert result['good'] == [] and result['tests'] == [] and result['prints'] == []
     assert result['trivial'] == [
         'заготовка уже проходит все тесты — задача решается без изменений']
     assert result['broken'][0].startswith('эталон не собрался — load:')

@@ -117,8 +117,45 @@ def configure():
 
 # --- Приложение ученика ---
 
+# Модули Django, где объявлены встроенные сигналы: к ним ученик подключает приёмники
+SIGNAL_MODULES = (
+    'django.db.models.signals', 'django.core.signals', 'django.db.backends.signals',
+    'django.contrib.auth.signals', 'django.test.signals',
+)
+
+
+def is_student_code(func):
+    return (getattr(func, '__module__', None) or '').split('.')[0] == APP
+
+
+def disconnect_student_receivers():
+    """Отключить приёмники сигналов из модулей shop.* прошлого запуска.
+
+    Модули выгружаются, а приёмники остаются в списках сигналов Django: приёмник
+    без sender срабатывал бы и в следующих запусках (и ронял migrate), даже когда
+    ученик его уже исправил или удалил.
+    """
+    import weakref
+    from django.dispatch import Signal
+
+    for module_name in SIGNAL_MODULES:
+        module = importlib.import_module(module_name)
+        for signal in vars(module).values():
+            if not isinstance(signal, Signal):
+                continue
+            with signal.lock:
+                signal.receivers = [
+                    item for item in signal.receivers
+                    if not is_student_code(
+                        item[1]() if isinstance(item[1], weakref.ReferenceType)
+                        else item[1])
+                ]
+                signal.sender_receivers_cache.clear()
+
+
 def unload_app():
-    """Выгрузить приложение прошлого запуска: модули, модели, кэши URL и шаблонов."""
+    """Выгрузить приложение прошлого запуска: модули, модели, приёмники сигналов,
+    кэши URL и шаблонов."""
     global _loaded
     from django.apps import apps
     if _loaded:
@@ -128,6 +165,7 @@ def unload_app():
     from django.contrib import admin
     for model in [m for m in admin.site._registry if m._meta.app_label == APP]:
         del admin.site._registry[model]
+    disconnect_student_receivers()
     for name in list(sys.modules):
         if name == APP or name.startswith(f'{APP}.'):
             del sys.modules[name]

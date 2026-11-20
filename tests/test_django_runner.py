@@ -372,3 +372,23 @@ def test_bundle_has_code_and_only_needed_translations(tmp_path, monkeypatch):
 ])
 def test_bundle_skips(path, skipped):
     assert build_django_bundle.skip(path) is skipped
+
+
+def test_signal_receivers_of_previous_run_are_disconnected():
+    """Приёмник без sender из прошлого запуска не срабатывает в следующем:
+    ученик исправил код — ошибка уходит без перезагрузки страницы."""
+    broken = {**FILES, 'models.py': FILES['models.py'] + (
+        '\nfrom django.db.models.signals import post_save\n'
+        'from django.dispatch import receiver\n\n'
+        '@receiver(post_save)\n'
+        'def touch(sender, instance, **kwargs):\n'
+        '    instance.category   # у Category такого поля нет\n'
+    )}
+    first, second = run_all(
+        {'files': broken, 'setup': SETUP, 'requests': [{'path': '/products/'}]},
+        {'files': FILES, 'setup': SETUP, 'requests': [{'path': '/products/'}]},
+    )
+
+    assert first.get('stage') == 'migrate' and 'AttributeError' in first['error']
+    assert 'stage' not in second
+    assert second['requests'][0]['status'] == 200
