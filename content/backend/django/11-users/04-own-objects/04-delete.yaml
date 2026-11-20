@@ -1,0 +1,101 @@
+title: "Отменить чужой заказ"
+type: exercise
+difficulty: 2
+pitfall: "Ограничение владельцем нужно во всех view с объектом — и в изменении, и в удалении."
+statement: |
+  Просмотр заказов уже защищён, а отмена `/orders/<pk>/cancel/` (`DeleteView`) — нет: Анна может отменить заказ Бориса. Исправьте класс: чужой заказ — 404 и не удаляется, свой — удаляется.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+        total = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.contrib.auth.mixins import LoginRequiredMixin
+    from django.urls import reverse_lazy
+    from django.views.generic import DeleteView
+
+    from .models import Order
+
+
+    class OrderCancel(LoginRequiredMixin, DeleteView):
+        model = Order
+        success_url = reverse_lazy("orders")
+  urls.py: |
+    from django.http import HttpResponse
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/", lambda request: HttpResponse("заказы"), name="orders"),
+        path("orders/<int:pk>/cancel/", views.OrderCancel.as_view(), name="cancel"),
+    ]
+  templates/shop/order_confirm_delete.html: |
+    <form method="post">{% csrf_token %}<p>Отменить заказ {{ object }}?</p><button>Отменить</button></form>
+setup: |
+  from django.contrib.auth.models import Group, Permission
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00")
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00")
+  anna = User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  boris = User.objects.create_user("boris", "boris@shop.example", "boris-pass-1")
+  olga = User.objects.create_user("olga", "olga@shop.example", "olga-pass-1")
+  managers = Group.objects.create(name="Менеджеры")
+  managers.permissions.add(Permission.objects.get(codename="change_product"))
+  olga.groups.add(managers)
+  Order.objects.create(user=anna, number="A-12", total="66489.00")
+  Order.objects.create(user=anna, number="A-14", total="3490.00")
+  Order.objects.create(user=boris, number="A-13", total="980.00")
+solution:
+  views.py: |
+    from django.contrib.auth.mixins import LoginRequiredMixin
+    from django.urls import reverse_lazy
+    from django.views.generic import DeleteView
+
+    from .models import Order
+
+
+    class OrderCancel(LoginRequiredMixin, DeleteView):
+        model = Order
+        success_url = reverse_lazy("orders")
+
+        def get_queryset(self):
+            return Order.objects.filter(user=self.request.user)
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.get(username="anna"))
+        pk = Order.objects.get(number="A-13").pk
+        r = client.post(f"/orders/{pk}/cancel/")
+        assert r.status_code == 404 and Order.objects.filter(pk=pk).exists()
+      fail: "Чужой заказ: 404, заказ остаётся."
+    - code: |
+        client.force_login(User.objects.get(username="anna"))
+        pk = Order.objects.get(number="A-12").pk
+        r = client.post(f"/orders/{pk}/cancel/")
+        assert r.status_code == 302 and not Order.objects.filter(pk=pk).exists()
+      fail: "Свой заказ Анна отменяет."
+hints:
+  - "Где DeleteView ищет объект?"
+  - "`get_queryset()` с `Order.objects.filter(user=self.request.user)`."
+explanation: |
+  Защитили просмотр — а изменение и удаление открывают по тому же `pk`. `DeleteView` находит объект в `get_queryset()`: с фильтром по владельцу чужой заказ не найдётся — 404 и на GET, и на POST. Удобно вынести этот `get_queryset` в миксин и подключить ко всем view заказов.

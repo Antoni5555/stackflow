@@ -1,0 +1,40 @@
+title: "Заказ ссылается не на того пользователя"
+type: fix
+difficulty: 2
+pitfall: "В проекте со своей моделью пользователя связь — settings.AUTH_USER_MODEL, а не auth.User."
+statement: |
+  В проекте своя модель пользователя `accounts.User` (`AUTH_USER_MODEL = "accounts.User"`), но модель заказа ссылается на стандартный `User`. Системная проверка: `shop.Order.user: (fields.E301) Field defines a relation with the model 'auth.User', which has been swapped out.` Исправьте `shop/models.py`: связь с текущей моделью пользователя из настроек.
+files:
+  shop/models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="orders")
+        number = models.CharField(max_length=20, unique=True)
+check:
+  type: rules
+  rules:
+    - must_not_match: 'from django\.contrib\.auth\.models import User'
+      fail: "Стандартный User импортировать не нужно — в проекте своя модель."
+    - must_match: 'ForeignKey\(\s*settings\.AUTH_USER_MODEL'
+      fail: "Связь укажите через settings.AUTH_USER_MODEL."
+    - must_match: '^from django\.conf import settings'
+      fail: "Импортируйте settings: from django.conf import settings."
+solution:
+  shop/models.py: |
+    from django.conf import settings
+    from django.db import models
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+hints:
+  - "Как сослаться на модель пользователя, не называя её класс?"
+  - "`models.ForeignKey(settings.AUTH_USER_MODEL, …)` и `from django.conf import settings`."
+explanation: |
+  С `AUTH_USER_MODEL = "accounts.User"` стандартная `auth.User` в проекте «заменена» (swapped): ссылка на неё — ошибка `fields.E301`. В связях указывают строку из настроек — `settings.AUTH_USER_MODEL`: модель подставится любая, какую задал проект. В коде вне моделей — `get_user_model()`.

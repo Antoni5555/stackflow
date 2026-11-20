@@ -1,0 +1,136 @@
+title: "Вернуть туда, куда шёл"
+type: exercise
+difficulty: 3
+pitfall: "Адрес next проверяют url_has_allowed_host_and_scheme — иначе открытый редирект на чужой сайт."
+statement: |
+  Гостя со страницы `/orders/` отправляют на вход `/login/` с полем `next=/orders/`, но после входа он всегда попадает на `/me/`. Сделайте переход на `next`, если это адрес вашего сайта; чужой адрес (`https://evil.example/`) — игнорировать и вести на `/me/`.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+        total = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.contrib.auth import authenticate, login
+    from django.http import HttpResponse
+    from django.shortcuts import redirect, render
+
+
+    def sign_in(request):
+        if request.method == "POST":
+            user = authenticate(
+                request,
+                username=request.POST["username"],
+                password=request.POST["password"],
+            )
+            if user is not None:
+                login(request, user)
+                return redirect("me")
+        return render(request, "shop/login.html")
+
+
+    def me(request):
+        if request.user.is_authenticated:
+            return HttpResponse(f"Вы вошли как {request.user.username}")
+        return HttpResponse("Гость")
+
+
+    def orders(request):
+        return HttpResponse("заказы")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("login/", views.sign_in, name="login"),
+        path("me/", views.me, name="me"),
+        path("orders/", views.orders, name="orders"),
+    ]
+  templates/shop/login.html: |
+    <form method="post">{% csrf_token %}<input name="username"><input name="password" type="password"><input type="hidden" name="next" value="{{ request.GET.next }}"><button>Войти</button></form>
+setup: |
+  from django.contrib.auth.models import Group, Permission
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00")
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00")
+  anna = User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  boris = User.objects.create_user("boris", "boris@shop.example", "boris-pass-1")
+  olga = User.objects.create_user("olga", "olga@shop.example", "olga-pass-1")
+  managers = Group.objects.create(name="Менеджеры")
+  managers.permissions.add(Permission.objects.get(codename="change_product"))
+  olga.groups.add(managers)
+  Order.objects.create(user=anna, number="A-12", total="66489.00")
+  Order.objects.create(user=anna, number="A-14", total="3490.00")
+  Order.objects.create(user=boris, number="A-13", total="980.00")
+solution:
+  views.py: |
+    from django.contrib.auth import authenticate, login
+    from django.http import HttpResponse
+    from django.shortcuts import redirect, render
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+
+    def sign_in(request):
+        if request.method == "POST":
+            user = authenticate(
+                request,
+                username=request.POST["username"],
+                password=request.POST["password"],
+            )
+            if user is not None:
+                login(request, user)
+                next_url = request.POST.get("next", "")
+                if url_has_allowed_host_and_scheme(
+                    next_url, allowed_hosts={request.get_host()}
+                ):
+                    return redirect(next_url)
+                return redirect("me")
+        return render(request, "shop/login.html")
+
+
+    def me(request):
+        if request.user.is_authenticated:
+            return HttpResponse(f"Вы вошли как {request.user.username}")
+        return HttpResponse("Гость")
+
+
+    def orders(request):
+        return HttpResponse("заказы")
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.post("/login/", {"username": "anna", "password": "anna-pass-1", "next": "/orders/"})
+        assert r.status_code == 302 and r["Location"] == "/orders/"
+      fail: "С next=/orders/ после входа — переход на /orders/."
+    - code: |
+        r = client.post("/login/", {"username": "anna", "password": "anna-pass-1", "next": "https://evil.example/"})
+        assert r["Location"] == "/me/"
+      fail: "Чужой адрес в next нельзя использовать — это открытый редирект; ведите на /me/."
+    - code: |
+        r = client.post("/login/", {"username": "anna", "password": "anna-pass-1"})
+        assert r["Location"] == "/me/"
+      fail: "Без next — переход на /me/."
+hints:
+  - "Как проверить, что адрес ведёт на ваш сайт?"
+  - "`url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()})` из `django.utils.http`."
+explanation: |
+  `redirect(request.POST["next"])` без проверки — открытый редирект: письмо со ссылкой `…/login/?next=https://evil.example/` приведёт пользователя после настоящего входа на фишинговую копию. `url_has_allowed_host_and_scheme` пропускает относительные адреса и адреса с разрешённым хостом. `LoginView` делает эту проверку сам.

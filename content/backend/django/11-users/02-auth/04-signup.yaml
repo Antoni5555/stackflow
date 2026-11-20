@@ -1,0 +1,121 @@
+title: "Регистрация"
+type: exercise
+difficulty: 2
+pitfall: "UserCreationForm проверяет имя и пароли и сохраняет пароль хешем."
+statement: |
+  Регистрация `/signup/` принимает `username`, `password1`, `password2`. Сейчас пароль сохраняется открытым текстом (войти потом нельзя), а разные пароли и занятое имя не проверяются. Перепишите view на `UserCreationForm`: при ошибках — та же страница с ошибками, при успехе — вход и переход на `/me/`.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+        total = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.contrib.auth import login
+    from django.contrib.auth.models import User
+    from django.http import HttpResponse
+    from django.shortcuts import redirect, render
+
+
+    def signup(request):
+        if request.method == "POST":
+            user = User.objects.create(
+                username=request.POST["username"],
+                password=request.POST["password1"],
+            )
+            login(request, user)
+            return redirect("me")
+        return render(request, "shop/signup.html", {"form": None})
+
+
+    def me(request):
+        if request.user.is_authenticated:
+            return HttpResponse(f"Вы вошли как {request.user.username}")
+        return HttpResponse("Гость")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("signup/", views.signup, name="signup"),
+        path("me/", views.me, name="me"),
+    ]
+  templates/shop/signup.html: |
+    <form method="post">{% csrf_token %}{{ form.as_p }}<button>Зарегистрироваться</button></form>
+setup: |
+  from django.contrib.auth.models import Group, Permission
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00")
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00")
+  anna = User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  boris = User.objects.create_user("boris", "boris@shop.example", "boris-pass-1")
+  olga = User.objects.create_user("olga", "olga@shop.example", "olga-pass-1")
+  managers = Group.objects.create(name="Менеджеры")
+  managers.permissions.add(Permission.objects.get(codename="change_product"))
+  olga.groups.add(managers)
+  Order.objects.create(user=anna, number="A-12", total="66489.00")
+  Order.objects.create(user=anna, number="A-14", total="3490.00")
+  Order.objects.create(user=boris, number="A-13", total="980.00")
+solution:
+  views.py: |
+    from django.contrib.auth import login
+    from django.contrib.auth.forms import UserCreationForm
+    from django.contrib.auth.models import User
+    from django.http import HttpResponse
+    from django.shortcuts import redirect, render
+
+
+    def signup(request):
+        form = UserCreationForm(request.POST or None)
+        if request.method == "POST" and form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect("me")
+        return render(request, "shop/signup.html", {"form": form})
+
+
+    def me(request):
+        if request.user.is_authenticated:
+            return HttpResponse(f"Вы вошли как {request.user.username}")
+        return HttpResponse("Гость")
+check:
+  type: django
+  tests:
+    - code: |
+        from django.contrib.auth import authenticate
+        r = client.post("/signup/", {"username": "vera", "password1": "vera-pass-1", "password2": "vera-pass-1"})
+        assert r.status_code == 302 and client.get("/me/").content.decode() == "Вы вошли как vera"
+        assert authenticate(username="vera", password="vera-pass-1") is not None
+      fail: "После регистрации пользователь должен войти, а пароль — подходить для входа (храниться хешем)."
+    - code: |
+        r = client.post("/signup/", {"username": "vera", "password1": "vera-pass-1", "password2": "other"})
+        assert r.status_code == 200 and "Введенные пароли не совпадают." in r.content.decode()
+        assert not User.objects.filter(username="vera").exists()
+      fail: "При разных паролях — ошибка «Введенные пароли не совпадают.», пользователь не создаётся."
+    - code: |
+        r = client.post("/signup/", {"username": "anna", "password1": "x-pass-123", "password2": "x-pass-123"})
+        assert "Пользователь с таким именем уже существует." in r.content.decode()
+      fail: "Занятое имя — ошибка «Пользователь с таким именем уже существует.»."
+hints:
+  - "Какая готовая форма Django регистрирует пользователя?"
+  - "`form = UserCreationForm(request.POST or None)`, `form.is_valid()`, `user = form.save()`, `login(request, user)`."
+explanation: |
+  `UserCreationForm` — ModelForm пользователя с двумя полями пароля: проверяет уникальность имени, совпадение паролей и `AUTH_PASSWORD_VALIDATORS`, а `save()` вызывает `set_password()` — в базе хеш. `objects.create(password=…)` пишет пароль как есть, и `authenticate` его не принимает.

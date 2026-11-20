@@ -1,0 +1,96 @@
+title: "Чужой заказ по ссылке"
+type: exercise
+difficulty: 2
+pitfall: "Объект ищут сразу среди своих (user=request.user); чужой — 404."
+statement: |
+  Страница заказа `/orders/<pk>/` доступна только вошедшим, но Анна, подставив в адрес чужой номер, видит заказ Бориса. Исправьте view: свой заказ — 200, чужой — 404.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+        total = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.contrib.auth.decorators import login_required
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Order
+
+
+    @login_required
+    def order_detail(request, pk):
+        order = get_object_or_404(Order, pk=pk)
+        return render(request, "shop/order.html", {"order": order})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/<int:pk>/", views.order_detail, name="order"),
+    ]
+  templates/shop/order.html: |
+    <h1>Заказ {{ order.number }}</h1>
+    <p>{{ order.total }} ₽</p>
+setup: |
+  from django.contrib.auth.models import Group, Permission
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00")
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00")
+  anna = User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  boris = User.objects.create_user("boris", "boris@shop.example", "boris-pass-1")
+  olga = User.objects.create_user("olga", "olga@shop.example", "olga-pass-1")
+  managers = Group.objects.create(name="Менеджеры")
+  managers.permissions.add(Permission.objects.get(codename="change_product"))
+  olga.groups.add(managers)
+  Order.objects.create(user=anna, number="A-12", total="66489.00")
+  Order.objects.create(user=anna, number="A-14", total="3490.00")
+  Order.objects.create(user=boris, number="A-13", total="980.00")
+solution:
+  views.py: |
+    from django.contrib.auth.decorators import login_required
+    from django.shortcuts import get_object_or_404, render
+
+    from .models import Order
+
+
+    @login_required
+    def order_detail(request, pk):
+        order = get_object_or_404(Order, pk=pk, user=request.user)
+        return render(request, "shop/order.html", {"order": order})
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.get(username="anna"))
+        pk = Order.objects.get(number="A-13").pk
+        assert client.get(f"/orders/{pk}/").status_code == 404
+      fail: "Заказ Бориса для Анны должен отвечать 404."
+    - code: |
+        client.force_login(User.objects.get(username="anna"))
+        pk = Order.objects.get(number="A-12").pk
+        r = client.get(f"/orders/{pk}/")
+        assert r.status_code == 200 and "A-12" in r.content.decode()
+      fail: "Свой заказ Анна видит."
+hints:
+  - "По каким условиям ищется заказ?"
+  - "`get_object_or_404(Order, pk=pk, user=request.user)`."
+explanation: |
+  `get_object_or_404(Order, pk=pk)` находит любой заказ: `@login_required` проверяет только вход. Это IDOR — перебором номеров открываются чужие данные. Условие владельца в самом поиске делает чужой заказ «несуществующим» — 404, и не раскрывает даже того, что заказ с таким номером есть.

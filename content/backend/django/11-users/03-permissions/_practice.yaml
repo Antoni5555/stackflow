@@ -1,0 +1,69 @@
+- title: Права группы
+  text: |
+    Какие права у Ольги и откуда они? Выведите группы и все права.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    olga = User.objects.get(username="olga")
+    print([g.name for g in olga.groups.all()])
+    print(olga.get_group_permissions())
+    print(olga.get_user_permissions())
+    ```
+    Результат:
+    ```
+    ['Менеджеры']
+    {'shop.change_product'}
+    set()
+    ```
+    Право пришло через группу «Менеджеры», лично Ольге прав не выдавали.
+- title: Новая группа
+  text: |
+    Создайте группу «Склад» с правами смотреть и менять товары и включите в неё Бориса. Проверьте права.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.auth.models import Group, Permission
+    stock = Group.objects.create(name="Склад")
+    perms = Permission.objects.filter(
+        codename__in=["view_product", "change_product"]
+    )
+    stock.permissions.set(perms)
+    User.objects.get(username="boris").groups.add(stock)
+    boris = User.objects.get(username="boris")
+    print(sorted(boris.get_all_permissions()))
+    need = ["shop.view_product", "shop.delete_product"]
+    print(boris.has_perms(need))
+    ```
+    Результат:
+    ```
+    ['shop.change_product', 'shop.view_product']
+    False
+    ```
+    `has_perms` — все права из списка сразу; удалять товары Борис не может. Пользователя загрузили заново — права кэшируются в объекте.
+- title: Суперпользователь
+  text: |
+    Есть ли у суперпользователя право, которого не существует?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    root = User.objects.create_superuser(
+        "root", "r@shop.example", "x"
+    )
+    print(root.has_perm("shop.change_product"))
+    print(root.has_perm("shop.fly_to_moon"))
+    root.is_active = False
+    print(root.has_perm("shop.change_product"))
+    ```
+    Результат:
+    ```
+    True
+    True
+    False
+    ```
+    Активный суперпользователь проходит любую проверку прав, даже несуществующего; неактивный — никакую.

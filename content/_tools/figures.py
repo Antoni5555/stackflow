@@ -1536,6 +1536,59 @@ def mixin_mro():
     f.save(out(DJ10 / "04-mixins" / "img" / "mixin-mro.svg"))
 
 
+# ---------- Django 11: пользователи и доступ ----------
+DJ11 = ROOT / "django" / "11-users"
+
+
+def session_login():
+    f = Figure(860, 300, "Вход по сессии: пароль проверяется один раз, дальше пользователя узнают по cookie sessionid")
+    f.box(20, 30, 220, 40, "POST /login/ + пароль", "box2", "cs")
+    f.arrow("M240 50H276")
+    f.box(280, 30, 260, 40, "authenticate → login()", "box", "cs")
+    f.arrow("M540 50H576")
+    f.box(580, 30, 260, 40, "сессия: _auth_user_id = 1", "ok", "cs")
+    f.box(280, 90, 260, 40, "302 + Set-Cookie: sessionid", "ok", "cs")
+    f.box(20, 170, 220, 40, "GET /me/ + cookie sessionid", "box2", "cs")
+    f.arrow("M240 190H276")
+    f.box(280, 170, 260, 40, "AuthenticationMiddleware", "box", "cs")
+    f.arrow("M540 190H576")
+    f.box(580, 170, 260, 40, "request.user = anna", "ok", "cs")
+    f.text(20, 260, "Без cookie или после logout() — request.user = AnonymousUser, is_authenticated = False.", "s")
+    f.save(out(DJ11 / "02-auth" / "img" / "session-login.svg"))
+
+
+def permissions_fig():
+    f = Figure(860, 280, "Страница изменения цены: гость, покупатель без права и менеджер")
+    rows = [("гость", "302 → /accounts/login/?next=…", "302 → /accounts/login/?next=…", "box2", "box2"),
+            ("anna (без права)", "302 → снова на вход", "403 Forbidden", "err", "ok"),
+            ("olga (Менеджеры)", "200", "200", "ok", "ok")]
+    f.text(240, 24, "@permission_required(…)", "cs")
+    f.text(560, 24, "PermissionRequiredMixin", "cs")
+    for i, (who, a, b, ca, cb) in enumerate(rows):
+        y = 40 + i * 56
+        f.box(20, y, 200, 40, who, "box2", "cs")
+        f.box(240, y, 300, 40, a, ca, "cs")
+        f.box(560, y, 280, 40, b, cb, "cs")
+    f.text(20, 244, "Декоратору для ответа 403 вошедшему нужен raise_exception=True (и @login_required для гостя).", "s")
+    f.save(out(DJ11 / "03-permissions" / "img" / "permissions.svg"))
+
+
+def own_objects():
+    f = Figure(860, 280, "Анна открывает свой заказ A-12 и чужой A-13 при трёх вариантах view")
+    f.text(380, 24, "/orders/1/ (A-12, свой)", "cs", "middle")
+    f.text(660, 24, "/orders/3/ (A-13, Бориса)", "cs", "middle")
+    rows = [("LoginRequiredMixin", "200", "200 — уязвимость", "ok", "err"),
+            ("get_queryset: user=request.user", "200", "404", "ok", "ok"),
+            ("UserPassesTestMixin", "200", "403", "ok", "box")]
+    for i, (v, a, b, ca, cb) in enumerate(rows):
+        y = 40 + i * 56
+        f.box(20, y, 250, 40, v, "box2", "cs")
+        f.box(290, y, 180, 40, a, ca, "cs")
+        f.box(490, y, 340, 40, b, cb, "cs")
+    f.text(20, 236, "404 не раскрывает, что заказ существует; 403 — подтверждает.", "t")
+    f.save(out(DJ11 / "04-own-objects" / "img" / "own-objects.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3015,6 +3068,7 @@ if __name__ == "__main__":
                   aggregate_annotate, group_by_fig, double_join, subquery_fig,
                   lost_update, form_flow, modelform_fig, validation_order, media_files, formset_fig,
                   cbv_dispatch, list_detail, create_view, mixin_mro,
+                  session_login, permissions_fig, own_objects,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

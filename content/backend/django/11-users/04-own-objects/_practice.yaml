@@ -1,0 +1,66 @@
+- title: Свои заказы
+  text: |
+    Выведите номера заказов Анны двумя способами: через обратную связь и фильтром.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    anna = User.objects.get(username="anna")
+    print(list(anna.orders.values_list("number", flat=True)))
+    mine = Order.objects.filter(user=anna)
+    print(list(mine.values_list("number", flat=True)))
+    ```
+    Результат:
+    ```
+    ['A-12', 'A-14']
+    ['A-12', 'A-14']
+    ```
+    Оба запроса — `WHERE user_id = <id Анны>`.
+- title: Поиск среди своих
+  text: |
+    Анна запрашивает заказ A-13 Бориса. Что вернёт `get_object_or_404` с условием владельца?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.http import Http404
+    from django.shortcuts import get_object_or_404
+    anna = User.objects.get(username="anna")
+    pk = Order.objects.get(number="A-13").pk
+    try:
+        get_object_or_404(Order, pk=pk, user=anna)
+    except Http404 as e:
+        print("404:", e)
+    ```
+    Результат:
+    ```
+    404: No Order matches the given query.
+    ```
+    Для Анны чужого заказа «нет» — это и есть 404 на странице.
+- title: 403 через PermissionDenied
+  text: |
+    В функции правило «отменить можно только свой заказ, пока его сумма меньше 5000» не выразить одним фильтром. Как ответить 403?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.core.exceptions import PermissionDenied
+    anna = User.objects.get(username="anna")
+    for number in ["A-12", "A-14"]:
+        order = Order.objects.get(number=number, user=anna)
+        try:
+            if order.total >= 5000:
+                raise PermissionDenied("Слишком дорогой заказ")
+            print(number, "можно отменить")
+        except PermissionDenied as e:
+            print(number, "403:", e)
+    ```
+    Результат:
+    ```
+    A-12 403: Слишком дорогой заказ
+    A-14 можно отменить
+    ```
+    Во view достаточно `raise PermissionDenied` — Django ответит 403. Свой заказ ищем по владельцу, а правило сверху — проверкой.

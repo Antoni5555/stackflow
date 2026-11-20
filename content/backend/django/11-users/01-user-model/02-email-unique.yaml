@@ -1,0 +1,43 @@
+title: "Вход по почте: auth.E003"
+type: fix
+difficulty: 2
+pitfall: "Поле из USERNAME_FIELD обязано быть unique; поле username при входе по почте убирают."
+statement: |
+  Покупатели входят по почте, но `manage.py check` сообщает: `(auth.E003) 'User.email' must be unique because it is named as the 'USERNAME_FIELD'.` Исправьте модель: почта уникальна, поля `username` у модели нет (менеджер в проекте уже свой).
+files:
+  accounts/models.py: |
+    from django.contrib.auth.models import AbstractUser
+    from django.db import models
+
+
+    class User(AbstractUser):
+        email = models.EmailField("почта")
+
+        USERNAME_FIELD = "email"
+        REQUIRED_FIELDS = []
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*email\s*=\s*models\.EmailField\([^)]*unique\s*=\s*True'
+      fail: "Поле email должно быть уникальным: unique=True."
+    - must_match: '^\s*username\s*=\s*None\s*$'
+      fail: "Уберите поле username у модели: username = None."
+    - must_match: '^\s*USERNAME_FIELD\s*=\s*["\'']email["\'']'
+      fail: "Вход по-прежнему по почте: USERNAME_FIELD = \"email\"."
+solution:
+  accounts/models.py: |
+    from django.contrib.auth.models import AbstractUser
+    from django.db import models
+
+
+    class User(AbstractUser):
+        username = None
+        email = models.EmailField("почта", unique=True)
+
+        USERNAME_FIELD = "email"
+        REQUIRED_FIELDS = []
+hints:
+  - "По полю USERNAME_FIELD Django ищет одного пользователя — что для этого нужно?"
+  - "`email = models.EmailField(\"почта\", unique=True)` и `username = None`."
+explanation: |
+  По `USERNAME_FIELD` `authenticate` ищет ровно одного пользователя, поэтому поле обязано быть уникальным — иначе `auth.E003`. `AbstractUser` унаследовал поле `username` (обязательное и уникальное); при входе по почте его убирают присваиванием `None`, иначе регистрация будет требовать ещё и логин.

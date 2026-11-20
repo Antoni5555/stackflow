@@ -1,0 +1,15 @@
+title: "Когда заводить свою модель"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Своя модель пользователя — до первой миграции: потом смена даёт InconsistentMigrationHistory."
+statement: |
+  Проект магазина только создан. Пока поля стандартного `User` устраивают. Как поступить с моделью пользователя?
+options:
+  - "Использовать стандартный `User`, свою модель завести, когда понадобятся поля"
+  - "Сразу создать `class User(AbstractUser): pass` и `AUTH_USER_MODEL` до первой миграции"
+  - "Создать свою модель от `AbstractBaseUser` со всеми полями заново"
+  - "Хранить данные покупателя в отдельной таблице без связи с `User`"
+answer: [1]
+explanation: |
+  Сменить модель пользователя после `migrate` нельзя без пересборки миграций: `InconsistentMigrationHistory: Migration admin.0001_initial is applied before its dependency accounts.0001_initial`. Пустой `User(AbstractUser)` в начале ничего не стоит и позволяет потом добавлять поля обычной миграцией. `AbstractBaseUser` нужен, только если модель совсем другая.

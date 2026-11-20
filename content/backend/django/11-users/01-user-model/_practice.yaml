@@ -1,0 +1,61 @@
+- title: Хеш вместо пароля
+  text: |
+    Создайте пользователя через `create_user` и посмотрите, что лежит в поле `password` и как проверить пароль. Модели и данные — как в уроке (пользователи anna, boris, olga, группа «Менеджеры»): в песочнице создайте их во вкладке `models.py` и учебных данных.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    u = User.objects.create_user("vera", password="vera-pass-1")
+    algo = u.password.split("$")[0]
+    print(algo, "vera-pass-1" in u.password)
+    ok = u.check_password("vera-pass-1")
+    print(ok, u.check_password("x"))
+    ```
+    Результат:
+    ```
+    md5 False
+    True False
+    ```
+    В тренажёре алгоритм — `md5` ради скорости; в проекте по умолчанию `pbkdf2_sha256`. Пароля в открытом виде в поле нет.
+- title: Пароль строкой
+  text: |
+    Что будет, если записать пароль в поле напрямую?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    u = User.objects.create(
+        username="gleb", password="gleb-pass-1"
+    )
+    print(u.password, u.check_password("gleb-pass-1"))
+    u.set_password("gleb-pass-1")
+    u.save()
+    print(u.check_password("gleb-pass-1"))
+    ```
+    Результат:
+    ```
+    gleb-pass-1 False
+    True
+    ```
+    Строка без хеша — `check_password` её не принимает, а пароль виден в базе. `set_password` исправил.
+- title: Какая модель пользователя
+  text: |
+    Получите модель пользователя через `get_user_model()` и выведите её поле входа и обязательные поля.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.auth import get_user_model
+    UserModel = get_user_model()
+    print(UserModel._meta.label, UserModel.USERNAME_FIELD)
+    print(UserModel.REQUIRED_FIELDS)
+    ```
+    Результат:
+    ```
+    auth.User username
+    ['email']
+    ```
+    Здесь стандартный `auth.User`; в проекте со своей моделью тот же код вернёт её.

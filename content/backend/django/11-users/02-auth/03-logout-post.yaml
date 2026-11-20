@@ -1,0 +1,83 @@
+title: "Выход по ссылке"
+type: exercise
+difficulty: 1
+pitfall: "LogoutView принимает только POST — выход делают формой с CSRF-токеном."
+statement: |
+  На странице `/me/` ссылка «Выйти» ведёт на `/accounts/logout/` и отвечает «405 Method Not Allowed». Исправьте шаблон: кнопка «Выйти» отправляет форму.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+        total = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.shortcuts import render
+
+
+    def me(request):
+        return render(request, "shop/me.html")
+  urls.py: |
+    from django.urls import include, path
+
+    from . import views
+
+    urlpatterns = [
+        path("me/", views.me, name="me"),
+        path("accounts/", include("django.contrib.auth.urls")),
+    ]
+  templates/shop/me.html: |
+    {% if user.is_authenticated %}<p>{{ user.username }}</p><a href="/accounts/logout/">Выйти</a>{% else %}<p>Гость</p>{% endif %}
+setup: |
+  from django.contrib.auth.models import Group, Permission
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00")
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00")
+  anna = User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  boris = User.objects.create_user("boris", "boris@shop.example", "boris-pass-1")
+  olga = User.objects.create_user("olga", "olga@shop.example", "olga-pass-1")
+  managers = Group.objects.create(name="Менеджеры")
+  managers.permissions.add(Permission.objects.get(codename="change_product"))
+  olga.groups.add(managers)
+  Order.objects.create(user=anna, number="A-12", total="66489.00")
+  Order.objects.create(user=anna, number="A-14", total="3490.00")
+  Order.objects.create(user=boris, number="A-13", total="980.00")
+solution:
+  templates/shop/me.html: |
+    {% if user.is_authenticated %}<p>{{ user.username }}</p><form method="post" action="/accounts/logout/">{% csrf_token %}<button>Выйти</button></form>{% else %}<p>Гость</p>{% endif %}
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.get(username="anna"))
+        html = client.get("/me/").content.decode()
+        assert 'method="post"' in html and 'action="/accounts/logout/"' in html and "csrfmiddlewaretoken" in html
+      fail: "Выход должен быть формой method=\"post\" на /accounts/logout/ с {% csrf_token %}."
+    - code: |
+        client.force_login(User.objects.get(username="anna"))
+        r = client.post("/accounts/logout/")
+        assert r.status_code == 302 and "Гость" in client.get("/me/").content.decode()
+      fail: "POST на /accounts/logout/ должен выполнять выход."
+hints:
+  - "Каким методом LogoutView принимает запрос?"
+  - "`<form method=\"post\" action=\"/accounts/logout/\">{% csrf_token %}<button>Выйти</button></form>`."
+explanation: |
+  С Django 5.0 `LogoutView` принимает только POST: выход по GET позволял бы чужому сайту разлогинить пользователя картинкой `<img src="…/logout/">`. Ссылка всегда делает GET — нужна форма с `method="post"` и `{% csrf_token %}`. Куда вести после выхода — `LOGOUT_REDIRECT_URL`.
+settings:
+  LOGOUT_REDIRECT_URL: "/me/"

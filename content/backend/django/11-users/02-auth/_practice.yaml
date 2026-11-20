@@ -1,0 +1,71 @@
+- title: Проверка пароля
+  text: |
+    Проверьте через `authenticate` верный и неверный пароль Анны и пароль неактивного пользователя.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.auth import authenticate
+    print(authenticate(username="anna", password="anna-pass-1"))
+    print(authenticate(username="anna", password="x"))
+    boris = User.objects.get(username="boris")
+    boris.is_active = False
+    boris.save()
+    print(authenticate(
+        username="boris", password="boris-pass-1"
+    ))
+    ```
+    Результат:
+    ```
+    anna
+    None
+    None
+    ```
+    Неактивного пользователя `ModelBackend` не впускает даже с верным паролем.
+- title: Вход тестовым клиентом
+  text: |
+    Войдите тестовым клиентом под Анной и найдите её id в сессии.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.sessions.models import Session
+    from django.test import Client
+    c = Client()
+    print(c.login(username="anna", password="anna-pass-1"))
+    key = c.cookies["sessionid"].value
+    data = Session.objects.get(pk=key).get_decoded()
+    anna = User.objects.get(username="anna")
+    print(data["_auth_user_id"], anna.pk)
+    ```
+    Результат:
+    ```
+    True
+    1 1
+    ```
+    `client.login()` делает то же, что форма входа: `authenticate` + `login`; в сессии — id пользователя.
+- title: Регистрация формой
+  text: |
+    Проверьте `UserCreationForm` на занятом имени и на новом пользователе.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.contrib.auth.forms import UserCreationForm
+    bad = {"username": "olga", "password1": "p-123456",
+           "password2": "p-123456"}
+    f = UserCreationForm(bad)
+    print(f.is_valid(), f.errors["username"])
+    good = {**bad, "username": "vera"}
+    f = UserCreationForm(good)
+    print(f.is_valid(), f.save().check_password("p-123456"))
+    ```
+    Результат:
+    ```
+    False <ul class="errorlist" id="id_username_error"><li>Пользователь с таким именем уже существует.</li></ul>
+    True True
+    ```
+    Форма сохранила пароль хешем — `check_password` его принимает.

@@ -121,6 +121,8 @@
 | 03 | Права и группы | permissions, `Group`, `login_required`, `LoginRequiredMixin`, `PermissionRequiredMixin`, `perms` в шаблоне | только менеджер меняет цены | 🟡 D3.4 |
 | 04 | Доступ к своим объектам | фильтрация по `request.user`, `UserPassesTestMixin`, 403 vs 404 | покупатель видит только свои заказы | ❌ |
 
+✅ Написан: `content/backend/django/11-users` — 4 урока, 17 задач (11 `exercise` `check.type: django`, 3 `fix`, 3 `quiz`), 3 рисунка, задачники — 12 упражнений. Тема 01 — на `fix`/`quiz`, её выводы — из настоящего проекта Django 5.2 (`scratchpad/users`, `users2`): `fields.E304` без `AUTH_USER_MODEL`, `auth.E002`/`E003`, `InconsistentMigrationHistory`, `fields.E301`. Учебные данные — `anna`/`boris`/`olga` (пароли `<имя>-pass-1`), группа «Менеджеры» с `shop.change_product` (в ней Ольга), заказы Анны A-12, A-14 и Бориса A-13.
+
 ## 12. Продвинутый ORM ●●●
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|

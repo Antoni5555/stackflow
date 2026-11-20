@@ -1,0 +1,99 @@
+title: "Цену меняет кто угодно"
+type: exercise
+difficulty: 2
+pitfall: "Миксин доступа пишут первым — иначе dispatch находится в базовом view и проверки нет."
+statement: |
+  Изменение цены `/products/<slug>/price/` должно быть только у менеджеров (право `shop.change_product`), но цену меняет любой покупатель. Исправьте класс.
+files:
+  models.py: |
+    from django.contrib.auth.models import User
+    from django.db import models
+
+
+    class Product(models.Model):
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        user = models.ForeignKey(
+            User, on_delete=models.PROTECT, related_name="orders"
+        )
+        number = models.CharField(max_length=20, unique=True)
+        total = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def __str__(self):
+            return self.number
+  views.py: |
+    from django.contrib.auth.mixins import PermissionRequiredMixin
+    from django.views.generic import UpdateView
+
+    from .models import Product
+
+
+    class PriceUpdate(UpdateView, PermissionRequiredMixin):
+        permission_required = "shop.change_product"
+        model = Product
+        fields = ["price"]
+        template_name = "shop/price.html"
+        success_url = "/"
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("products/<slug:slug>/price/", views.PriceUpdate.as_view(), name="price"),
+    ]
+  templates/shop/price.html: |
+    <form method="post">{% csrf_token %}{{ form.as_p }}<button>Сохранить</button></form>
+setup: |
+  from django.contrib.auth.models import Group, Permission
+  Product.objects.create(name="Ноутбук Aster 14", slug="aster-14", price="64990.00")
+  Product.objects.create(name="Беспроводная мышь", slug="wireless-mouse", price="1499.00")
+  anna = User.objects.create_user("anna", "anna@shop.example", "anna-pass-1")
+  boris = User.objects.create_user("boris", "boris@shop.example", "boris-pass-1")
+  olga = User.objects.create_user("olga", "olga@shop.example", "olga-pass-1")
+  managers = Group.objects.create(name="Менеджеры")
+  managers.permissions.add(Permission.objects.get(codename="change_product"))
+  olga.groups.add(managers)
+  Order.objects.create(user=anna, number="A-12", total="66489.00")
+  Order.objects.create(user=anna, number="A-14", total="3490.00")
+  Order.objects.create(user=boris, number="A-13", total="980.00")
+solution:
+  views.py: |
+    from django.contrib.auth.mixins import PermissionRequiredMixin
+    from django.views.generic import UpdateView
+
+    from .models import Product
+
+
+    class PriceUpdate(PermissionRequiredMixin, UpdateView):
+        permission_required = "shop.change_product"
+        model = Product
+        fields = ["price"]
+        template_name = "shop/price.html"
+        success_url = "/"
+check:
+  type: django
+  tests:
+    - code: |
+        client.force_login(User.objects.get(username="anna"))
+        r = client.post("/products/aster-14/price/", {"price": "1.00"})
+        assert r.status_code == 403
+        assert str(Product.objects.get(slug="aster-14").price) == "64990.00"
+      fail: "Анне без права — 403, цена не меняется."
+    - code: |
+        client.force_login(User.objects.get(username="olga"))
+        r = client.post("/products/aster-14/price/", {"price": "59990.00"})
+        assert r.status_code == 302 and str(Product.objects.get(slug="aster-14").price) == "59990.00"
+      fail: "Менеджер Ольга меняет цену."
+hints:
+  - "Где PermissionRequiredMixin делает проверку и кто находится первым по MRO?"
+  - "`class PriceUpdate(PermissionRequiredMixin, UpdateView)`."
+explanation: |
+  Проверка права — в `dispatch()` миксина. При `(UpdateView, PermissionRequiredMixin)` первым по MRO находится `dispatch` из `View` — запрос сразу идёт в `get`/`post`, миксин не вызывается. Миксины доступа ставят первыми, слева от базового view.

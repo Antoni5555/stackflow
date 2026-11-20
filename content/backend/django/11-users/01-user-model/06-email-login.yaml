@@ -1,0 +1,16 @@
+title: "Что нужно для входа по почте"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Вход по почте: USERNAME_FIELD, unique у email, username = None и свой менеджер."
+statement: |
+  Модель `User(AbstractUser)` переводят на вход по почте. Что из этого нужно сделать?
+options:
+  - "`USERNAME_FIELD = \"email\"`"
+  - "`email = models.EmailField(unique=True)`"
+  - "`username = None`"
+  - "Свой менеджер от `BaseUserManager` с `create_user(email, …)`"
+  - "Добавить `\"email\"` в `REQUIRED_FIELDS`"
+answer: [0, 1, 2, 3]
+explanation: |
+  `USERNAME_FIELD` говорит, по какому полю входить, и это поле обязано быть уникальным (`auth.E003`). `username = None` убирает ставший лишним логин. Стандартный `UserManager.create_user()` требует `username` — `TypeError: … missing 1 required positional argument: 'username'`, поэтому нужен свой менеджер. Поле из `USERNAME_FIELD` в `REQUIRED_FIELDS` указывать нельзя — `createsuperuser` и так его спросит (ошибка `auth.E002`).
