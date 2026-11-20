@@ -1,0 +1,16 @@
+title: "Где save() не вызывается"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "save() модели не вызывают update(), bulk_create() и bulk_update()."
+statement: |
+  У модели переопределён `save()`. При каких операциях он **не** будет вызван?
+options:
+  - "`Product.objects.create(…)`"
+  - "`Product.objects.filter(…).update(price=…)`"
+  - "`Product.objects.bulk_create([...])`"
+  - "`product.save(update_fields=[\"price\"])`"
+  - "`Product.objects.bulk_update(products, [\"price\"])`"
+answer: [1, 2, 4]
+explanation: |
+  `create()` вызывает `save()`; `save(update_fields=…)` — тоже `save()`. `update()`, `bulk_create()` и `bulk_update()` работают одним SQL-запросом мимо `save()` и сигналов `pre_save`/`post_save`.

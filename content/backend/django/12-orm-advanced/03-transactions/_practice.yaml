@@ -1,0 +1,72 @@
+- title: Откат блока
+  text: |
+    Создайте заказ внутри `atomic()` и вызовите исключение. Остался ли заказ?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db import transaction
+    try:
+        with transaction.atomic():
+            Order.objects.create(number="A-40", email="x@s.ru")
+            raise RuntimeError("сбой")
+    except RuntimeError:
+        pass
+    print(Order.objects.filter(number="A-40").exists())
+    ```
+    Результат:
+    ```
+    False
+    ```
+    Исключение, вышедшее из блока, — `ROLLBACK`.
+- title: Внешний и внутренний блок
+  text: |
+    Ошибка во вложенном `atomic()` откатывает только его. Проверьте.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db import transaction
+    with transaction.atomic():
+        Order.objects.create(number="A-41", email="x@s.ru")
+        try:
+            with transaction.atomic():
+                Order.objects.create(
+                    number="A-42", email="y@s.ru"
+                )
+                raise RuntimeError("сбой")
+        except RuntimeError:
+            pass
+    nums = Order.objects.values_list("number", flat=True)
+    print(sorted(nums))
+    ```
+    Результат:
+    ```
+    ['A-12', 'A-41']
+    ```
+    A-42 откатился до точки сохранения, A-41 зафиксирован внешним блоком.
+- title: Атомарное списание
+  text: |
+    Спишите 5 штук Aster 14, только если их хватает, — одним запросом без гонки.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import F
+    for qty in [5, 2]:
+        n = Product.objects.filter(
+            slug="aster-14", stock__gte=qty
+        ).update(stock=F("stock") - qty)
+        print(qty, "списано" if n else "не хватает")
+    print(Product.objects.get(slug="aster-14").stock)
+    ```
+    Результат:
+    ```
+    5 не хватает
+    2 списано
+    1
+    ```
+    Проверка и изменение — в одном `UPDATE … WHERE stock >= qty`: два одновременных заказа не уведут остаток в минус. `update` возвращает число изменённых строк.

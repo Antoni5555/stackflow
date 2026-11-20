@@ -132,6 +132,8 @@
 | 04 | Сырой SQL и безопасность | `raw()`, параметры, SQL-инъекции | почему нельзя `f"... WHERE email = '{email}'"` | 🟡 D4.2 |
 | 05 | Производительность ORM | `explain()`, `iterator()`, `count()` vs `len()`, `exists()`, индексы | ускорить выгрузку 100 000 заказов | ❌ |
 
+✅ Написан: `content/backend/django/12-orm-advanced` — 5 уроков, 21 задача (16 `exercise` `check.type: django`, 5 `quiz`), 2 рисунка, задачники — 15 упражнений. Учебная модель — `Category`, `Product` (`ProductQuerySet.as_manager()` с `in_stock`/`cheap`, `is_active`), `Order` (`total`), `OrderItem`. В SQLite `select_for_update()` не добавляет `FOR UPDATE` — SQL PostgreSQL получен компиляцией запроса бэкендом PostgreSQL без подключения; `explain()` в уроке — план SQLite. Задача про `on_commit` проверяется `TestCase.captureOnCommitCallbacks(execute=True)` и `mail.outbox` (сбрасывается в начале теста: в тренажёре он копится между запусками).
+
 ## 13. Цикл запроса изнутри ●●●
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|

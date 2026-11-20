@@ -1,0 +1,162 @@
+title: "Свои методы выборки"
+type: exercise
+difficulty: 2
+pitfall: "Методы-условия пишут в QuerySet и подключают as_manager(), тогда они сцепляются."
+statement: |
+  Views каталога уже используют `Product.objects.in_stock().cheap()` и `Product.objects.filter(…).cheap(5000)`, но у модели таких методов нет — страницы падают. Добавьте в `models.py` свой QuerySet: `in_stock()` — остаток больше нуля, `cheap(limit=2000)` — цена меньше `limit`.
+files:
+  models.py: |
+    from django.db import models
+    from django.urls import reverse
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def catalog(request):
+        products = Product.objects.in_stock().cheap().order_by("name")
+        return render(request, "shop/catalog.html", {"products": products})
+
+
+    def cheap_mice(request):
+        products = Product.objects.filter(category__name="Мыши").cheap(5000).order_by("name")
+        return render(request, "shop/catalog.html", {"products": products})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog, name="catalog"),
+        path("mice/", views.cheap_mice, name="mice"),
+    ]
+  templates/shop/catalog.html: |
+    <ul>{% for p in products %}<li>{{ p.name }}</li>{% endfor %}</ul>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25, is_active=False)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1, price="64990.00")
+  OrderItem.objects.create(order=order, product=mouse, quantity=2, price="1499.00")
+solution:
+  models.py: |
+    from django.db import models
+    from django.urls import reverse
+
+
+    class ProductQuerySet(models.QuerySet):
+        def in_stock(self):
+            return self.filter(stock__gt=0)
+
+        def cheap(self, limit=2000):
+            return self.filter(price__lt=limit)
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        objects = ProductQuerySet.as_manager()
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/catalog/").content.decode()
+        assert "Беспроводная мышь" in html and "Коврик для мыши" in html
+        assert "Игровая" not in html and "Aster" not in html
+      fail: "Каталог: в наличии и дешевле 2000 — беспроводная мышь и коврик."
+    - code: |
+        html = client.get("/mice/").content.decode()
+        assert "Игровая мышь" in html and "Беспроводная мышь" in html and "Aster" not in html
+      fail: "Методы должны работать и после filter(): мыши дешевле 5000."
+    - code: |
+        assert list(Product.objects.cheap(500).values_list("slug", flat=True)) == ["mouse-pad"]
+      fail: "cheap(limit) — цена строго меньше limit."
+hints:
+  - "Чтобы метод работал после filter(), где он должен быть?"
+  - "`class ProductQuerySet(models.QuerySet)` с методами `in_stock`/`cheap` и `objects = ProductQuerySet.as_manager()`."
+explanation: |
+  Метод QuerySet возвращает `self.filter(…)` — тоже QuerySet, поэтому методы сцепляются в любом порядке и с обычными `filter`/`order_by`. `as_manager()` делает из QuerySet менеджер, и методы доступны и у `Product.objects`, и в связях (`category.products.in_stock()`).

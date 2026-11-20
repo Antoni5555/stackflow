@@ -1,0 +1,15 @@
+title: "Выгрузка 100 000 заказов"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Большие выгрузки — iterator(): строки порциями, без кэша QuerySet."
+statement: |
+  Нужно выгрузить в CSV номера и суммы 100 000 заказов, не держа их все в памяти. Какой вариант лучше?
+options:
+  - "`for o in Order.objects.all(): …`"
+  - "`for o in list(Order.objects.all()): …`"
+  - "`for number, total in Order.objects.values_list(\"number\", \"total\").iterator(chunk_size=2000): …`"
+  - "`orders = Order.objects.all(); n = len(orders); …`"
+answer: [2]
+explanation: |
+  `all()` и `list()` загружают все 100 000 объектов и держат их в кэше QuerySet. `values_list` берёт только две колонки и не создаёт объекты моделей, `iterator(chunk_size=2000)` читает строки порциями (в PostgreSQL — серверным курсором) и не кэширует их.

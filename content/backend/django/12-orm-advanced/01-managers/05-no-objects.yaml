@@ -1,0 +1,15 @@
+title: "Куда делся objects"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Объявив свой менеджер, модель теряет автоматический objects."
+statement: |
+  В модели `Product` объявлен только `active = ActiveManager()`. Что даст `Product.objects.count()`?
+options:
+  - "Число всех товаров"
+  - "Число активных товаров"
+  - "`AttributeError: type object 'Product' has no attribute 'objects'`"
+  - "`0`"
+answer: [2]
+explanation: |
+  Django добавляет `objects` автоматически, только если у модели нет ни одного своего менеджера. Объявили `active` — `objects` нужно объявить явно (и обычно первым, чтобы он был менеджером по умолчанию). Проверено в тренажёре.

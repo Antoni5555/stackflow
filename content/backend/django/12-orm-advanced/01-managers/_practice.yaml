@@ -1,0 +1,49 @@
+- title: Свой метод в связи
+  text: |
+    У товаров есть QuerySet с `in_stock()` и `cheap()`. Выведите дешёвые товары в наличии категории «Мыши» через обратную связь категории. Модели и данные — как в уроке: в песочнице создайте их во вкладке `models.py` и учебных данных.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    mice = Category.objects.get(name="Мыши")
+    print(mice.products.in_stock().cheap().order_by("price"))
+    ```
+    Результат:
+    ```
+    <ProductQuerySet [<Product: Коврик для мыши>, <Product: Беспроводная мышь>]>
+    ```
+    Методы своего QuerySet доступны и у менеджера обратной связи.
+- title: SQL цепочки
+  text: |
+    Как выглядит SQL `Product.objects.cheap(5000).in_stock()`?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    qs = Product.objects.cheap(5000).in_stock()
+    print(str(qs.query).split("WHERE")[1])
+    ```
+    Результат:
+    ```
+    ("shop_product"."price" < 5000 AND "shop_product"."stock" > 0)
+    ```
+    Каждый метод — ещё одно условие через `AND`.
+- title: Менеджер по умолчанию
+  text: |
+    Какой менеджер у модели `Product` считается менеджером по умолчанию и какие менеджеры есть?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    print(Product._meta.default_manager.name)
+    print([m.name for m in Product._meta.managers])
+    ```
+    Результат:
+    ```
+    objects
+    ['objects']
+    ```
+    Один менеджер `objects` — он и по умолчанию.

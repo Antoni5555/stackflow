@@ -1,0 +1,131 @@
+title: "Сумма заказа устарела"
+type: exercise
+difficulty: 2
+pitfall: "QuerySet.update() не вызывает save() — логика пересчёта в save() не срабатывает."
+statement: |
+  Кнопка «Удвоить заказ» (POST на `/orders/<номер>/double/`) удваивает количество во всех позициях и показывает сумму заказа. Количество меняется, а сумма остаётся прежней: пересчёт суммы живёт в `OrderItem.save()`. Исправьте view: после удвоения сумма верная.
+files:
+  models.py: |
+    from django.db import models
+    from django.urls import reverse
+
+
+    class ProductQuerySet(models.QuerySet):
+        def in_stock(self):
+            return self.filter(stock__gt=0)
+
+        def cheap(self, limit=2000):
+            return self.filter(price__lt=limit)
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        objects = ProductQuerySet.as_manager()
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+        def __str__(self):
+            return self.number
+
+        def recalc(self):
+            self.total = sum(i.price * i.quantity for i in self.items.all())
+            self.save(update_fields=["total"])
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        def save(self, *args, **kwargs):
+            super().save(*args, **kwargs)
+            self.order.recalc()
+  views.py: |
+    from django.http import HttpResponse
+    from django.db.models import F
+    from django.shortcuts import get_object_or_404
+
+    from .models import Order
+
+
+    def double(request, number):
+        order = get_object_or_404(Order, number=number)
+        order.items.update(quantity=F("quantity") * 2)
+        order.refresh_from_db()
+        return HttpResponse(str(order.total))
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/<str:number>/double/", views.double, name="double"),
+    ]
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25, is_active=False)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1, price="64990.00")
+  OrderItem.objects.create(order=order, product=mouse, quantity=2, price="1499.00")
+solution:
+  views.py: |
+    from django.http import HttpResponse
+    from django.db.models import F
+    from django.shortcuts import get_object_or_404
+
+    from .models import Order
+
+
+    def double(request, number):
+        order = get_object_or_404(Order, number=number)
+        order.items.update(quantity=F("quantity") * 2)
+        order.recalc()
+        order.refresh_from_db()
+        return HttpResponse(str(order.total))
+check:
+  type: django
+  tests:
+    - code: |
+        r = client.post("/orders/A-12/double/")
+        assert r.content.decode() == "135976.00"
+      fail: "После удвоения сумма заказа A-12 — 135976.00 (было 67988.00)."
+    - code: |
+        client.post("/orders/A-12/double/")
+        assert sorted(OrderItem.objects.values_list("quantity", flat=True)) == [2, 4]
+      fail: "Количество в позициях должно удвоиться."
+hints:
+  - "Вызывает ли QuerySet.update() метод save() у объектов?"
+  - "После `update(...)` — `order.recalc()`."
+explanation: |
+  `update()` — один SQL `UPDATE`, объекты не загружаются, и переопределённый `save()` (а с ним пересчёт суммы) не вызывается. Варианты: пересчитать явно после массового изменения (`order.recalc()`), сохранять каждую позицию через `save()` (медленнее) или не хранить сумму, а считать её `aggregate`/`annotate`.

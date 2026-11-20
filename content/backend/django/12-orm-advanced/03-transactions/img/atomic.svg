@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 320" width="860" height="320" class="fig" role="img" aria-labelledby="t"><title id="t">Оформление заказа в transaction.atomic(): ошибка на любом шаге откатывает всё</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<text x="20" y="24" text-anchor="start" class="fig-cs">with transaction.atomic():</text>
+<rect x="40" y="36" width="400" height="36" rx="12" class="fig-box2"/>
+<text x="240.0" y="59.0" text-anchor="middle" class="fig-cs">INSERT заказ A-21</text>
+<rect x="40" y="82" width="400" height="36" rx="12" class="fig-box2"/>
+<text x="240.0" y="105.0" text-anchor="middle" class="fig-cs">мышь: SELECT … FOR UPDATE, UPDATE stock − 2</text>
+<rect x="40" y="128" width="400" height="36" rx="12" class="fig-box2"/>
+<text x="240.0" y="151.0" text-anchor="middle" class="fig-cs">INSERT позиция: мышь × 2</text>
+<rect x="40" y="174" width="400" height="36" rx="12" class="fig-err"/>
+<text x="240.0" y="197.0" text-anchor="middle" class="fig-cs">Aster: остаток 3 &lt; 5 → ValueError</text>
+<path d="M450 190H486" class="fig-ln" marker-end="url(#a)"/>
+<rect x="490" y="170" width="350" height="40" rx="12" class="fig-ok"/>
+<text x="665.0" y="195.0" text-anchor="middle" class="fig-cs">ROLLBACK: заказа нет, мышей 40</text>
+<rect x="490" y="40" width="350" height="40" rx="12" class="fig-err"/>
+<text x="665.0" y="65.0" text-anchor="middle" class="fig-cs">без atomic: A-21 есть, мышей 38</text>
+<text x="490" y="104" text-anchor="start" class="fig-s">каждый запрос зафиксирован сразу —</text>
+<text x="490" y="124" text-anchor="start" class="fig-s">«полузаказ» остаётся</text>
+<text x="20" y="262" text-anchor="start" class="fig-t">on_commit(письмо) при откате не вызывается — письма о несуществующем заказе нет.</text>
+<text x="20" y="288" text-anchor="start" class="fig-s">select_for_update() в PostgreSQL держит блокировку строки товара до COMMIT/ROLLBACK.</text>
+</svg>

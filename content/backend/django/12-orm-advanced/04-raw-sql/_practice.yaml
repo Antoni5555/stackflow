@@ -1,0 +1,60 @@
+- title: raw с параметром
+  text: |
+    Найдите сырым SQL заказы дороже заданной суммы, передав сумму параметром.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    sql = "SELECT * FROM shop_order WHERE total > %s"
+    for limit in [500, 1000]:
+        qs = Order.objects.raw(sql, [limit])
+        print(limit, [o.number for o in qs])
+    ```
+    Результат:
+    ```
+    500 ['A-13']
+    1000 []
+    ```
+    Сумма у A-12 в учебных данных — 0 (её никто не пересчитывал), у A-13 — 980.
+- title: Курсор
+  text: |
+    Выведите курсором число заказов по каждой почте.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db import connection
+    sql = """
+        SELECT email, COUNT(*) FROM shop_order
+        GROUP BY email ORDER BY email
+    """
+    with connection.cursor() as cur:
+        cur.execute(sql)
+        print(cur.fetchall())
+    ```
+    Результат:
+    ```
+    [('anna@shop.example', 1), ('boris@shop.example', 1)]
+    ```
+    Курсор возвращает кортежи; то же самое в ORM — `values("email").annotate(Count("id"))`.
+- title: Экранирование в ORM
+  text: |
+    Что ORM отправляет в базу для `filter(email="x' OR '1'='1")`?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    with CaptureQueriesContext(connection) as c:
+        list(Order.objects.filter(email="x' OR '1'='1"))
+    print(c.captured_queries[0]["sql"].split("WHERE")[1])
+    ```
+    Результат:
+    ```
+    "shop_order"."email" = 'x'' OR ''1''=''1'
+    ```
+    Значение передано параметром: кавычки внутри экранированы, условие сравнивает почту со всей строкой.

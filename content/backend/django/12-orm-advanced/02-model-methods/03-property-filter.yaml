@@ -1,0 +1,127 @@
+title: "Свойство в фильтре"
+type: exercise
+difficulty: 2
+pitfall: "@property вычисляется в Python — в filter() его нет; в запросе то же значение даёт аннотация."
+statement: |
+  Страница `/big-items/` должна показывать позиции заказов дороже 10 000 ₽ (цена × количество). У модели есть свойство `cost`, но страница падает: `FieldError: Cannot resolve keyword 'cost' into field`. Исправьте view: отбор — в базе, одним запросом.
+files:
+  models.py: |
+    from django.db import models
+    from django.urls import reverse
+
+
+    class ProductQuerySet(models.QuerySet):
+        def in_stock(self):
+            return self.filter(stock__gt=0)
+
+        def cheap(self, limit=2000):
+            return self.filter(price__lt=limit)
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        objects = ProductQuerySet.as_manager()
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+
+        @property
+        def cost(self):
+            return self.price * self.quantity
+  views.py: |
+    from django.db.models import F
+    from django.shortcuts import render
+
+    from .models import OrderItem
+
+
+    def big_items(request):
+        items = OrderItem.objects.filter(cost__gt=10000)
+        return render(request, "shop/items.html", {"items": items})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("big-items/", views.big_items, name="big"),
+    ]
+  templates/shop/items.html: |
+    <ul>{% for i in items %}<li>{{ i.product.name }}: {{ i.cost }}</li>{% endfor %}</ul>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25, is_active=False)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1, price="64990.00")
+  OrderItem.objects.create(order=order, product=mouse, quantity=2, price="1499.00")
+solution:
+  views.py: |
+    from django.db.models import F
+    from django.shortcuts import render
+
+    from .models import OrderItem
+
+
+    def big_items(request):
+        items = (
+            OrderItem.objects.select_related("product")
+            .annotate(line_total=F("price") * F("quantity"))
+            .filter(line_total__gt=10000)
+        )
+        return render(request, "shop/items.html", {"items": items})
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/big-items/").content.decode()
+        assert "Ноутбук Aster 14" in html and "Беспроводная мышь" not in html
+      fail: "На странице — только позиция Aster 14 (64990 ₽); мышь (2 × 1499) — нет."
+    - code: |
+        with max_queries(1) as queries:
+            client.get("/big-items/")
+        assert "*" in queries[0]["sql"]
+      fail: "Отбор должен идти в базе (произведение цены на количество в SQL) одним запросом."
+hints:
+  - "Как посчитать price × quantity в запросе?"
+  - "`annotate(line_total=F(\"price\") * F(\"quantity\")).filter(line_total__gt=10000)`."
+explanation: |
+  Свойство `cost` существует только у объекта в Python; `filter()` строит SQL по полям и аннотациям. `annotate(line_total=F("price") * F("quantity"))` считает то же в базе, и по аннотации можно фильтровать. Имя аннотации — другое: `cost` занят свойством (присвоить его Django не сможет). `select_related("product")` — чтобы шаблон не делал запрос на каждую позицию.

@@ -1,0 +1,60 @@
+- title: План по slug
+  text: |
+    Посмотрите `explain()` поиска товара по `slug` и по `name`. Где индекс?
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    print(Product.objects.filter(slug="aster-14").explain())
+    by_name = Product.objects.filter(name="Ноутбук Aster 14")
+    print(by_name.explain())
+    ```
+    Результат:
+    ```
+    3 0 0 SEARCH shop_product USING INDEX sqlite_autoindex_shop_product_1 (slug=?)
+    2 0 0 SCAN shop_product
+    ```
+    `slug` уникален — у него индекс; по `name` — полный перебор.
+- title: Сколько запросов
+  text: |
+    Посчитайте запросы: `exists()`, `count()` и `first()` для товаров в наличии.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    qs = Product.objects.filter(stock__gt=0)
+    with CaptureQueriesContext(connection) as c:
+        qs.exists()
+        qs.count()
+        qs.first()
+    for q in c.captured_queries:
+        print(q["sql"][:40], "…", q["sql"][-25:])
+    ```
+    Результат:
+    ```
+    SELECT 1 AS "a" FROM "shop_product" WHER … duct"."stock" > 0 LIMIT 1
+    SELECT COUNT(*) AS "__count" FROM "shop_ … shop_product"."stock" > 0
+    SELECT "shop_product"."id", "shop_produc … product"."id" ASC LIMIT 1
+    ```
+    Три разных запроса: `LIMIT 1`, `COUNT(*)` и `ORDER BY id LIMIT 1` — QuerySet не вычислялся, кэша нет.
+- title: Только нужное
+  text: |
+    Выгрузите номера и суммы всех заказов без создания объектов моделей.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    rows = Order.objects.values_list("number", "total")
+    for number, total in rows.iterator(chunk_size=1000):
+        print(number, total)
+    ```
+    Результат:
+    ```
+    A-12 0.00
+    ```
+    Кортежи вместо объектов и чтение порциями — минимум памяти на больших таблицах.

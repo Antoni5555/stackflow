@@ -1,0 +1,16 @@
+title: "select_for_update"
+type: quiz
+kind: multiple
+difficulty: 3
+pitfall: "select_for_update работает только внутри atomic(); в SQLite блокировки строк нет."
+statement: |
+  Что верно про `Product.objects.select_for_update().get(slug="aster-14")`?
+options:
+  - "В PostgreSQL добавляет к запросу `FOR UPDATE`"
+  - "В PostgreSQL вне `transaction.atomic()` — `TransactionManagementError: select_for_update cannot be used outside of a transaction.`"
+  - "Блокирует строку до конца запроса, а не транзакции"
+  - "В SQLite Django не добавляет `FOR UPDATE` — блокировки строк нет"
+  - "Защищает от гонки и без транзакции"
+answer: [0, 1, 3]
+explanation: |
+  `FOR UPDATE` блокирует выбранные строки до конца транзакции, поэтому без `atomic()` смысла нет и PostgreSQL-бэкенд Django выдаёт ошибку. В SQLite (тренажёр) `select_for_update()` ничего не делает — Django не добавляет `FOR UPDATE`; поведение проверяют на PostgreSQL.

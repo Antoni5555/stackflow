@@ -1,0 +1,145 @@
+title: "Письмо о несуществующем заказе"
+type: exercise
+difficulty: 2
+pitfall: "Действия вне базы (письма, задачи) запускают transaction.on_commit — после коммита."
+statement: |
+  POST на `/orders/create/` создаёт заказ и отправляет письмо покупателю. Если оплата не прошла (`fail=1`), заказ откатывается — но письмо «Заказ оформлен» уже ушло. Исправьте view: письмо — только после успешного сохранения заказа.
+files:
+  models.py: |
+    from django.db import models
+    from django.urls import reverse
+
+
+    class ProductQuerySet(models.QuerySet):
+        def in_stock(self):
+            return self.filter(stock__gt=0)
+
+        def cheap(self, limit=2000):
+            return self.filter(price__lt=limit)
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        objects = ProductQuerySet.as_manager()
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  views.py: |
+    from django.core.mail import send_mail
+    from django.db import transaction
+    from django.http import HttpResponse
+
+    from .models import Order
+
+
+    def create_order(request):
+        number = request.POST["number"]
+        try:
+            with transaction.atomic():
+                Order.objects.create(number=number, email="vera@shop.example")
+                send_mail(f"Заказ {number}", "Спасибо!", "shop@shop.example", ["vera@shop.example"])
+                if request.POST.get("fail"):
+                    raise ValueError("оплата не прошла")
+        except ValueError as e:
+            return HttpResponse(str(e), status=400)
+        return HttpResponse("ok")
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("orders/create/", views.create_order, name="create"),
+    ]
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25, is_active=False)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1, price="64990.00")
+  OrderItem.objects.create(order=order, product=mouse, quantity=2, price="1499.00")
+solution:
+  views.py: |
+    from django.core.mail import send_mail
+    from django.db import transaction
+    from django.http import HttpResponse
+
+    from .models import Order
+
+
+    def create_order(request):
+        number = request.POST["number"]
+        try:
+            with transaction.atomic():
+                Order.objects.create(number=number, email="vera@shop.example")
+                transaction.on_commit(
+                    lambda: send_mail(f"Заказ {number}", "Спасибо!", "shop@shop.example", ["vera@shop.example"])
+                )
+                if request.POST.get("fail"):
+                    raise ValueError("оплата не прошла")
+        except ValueError as e:
+            return HttpResponse(str(e), status=400)
+        return HttpResponse("ok")
+check:
+  type: django
+  tests:
+    - code: |
+        from django.core import mail
+        from django.test import TestCase
+        mail.outbox = []
+        with TestCase.captureOnCommitCallbacks(execute=True):
+            r = client.post("/orders/create/", {"number": "A-21", "fail": "1"})
+        assert r.status_code == 400 and not Order.objects.filter(number="A-21").exists()
+        assert len(mail.outbox) == 0
+      fail: "Заказ откатился — письма быть не должно: отправляйте его в transaction.on_commit."
+    - code: |
+        from django.core import mail
+        from django.test import TestCase
+        mail.outbox = []
+        with TestCase.captureOnCommitCallbacks(execute=True):
+            r = client.post("/orders/create/", {"number": "A-20"})
+        assert r.status_code == 200 and len(mail.outbox) == 1 and mail.outbox[0].subject == "Заказ A-20"
+      fail: "Успешный заказ — одно письмо «Заказ A-20»."
+hints:
+  - "Как выполнить действие только после коммита транзакции?"
+  - "`transaction.on_commit(lambda: send_mail(...))` внутри блока."
+explanation: |
+  Письмо уходит сразу, а откат транзакции его не вернёт. `transaction.on_commit(функция)` откладывает вызов до успешного коммита и забывает о нём при откате. В тестах Django каждый тест — в транзакции, которая не коммитится, поэтому колбэки запускают `captureOnCommitCallbacks(execute=True)`.

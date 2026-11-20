@@ -1,0 +1,124 @@
+title: "Сортировка по выбору"
+type: exercise
+difficulty: 2
+pitfall: "Имена колонок параметром не передать — их сверяют со списком разрешённых."
+statement: |
+  Каталог `/catalog/?sort=…` сортирует товары на сыром SQL, подставляя имя колонки из адреса. Так можно передать любой кусок SQL. Разрешите сортировку только по `name` и `price`; любое другое значение — сортировка по `name`.
+files:
+  models.py: |
+    from django.db import models
+    from django.urls import reverse
+
+
+    class ProductQuerySet(models.QuerySet):
+        def in_stock(self):
+            return self.filter(stock__gt=0)
+
+        def cheap(self, limit=2000):
+            return self.filter(price__lt=limit)
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        objects = ProductQuerySet.as_manager()
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def catalog(request):
+        sort = request.GET.get("sort", "name")
+        products = Product.objects.raw(f"SELECT * FROM shop_product ORDER BY {sort}")
+        return render(request, "shop/catalog.html", {"products": products})
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("catalog/", views.catalog, name="catalog"),
+    ]
+  templates/shop/catalog.html: |
+    <ul>{% for p in products %}<li>{{ p.name }}</li>{% endfor %}</ul>
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25, is_active=False)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1, price="64990.00")
+  OrderItem.objects.create(order=order, product=mouse, quantity=2, price="1499.00")
+solution:
+  views.py: |
+    from django.shortcuts import render
+
+    from .models import Product
+
+
+    def catalog(request):
+        sort = request.GET.get("sort", "name")
+        if sort not in {"name", "price"}:
+            sort = "name"
+        products = Product.objects.raw(f"SELECT * FROM shop_product ORDER BY {sort}")
+        return render(request, "shop/catalog.html", {"products": products})
+check:
+  type: django
+  tests:
+    - code: |
+        html = client.get("/catalog/", {"sort": "price"}).content.decode()
+        assert html.index("Коврик") < html.index("Беспроводная") < html.index("Aster")
+      fail: "sort=price — от дешёвых к дорогим."
+    - code: |
+        html = client.get("/catalog/", {"sort": "stock"}).content.decode()
+        assert html.index("Беспроводная") < html.index("Игровая") < html.index("Коврик") < html.index("Ноутбук")
+      fail: "Неразрешённое значение (stock) — сортировка по имени."
+    - code: |
+        r = client.get("/catalog/", {"sort": "(SELECT 1); DROP TABLE shop_product"})
+        assert r.status_code == 200 and Product.objects.count() == 4
+      fail: "Произвольный SQL в sort не должен выполняться — только name или price."
+hints:
+  - "Можно ли передать имя колонки параметром %s?"
+  - "`if sort not in {\"name\", \"price\"}: sort = \"name\"` перед запросом."
+explanation: |
+  Параметры — только для значений: `ORDER BY %s` с `"price"` сортировал бы по константе. Имя колонки вставляют в текст, но только после проверки по белому списку. В ORM то же самое: `order_by(sort)` с непроверенным значением упадёт `FieldError` на чужом имени — список разрешённых полей нужен и там.

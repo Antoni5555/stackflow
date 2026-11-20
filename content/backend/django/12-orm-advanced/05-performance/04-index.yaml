@@ -1,0 +1,161 @@
+title: "Поиск по почте без индекса"
+type: exercise
+difficulty: 2
+pitfall: "Колонке, по которой часто ищут, нужен индекс — в плане SEARCH … USING INDEX вместо SCAN."
+statement: |
+  Заказы часто ищут по почте покупателя, и `Order.objects.filter(email=…).explain()` показывает полный перебор: `SCAN shop_order`. Добавьте в модель `Order` индекс на поле `email`.
+files:
+  models.py: |
+    from django.db import models
+    from django.urls import reverse
+
+
+    class ProductQuerySet(models.QuerySet):
+        def in_stock(self):
+            return self.filter(stock__gt=0)
+
+        def cheap(self, limit=2000):
+            return self.filter(price__lt=limit)
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        objects = ProductQuerySet.as_manager()
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+  views.py: |
+    from django.http import HttpResponse
+
+    from .models import Order
+
+
+    def by_email(request):
+        orders = Order.objects.filter(email=request.GET["email"])
+        return HttpResponse(", ".join(o.number for o in orders))
+  urls.py: |
+    from django.urls import path
+
+    from . import views
+
+    urlpatterns = [
+        path("by-email/", views.by_email, name="by_email"),
+    ]
+setup: |
+  laptops = Category.objects.create(name="Ноутбуки")
+  mice = Category.objects.create(name="Мыши")
+  aster = Product.objects.create(category=laptops, name="Ноутбук Aster 14", slug="aster-14", price="64990.00", stock=3)
+  mouse = Product.objects.create(category=mice, name="Беспроводная мышь", slug="wireless-mouse", price="1499.00", stock=40)
+  Product.objects.create(category=mice, name="Игровая мышь", slug="gaming-mouse", price="3490.00", stock=0)
+  Product.objects.create(category=mice, name="Коврик для мыши", slug="mouse-pad", price="490.00", stock=25, is_active=False)
+  order = Order.objects.create(number="A-12", email="anna@shop.example")
+  OrderItem.objects.create(order=order, product=aster, quantity=1, price="64990.00")
+  OrderItem.objects.create(order=order, product=mouse, quantity=2, price="1499.00")
+solution:
+  models.py: |
+    from django.db import models
+    from django.urls import reverse
+
+
+    class ProductQuerySet(models.QuerySet):
+        def in_stock(self):
+            return self.filter(stock__gt=0)
+
+        def cheap(self, limit=2000):
+            return self.filter(price__lt=limit)
+
+
+    class Category(models.Model):
+        name = models.CharField(max_length=100)
+
+        def __str__(self):
+            return self.name
+
+
+    class Product(models.Model):
+        category = models.ForeignKey(
+            Category, on_delete=models.PROTECT, related_name="products"
+        )
+        name = models.CharField(max_length=200)
+        slug = models.SlugField(unique=True)
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+        stock = models.PositiveIntegerField(default=0)
+        is_active = models.BooleanField(default=True)
+
+        objects = ProductQuerySet.as_manager()
+
+        def __str__(self):
+            return self.name
+
+
+    class Order(models.Model):
+        number = models.CharField(max_length=20, unique=True)
+        email = models.EmailField()
+        total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+        class Meta:
+            indexes = [models.Index(fields=["email"])]
+
+        def __str__(self):
+            return self.number
+
+
+    class OrderItem(models.Model):
+        order = models.ForeignKey(
+            Order, on_delete=models.CASCADE, related_name="items"
+        )
+        product = models.ForeignKey(
+            Product, on_delete=models.PROTECT, related_name="order_items"
+        )
+        quantity = models.PositiveIntegerField()
+        price = models.DecimalField(max_digits=10, decimal_places=2)
+check:
+  type: django
+  tests:
+    - code: |
+        plan = Order.objects.filter(email="anna@shop.example").explain()
+        assert "USING INDEX" in plan and "email" in plan
+      fail: "План запроса по email должен использовать индекс (SEARCH … USING INDEX)."
+    - code: |
+        assert client.get("/by-email/", {"email": "anna@shop.example"}).content.decode() == "A-12"
+      fail: "Поиск по почте должен работать."
+hints:
+  - "Где в модели объявляют индексы?"
+  - "`class Meta: indexes = [models.Index(fields=[\"email\"])]` (или `db_index=True` у поля)."
+explanation: |
+  Без индекса база перебирает всю таблицу (`SCAN`), и время растёт вместе с числом заказов. Индекс — упорядоченная структура по колонке: поиск по ней — `SEARCH … USING INDEX`. Индексы ускоряют чтение, но замедляют запись и занимают место — их ставят на колонки, по которым действительно ищут. В проекте после изменения — `makemigrations` и `migrate`.

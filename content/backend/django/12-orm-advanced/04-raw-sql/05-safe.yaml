@@ -1,0 +1,16 @@
+title: "Где есть инъекция"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "ORM-методы параметризуют сами; опасны значения, вставленные в текст сырого SQL."
+statement: |
+  `email` пришёл из формы. В каких строках возможна SQL-инъекция?
+options:
+  - "`Order.objects.filter(email=email)`"
+  - "`Order.objects.raw(f\"SELECT * FROM shop_order WHERE email = '{email}'\")`"
+  - "`Order.objects.raw(\"SELECT * FROM shop_order WHERE email = %s\", [email])`"
+  - "`cursor.execute(\"SELECT number FROM shop_order WHERE email = '%s'\" % email)`"
+  - "`cursor.execute(\"SELECT number FROM shop_order WHERE email = %s\", [email])`"
+answer: [1, 3]
+explanation: |
+  Опасны строки, где значение склеено с текстом SQL до отправки: f-строка и оператор `%` у строки. `filter()` и вызовы с параметрами (`%s` + список вторым аргументом) передают значение отдельно — драйвер не даст ему стать кодом.

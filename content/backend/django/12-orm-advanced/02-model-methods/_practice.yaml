@@ -1,0 +1,59 @@
+- title: slugify
+  text: |
+    Сравните `slugify` для латинского и русского названий — с `allow_unicode` и без.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.utils.text import slugify
+    for name in ["Gaming Mouse", "Игровая мышь", "Коврик XL"]:
+        print(repr(slugify(name)),
+              repr(slugify(name, allow_unicode=True)))
+    ```
+    Результат:
+    ```
+    'gaming-mouse' 'gaming-mouse'
+    '' 'игровая-мышь'
+    'xl' 'коврик-xl'
+    ```
+    Без `allow_unicode` кириллица выбрасывается целиком.
+- title: Свойство в шаблоне и запросе
+  text: |
+    Посчитайте стоимость каждой позиции заказа A-12 в базе аннотацией.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    from django.db.models import F
+    items = OrderItem.objects.annotate(
+        line=F("price") * F("quantity")
+    ).filter(order__number="A-12").order_by("id")
+    print([(i.product.name, i.line) for i in items])
+    ```
+    Результат:
+    ```
+    [('Ноутбук Aster 14', Decimal('64990')), ('Беспроводная мышь', Decimal('2998'))]
+    ```
+    То же значение, что свойство `cost` из задачи темы, но посчитанное базой — по нему можно фильтровать и сортировать.
+- title: refresh_from_db
+  text: |
+    Измените остаток товара через `update()` и посмотрите на объект, загруженный раньше.
+  answer: |
+    Ответ:
+
+    Файл `orm.py`:
+    ```python
+    p = Product.objects.get(slug="aster-14")
+    Product.objects.filter(pk=p.pk).update(stock=10)
+    print(p.stock)
+    p.refresh_from_db()
+    print(p.stock)
+    ```
+    Результат:
+    ```
+    3
+    10
+    ```
+    `update()` меняет строку в базе, а не объекты в памяти; `refresh_from_db()` перечитывает поля.

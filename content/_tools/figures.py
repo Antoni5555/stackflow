@@ -1589,6 +1589,40 @@ def own_objects():
     f.save(out(DJ11 / "04-own-objects" / "img" / "own-objects.svg"))
 
 
+# ---------- Django 12: продвинутый ORM ----------
+DJ12 = ROOT / "django" / "12-orm-advanced"
+
+
+def atomic_fig():
+    f = Figure(860, 320, "Оформление заказа в transaction.atomic(): ошибка на любом шаге откатывает всё")
+    steps = [("INSERT заказ A-21", "box2"), ("мышь: SELECT … FOR UPDATE, UPDATE stock − 2", "box2"),
+             ("INSERT позиция: мышь × 2", "box2"), ("Aster: остаток 3 < 5 → ValueError", "err")]
+    f.text(20, 24, "with transaction.atomic():", "cs")
+    for i, (t, cls) in enumerate(steps):
+        f.box(40, 36 + i * 46, 400, 36, t, cls, "cs")
+    f.arrow("M450 190H486")
+    f.box(490, 170, 350, 40, "ROLLBACK: заказа нет, мышей 40", "ok", "cs")
+    f.box(490, 40, 350, 40, "без atomic: A-21 есть, мышей 38", "err", "cs")
+    f.text(490, 104, "каждый запрос зафиксирован сразу —", "s")
+    f.text(490, 124, "«полузаказ» остаётся", "s")
+    f.text(20, 262, "on_commit(письмо) при откате не вызывается — письма о несуществующем заказе нет.", "t")
+    f.text(20, 288, "select_for_update() в PostgreSQL держит блокировку строки товара до COMMIT/ROLLBACK.", "s")
+    f.save(out(DJ12 / "03-transactions" / "img" / "atomic.svg"))
+
+
+def sql_injection():
+    f = Figure(860, 300, "Ввод пользователя в f-строке становится частью SQL; параметром — остаётся значением")
+    f.text(20, 24, "email = \"x' OR '1'='1\"", "cs")
+    f.text(20, 60, "f-строка:", "t")
+    f.box(20, 72, 820, 40, "SELECT * FROM shop_order WHERE email = 'x' OR '1'='1'", "err", "cs")
+    f.text(20, 136, "условие всегда истинно → все заказы: ['A-12', 'A-13']", "s")
+    f.text(20, 176, "параметр:", "t")
+    f.box(20, 188, 470, 40, "SELECT * FROM shop_order WHERE email = %s", "ok", "cs")
+    f.box(510, 188, 330, 40, "значение отдельно: x' OR '1'='1", "box", "cs")
+    f.text(20, 252, "база ищет почту, равную всей строке целиком → []", "s")
+    f.save(out(DJ12 / "04-raw-sql" / "img" / "sql-injection.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3069,6 +3103,7 @@ if __name__ == "__main__":
                   lost_update, form_flow, modelform_fig, validation_order, media_files, formset_fig,
                   cbv_dispatch, list_detail, create_view, mixin_mro,
                   session_login, permissions_fig, own_objects,
+                  atomic_fig, sql_injection,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,
