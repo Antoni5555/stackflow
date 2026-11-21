@@ -3767,6 +3767,65 @@ def owners_fig():
     f.text(20, 272, "shop пишет, Nginx читает через группу, остальные пользователи — ничего.", "s")
     f.save(out(LX3 / "03-owners" / "img" / "owners.svg"))
 
+
+LX4 = ROOT / "linux" / "04-system"
+
+
+def apt_flow():
+    f = Figure(880, 320, "sudo apt install nginx: пакет из репозитория раскладывается по стандартным папкам")
+    f.box(20, 30, 220, 60, "репозиторий Ubuntu", "box2", "t")
+    f.text(20, 112, "apt update — свежие списки", "cs")
+    f.arrow("M240 60H296")
+    f.box(300, 30, 220, 60, "sudo apt install nginx", "acc", "onacc")
+    f.arrow("M520 60H566")
+    f.box(570, 20, 290, 150, "", "box")
+    f.text(586, 46, "/usr/sbin/nginx — программа", "cs")
+    f.text(586, 72, "/etc/nginx/ — настройки", "cs")
+    f.text(586, 98, "/var/www/html — страница", "cs")
+    f.text(586, 124, "/var/log/nginx — логи", "cs")
+    f.text(586, 150, "служба nginx", "cs")
+    f.box(20, 200, 400, 44, "apt remove — программа удалена, /etc/nginx остаётся", "box2", "cs")
+    f.box(460, 200, 400, 44, "apt purge — удалены и настройки", "err", "errt")
+    f.text(20, 290, "apt — программы системы; библиотеки проекта — pip в venv.", "s")
+    f.save(out(LX4 / "01-apt" / "img" / "apt-flow.svg"))
+
+
+def disk_fig():
+    f = Figure(880, 330, "Что заняло диск: от df к конкретным файлам")
+    f.box(20, 20, 360, 44, "df -h:  /  15G, занято 7.9G (53%)", "err", "errt")
+    f.arrow("M200 64V86")
+    f.box(20, 90, 360, 90, "", "box2")
+    f.text(36, 114, "du -sh /var/log /srv/shop /home/shop", "cs")
+    f.text(36, 140, "1.9G  /var/log     34M  /srv/shop", "cs")
+    f.text(36, 164, "1.9G  /home/shop", "cs")
+    f.arrow("M380 112H426"); f.arrow("M380 164H426")
+    f.box(430, 90, 430, 44, "app.log.1 — 1.8G  → sudo gzip → 540M", "box", "cs")
+    f.box(430, 146, 430, 44, "media-2026-11-01.tar.gz — 900M → rm", "box", "cs")
+    f.arrow("M645 190V226")
+    f.box(430, 230, 430, 44, "df -h:  занято 5.8G (39%)", "ok", "cs")
+    f.text(20, 310, "Работающий лог не удаляют — обнуляют: место освободится только после закрытия файла.", "s")
+    f.save(out(LX4 / "02-disk" / "img" / "disk.svg"))
+
+
+def pyenv_fig():
+    f = Figure(880, 330, "pyenv: команда python находится в shims и запускает версию по .python-version")
+    f.box(20, 30, 200, 44, "python", "acc", "onacc")
+    f.arrow("M220 52H266")
+    f.box(270, 20, 260, 64, "~/.pyenv/shims/python|первая в PATH", "box2", "cs")
+    f.arrow("M530 40L586 30"); f.arrow("M530 64L586 130")
+    f.box(590, 10, 270, 74, "", "ok")
+    f.text(606, 34, "/srv/warehouse/.python-version", "cs")
+    f.text(606, 58, "3.10.18 →", "cs")
+    f.text(606, 78, "~/.pyenv/versions/3.10.18", "cs")
+    f.box(590, 110, 270, 74, "", "box")
+    f.text(606, 134, "файла нет → ~/.pyenv/version", "cs")
+    f.text(606, 158, "system → /usr/bin/python3", "cs")
+    f.text(606, 178, "(python нет, только python3)", "s")
+    f.text(20, 236, "pyenv install 3.10.18 → pyenv local 3.10.18 → python -m venv venv", "cs")
+    f.text(20, 262, "Окружение запоминает версию: venv/bin/python — 3.10 и без pyenv.", "s")
+    f.text(20, 288, "Системный Python не трогают: на нём работают apt и утилиты Ubuntu.", "s")
+    f.save(out(LX4 / "03-pyenv" / "img" / "pyenv.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -3816,6 +3875,7 @@ if __name__ == "__main__":
                   commits_chain, three_areas, diff_areas, gitignore, branches, conflict, push_pull,
                   fhs, head_tail, redirect_write, links_fig,
                   find_filters, grep_keys, streams, pipeline_fig, tar_flow,
-                  users_fig, permissions_fig, owners_fig):
+                  users_fig, permissions_fig, owners_fig,
+                  apt_flow, disk_fig, pyenv_fig):
         build()
     print("ok")

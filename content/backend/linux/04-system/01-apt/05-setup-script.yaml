@@ -1,0 +1,47 @@
+title: "Скрипт подготовки сервера"
+type: fix
+difficulty: 2
+pitfall: "Перед install — apt update; в скрипте — -y; программы ставит apt через sudo, библиотеки проекта — pip в venv."
+statement: |
+  Скрипт `setup.sh` готовит новый сервер магазина, но падает. Исправьте:
+  - перед установкой — обновление списков пакетов;
+  - установка — через `sudo` и с `-y`, чтобы скрипт не ждал ответа `[Y/n]`;
+  - Django ставить не через `apt`, а через `pip` в виртуальное окружение проекта — строку `apt install python3-django` уберите (Django уже в `requirements.txt`).
+files:
+  setup.sh: |
+    #!/bin/bash
+    set -e
+    apt install nginx git postgresql-client python3-venv
+    apt install python3-django
+    cd /srv/shop
+    python3 -m venv venv
+    venv/bin/pip install -r requirements.txt
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*sudo apt update\s*$'
+      fail: "Перед установкой нужна строка sudo apt update — на новом сервере списки пакетов пусты."
+    - must_match: '^\s*sudo apt install -y nginx git postgresql-client python3-venv\s*$'
+      fail: "Установка: sudo apt install -y nginx git postgresql-client python3-venv — с sudo и -y."
+    - must_not_match: 'python3-django'
+      fail: "Django через apt не ставят — он придёт из requirements.txt через pip."
+    - must_not_match: '^\s*apt install'
+      fail: "apt install без sudo упадёт: «are you root?»."
+    - must_match: '^\s*venv/bin/pip install -r requirements\.txt\s*$'
+      fail: "Установку зависимостей через pip в venv оставьте."
+    - must_match: '^\s*sudo apt update\s*\n\s*sudo apt install'
+      fail: "apt update должен стоять перед apt install."
+solution:
+  setup.sh: |
+    #!/bin/bash
+    set -e
+    sudo apt update
+    sudo apt install -y nginx git postgresql-client python3-venv
+    cd /srv/shop
+    python3 -m venv venv
+    venv/bin/pip install -r requirements.txt
+hints:
+  - "Какая команда `apt` обновляет списки пакетов? Какой ключ отвечает «да» без вопроса?"
+  - "`sudo apt update`, затем `sudo apt install -y nginx git postgresql-client python3-venv`; строку с `python3-django` удалить."
+explanation: |
+  На свежем сервере без `apt update` пакеты не найдутся (`Unable to locate package`), без `sudo` — `are you root?`, без `-y` скрипт остановится на вопросе `[Y/n]`. `python3-django` из `apt` — старая версия на всю систему; проекту нужна своя версия в `venv`, она уже в `requirements.txt`. `python3-venv` без него `python3 -m venv` на Ubuntu не работает.

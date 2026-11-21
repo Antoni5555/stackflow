@@ -1,0 +1,43 @@
+title: "Освободить место"
+type: exercise
+difficulty: 2
+pitfall: "Старый лог сжимают (gzip, через sudo — он root), старый бэкап удаляют; свежие не трогают."
+statement: |
+  Освободите место: сожмите вчерашний лог `/var/log/shop/app.log.1` (он принадлежит `root`) и удалите бэкап трёхнедельной давности `~/backups/media-2026-11-01.tar.gz`. Текущий лог `app.log` и свежий бэкап оставьте.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/media/products/mouse.jpg: {size: 240K}
+    /var/log/shop/app.log: {content: "2026-11-21 09:10:00 INFO Booting worker\n", owner: root}
+    /var/log/shop/app.log.1: {size: 1800M, owner: root, mtime: 1}
+    /var/log/shop/app.log.2.gz: {size: 95M, owner: root, mtime: 2}
+    /home/shop/backups/media-2026-11-01.tar.gz: {size: 900M, mtime: 20}
+    /home/shop/backups/media-2026-11-20.tar.gz: {size: 950M, mtime: 1}
+check:
+  type: state
+  expect:
+    - path: /var/log/shop/app.log.1.gz
+      exists: true
+      fail: "Нет /var/log/shop/app.log.1.gz. Лог принадлежит root — sudo gzip /var/log/shop/app.log.1."
+    - path: /var/log/shop/app.log.1
+      exists: false
+      fail: "Несжатый app.log.1 остался."
+    - path: /home/shop/backups/media-2026-11-01.tar.gz
+      exists: false
+      fail: "Старый бэкап media-2026-11-01.tar.gz не удалён."
+    - path: /home/shop/backups/media-2026-11-20.tar.gz
+      exists: true
+      fail: "Свежий бэкап удалять было нельзя."
+    - path: /var/log/shop/app.log
+      exists: true
+      fail: "Текущий app.log пропал — его пишет работающее приложение."
+solution: |
+  sudo gzip /var/log/shop/app.log.1
+  rm ~/backups/media-2026-11-01.tar.gz
+hints:
+  - "Лог — сжать (он текстовый), бэкап — удалить. Кому принадлежит лог?"
+  - "`sudo gzip /var/log/shop/app.log.1`, затем `rm ~/backups/media-2026-11-01.tar.gz`."
+explanation: |
+  Текст жмётся примерно втрое: 1,8 ГБ превращаются в 540 МБ, а лог остаётся доступен (`zcat`, `zless`). Старый бэкап при свежем — лишний. Текущий `app.log` не трогают: его держит открытым приложение, и удаление не освободит место. Проверка результата — `df -h`.

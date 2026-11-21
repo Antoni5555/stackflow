@@ -1,0 +1,31 @@
+title: "Самый большой файл логов"
+type: exercise
+difficulty: 2
+pitfall: "Размер каждого файла в папке — du -sh папка/*."
+statement: |
+  Выведите (последней командой) размеры всех файлов в `/var/log/shop`, по строке на файл, в понятных единицах — чтобы увидеть, какой лог разросся.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/media/products/mouse.jpg: {size: 240K}
+    /var/log/shop/app.log: {content: "2026-11-21 09:10:00 INFO Booting worker\n", owner: root}
+    /var/log/shop/app.log.1: {size: 1800M, owner: root, mtime: 1}
+    /var/log/shop/app.log.2.gz: {size: 95M, owner: root, mtime: 2}
+    /home/shop/backups/media-2026-11-01.tar.gz: {size: 900M, mtime: 20}
+    /home/shop/backups/media-2026-11-20.tar.gz: {size: 950M, mtime: 1}
+check:
+  type: state
+  expect:
+    - output_matches: '^1\.8G\s+/var/log/shop/app\.log\.1$'
+      fail: "В выводе нет строки «1.8G /var/log/shop/app.log.1». Размер каждого файла папки — du -sh /var/log/shop/*."
+    - output_matches: '^95M\s+/var/log/shop/app\.log\.2\.gz$'
+      fail: "В выводе нет строки для app.log.2.gz — нужны все файлы папки (/*)."
+solution: |
+  du -sh /var/log/shop/*
+hints:
+  - "`du -sh` даёт одну строку на путь. Как передать ему все файлы папки?"
+  - "`du -sh /var/log/shop/*`."
+explanation: |
+  `*` раскрывается в список файлов папки, и `du -sh` печатает размер каждого: `app.log.1` — 1,8 ГБ, вчерашний лог, который не сжали. `du -sh /var/log/shop` дал бы одну строку — итог папки, без ответа «какой именно файл».

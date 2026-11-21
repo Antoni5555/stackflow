@@ -1,0 +1,29 @@
+title: "Папки по размеру"
+type: exercise
+difficulty: 3
+pitfall: "Сортировать размеры — du -s (числа без единиц) и sort -n -r; sort -n не понимает 1.8G и 95M."
+statement: |
+  Выведите (последней командой) размеры папок `/var/log`, `/srv/shop` и `/home/shop` от большей к меньшей — по строке на папку. Числа — без единиц, в килобайтах, как их печатает `du -s`.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/media/products/mouse.jpg: {size: 240K}
+    /var/log/shop/app.log: {content: "2026-11-21 09:10:00 INFO Booting worker\n", owner: root}
+    /var/log/shop/app.log.1: {size: 1800M, owner: root, mtime: 1}
+    /var/log/shop/app.log.2.gz: {size: 95M, owner: root, mtime: 2}
+    /home/shop/backups/media-2026-11-01.tar.gz: {size: 900M, mtime: 20}
+    /home/shop/backups/media-2026-11-20.tar.gz: {size: 950M, mtime: 1}
+check:
+  type: state
+  expect:
+    - output_matches: '(?<![\s\S])\d+\s+/var/log\n\d+\s+/home/shop\n\d+\s+/srv/shop\n?$(?![\s\S])'
+      fail: "Ожидались три строки в порядке /var/log, /home/shop, /srv/shop. Числа без -h (du -s), сортировка — sort -n -r."
+solution: |
+  du -s /var/log /srv/shop /home/shop | sort -n -r
+hints:
+  - "`du -sh` печатает `1.9G` и `34M` — как числа их не сравнить. Какой ключ убрать?"
+  - "`du -s /var/log /srv/shop /home/shop | sort -n -r`."
+explanation: |
+  `du -s` печатает размер в килобайтах — обычные числа, их сортирует `sort -n`, а `-r` ставит большие первыми. С `-h` получились бы `1.9G`, `34M`, и `sort -n` сравнил бы только `1.9` и `34`. Для таких строк у `sort` есть `-h`: `du -sh … | sort -h -r` — тоже верное решение, но здесь нужны числа без единиц.

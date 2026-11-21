@@ -231,7 +231,7 @@ def check_dom(task):
 LINUX_COMMANDS = {
     "pwd": None, "cd": None, "ls": {"-l", "-a", "-h", "-R"}, "cat": None, "echo": None, "mkdir": {"-p"},
     "touch": None, "rm": {"-r"}, "cp": {"-r"}, "mv": None, "ln": {"-s"}, "head": {"-n"}, "tail": {"-n"},
-    "wc": {"-l"}, "grep": {"-i", "-n", "-r", "-c", "-v", "-E"}, "sort": {"-n", "-r"}, "uniq": {"-c"},
+    "wc": {"-l"}, "grep": {"-i", "-n", "-r", "-c", "-v", "-E"}, "sort": {"-n", "-r", "-h"}, "uniq": {"-c"},
     "cut": {"-d", "-f"}, "find": {"-name", "-iname", "-type", "-size", "-mtime", "-maxdepth"},
     "tar": {"-c", "-x", "-t", "-z", "-f", "-v", "-C"},
     "chmod": None, "chown": {"-R"},
@@ -248,6 +248,8 @@ GIT_COMMANDS = {
     "pull": {"--no-rebase", "--rebase"},
 }
 GIT_SUBCOMMANDS = {"stash": {"push", "list", "pop", "apply", "drop"}, "remote": {"add"}}
+APT_COMMANDS = {"update": None, "upgrade": {"-y"}, "install": {"-y"}, "remove": {"-y"}, "purge": {"-y"},
+                "list": {"--installed"}}
 PIP_COMMANDS = {"install": {"-r"}, "freeze": None, "uninstall": {"-y"}, "list": None}
 STATE_RULES = {  # ключ, по которому узнаём правило → какие ещё ключи обязательны
     "exists": {"path"}, "contains": {"path"}, "not_contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "group": {"path"}, "link_to": {"path"},
@@ -299,9 +301,10 @@ def check_command(line):
         elif tokens[0] in ("source", "deactivate"):
             continue
         elif tokens[0] == "apt":
-            if tokens[1:2] != ["install"]:
-                problems.append(f"из apt в симуляторе только sudo apt install: {line!r}")
-            continue
+            if len(tokens) < 2 or tokens[1] not in APT_COMMANDS:
+                problems.append(f"команды apt {tokens[1] if len(tokens) > 1 else ''!s} нет в симуляторе: {line!r}")
+                continue
+            allowed, flags = APT_COMMANDS[tokens[1]], tokens[2:]
         elif tokens[0] in LINUX_COMMANDS:
             allowed, flags = LINUX_COMMANDS[tokens[0]], tokens[1:]
         else:

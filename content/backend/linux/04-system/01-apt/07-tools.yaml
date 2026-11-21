@@ -1,0 +1,27 @@
+title: "Утилиты для администрирования"
+type: exercise
+difficulty: 1
+pitfall: "Несколько пакетов — одной командой apt install; -y отвечает «да» на вопрос [Y/n]."
+statement: |
+  Поставьте одной командой, без вопроса `[Y/n]`, две утилиты: `htop` (процессы и нагрузка) и `tree` (дерево папок). Git на сервере уже есть — его ставить не нужно.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+check:
+  type: state
+  expect:
+    - path: /usr/bin/htop
+      exists: true
+      fail: "Нет /usr/bin/htop — пакет htop не установлен."
+    - path: /usr/bin/tree
+      exists: true
+      fail: "Нет /usr/bin/tree — пакет tree не установлен."
+solution: |
+  sudo apt install -y htop tree
+hints:
+  - "`apt install` принимает несколько имён пакетов через пробел."
+  - "`sudo apt install -y htop tree`."
+explanation: |
+  Одной командой `apt` разрешает зависимости сразу для всех пакетов и спрашивает подтверждение один раз; `-y` отвечает «да» заранее — так пишут в скриптах. `htop` пригодится в разделе «Процессы, сервисы, сеть».

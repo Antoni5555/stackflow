@@ -1,0 +1,15 @@
+title: "update или upgrade"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "apt update обновляет только списки пакетов, apt upgrade — сами программы."
+statement: |
+  На новом сервере `sudo apt install nginx` ответил `E: Unable to locate package nginx`. Что сделать первым?
+options:
+  - "`sudo apt upgrade`"
+  - "`sudo apt update`, потом снова `sudo apt install nginx`"
+  - "`pip install nginx`"
+  - "Скачать nginx с сайта и распаковать в `/usr/bin`"
+answer: [1]
+explanation: |
+  На свежем сервере списки пакетов пусты или устарели — `apt` не знает, где брать `nginx`. `apt update` скачивает списки, после этого `install` находит пакет. `upgrade` обновляет уже установленное и списки не обновляет; `pip` ставит библиотеки Python, а не программы системы.

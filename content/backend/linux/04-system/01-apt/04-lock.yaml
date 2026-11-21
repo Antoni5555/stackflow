@@ -1,0 +1,20 @@
+title: "are you root?"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Пакеты ставит только root — apt install через sudo."
+statement: |
+  ```
+  $ apt install htop
+  E: Could not open lock file /var/lib/dpkg/lock-frontend - open (13: Permission denied)
+  E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), are you root?
+  ```
+  Что не так?
+options:
+  - "Другая программа сейчас ставит пакеты"
+  - "Команда запущена без `sudo`: менять установленные программы может только `root`"
+  - "Пакета `htop` нет в репозитории"
+  - "Закончилось место на диске"
+answer: [1]
+explanation: |
+  `apt` пытается заблокировать базу пакетов (`lock-frontend`), а файл блокировки доступен только `root` — `Permission denied` и подсказка `are you root?`. Нужно `sudo apt install htop`. Если же блокировку держит другой `apt` (идёт автообновление), сообщение другое: `… is held by process …` — нужно подождать.

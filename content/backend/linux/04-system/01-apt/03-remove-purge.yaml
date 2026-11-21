@@ -1,0 +1,15 @@
+title: "Удалить начисто"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "apt remove оставляет настройки в /etc, apt purge удаляет их тоже."
+statement: |
+  Вы сломали настройки Nginx и хотите переустановить его «с нуля», с настройками по умолчанию. Сделали `sudo apt remove nginx` и `sudo apt install nginx` — а ошибка в `/etc/nginx` осталась. Почему?
+options:
+  - "`apt install` ставит пакет из кэша со старыми настройками"
+  - "`apt remove` удаляет программу, но оставляет настройки в `/etc`; начисто — `sudo apt purge nginx`"
+  - "Нужно было перезагрузить сервер"
+  - "`apt` не умеет удалять Nginx"
+answer: [1]
+explanation: |
+  `remove` бережёт конфигурацию: при повторной установке ваши настройки возвращаются — обычно это удобно. Чтобы удалить и их, используют `purge`. На практике перед этим сохраняют копию: `sudo cp -r /etc/nginx ~/nginx-backup`.

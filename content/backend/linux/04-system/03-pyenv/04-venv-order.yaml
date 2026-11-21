@@ -1,0 +1,40 @@
+title: "Окружение не той версии"
+type: fix
+difficulty: 2
+pitfall: "Сначала выбрать версию (pyenv local), потом создать venv командой python — окружение запоминает версию."
+statement: |
+  Скрипт `prepare.sh` готовит сервис склада под Python 3.10.18, но окружение получается на 3.12. Исправьте: сначала выбрать версию для папки проекта, потом создать окружение командой `python` (её даёт pyenv), а не системным `python3`.
+files:
+  prepare.sh: |
+    #!/bin/bash
+    set -e
+    cd /srv/warehouse
+    python3 -m venv venv
+    pyenv local 3.10.18
+    venv/bin/pip install -r requirements.txt
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*pyenv local 3\.10\.18\s*$'
+      fail: "Оставьте выбор версии: pyenv local 3.10.18."
+    - must_match: '^\s*python -m venv venv\s*$'
+      fail: "Окружение создаёт python (shim pyenv), а не системный python3: python -m venv venv."
+    - must_not_match: 'python3 -m venv'
+      fail: "python3 — системный Python 3.12: окружение получится не той версии."
+    - must_match: 'pyenv local 3\.10\.18\s*\n(\s*\S.*\n)*?\s*python -m venv venv'
+      fail: "pyenv local должен стоять раньше создания окружения."
+    - must_match: '^\s*venv/bin/pip install -r requirements\.txt\s*$'
+      fail: "Установку зависимостей оставьте."
+solution:
+  prepare.sh: |
+    #!/bin/bash
+    set -e
+    cd /srv/warehouse
+    pyenv local 3.10.18
+    python -m venv venv
+    venv/bin/pip install -r requirements.txt
+hints:
+  - "Окружение запоминает интерпретатор, которым его создали. Каким Python создаётся `venv` сейчас?"
+  - "Поменяйте строки местами и создавайте окружение `python -m venv venv`."
+explanation: |
+  `python3` — системный 3.12, и `venv`, созданный им, навсегда 3.12: `pyenv local` после этого уже ничего не меняет. Правильный порядок — выбрать версию для папки, затем `python -m venv venv`: shim pyenv запустит 3.10.18, и `venv/bin/python --version` даст `Python 3.10.18`.

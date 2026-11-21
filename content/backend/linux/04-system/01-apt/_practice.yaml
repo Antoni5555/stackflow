@@ -1,0 +1,68 @@
+- title: Что уже стоит
+  text: |
+    Проверьте, есть ли на сервере программы, и сколько вернула команда. Программы:
+    ```
+    git nginx
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    which git nginx
+    echo $?
+    ```
+    Результат:
+    ```
+    /usr/bin/git
+    1
+    ```
+    `git` найден, `nginx` — нет, поэтому код выхода 1.
+- title: Поставить утилиту
+  text: |
+    Поставьте утилиту без вопроса `[Y/n]` и найдите её. Пакет:
+    ```
+    tree
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo apt install -y tree
+    which tree
+    ```
+    Результат:
+    ```
+    Reading package lists... Done
+    Building dependency tree... Done
+    Reading state information... Done
+    The following NEW packages will be installed:
+      tree
+    0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.
+    Setting up tree (2.1.1-2ubuntu3) ...
+    /usr/bin/tree
+    ```
+    Посмотреть, что ещё стоит, — `apt list --installed`.
+- title: Удалить начисто
+  text: |
+    Поставьте Nginx, посмотрите включённые сайты, затем удалите его вместе с настройками и посмотрите, что осталось в `/etc/nginx`. Пакет:
+    ```
+    nginx
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo apt install -y nginx
+    ls /etc/nginx/sites-enabled
+    sudo apt purge nginx
+    ls /etc/nginx
+    ```
+    Результат (без строк `Reading …`):
+    ```
+    The following NEW packages will be installed:
+      nginx
+    0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.
+    Setting up nginx (1.24.0-2ubuntu7.1) ...
+    default
+    Removing nginx (1.24.0-2ubuntu7.1) ...
+    Purging configuration files for nginx (1.24.0-2ubuntu7.1) ...
+    sites-available
+    ```
+    Пакет включил сайт `default`. `purge` убрал настройки пакета, а `sites-available` с вашим `shop.conf` остался — его создавал не `apt`.

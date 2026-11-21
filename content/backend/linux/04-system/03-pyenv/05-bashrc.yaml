@@ -1,0 +1,41 @@
+title: "pyenv не находится"
+type: fix
+difficulty: 2
+pitfall: "pyenv подключают тремя строками в ~/.bashrc: PYENV_ROOT, PATH и eval \"$(pyenv init - bash)\"."
+statement: |
+  После `git clone https://github.com/pyenv/pyenv.git ~/.pyenv` команда `pyenv` не находится. Допишите в конец `.bashrc` три строки инициализации:
+  - `export PYENV_ROOT="$HOME/.pyenv"`;
+  - `[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"`;
+  - `eval "$(pyenv init - bash)"`.
+  Остальное в файле не трогайте.
+files:
+  .bashrc: |
+    # ~/.bashrc
+    alias ll='ls -la'
+    export EDITOR=nano
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*export PYENV_ROOT="\$HOME/\.pyenv"\s*$'
+      fail: "Нет строки export PYENV_ROOT=\"$HOME/.pyenv\" — где лежит pyenv."
+    - must_match: '^\s*\[\[ -d \$PYENV_ROOT/bin \]\] && export PATH="\$PYENV_ROOT/bin:\$PATH"\s*$'
+      fail: "Нет строки, добавляющей $PYENV_ROOT/bin в начало PATH."
+    - must_match: '^\s*eval "\$\(pyenv init - bash\)"\s*$'
+      fail: "Нет строки eval \"$(pyenv init - bash)\" — она подключает shims."
+    - must_match: 'PYENV_ROOT="\$HOME/\.pyenv"\s*\n(.*\n)*?.*PYENV_ROOT/bin(.*\n)*?\s*eval "\$\(pyenv init'
+      fail: "Порядок строк: сначала PYENV_ROOT, потом PATH, потом eval."
+    - must_match: "^\\s*alias ll='ls -la'\\s*$"
+      fail: "Старые строки .bashrc не удаляйте."
+solution:
+  .bashrc: |
+    # ~/.bashrc
+    alias ll='ls -la'
+    export EDITOR=nano
+    export PYENV_ROOT="$HOME/.pyenv"
+    [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init - bash)"
+hints:
+  - "Порядок важен: третья строка вызывает `pyenv`, а он находится только после второй."
+  - "Скопируйте три строки из условия в конец файла."
+explanation: |
+  `PYENV_ROOT` — где лежит pyenv, вторая строка кладёт команду `pyenv` в `PATH`, третья добавляет папку shims в начало `PATH` и включает переключение версий. Изменения `.bashrc` действуют в новом терминале или после `source ~/.bashrc`. Без них `pyenv: command not found`, а `python` не переключается.

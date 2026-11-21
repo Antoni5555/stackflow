@@ -1,0 +1,15 @@
+title: "python: command not found"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "В Ubuntu системный Python — команда python3; python есть только в выбранной версии pyenv или в активном venv."
+statement: |
+  На сервере Ubuntu 24.04 `python3 --version` печатает `Python 3.12.3`, а `python --version` — `command not found`. В чём дело?
+options:
+  - "Python не установлен"
+  - "В Ubuntu системный Python вызывается как `python3`; команды `python` нет, пока её не даст pyenv (`pyenv local`) или активированное окружение"
+  - "Нужно `sudo apt install python`"
+  - "Python 3.12 не поддерживает команду `python`"
+answer: [1]
+explanation: |
+  Ubuntu оставляет имя `python` свободным (раньше оно означало Python 2). Внутри проекта с `.python-version` shim pyenv отвечает на `python`, в активном `venv` — `venv/bin/python`. В скриптах на системном Python пишут `python3`.

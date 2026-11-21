@@ -1,0 +1,15 @@
+title: "Откуда эта версия"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "pyenv local записывает версию в .python-version папки проекта; pyenv version показывает, откуда выбор."
+statement: |
+  В папке `/srv/warehouse` выполнили `pyenv local 3.10.18`. Что изменилось?
+options:
+  - "Системный Python заменён на 3.10.18 для всех пользователей"
+  - "В `/srv/warehouse` появился файл `.python-version` с текстом `3.10.18`; в этой папке и вложенных `python` — 3.10.18"
+  - "Python 3.10.18 скачан и собран"
+  - "Создано виртуальное окружение `venv`"
+answer: [1]
+explanation: |
+  `pyenv local` только записывает выбор в `.python-version`; shim находит этот файл в текущей папке или выше и запускает нужную версию — `pyenv version` скажет `3.10.18 (set by /srv/warehouse/.python-version)`. Скачивает и собирает версию `pyenv install`, окружение создаёт `python -m venv venv`, системный Python не меняется.
