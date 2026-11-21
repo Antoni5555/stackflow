@@ -1,0 +1,70 @@
+- title: Классы кодов
+  text: |
+    Напечатайте класс каждого кода: «успех», «ошибка клиента» или «ошибка сервера».
+    ```python
+    codes = [201, 204, 401, 409, 422, 429, 502, 504]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def kind(code):
+        return {2: "успех", 4: "ошибка клиента",
+                5: "ошибка сервера"}[code // 100]
+
+
+    for c in codes:
+        print(c, kind(c))
+    ```
+    Результат:
+    ```
+    201 успех
+    204 успех
+    401 ошибка клиента
+    409 ошибка клиента
+    422 ошибка клиента
+    429 ошибка клиента
+    502 ошибка сервера
+    504 ошибка сервера
+    ```
+    `code // 100` — первая цифра кода.
+- title: Названия из HTTPStatus
+  text: |
+    Получите название и класс кода через `http.HTTPStatus`:
+    ```python
+    from http import HTTPStatus
+    codes = [409, 422, 503]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for c in codes:
+        s = HTTPStatus(c)
+        print(c, s.phrase, s.is_client_error, s.is_server_error)
+    ```
+    Результат:
+    ```
+    409 Conflict True False
+    422 Unprocessable Entity True False
+    503 Service Unavailable False True
+    ```
+    `is_client_error`/`is_server_error` есть у `HTTPStatus` с Python 3.12.
+- title: Ответ на создание
+  text: |
+    Соберите ответ API на создание заказа: код 201, заголовок `Location` с адресом нового заказа и тело.
+    ```python
+    from http import HTTPStatus
+    new_id = 125
+    ```
+  answer: |
+    Ответ:
+    ```python
+    status = HTTPStatus.CREATED
+    headers = {"Location": f"/api/orders/{new_id}/"}
+    body = {"id": new_id, "status": "new"}
+    print(int(status), status.phrase, headers, body)
+    ```
+    Результат:
+    ```
+    201 Created {'Location': '/api/orders/125/'} {'id': 125, 'status': 'new'}
+    ```
+    `HTTPStatus.CREATED` — то же число 201, но в коде видно, что имелось в виду.

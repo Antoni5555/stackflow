@@ -1,0 +1,15 @@
+title: "Что попадёт в request.POST"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Django разбирает в request.POST только формы (urlencoded и multipart); JSON — в request.body."
+statement: |
+  View Django получает POST-запросы с разными телами. В каких случаях данные окажутся в `request.POST`?
+options:
+  - "`Content-Type: application/json`, тело `{\"product\": 2}`"
+  - "`Content-Type: application/x-www-form-urlencoded`, тело `product=2`"
+  - "`Content-Type: multipart/form-data` с полем `alt` и файлом `photo`"
+  - "GET-запрос `?product=2`"
+answer: [1, 2]
+explanation: |
+  В учебном API JSON пришёл в `body`, а `POST` был `{}`; форма — `{"product": "2", "quantity": "1"}`. Multipart: поля — в `request.POST`, файлы — в `request.FILES`. Query-параметры — в `request.GET`, а не `POST`.

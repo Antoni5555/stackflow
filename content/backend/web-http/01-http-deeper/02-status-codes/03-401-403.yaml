@@ -1,0 +1,15 @@
+title: "401 или 403"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "401 — «кто вы?», 403 — «вы известны, но нельзя»."
+statement: |
+  Борис с действующим токеном запрашивает заказ Анны `/api/orders/124/`. В этом API существование заказов не скрывают. Какой код правильный?
+options:
+  - "`401 Unauthorized`"
+  - "`403 Forbidden`"
+  - "`400 Bad Request`"
+  - "`422 Unprocessable Entity`"
+answer: [1]
+explanation: |
+  Борис аутентифицирован — токен действителен, поэтому не 401. Прав на чужой заказ нет — `403 Forbidden`; учебный API ответил `{"error": "Это не ваш заказ"}`. Без токена был бы `401 Unauthorized` с заголовком `WWW-Authenticate: Bearer`. Если существование заказов нужно скрывать — 404.

@@ -1,0 +1,36 @@
+title: "Пришёл ли JSON"
+type: exercise
+difficulty: 2
+pitfall: "Перед json.loads проверяют Content-Type: у него бывают параметры и любой регистр."
+statement: |
+  Перед разбором ответа клиент проверяет его формат. Напишите `is_json(content_type)`: `True`, если тип — `application/json` (с параметрами вроде `; charset=utf-8` и в любом регистре), иначе `False`. Пустая строка — `False`.
+starter_code: |
+  def is_json(content_type):
+      return content_type == "application/json"
+check:
+  type: tests
+  tests:
+    - code: |
+        assert is_json("application/json") is True
+      fail: "application/json — это JSON."
+    - code: |
+        assert is_json("application/json; charset=utf-8") is True
+      fail: "Параметры после «;» не меняют тип: application/json; charset=utf-8 — тоже JSON."
+    - code: |
+        assert is_json("Application/JSON") is True
+      fail: "Тип не зависит от регистра."
+    - code: |
+        assert is_json("text/html; charset=utf-8") is False and is_json("") is False
+      fail: "HTML и пустой заголовок — не JSON."
+    - code: |
+        assert is_json("application/jsonp") is False
+      fail: "application/jsonp — другой тип: сравнивайте тип целиком, а не начало строки."
+solution: |
+  def is_json(content_type):
+      media_type = content_type.split(";")[0].strip().lower()
+      return media_type == "application/json"
+hints:
+  - "Что стоит до первой «;» в Content-Type?"
+  - "`content_type.split(\";\")[0].strip().lower() == \"application/json\"`."
+explanation: |
+  `Content-Type` — тип и необязательные параметры через `;`. Тип сравнивают целиком и без учёта регистра: `startswith("application/json")` пропустил бы `application/jsonp`. В стандартной библиотеке то же делает `email.message.Message().get_content_type()`.

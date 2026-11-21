@@ -1,0 +1,43 @@
+title: "Что делать с ответом"
+type: exercise
+difficulty: 2
+pitfall: "Повторять имеет смысл 429 и 502/503/504; другие 4xx — ошибка запроса, повтор не поможет."
+statement: |
+  Напишите функцию `decide(status)` для клиента API: `"ok"` — для кодов 2xx; `"retry"` — для 429, 502, 503, 504 (повторить позже); `"fix"` — для остальных 4xx (исправить запрос); `"fail"` — для остальных 5xx.
+starter_code: |
+  def decide(status):
+      if status == 200:
+          return "ok"
+      return "fix"
+check:
+  type: tests
+  tests:
+    - code: |
+        assert decide(200) == "ok" and decide(201) == "ok" and decide(204) == "ok"
+      fail: "Все коды 2xx — успех: 201 и 204 тоже."
+    - code: |
+        assert [decide(c) for c in (429, 502, 503, 504)] == ["retry"] * 4
+      fail: "429 и 502/503/504 — временные: их повторяют позже."
+    - code: |
+        assert [decide(c) for c in (400, 401, 403, 404, 409, 422)] == ["fix"] * 6
+      fail: "Остальные 4xx — ошибка запроса: повтор того же запроса не поможет."
+    - code: |
+        assert decide(500) == "fail" and decide(501) == "fail"
+      fail: "500 и другие 5xx, кроме 502–504, — \"fail\"."
+solution: |
+  RETRY = {429, 502, 503, 504}
+
+
+  def decide(status):
+      if 200 <= status < 300:
+          return "ok"
+      if status in RETRY:
+          return "retry"
+      if 400 <= status < 500:
+          return "fix"
+      return "fail"
+hints:
+  - "Проверяйте сначала успешные коды, потом особые «повторяемые», потом классы 4xx и 5xx."
+  - "`200 <= status < 300`, затем `status in {429, 502, 503, 504}`."
+explanation: |
+  Класс кода — первая цифра: 2xx успех, 4xx — клиент ошибся, 5xx — сервер. Но внутри классов есть исключения: 429 — «слишком часто», пройдёт позже; 502/503/504 — временная недоступность шлюза или сервиса. Порядок проверок важен: `RETRY` раньше общей проверки 4xx, иначе 429 попадёт в «исправить».

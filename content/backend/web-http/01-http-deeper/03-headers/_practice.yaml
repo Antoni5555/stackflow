@@ -1,0 +1,64 @@
+- title: Заголовки без учёта регистра
+  text: |
+    Заголовки ответа пришли строками. Найдите `Content-Type` и `ETag`, не завися от регистра имени:
+    ```python
+    raw = [
+        "content-type: application/json",
+        "ETag: \"1499.00-40\"",
+        "Cache-Control: max-age=60",
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    headers = {}
+    for line in raw:
+        name, value = line.split(":", 1)
+        headers[name.strip().lower()] = value.strip()
+    print(headers["content-type"], headers["etag"])
+    ```
+    Результат:
+    ```
+    application/json "1499.00-40"
+    ```
+    Имена приводят к одному регистру при чтении — так делают и Django (`request.headers`), и `httpx`.
+- title: Тип и кодировка
+  text: |
+    Разберите `Content-Type` на тип и кодировку стандартной библиотекой:
+    ```python
+    from email.message import Message
+    value = "text/html; charset=utf-8"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    m = Message()
+    m["Content-Type"] = value
+    print(m.get_content_type(), m.get_param("charset"))
+    ```
+    Результат:
+    ```
+    text/html utf-8
+    ```
+    Ответ — HTML: `json.loads` его не разберёт; такой ответ означает ошибку или не тот адрес.
+- title: Проверка ETag
+  text: |
+    Сервер решает, отвечать ли 304. Напишите проверку по заголовку `If-None-Match`.
+    ```python
+    etag = '"1499.00-40"'
+    requests = ['"1499.00-40"', '"1399.00-40"', None]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for if_none_match in requests:
+        status = 304 if if_none_match == etag else 200
+        print(if_none_match, status)
+    ```
+    Результат:
+    ```
+    "1499.00-40" 304
+    "1399.00-40" 200
+    None 200
+    ```
+    Совпал — 304 без тела; другая версия или заголовка нет — 200 с телом.

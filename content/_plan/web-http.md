@@ -18,6 +18,8 @@ Slug курса остаётся `web-http` (курс уже есть в кат�
 | 03 | Заголовки | `Accept`, `Content-Type`, `Authorization`, `Cache-Control`, `ETag`, `User-Agent` | почему API вернул HTML вместо JSON | ❌ |
 | 04 | Тело запроса | JSON, form-urlencoded, multipart — когда что | загрузка фото товара через API | ❌ |
 
+✅ Написан: `content/backend/web-http/01-http-deeper` — 4 урока, 16 задач (8 `quiz`, 2 `fix`, 6 `exercise` на Python), 4 рисунка, задачники — 12 упражнений. Обмены запрос–ответ в уроках — настоящие `curl -s -i` к учебному API магазина (Django + Gunicorn во временной папке, служебные заголовки `Server`, `Date` и заголовки безопасности убраны), Python-примеры выполняет `check_tasks`.
+
 ## 2. Доступ и безопасность ●●○
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
 |---|---|---|---|---|

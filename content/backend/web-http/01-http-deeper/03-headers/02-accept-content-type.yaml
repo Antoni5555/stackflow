@@ -1,0 +1,15 @@
+title: "Accept или Content-Type"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Content-Type — формат этого тела; Accept — какой формат ответа нужен."
+statement: |
+  Мобильное приложение отправляет заказ JSON-ом и хочет получить ответ тоже в JSON. Какие заголовки должны быть в запросе?
+options:
+  - "`Content-Type: application/json` и `Accept: application/json`"
+  - "только `Accept: application/json`"
+  - "только `Content-Type: text/html`"
+  - "`Accept: application/x-www-form-urlencoded`"
+answer: [0]
+explanation: |
+  `Content-Type` описывает тело **запроса** — JSON; без него `curl -d` отправил данные как форму, и учебный API ответил `415 Unsupported Media Type`. `Accept` говорит, какой формат клиент хочет **в ответе**.

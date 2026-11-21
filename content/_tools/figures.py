@@ -1746,6 +1746,73 @@ def test_lifecycle():
     f.save(out(DJ15 / "01-testcase" / "img" / "test-lifecycle.svg"))
 
 
+# ---------- Веб и API 1: HTTP подробнее ----------
+WH1 = ROOT / "web-http" / "01-http-deeper"
+
+
+def api_methods():
+    f = Figure(860, 300, "Методы для позиции корзины /api/cart/items/7/")
+    f.box(20, 120, 230, 60, "", "box2")
+    f.text(135, 144, "позиция 7", "t", "middle")
+    f.text(135, 166, "product 2, quantity 1", "cs", "middle")
+    rows = [("GET / HEAD", "прочитать (HEAD — без тела)", "ok"),
+            ("PATCH {\"quantity\": 3}", "изменить часть → quantity 3", "box"),
+            ("PUT {\"product\": 2, \"quantity\": 5}", "заменить целиком; без поля — 422", "box"),
+            ("DELETE", "удалить → 204, повтор → 404", "err")]
+    for i, (m, what, cls) in enumerate(rows):
+        y = 20 + i * 66
+        f.arrow(f"M250 150L326 {y + 24}")
+        f.box(330, y, 260, 48, m, cls, "cs")
+        f.text(610, y + 30, what, "s")
+    f.text(20, 290, "Безопасные: GET, HEAD, OPTIONS. Идемпотентные: они же + PUT и DELETE. POST — нет.", "s")
+    f.save(out(WH1 / "01-methods" / "img" / "methods.svg"))
+
+
+def who_answers():
+    f = Figure(860, 280, "Кто отдаёт код ответа: приложение или прокси перед ним")
+    f.box(20, 90, 140, 50, "клиент", "box2", "cs")
+    f.arrow("M160 115H206")
+    f.box(210, 80, 200, 70, "", "box")
+    f.text(310, 106, "Nginx", "t", "middle"); f.text(310, 130, "502, 504 (и 503)", "cs", "middle")
+    f.arrow("M410 115H456")
+    f.box(460, 80, 380, 70, "", "ok")
+    f.text(650, 106, "Gunicorn + Django", "t", "middle"); f.text(650, 130, "2xx, 4xx, 500", "cs", "middle")
+    f.text(20, 190, "502 — Nginx не соединился с Gunicorn (не запущен, упал).", "t")
+    f.text(20, 216, "504 — Gunicorn не ответил за таймаут. 503 — сервис закрыт на работы или перегружен.", "s")
+    f.text(20, 242, "Ошибки 2xx/4xx/500 ищут в журнале Django, 502/504 — в журнале Nginx и состоянии Gunicorn.", "s")
+    f.save(out(WH1 / "02-status-codes" / "img" / "who-answers.svg"))
+
+
+def etag_fig():
+    f = Figure(860, 280, "ETag и If-None-Match: неизменившийся товар приходит ответом 304 без тела")
+    f.box(20, 20, 380, 40, "GET /api/products/2/", "box2", "cs")
+    f.arrow("M400 40H446")
+    f.box(450, 20, 390, 40, "200 OK · ETag: \"1499.00-40\" · 87 байт", "ok", "cs")
+    f.box(20, 90, 380, 40, "If-None-Match: \"1499.00-40\"", "box2", "cs")
+    f.arrow("M400 110H446")
+    f.box(450, 90, 390, 40, "304 Not Modified · тела нет", "ok", "cs")
+    f.text(20, 180, "Клиент хранит ответ и его ETag; повторный запрос проверяет, не изменилась ли версия.", "t")
+    f.text(20, 206, "Изменились цена или остаток — новый ETag и ответ 200 с новым телом.", "s")
+    f.save(out(WH1 / "03-headers" / "img" / "etag.svg"))
+
+
+def body_formats():
+    f = Figure(860, 320, "Одни и те же данные в трёх форматах тела")
+    f.text(20, 24, "application/json", "cs")
+    f.box(20, 34, 400, 36, "{\"product\": 2, \"quantity\": 1}", "box2", "cs")
+    f.text(440, 24, "application/x-www-form-urlencoded", "cs")
+    f.box(440, 34, 400, 36, "product=2&quantity=1", "box2", "cs")
+    f.text(20, 100, "multipart/form-data; boundary=----…OWgBGMCqUkzdKXzoEGlA7c", "cs")
+    f.box(20, 112, 820, 150, "", "box")
+    lines = ["------…OWgBGMCqUkzdKXzoEGlA7c", "Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"",
+             "Content-Type: image/jpeg  ·  (байты файла)", "------…OWgBGMCqUkzdKXzoEGlA7c",
+             "Content-Disposition: form-data; name=\"alt\"  ·  Mouse", "------…OWgBGMCqUkzdKXzoEGlA7c--"]
+    for i, l in enumerate(lines):
+        f.text(36, 136 + i * 22, l, "cs")
+    f.text(20, 296, "JSON — данные API; форма — HTML-формы, всё строки; multipart — файлы вместе с полями.", "s")
+    f.save(out(WH1 / "04-body" / "img" / "body-formats.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3230,6 +3297,7 @@ if __name__ == "__main__":
                   middleware_chain, own_middleware, session_cart, signals_fig,
                   settings_split, xss_fig, production_fig,
                   test_lifecycle,
+                  api_methods, who_answers, etag_fig, body_formats,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

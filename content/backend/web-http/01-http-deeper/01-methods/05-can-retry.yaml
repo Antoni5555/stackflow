@@ -1,0 +1,35 @@
+title: "Повторять ли запрос"
+type: exercise
+difficulty: 2
+pitfall: "Повторять после обрыва можно только идемпотентные методы; регистр имени метода не важен."
+statement: |
+  Клиент API повторяет запрос после обрыва связи, но только если это безопасно. Напишите функцию `can_retry(method)`: `True` для идемпотентных методов (`GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE`), `False` для остальных (`POST`, `PATCH`). Имя метода может прийти в любом регистре: `"get"`, `"Delete"`.
+starter_code: |
+  def can_retry(method):
+      return method == "GET"
+check:
+  type: tests
+  tests:
+    - code: |
+        assert can_retry("GET") is True and can_retry("PUT") is True and can_retry("DELETE") is True
+      fail: "GET, PUT и DELETE — идемпотентны: их можно повторять."
+    - code: |
+        assert can_retry("HEAD") is True and can_retry("OPTIONS") is True
+      fail: "HEAD и OPTIONS тоже безопасны для повтора."
+    - code: |
+        assert can_retry("POST") is False and can_retry("PATCH") is False
+      fail: "POST и PATCH повторять нельзя: повтор может создать второй заказ или изменить ещё раз."
+    - code: |
+        assert can_retry("get") is True and can_retry("Delete") is True and can_retry("post") is False
+      fail: "Регистр имени метода не важен: \"get\" — то же, что \"GET\"."
+solution: |
+  IDEMPOTENT = {"GET", "HEAD", "OPTIONS", "PUT", "DELETE"}
+
+
+  def can_retry(method):
+      return method.upper() in IDEMPOTENT
+hints:
+  - "Какие методы идемпотентны?"
+  - "Множество `{\"GET\", \"HEAD\", \"OPTIONS\", \"PUT\", \"DELETE\"}` и `method.upper() in …`."
+explanation: |
+  Повтор безопасен, если итог на сервере не изменится: безопасные методы ничего не меняют, `PUT` и `DELETE` дают тот же результат. `POST` создаст второй ресурс, `PATCH` — смотря что в теле, поэтому по умолчанию не повторяем. Имена методов в HTTP пишут заглавными, но приходить в код они могут в любом виде — сравниваем после `upper()`.

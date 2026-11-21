@@ -1,0 +1,68 @@
+- title: Безопасные и идемпотентные
+  text: |
+    Для каждого метода напечатайте, безопасный ли он и идемпотентный ли:
+    ```python
+    methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+    SAFE = {"GET", "HEAD", "OPTIONS"}
+    IDEMPOTENT = SAFE | {"PUT", "DELETE"}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for m in methods:
+        print(m, m in SAFE, m in IDEMPOTENT)
+    ```
+    Результат:
+    ```
+    GET True True
+    POST False False
+    PUT False True
+    PATCH False False
+    DELETE False True
+    HEAD True True
+    ```
+    `PATCH` здесь не идемпотентный — по умолчанию его не повторяют.
+- title: PUT против PATCH
+  text: |
+    Позиция корзины и два тела запроса. Покажите, что получится после `PUT` (замена целиком) и после `PATCH` (изменение части):
+    ```python
+    item = {"id": 7, "product": 2, "quantity": 1}
+    body = {"quantity": 3}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    after_put = {"id": item["id"], **body}
+    after_patch = {**item, **body}
+    print(after_put)
+    print(after_patch)
+    ```
+    Результат:
+    ```
+    {'id': 7, 'quantity': 3}
+    {'id': 7, 'product': 2, 'quantity': 3}
+    ```
+    После `PUT` с одним полем товар пропал — поэтому учебный API требует все поля и отвечает 422 без них.
+- title: Повтор DELETE
+  text: |
+    Корзина — словарь позиций. Удалите позицию 7 дважды так, как это делает API: первый раз — 204, повтор — 404.
+    ```python
+    cart = {7: {"product": 2}, 8: {"product": 5}}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def delete(item_id):
+        if item_id not in cart:
+            return 404
+        del cart[item_id]
+        return 204
+
+
+    print(delete(7), delete(7), list(cart))
+    ```
+    Результат:
+    ```
+    204 404 [8]
+    ```
+    Код разный, а состояние после обоих вызовов одно — позиции 7 нет. Это и есть идемпотентность.

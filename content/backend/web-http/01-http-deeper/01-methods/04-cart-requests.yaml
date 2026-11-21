@@ -1,0 +1,42 @@
+title: "Запросы корзины"
+type: fix
+difficulty: 2
+pitfall: "Удаление — DELETE на URL ресурса, а не GET на «/delete/»; изменение части — PATCH."
+statement: |
+  Мобильный разработчик описал запросы к корзине в файле `cart.http`. Исправьте методы и адреса: изменение количества — частичное изменение позиции `/api/cart/items/7/`, удаление — удаление этой же позиции, без отдельного адреса `/delete/`.
+files:
+  cart.http: |
+    ### Изменить количество позиции 7 на 3
+    POST /api/cart/items/7/
+    Content-Type: application/json
+
+    {"quantity": 3}
+
+    ### Удалить позицию 7
+    GET /api/cart/items/7/delete/
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*PATCH\s+/api/cart/items/7/\s*$'
+      fail: "Количество меняется частичным изменением позиции: PATCH /api/cart/items/7/."
+    - must_match: '^\s*DELETE\s+/api/cart/items/7/\s*$'
+      fail: "Удаление — DELETE /api/cart/items/7/."
+    - must_not_match: '^\s*GET\s+\S*/delete/'
+      fail: "GET не должен ничего удалять — уберите GET …/delete/."
+    - must_not_match: '^\s*POST\s+/api/cart/items/7/'
+      fail: "POST на адрес существующей позиции — не тот метод для изменения."
+solution:
+  cart.http: |
+    ### Изменить количество позиции 7 на 3
+    PATCH /api/cart/items/7/
+    Content-Type: application/json
+
+    {"quantity": 3}
+
+    ### Удалить позицию 7
+    DELETE /api/cart/items/7/
+hints:
+  - "Какой метод меняет часть ресурса, а какой — удаляет?"
+  - "`PATCH /api/cart/items/7/` и `DELETE /api/cart/items/7/`."
+explanation: |
+  `GET` — безопасный метод: его выполняют предзагрузка ссылок, поисковые роботы, повтор вкладки. Если `GET …/delete/` удаляет, позиция пропадёт без действия покупателя. Действие выражается методом, а адрес называет ресурс: `DELETE /api/cart/items/7/`. Изменение части полей — `PATCH`; `POST` на адрес позиции не идемпотентен и по смыслу означает «создать».

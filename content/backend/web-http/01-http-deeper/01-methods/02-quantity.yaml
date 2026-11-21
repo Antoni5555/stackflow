@@ -1,0 +1,15 @@
+title: "Изменить количество"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Изменение части ресурса — PATCH; PUT заменяет ресурс целиком."
+statement: |
+  Позиция корзины `/api/cart/items/7/` — `{"id": 7, "product": 2, "quantity": 1}`. Покупатель меняет количество на 3. Какой запрос подходит лучше всего?
+options:
+  - "`GET /api/cart/items/7/?quantity=3`"
+  - "`POST /api/cart/items/` с `{\"quantity\": 3}`"
+  - "`PATCH /api/cart/items/7/` с `{\"quantity\": 3}`"
+  - "`PUT /api/cart/items/7/` с `{\"quantity\": 3}`"
+answer: [2]
+explanation: |
+  `PATCH` меняет только присланные поля — количество. `PUT` заменяет позицию целиком: без `product` учебный API ответил `422 Unprocessable Entity` и `{"error": "Нужны все поля", "missing": ["product"]}`. `POST` в коллекцию создаёт новую позицию, `GET` не должен ничего менять.

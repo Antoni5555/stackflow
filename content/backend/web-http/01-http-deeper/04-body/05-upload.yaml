@@ -1,0 +1,15 @@
+title: "Загрузить фото"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Файлы отправляют multipart/form-data — частями с собственными заголовками."
+statement: |
+  Приложение загружает фото товара вместе с подписью. Какой формат тела выбрать?
+options:
+  - "`application/json`, файл — строкой base64"
+  - "`application/x-www-form-urlencoded`"
+  - "`multipart/form-data`: часть `photo` с файлом и часть `alt` с подписью"
+  - "параметры в URL"
+answer: [2]
+explanation: |
+  multipart передаёт файл как есть, отдельной частью с `filename` и своим `Content-Type: image/jpeg`; учебный API ответил `{"name": "photo.jpg", "size": 15, "content_type": "image/jpeg", "alt": "Мышь сбоку"}`. base64 в JSON больше на треть и требует держать весь файл в памяти; форма и URL не для двоичных данных.

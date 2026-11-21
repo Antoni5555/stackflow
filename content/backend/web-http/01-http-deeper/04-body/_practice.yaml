@@ -1,0 +1,63 @@
+- title: Одни данные — два формата
+  text: |
+    Закодируйте заказ JSON-ом и формой:
+    ```python
+    import json
+    from urllib.parse import urlencode
+    order = {"product": 2, "quantity": 1}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print(json.dumps(order))
+    print(urlencode(order))
+    ```
+    Результат:
+    ```
+    {"product": 2, "quantity": 1}
+    product=2&quantity=1
+    ```
+    В JSON числа остаются числами, в форме всё становится строкой.
+- title: Разобрать query
+  text: |
+    Разберите строку запроса поиска; категорий может быть несколько:
+    ```python
+    from urllib.parse import parse_qs
+    query = ("q=%D0%BC%D1%8B%D1%88%D1%8C"
+             "&category=2&category=5&page=2")
+    ```
+  answer: |
+    Ответ:
+    ```python
+    params = parse_qs(query)
+    page = int(params["page"][0])
+    print(params["q"][0], params["category"], page)
+    ```
+    Результат:
+    ```
+    мышь ['2', '5'] 2
+    ```
+    `parse_qs` декодирует `%XX` и возвращает списки — ключ может повторяться.
+- title: JSON и кириллица
+  text: |
+    Сравните длину тела с `ensure_ascii` по умолчанию и с `ensure_ascii=False`:
+    ```python
+    import json
+    review = {"text": "Удобная мышь"}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    a = json.dumps(review)
+    b = json.dumps(review, ensure_ascii=False)
+    print(a)
+    print(b)
+    print(len(a.encode()), len(b.encode()))
+    ```
+    Результат:
+    ```
+    {"text": "\u0423\u0434\u043e\u0431\u043d\u0430\u044f \u043c\u044b\u0448\u044c"}
+    {"text": "Удобная мышь"}
+    79 35
+    ```
+    Оба варианта — правильный JSON и разбираются одинаково; без экранирования тело короче.

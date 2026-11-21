@@ -1,0 +1,39 @@
+title: "415 на заказ"
+type: fix
+difficulty: 1
+pitfall: "Формат тела объявляет Content-Type; JSON с заголовком формы сервер не разберёт."
+statement: |
+  Запрос на создание заказа (`order.http`) получает `415 Unsupported Media Type`. Исправьте заголовки: тело — JSON, и ответ клиент тоже хочет в JSON.
+files:
+  order.http: |
+    POST /api/orders/ HTTP/1.1
+    Host: shop.example
+    Authorization: Bearer token-anna
+    Content-Type: application/x-www-form-urlencoded
+
+    {"product": 2, "quantity": 1}
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*Content-Type:\s*application/json\s*$'
+      fail: "Тело — JSON: Content-Type: application/json."
+    - must_match: '^\s*Accept:\s*application/json\s*$'
+      fail: "Укажите, что ответ нужен в JSON: Accept: application/json."
+    - must_not_match: 'x-www-form-urlencoded'
+      fail: "Тело не форма — уберите application/x-www-form-urlencoded."
+    - must_match: '^\s*Authorization:\s*Bearer\s+token-anna\s*$'
+      fail: "Заголовок Authorization трогать не нужно."
+solution:
+  order.http: |
+    POST /api/orders/ HTTP/1.1
+    Host: shop.example
+    Authorization: Bearer token-anna
+    Content-Type: application/json
+    Accept: application/json
+
+    {"product": 2, "quantity": 1}
+hints:
+  - "Какой заголовок говорит, в каком формате тело?"
+  - "`Content-Type: application/json` и `Accept: application/json`."
+explanation: |
+  API выбирает, как читать тело, по `Content-Type`, а не по содержимому. С заголовком формы JSON не разберётся — учебный API ответил `{"error": "Ожидается Content-Type: application/json"}`. `Accept` сообщает, какой формат нужен в ответе.

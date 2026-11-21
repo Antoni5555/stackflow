@@ -1,0 +1,36 @@
+title: "Адрес поиска"
+type: exercise
+difficulty: 2
+pitfall: "Значения в URL кодируют urlencode, а не склеивают строкой; повторяющийся параметр — doseq=True."
+statement: |
+  Напишите `search_url(q, categories)`: адрес поиска `/api/search/` с параметром `q` и параметром `category` для каждой категории из списка. Значения кодируйте: в `q` бывают пробелы, `&` и кириллица. Пример: `search_url("мышь", [2, 5])` → `/api/search/?q=%D0%BC%D1%8B%D1%88%D1%8C&category=2&category=5`.
+starter_code: |
+  def search_url(q, categories):
+      url = f"/api/search/?q={q}"
+      for c in categories:
+          url += f"&category={c}"
+      return url
+check:
+  type: tests
+  tests:
+    - code: |
+        assert search_url("мышь", [2, 5]) == "/api/search/?q=%D0%BC%D1%8B%D1%88%D1%8C&category=2&category=5"
+      fail: "Кириллицу в адресе нужно закодировать: %D0%BC…"
+    - code: |
+        assert search_url("мышь & коврик", []) == "/api/search/?q=%D0%BC%D1%8B%D1%88%D1%8C+%26+%D0%BA%D0%BE%D0%B2%D1%80%D0%B8%D0%BA"
+      fail: "«&» внутри значения должен стать %26, пробел — +; иначе получится лишний параметр."
+    - code: |
+        assert search_url("mouse", [7]) == "/api/search/?q=mouse&category=7"
+      fail: "Каждая категория — отдельный параметр category."
+solution: |
+  from urllib.parse import urlencode
+
+
+  def search_url(q, categories):
+      query = urlencode({"q": q, "category": categories}, doseq=True)
+      return f"/api/search/?{query}"
+hints:
+  - "Какая функция кодирует параметры для URL?"
+  - "`urlencode({\"q\": q, \"category\": categories}, doseq=True)`."
+explanation: |
+  Склеенная строка ломается на первом спецсимволе: `мышь & коврик` превращается в два параметра. `urlencode` кодирует значения (пробел — `+`, `&` — `%26`, кириллица — `%XX` в UTF-8), а `doseq=True` раскрывает список в повторяющийся параметр `category=2&category=5`.

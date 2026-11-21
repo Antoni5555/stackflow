@@ -1,0 +1,16 @@
+title: "Кто вернул код"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "502 и 504 отдаёт Nginx: запрос не дошёл до Django или не вернулся вовремя."
+statement: |
+  Магазин работает так: Nginx → Gunicorn → Django. Какие из этих ответов клиент получит **от Nginx**, а не от кода Django?
+options:
+  - "`502 Bad Gateway` — Gunicorn не запущен"
+  - "`404 Not Found` — заказа нет в базе"
+  - "`504 Gateway Timeout` — view слишком долго ждёт службу доставки"
+  - "`422 Unprocessable Entity` — количество «два»"
+  - "`500 Internal Server Error` — исключение во view"
+answer: [0, 2]
+explanation: |
+  502 и 504 формирует шлюз: соединиться с приложением не удалось или ответ не пришёл за таймаут. 404, 422 и 500 возвращает Django — их видно в журнале приложения. Поэтому при 502/504 смотрят журнал Nginx и состояние Gunicorn, а не код view.
