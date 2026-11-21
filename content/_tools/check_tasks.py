@@ -231,11 +231,12 @@ def check_dom(task):
 LINUX_COMMANDS = {
     "pwd": None, "cd": None, "ls": {"-l", "-a", "-h", "-R"}, "cat": None, "echo": None, "mkdir": {"-p"},
     "touch": None, "rm": {"-r"}, "cp": {"-r"}, "mv": None, "ln": {"-s"}, "head": {"-n"}, "tail": {"-n"},
-    "wc": {"-l"}, "grep": {"-i", "-n", "-r", "-c", "-v"}, "sort": {"-n", "-r"}, "uniq": {"-c"},
-    "cut": {"-d", "-f"}, "find": {"-name", "-type", "-size", "-mtime"}, "tar": {"-c", "-x", "-z", "-f"},
+    "wc": {"-l"}, "grep": {"-i", "-n", "-r", "-c", "-v", "-E"}, "sort": {"-n", "-r"}, "uniq": {"-c"},
+    "cut": {"-d", "-f"}, "find": {"-name", "-iname", "-type", "-size", "-mtime", "-maxdepth"},
+    "tar": {"-c", "-x", "-t", "-z", "-f", "-v", "-C"},
     "chmod": None, "chown": {"-R"},
     "whoami": None, "id": None, "chgrp": {"-R"}, "which": None, "df": {"-h"}, "du": {"-s", "-h"},
-    "gzip": None, "gunzip": None,
+    "gzip": None, "gunzip": None, "true": None,
 }
 GIT_COMMANDS = {
     "init": None, "config": {"--global", "--list"}, "status": None, "add": {"-A"}, "rm": {"--cached", "-r"},
