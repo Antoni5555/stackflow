@@ -1,0 +1,15 @@
+title: "Правка не применилась"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "После правки unit-файла — systemctl daemon-reload, потом restart."
+statement: |
+  Вы поменяли `--workers 2` на `--workers 4` в `/etc/systemd/system/gunicorn.service` и сделали `sudo systemctl restart gunicorn`, но воркеров по-прежнему два. Что пропущено?
+options:
+  - "`sudo systemctl enable gunicorn`"
+  - "`sudo systemctl daemon-reload` — systemd не перечитал unit-файл"
+  - "Перезагрузка сервера"
+  - "`kill -HUP` master'у"
+answer: [1]
+explanation: |
+  systemd держит unit-файлы в памяти; после правки их перечитывает `daemon-reload`, и только потом `restart` запустит службу с новой командой. `status` в таком случае предупреждает: файл изменён на диске. `enable` отвечает за автозапуск, а не за настройки.

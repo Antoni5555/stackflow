@@ -1,0 +1,20 @@
+title: "Переменная не дошла"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Дочерние процессы получают только переменные окружения — после export."
+statement: |
+  В терминале выполнили:
+  ```
+  SECRET_KEY=abc123
+  python manage.py check
+  ```
+  Django пишет, что `SECRET_KEY` не задан. Почему?
+options:
+  - "`manage.py` не умеет читать переменные"
+  - "Без `export` переменная осталась в оболочке и не попала в окружение процесса Python"
+  - "Нужно было написать `$SECRET_KEY=abc123`"
+  - "Значение должно быть в кавычках"
+answer: [1]
+explanation: |
+  `ИМЯ=значение` создаёт переменную оболочки. Дочерний процесс получает только окружение — нужно `export SECRET_KEY=abc123` или `SECRET_KEY=abc123 python manage.py check` (на одну команду). В уроке: без `export` дочерний `bash` вывел пустую строку.

@@ -1,0 +1,51 @@
+- title: Кто я и где ищутся программы
+  text: |
+    Выведите домашнюю папку, имя пользователя и путь поиска программ:
+    ```
+    HOME USER PATH
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    echo $HOME $USER
+    echo $PATH
+    ```
+    Результат:
+    ```
+    /home/shop shop
+    /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    ```
+- title: Своя переменная
+  text: |
+    Задайте переменную окружения и выведите её значение:
+    ```
+    SHOP_ENV=prod
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    export SHOP_ENV=prod
+    echo $SHOP_ENV
+    ```
+    Результат:
+    ```
+    prod
+    ```
+    С `export` её получат программы, запущенные из этой оболочки.
+- title: Своя папка в PATH
+  text: |
+    Добавьте папку своих скриптов в начало пути поиска и проверьте результат. Папка:
+    ```
+    ~/bin
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    export PATH="$HOME/bin:$PATH"
+    echo $PATH
+    ```
+    Результат:
+    ```
+    /home/shop/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    ```
+    Старое значение сохранилось после `:` — системные программы по-прежнему находятся.

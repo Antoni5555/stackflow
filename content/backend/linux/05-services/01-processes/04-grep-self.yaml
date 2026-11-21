@@ -1,0 +1,15 @@
+title: "Лишняя строка в ps"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "ps aux | grep находит и сам grep; приём [g]unicorn или pgrep."
+statement: |
+  `ps aux | grep gunicorn` при остановленном Gunicorn всё равно выводит одну строку. Что это?
+options:
+  - "Зависший Gunicorn"
+  - "Сам процесс `grep gunicorn` — в его командной строке есть слово `gunicorn`"
+  - "Служба systemd"
+  - "Ошибка `ps`"
+answer: [1]
+explanation: |
+  `grep` запущен одновременно с `ps` и попадает в список процессов со своей командой `grep gunicorn`. Шаблон `[g]unicorn` совпадает со словом `gunicorn`, но не со строкой `[g]unicorn` в команде самого `grep`. Проще — `pgrep -a gunicorn`.

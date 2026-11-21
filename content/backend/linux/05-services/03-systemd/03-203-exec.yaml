@@ -1,0 +1,20 @@
+title: "status=203/EXEC"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "203/EXEC — systemd не смог запустить программу из ExecStart: нет файла или права x."
+statement: |
+  `systemctl status gunicorn` показывает:
+  ```
+  Active: failed (Result: exit-code)
+  Main PID: 8957 (code=exited, status=203/EXEC)
+  ```
+  Где искать причину?
+options:
+  - "В коде Django — упал импорт"
+  - "В `ExecStart`: файла по этому пути нет или он не исполняемый"
+  - "В настройках Nginx"
+  - "В базе данных"
+answer: [1]
+explanation: |
+  Код 203/EXEC systemd ставит, когда не смог даже запустить программу: опечатка в пути к `venv`, окружение не создано, нет права `x`. Проверка — `ls -l` пути из `ExecStart`. Если бы программа запустилась и упала сама (ошибка в коде), было бы `status=1/FAILURE`, а причина — в `journalctl -u gunicorn`.

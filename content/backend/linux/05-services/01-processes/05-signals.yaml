@@ -1,0 +1,16 @@
+title: "Сигналы"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "SIGTERM (15) — просьба завершиться, SIGKILL (9) — немедленно и без перехвата, SIGHUP — перечитать настройки, Ctrl+C — SIGINT."
+statement: |
+  Какие утверждения о сигналах верны?
+options:
+  - "`kill PID` посылает SIGTERM"
+  - "SIGKILL процесс может перехватить и проигнорировать"
+  - "`kill -HUP` master'у Gunicorn плавно перезапускает воркеры"
+  - "`Ctrl+C` в терминале посылает запущенной программе SIGINT"
+  - "Пользователь `shop` может послать `kill` процессу `root`"
+answer: [0, 2, 3]
+explanation: |
+  SIGKILL перехватить нельзя — потому он и последнее средство. Чужим процессам сигналы посылают только через `sudo`: `kill 1` от `shop` — `Operation not permitted`. SIGHUP Gunicorn использует для плавной замены воркеров после обновления кода.

@@ -1,0 +1,15 @@
+title: "Как остановить процесс"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Сначала kill (SIGTERM) — процесс корректно завершится; kill -9 (SIGKILL) — только если не помогло."
+statement: |
+  Нужно остановить ручной запуск Gunicorn (master, PID 8262), не оборвав запросы, которые он сейчас обрабатывает. Какая команда?
+options:
+  - "`kill -9 8262`"
+  - "`kill 8262`"
+  - "`kill -9` каждому воркеру по очереди"
+  - "`rm /srv/shop/venv/bin/gunicorn`"
+answer: [1]
+explanation: |
+  `kill` без номера сигнала посылает SIGTERM: Gunicorn дорабатывает запросы и выходит — в логе `Handling signal: term` и `Shutting down: Master`. SIGKILL (`-9`) снимает процесс мгновенно, без уборки. Убитые по одному воркеры master тут же запустит заново.

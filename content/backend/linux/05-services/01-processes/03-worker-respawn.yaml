@@ -1,0 +1,15 @@
+title: "Воркер вернулся"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Master Gunicorn перезапускает упавшие воркеры; останавливать нужно master (или службу)."
+statement: |
+  Вы сделали `kill -9` воркеру Gunicorn с PID 8264, а через секунду `pgrep -a gunicorn` снова показывает три процесса. Почему?
+options:
+  - "`kill -9` не сработал"
+  - "Master заметил, что воркер пропал, и запустил новый (с другим PID)"
+  - "systemd отменил `kill`"
+  - "`pgrep` показывает процессы с задержкой"
+answer: [1]
+explanation: |
+  Master следит за воркерами: в логе — `Worker (pid:8264) was sent SIGKILL!` и `Booting worker with pid: 8479`. Так Gunicorn переживает падение воркера. Чтобы остановить сервер, сигнал шлют master'у, а для службы — `systemctl stop gunicorn`.

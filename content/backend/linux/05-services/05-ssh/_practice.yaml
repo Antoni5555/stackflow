@@ -1,0 +1,48 @@
+- title: Папка для ключей
+  text: |
+    Создайте папку SSH в домашней папке с правами только для владельца:
+    ```
+    ~/.ssh — 700
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    ```
+- title: Ключ разработчика
+  text: |
+    Добавьте открытый ключ в список разрешённых и закройте файл правами `600`. Ключ:
+    ```
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAnna1234567890 anna@laptop
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAnna1234567890 anna@laptop" >> ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    cat ~/.ssh/authorized_keys
+    ```
+    Результат:
+    ```
+    ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAnna1234567890 anna@laptop
+    ```
+- title: Проверить права
+  text: |
+    Посмотрите права папки и файла с ключами, включая саму папку:
+    ```
+    ls -la ~/.ssh
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ls -la ~/.ssh
+    ```
+    Результат (дата и число ссылок у `..` у вас могут быть другими):
+    ```
+    total 12
+    drwx------ 2 shop shop 4096 Nov 21 19:04 .
+    drwxr-xr-x 4 shop shop 4096 Nov 21 19:04 ..
+    -rw------- 1 shop shop   64 Nov 21 19:04 authorized_keys
+    ```
+    `.` — сама `~/.ssh` с `700`, `authorized_keys` — `600`: SSH примет ключи.

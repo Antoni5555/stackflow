@@ -3826,6 +3826,100 @@ def pyenv_fig():
     f.text(20, 288, "Системный Python не трогают: на нём работают apt и утилиты Ubuntu.", "s")
     f.save(out(LX4 / "03-pyenv" / "img" / "pyenv.svg"))
 
+
+LX5 = ROOT / "linux" / "05-services"
+
+
+def gunicorn_processes():
+    f = Figure(880, 330, "Master Gunicorn и воркеры: что делают сигналы")
+    f.box(20, 20, 300, 60, "master  PID 8262|127.0.0.1:8000", "acc", "onacc")
+    f.arrow("M120 80V116"); f.arrow("M220 80V116")
+    f.box(20, 120, 140, 44, "воркер 8264", "box2", "cs")
+    f.box(180, 120, 140, 44, "воркер 8265", "box2", "cs")
+    f.box(380, 20, 480, 70, "", "err")
+    f.text(396, 46, "kill -9 8264  (SIGKILL воркеру)", "cs")
+    f.text(396, 70, "master: «Worker was sent SIGKILL» → новый воркер 8479", "s")
+    f.box(380, 110, 480, 70, "", "ok")
+    f.text(396, 136, "kill 8262  (SIGTERM master'у)", "cs")
+    f.text(396, 160, "воркеры дорабатывают запросы → «Shutting down: Master»", "s")
+    f.text(20, 220, "kill PID — SIGTERM, корректно; kill -9 — SIGKILL, без уборки; kill -HUP — перечитать настройки.", "s")
+    f.text(20, 246, "Службу останавливают через systemctl stop — иначе Restart=always поднимет её снова.", "s")
+    f.save(out(LX5 / "01-processes" / "img" / "gunicorn-processes.svg"))
+
+
+def env_fig():
+    f = Figure(880, 320, "Окружение передаётся от родителя детям — только после export")
+    f.box(20, 20, 330, 120, "", "box2")
+    f.text(36, 46, "bash", "t")
+    f.text(36, 72, "SHOP_ENV=prod", "cs")
+    f.text(36, 96, "export SHOP_ENV", "cs")
+    f.text(36, 120, "DEBUG=True команда — на одну", "cs")
+    f.arrow("M350 50H396"); f.arrow("M350 110H396")
+    f.box(400, 20, 460, 50, "без export: дочерний bash → пусто", "err", "errt")
+    f.box(400, 86, 460, 50, "после export: python → SHOP_ENV=prod", "ok", "cs")
+    f.text(20, 190, "PATH=/home/shop/bin:/usr/local/bin:/usr/bin:/bin", "cs")
+    for i, d in enumerate(["/home/shop/bin", "/usr/local/bin", "/usr/bin", "/bin"]):
+        f.box(20 + i * 210, 206, 196, 36, d, "acc" if i == 2 else "box", "onacc" if i == 2 else "cs")
+    f.text(20, 270, "ls ищется слева направо → /usr/bin/ls; папки нет в PATH — command not found.", "s")
+    f.text(20, 294, "Надолго: ~/.bashrc — терминал; .env и unit-файл — приложение и служба.", "s")
+    f.save(out(LX5 / "02-env" / "img" / "env.svg"))
+
+
+def systemd_fig():
+    f = Figure(880, 330, "systemd запускает Gunicorn по unit-файлу, следит за ним и собирает журнал")
+    f.box(20, 20, 380, 170, "", "box2")
+    f.text(36, 44, "/etc/systemd/system/gunicorn.service", "cs")
+    for i, l in enumerate(["User=shop", "WorkingDirectory=/srv/shop", "EnvironmentFile=/srv/shop/.env",
+                           "ExecStart=/srv/shop/venv/bin/gunicorn …", "Restart=always"]):
+        f.text(52, 70 + i * 23, l, "cs")
+    f.arrow("M400 100H446")
+    f.box(450, 20, 410, 70, "systemd (PID 1)|daemon-reload · start · enable", "acc", "onacc")
+    f.arrow("M655 90V116")
+    f.box(450, 120, 410, 70, "master Gunicorn от shop + воркеры|упал — Restart=always", "ok", "cs")
+    f.arrow("M655 190V226")
+    f.box(450, 230, 410, 44, "журнал: journalctl -u gunicorn", "box", "cs")
+    f.text(20, 236, "status: active (running) / failed", "cs")
+    f.text(20, 260, "203/EXEC — не запустилась программа", "s")
+    f.text(20, 282, "1/FAILURE — упала сама: смотреть журнал", "s")
+    f.save(out(LX5 / "03-systemd" / "img" / "systemd.svg"))
+
+
+def network_fig():
+    f = Figure(880, 330, "Путь запроса и чем проверить каждый участок")
+    f.box(20, 120, 120, 50, "браузер", "box2", "t")
+    f.arrow("M140 145H186")
+    f.box(190, 100, 130, 90, "ufw|22, 80, 443", "box", "cs")
+    f.arrow("M320 145H366")
+    f.box(370, 110, 170, 70, "Nginx|0.0.0.0:80, :443", "box2", "cs")
+    f.arrow("M540 145H586")
+    f.box(590, 110, 270, 70, "Gunicorn|127.0.0.1:8000", "acc", "onacc")
+    f.box(590, 220, 270, 50, "PostgreSQL  127.0.0.1:5432", "box", "cs")
+    f.text(300, 60, "curl -I https://shop.example/", "cs")
+    f.text(590, 60, "curl -I http://127.0.0.1:8000/", "cs")
+    f.text(590, 84, "ss -tlnp | grep 8000", "cs")
+    f.text(20, 300, "ping проверяет машину, а не сайт. Gunicorn и база — только на 127.0.0.1.", "s")
+    f.save(out(LX5 / "04-network" / "img" / "network.svg"))
+
+
+def ssh_fig():
+    f = Figure(880, 320, "Ключи SSH: закрытый остаётся у вас, открытый — на сервере")
+    f.box(20, 20, 380, 170, "", "box2")
+    f.text(36, 46, "ваш компьютер", "t")
+    f.text(36, 74, "~/.ssh/id_ed25519      (закрытый, 600)", "cs")
+    f.text(36, 98, "~/.ssh/id_ed25519.pub  (открытый)", "cs")
+    f.text(36, 122, "~/.ssh/config: Host shop", "cs")
+    f.text(36, 146, "~/.ssh/known_hosts — отпечатки", "cs")
+    f.arrow("M400 100H476"); f.text(410, 90, "ssh shop", "cs")
+    f.box(480, 20, 380, 170, "", "ok")
+    f.text(496, 46, "сервер", "t")
+    f.text(496, 74, "/home/shop/.ssh            (700)", "cs")
+    f.text(496, 98, "authorized_keys            (600)", "cs")
+    f.text(496, 122, "ssh-ed25519 AAAA… anna@laptop", "cs")
+    f.text(496, 146, "ssh-ed25519 AAAA… boris@laptop", "cs")
+    f.text(20, 236, "Сервер проверяет подпись по строке из authorized_keys — закрытый ключ по сети не уходит.", "s")
+    f.text(20, 262, "scp shop:~/backups/media.tar.gz ./ — копирование по тому же соединению.", "cs")
+    f.save(out(LX5 / "05-ssh" / "img" / "ssh.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -3876,6 +3970,7 @@ if __name__ == "__main__":
                   fhs, head_tail, redirect_write, links_fig,
                   find_filters, grep_keys, streams, pipeline_fig, tar_flow,
                   users_fig, permissions_fig, owners_fig,
-                  apt_flow, disk_fig, pyenv_fig):
+                  apt_flow, disk_fig, pyenv_fig,
+                  gunicorn_processes, env_fig, systemd_fig, network_fig, ssh_fig):
         build()
     print("ok")

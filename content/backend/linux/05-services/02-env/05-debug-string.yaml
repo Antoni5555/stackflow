@@ -1,0 +1,34 @@
+title: "DEBUG из окружения"
+type: fix
+difficulty: 2
+pitfall: "Значения окружения — строки: \"False\" истинна; DEBUG сравнивают со строкой \"True\"."
+statement: |
+  На сервере в `.env` стоит `DEBUG=False`, а Django всё равно работает в режиме отладки. Исправьте `settings.py`: `DEBUG` должен быть `True`, только если переменная равна строке `"True"`; по умолчанию — `False`. `SECRET_KEY` читайте как раньше.
+files:
+  settings.py: |
+    import os
+
+    SECRET_KEY = os.environ["SECRET_KEY"]
+    DEBUG = os.getenv("DEBUG", False)
+    ALLOWED_HOSTS = ["shop.example"]
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*DEBUG\s*=\s*os\.getenv\(\s*"DEBUG"\s*(,\s*"False"\s*)?\)\s*==\s*"True"\s*$'
+      fail: "DEBUG = os.getenv(\"DEBUG\") == \"True\" — сравнение со строкой."
+    - must_not_match: 'os\.getenv\(\s*"DEBUG"\s*,\s*False\s*\)\s*$'
+      fail: "os.getenv(\"DEBUG\", False) вернёт строку \"False\" — а она истинна."
+    - must_match: '^\s*SECRET_KEY\s*=\s*os\.environ\["SECRET_KEY"\]\s*$'
+      fail: "Чтение SECRET_KEY не меняйте."
+solution:
+  settings.py: |
+    import os
+
+    SECRET_KEY = os.environ["SECRET_KEY"]
+    DEBUG = os.getenv("DEBUG") == "True"
+    ALLOWED_HOSTS = ["shop.example"]
+hints:
+  - "Что вернёт `os.getenv(\"DEBUG\", False)`, если в окружении `DEBUG=False`? Это строка или булево значение?"
+  - "`DEBUG = os.getenv(\"DEBUG\") == \"True\"`."
+explanation: |
+  Окружение хранит только строки: `os.getenv("DEBUG", False)` вернул `"False"`, а непустая строка в Python — истина, и Django включил отладку с подробными страницами ошибок на боевом сервере. Сравнение `== "True"` даёт настоящий `bool`, а без переменной — `None == "True"`, то есть `False`.

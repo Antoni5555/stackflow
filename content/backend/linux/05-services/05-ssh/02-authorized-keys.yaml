@@ -1,0 +1,38 @@
+title: "Ключ коллеги на сервере"
+type: exercise
+difficulty: 2
+pitfall: "Открытый ключ дописывают в ~/.ssh/authorized_keys (>>); права: папка 700, файл 600."
+statement: |
+  Новый разработчик прислал открытый ключ. Допишите его строку в `/home/shop/.ssh/authorized_keys` (ваш ключ там уже есть и должен остаться) и выставьте права: папка `~/.ssh` — `700`, файл — `600`. Ключ коллеги:
+  ```
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBoris1234567890 boris@laptop
+  ```
+setup:
+  cwd: /home/shop
+  files:
+    /home/shop/.ssh/authorized_keys: |
+      ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAnna1234567890 anna@laptop
+check:
+  type: state
+  expect:
+    - path: /home/shop/.ssh/authorized_keys
+      contains: '^ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBoris1234567890 boris@laptop$'
+      fail: "В authorized_keys нет строки ключа Бориса."
+    - path: /home/shop/.ssh/authorized_keys
+      contains: '^ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAnna1234567890 anna@laptop$'
+      fail: "Пропал ключ Анны — дописывают через >>, а не >."
+    - path: /home/shop/.ssh/authorized_keys
+      mode: '600'
+      fail: "Права authorized_keys — не 600: SSH проигнорирует ключи."
+    - path: /home/shop/.ssh
+      mode: '700'
+      fail: "Права папки ~/.ssh — не 700."
+solution: |
+  echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBoris1234567890 boris@laptop" >> ~/.ssh/authorized_keys
+  chmod 600 ~/.ssh/authorized_keys
+  chmod 700 ~/.ssh
+hints:
+  - "Строку — дописать в конец файла; права — числами."
+  - "`echo \"ssh-ed25519 …Boris… boris@laptop\" >> ~/.ssh/authorized_keys`, `chmod 600 ~/.ssh/authorized_keys`, `chmod 700 ~/.ssh`."
+explanation: |
+  Каждая строка `authorized_keys` — ключ, с которым можно войти от имени `shop`. `>` стёр бы ключ Анны — она потеряла бы доступ. При правах шире `700`/`600` sshd (режим StrictModes) не доверяет файлу и ключи не срабатывают. Чтобы отозвать доступ, строку ключа просто удаляют.

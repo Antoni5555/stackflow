@@ -1,0 +1,58 @@
+title: "Unit-файл Gunicorn"
+type: fix
+difficulty: 3
+pitfall: "Служба: User (не root), WorkingDirectory, EnvironmentFile, ExecStart с полным путём к gunicorn из venv, Restart=always."
+statement: |
+  Unit-файл `gunicorn.service` написан с ошибками: служба запускается от `root`, не видит `.env`, а `ExecStart` использует просто `gunicorn`. Исправьте:
+  - `User=shop` и `Group=shop`;
+  - `EnvironmentFile=/srv/shop/.env`;
+  - `ExecStart` — полный путь `/srv/shop/venv/bin/gunicorn`, адрес `127.0.0.1:8000` (не `0.0.0.0`);
+  - `Restart=always`, чтобы служба поднималась после падения.
+files:
+  gunicorn.service: |
+    [Unit]
+    Description=Gunicorn for shop
+    After=network.target
+
+    [Service]
+    WorkingDirectory=/srv/shop
+    ExecStart=gunicorn --workers 2 --bind 0.0.0.0:8000 config.wsgi:application
+
+    [Install]
+    WantedBy=multi-user.target
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*User=shop\s*$'
+      fail: "Нет User=shop — без него служба работает от root."
+    - must_match: '^\s*Group=shop\s*$'
+      fail: "Нет Group=shop."
+    - must_match: '^\s*EnvironmentFile=/srv/shop/\.env\s*$'
+      fail: "Нет EnvironmentFile=/srv/shop/.env — Django не увидит SECRET_KEY: службы не читают ~/.bashrc."
+    - must_match: '^\s*ExecStart=/srv/shop/venv/bin/gunicorn\s+--workers\s+2\s+--bind\s+127\.0\.0\.1:8000\s+config\.wsgi:application\s*$'
+      fail: "ExecStart=/srv/shop/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 config.wsgi:application — полный путь и только 127.0.0.1."
+    - must_match: '^\s*Restart=always\s*$'
+      fail: "Нет Restart=always — упавшую службу никто не перезапустит."
+    - must_match: '\[Service\](.*\n)*?\s*User=shop(.*\n)*?\[Install\]'
+      fail: "Директивы службы (User, EnvironmentFile, ExecStart, Restart) должны стоять в секции [Service]."
+solution:
+  gunicorn.service: |
+    [Unit]
+    Description=Gunicorn for shop
+    After=network.target
+
+    [Service]
+    User=shop
+    Group=shop
+    WorkingDirectory=/srv/shop
+    EnvironmentFile=/srv/shop/.env
+    ExecStart=/srv/shop/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 config.wsgi:application
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+hints:
+  - "Все исправления — в секции `[Service]`. У службы нет `PATH` из вашего терминала."
+  - "Добавьте `User=shop`, `Group=shop`, `EnvironmentFile=/srv/shop/.env`, `Restart=always`, а в `ExecStart` — полный путь и `127.0.0.1:8000`."
+explanation: |
+  Без `User` Gunicorn работает от `root`. У службы свой `PATH`, без `venv` — «просто `gunicorn`» не найдётся (`203/EXEC`) или найдётся системный, без Django. Переменные из `.env` подключает `EnvironmentFile`. `0.0.0.0` открыл бы приложение в интернет мимо Nginx. После правки — `sudo systemctl daemon-reload` и `sudo systemctl restart gunicorn`.

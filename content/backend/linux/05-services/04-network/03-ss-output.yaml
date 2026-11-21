@@ -1,0 +1,21 @@
+title: "Чего не хватает в ss"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "502 у Nginx — проверить ss -tlnp: слушает ли приложение свой порт."
+statement: |
+  Сайт отвечает 502. `sudo ss -tlnp` показывает:
+  ```
+  LISTEN 0 511       0.0.0.0:80    0.0.0.0:*  users:(("nginx",pid=1123,fd=6))
+  LISTEN 0 4096      0.0.0.0:22    0.0.0.0:*  users:(("sshd",pid=812,fd=3))
+  LISTEN 0 200     127.0.0.1:5432  0.0.0.0:*  users:(("postgres",pid=905,fd=6))
+  ```
+  В `proxy_pass` Nginx — `http://127.0.0.1:8000`. В чём проблема?
+options:
+  - "Nginx не запущен"
+  - "Никто не слушает `127.0.0.1:8000` — Gunicorn не работает"
+  - "PostgreSQL открыт в интернет"
+  - "Порт 22 занят"
+answer: [1]
+explanation: |
+  Порта 8000 в списке нет: Nginx пересылает запрос, а принять его некому — отсюда 502. Дальше — `systemctl status gunicorn` и `journalctl -u gunicorn`. Nginx на 80 есть, PostgreSQL на `127.0.0.1` — так и должно быть.

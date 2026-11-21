@@ -1,0 +1,15 @@
+title: "command not found"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Оболочка ищет программы только в папках из PATH; папку добавляют к существующему PATH."
+statement: |
+  Скрипт `/home/shop/bin/backup` есть и запускается как `~/bin/backup`, но просто `backup` даёт `command not found`. Как правильно сделать, чтобы работало по имени?
+options:
+  - "`export PATH=$HOME/bin`"
+  - "`export PATH=\"$HOME/bin:$PATH\"`"
+  - "`chmod 777 ~/bin/backup`"
+  - "`cp ~/bin/backup /tmp`"
+answer: [1]
+explanation: |
+  Оболочка ищет команду по папкам из `PATH`. Папку добавляют **к** старому значению — `PATH="$HOME/bin:$PATH"`; без `:$PATH` пропадут `ls`, `cat` и все системные программы. Чтобы так было в каждом терминале, строку пишут в `~/.bashrc`.

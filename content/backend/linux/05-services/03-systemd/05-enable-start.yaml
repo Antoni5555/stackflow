@@ -1,0 +1,15 @@
+title: "После перезагрузки сайт не работает"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "start — запустить сейчас, enable — запускать при загрузке; для постоянной службы — enable --now."
+statement: |
+  Gunicorn запустили командой `sudo systemctl start gunicorn`, сайт работал. После перезагрузки сервера `systemctl status gunicorn` показывает `inactive (dead)` и `disabled`. Что нужно было сделать?
+options:
+  - "`sudo systemctl daemon-reload`"
+  - "`sudo systemctl enable gunicorn` (или сразу `enable --now`)"
+  - "Добавить `Restart=always`"
+  - "Запустить Gunicorn в `~/.bashrc`"
+answer: [1]
+explanation: |
+  `start` запускает службу до остановки или перезагрузки; автозапуск при загрузке включает `enable` (`disabled` в статусе — он выключен). `Restart=always` перезапускает упавшую службу, но не запускает её после загрузки, если она не включена.

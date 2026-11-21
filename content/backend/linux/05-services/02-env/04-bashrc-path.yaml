@@ -1,0 +1,33 @@
+title: "Папка скриптов в PATH"
+type: exercise
+difficulty: 2
+pitfall: "Постоянные настройки терминала — в ~/.bashrc; папку добавляют в начало PATH, сохраняя старое значение."
+statement: |
+  Чтобы скрипты из `~/bin` запускались по имени в каждом новом терминале, допишите в конец `/home/shop/.bashrc` строку:
+  ```
+  export PATH="$HOME/bin:$PATH"
+  ```
+  Остальные строки `.bashrc` не трогайте.
+setup:
+  cwd: /home/shop
+  files:
+    /home/shop/.bashrc: |
+      # ~/.bashrc
+      alias ll='ls -la'
+    /home/shop/bin/backup: {content: "#!/bin/bash\necho backup\n", mode: '755'}
+check:
+  type: state
+  expect:
+    - path: /home/shop/.bashrc
+      contains: '^export PATH="\$HOME/bin:\$PATH"$'
+      fail: "В .bashrc нет строки export PATH=\"$HOME/bin:$PATH\". В двойных кавычках echo подставит значения — пишите строку в одинарных кавычках."
+    - path: /home/shop/.bashrc
+      contains: "^alias ll='ls -la'$"
+      fail: "Пропала строка alias — дописывайте через >>, а не >."
+solution: |
+  echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+hints:
+  - "Строку нужно записать как есть, с `$HOME` и `$PATH`, а не их значения. Какие кавычки не подставляют переменные?"
+  - "`echo 'export PATH=\"$HOME/bin:$PATH\"' >> ~/.bashrc`."
+explanation: |
+  В одинарных кавычках `echo` запишет `$HOME` и `$PATH` буквально — подставит их сама оболочка при каждом открытии терминала. В двойных в файл попали бы текущие значения (`/home/shop/bin:/usr/local/sbin:…`), и дальнейшие изменения `PATH` перестали бы работать. Подхватить без нового терминала — `source ~/.bashrc`.

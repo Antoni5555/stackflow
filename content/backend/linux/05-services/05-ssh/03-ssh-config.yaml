@@ -1,0 +1,49 @@
+title: "Короткое имя сервера"
+type: exercise
+difficulty: 2
+pitfall: "~/.ssh/config: блок Host с HostName, User, IdentityFile; права файла 600."
+statement: |
+  На своём компьютере (пользователь `shop` в тренажёре) создайте `~/.ssh/config`, чтобы вместо `ssh -i ~/.ssh/id_ed25519 shop@203.0.113.10` писать `ssh shop`. Строки файла (отступ — 4 пробела):
+  ```
+  Host shop
+      HostName 203.0.113.10
+      User shop
+      IdentityFile ~/.ssh/id_ed25519
+  ```
+  Права файла — `600`.
+setup:
+  cwd: /home/shop
+  files:
+    /home/shop/.ssh/id_ed25519: {content: "-----BEGIN OPENSSH PRIVATE KEY-----\n…\n", mode: '600'}
+    /home/shop/.ssh/id_ed25519.pub: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAnna1234567890 anna@laptop\n"
+  dirs:
+    - /home/shop/.ssh: {mode: '700'}
+check:
+  type: state
+  expect:
+    - path: /home/shop/.ssh/config
+      contains: '^Host shop$'
+      fail: "В ~/.ssh/config нет строки «Host shop»."
+    - path: /home/shop/.ssh/config
+      contains: '^\s+HostName 203\.0\.113\.10$'
+      fail: "Нет строки «    HostName 203.0.113.10» (с отступом)."
+    - path: /home/shop/.ssh/config
+      contains: '^\s+User shop$'
+      fail: "Нет строки «    User shop»."
+    - path: /home/shop/.ssh/config
+      contains: '^\s+IdentityFile ~/\.ssh/id_ed25519$'
+      fail: "Нет строки «    IdentityFile ~/.ssh/id_ed25519»."
+    - path: /home/shop/.ssh/config
+      mode: '600'
+      fail: "Права ~/.ssh/config — не 600."
+solution: |
+  echo "Host shop" > ~/.ssh/config
+  echo "    HostName 203.0.113.10" >> ~/.ssh/config
+  echo "    User shop" >> ~/.ssh/config
+  echo "    IdentityFile ~/.ssh/id_ed25519" >> ~/.ssh/config
+  chmod 600 ~/.ssh/config
+hints:
+  - "Файл по строкам: первая — `>`, остальные — `>>`. Или `nano ~/.ssh/config`."
+  - "Четыре `echo` и `chmod 600 ~/.ssh/config`."
+explanation: |
+  `Host shop` — короткое имя, под ним — настройки подключения: адрес, пользователь, ключ. После этого работают `ssh shop`, `scp shop:~/backups/… ./` и деплой-скрипты. Права `600`: SSH откажется читать config, который могут менять другие (`Bad owner or permissions`).
