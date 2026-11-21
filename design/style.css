@@ -2308,7 +2308,13 @@ body:has(#about:target) .nav-link[href="#about"] {
 .note-editor__sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
 
 .note-editor__area {
-  min-height: 160px;
+  /* Длинный текст прокручивается внутри поля — «Сохранить» всегда на виду.
+     Высота — от экрана (минус шапка сайта, тема, панель форматирования и низ плашки) */
+  min-height: 240px;
+  max-height: max(240px, calc(100vh - var(--header-h) - 500px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
   padding: var(--space-3) var(--space-4);
   font-size: var(--fs-sm);
   outline: none;
