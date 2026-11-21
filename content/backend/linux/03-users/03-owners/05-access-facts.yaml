@@ -1,0 +1,16 @@
+title: "Доступ Nginx к файлам"
+type: quiz
+kind: multiple
+difficulty: 3
+pitfall: "Nginx читает файл, если его пускает тройка, в которую он попадает, и есть x на всех папках пути."
+statement: |
+  Nginx работает от `www-data` (не состоит в группе `shop`). В каких случаях он сможет прочитать `/srv/shop/media/products/mouse.jpg`? Папки `/srv` и `/srv/shop` — `drwxr-xr-x`.
+options:
+  - "`media` и `products` — `drwxr-xr-x shop shop`, файл — `-rw-r--r-- shop shop`"
+  - "`media` и `products` — `drwxr-x--- shop www-data`, файл — `-rw-r----- shop www-data`"
+  - "`media` и `products` — `drwx------ shop shop`, файл — `-rw-r--r-- shop shop`"
+  - "`media` и `products` — `drwxr-xr-x shop shop`, файл — `-rw------- root root`"
+  - "`media` и `products` — `drw-r--r-- shop shop`, файл — `-rw-r--r-- shop shop`"
+answer: [0, 1]
+explanation: |
+  В первом случае `www-data` — «остальные», и им открыто `r-x` на папки и `r--` на файл. Во втором — он в группе файла и папок, и тройка группы даёт то же. В третьем папки закрыты от всех, кроме `shop`, в четвёртом файл читает только `root`, в пятом у папок нет `x` — пройти по пути нельзя.

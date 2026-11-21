@@ -1,0 +1,36 @@
+title: "Статика после распаковки"
+type: exercise
+difficulty: 2
+pitfall: "После sudo tar/cp файлы принадлежат root — sudo chown -R возвращает их пользователю приложения."
+statement: |
+  Статику распаковали через `sudo`, и все файлы в `/srv/shop/static` принадлежат `root`. Верните владельца `shop` (и группу `shop`) всей папке со всем содержимым.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/static/css/main.css: {content: "body {}\n", owner: root}
+    /srv/shop/static/js/cart.js: {content: "// cart\n", owner: root}
+  dirs:
+    - /srv/shop/static: {owner: root}
+    - /srv/shop/static/css: {owner: root}
+    - /srv/shop/static/js: {owner: root}
+check:
+  type: state
+  expect:
+    - path: /srv/shop/static
+      owner: shop
+      fail: "Папка static всё ещё принадлежит root. Владельца меняют через sudo chown."
+    - path: /srv/shop/static/css/main.css
+      owner: shop
+      fail: "static/css/main.css всё ещё принадлежит root — chown без -R меняет только саму папку."
+    - path: /srv/shop/static/js/cart.js
+      owner: shop
+      fail: "static/js/cart.js всё ещё принадлежит root — нужен -R."
+solution: |
+  sudo chown -R shop:shop static
+hints:
+  - "Владельца меняет только `root`; для папки со всем содержимым — рекурсивный ключ."
+  - "`sudo chown -R shop:shop static`."
+explanation: |
+  Без `sudo` — `chown: changing ownership of 'static': Operation not permitted`. Без `-R` сменится владелец только папки `static`, а `main.css` и `cart.js` останутся `root` — и `collectstatic` по-прежнему не сможет их перезаписать.

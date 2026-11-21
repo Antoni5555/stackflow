@@ -1,0 +1,50 @@
+- title: Кто я
+  text: |
+    Узнайте имя текущего пользователя и его группы. Команды:
+    ```
+    whoami, id
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    whoami
+    id
+    ```
+    Результат:
+    ```
+    shop
+    uid=1000(shop) gid=1000(shop) groups=1000(shop),27(sudo)
+    ```
+    Группа `sudo` — можно выполнять команды от `root`.
+- title: Чей лог Nginx
+  text: |
+    Посмотрите, кому принадлежит журнал ошибок Nginx:
+    ```
+    /var/log/nginx/error.log
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ls -l /var/log/nginx/error.log
+    ```
+    Результат (дата у вас будет другая):
+    ```
+    -rw-r--r-- 1 www-data www-data 0 Nov 19 15:50 /var/log/nginx/error.log
+    ```
+    Журнал пишет Nginx — пользователь `www-data`, поэтому файл его.
+- title: Видит ли Nginx секреты
+  text: |
+    Проверьте от имени Nginx, может ли он прочитать файл настроек с секретами:
+    ```
+    .env
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo -u www-data cat .env
+    ```
+    Результат:
+    ```
+    cat: .env: Permission denied
+    ```
+    Так и должно быть: `.env` нужен только приложению (`shop`).

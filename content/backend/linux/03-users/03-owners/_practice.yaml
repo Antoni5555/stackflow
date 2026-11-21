@@ -1,0 +1,58 @@
+- title: Файл, созданный через sudo
+  text: |
+    Создайте файл через `sudo` и попробуйте дописать в него от своего имени. Файл:
+    ```
+    data/import.csv
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo touch data/import.csv
+    ls -l data/import.csv
+    echo 1 >> data/import.csv
+    ```
+    Результат (дата у вас будет другая):
+    ```
+    -rw-r--r-- 1 root root 0 Nov 21 15:50 data/import.csv
+    bash: data/import.csv: Permission denied
+    ```
+    `sudo` создал файл от `root` — теперь он «чужой» для `shop`.
+- title: Вернуть владельца
+  text: |
+    Сделайте `shop` владельцем файла из прошлого упражнения и допишите строку:
+    ```
+    data/import.csv
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo chown shop:shop data/import.csv
+    echo 1 >> data/import.csv
+    ls -l data/import.csv
+    ```
+    Результат (дата у вас будет другая):
+    ```
+    -rw-r--r-- 1 shop shop 2 Nov 21 15:50 data/import.csv
+    ```
+- title: Владелец всей папки
+  text: |
+    Посмотрите, что происходит с владельцем фото при `chown -R`, и верните как было. Папка:
+    ```
+    media
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo chown -R www-data media
+    ls -l media
+    sudo chown -R shop:shop media
+    ls -l media
+    ```
+    Результат (даты у вас будут другие):
+    ```
+    total 3072
+    -rw-r--r-- 1 www-data shop 3145728 Nov 21 15:50 photo.jpg
+    total 3072
+    -rw-r--r-- 1 shop shop 3145728 Nov 21 15:50 photo.jpg
+    ```
+    `chown пользователь` без `:группа` меняет только владельца. Отдавать `media` в собственность Nginx не нужно — достаточно права чтения.

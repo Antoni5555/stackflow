@@ -3711,6 +3711,62 @@ def tar_flow():
     f.text(20, 290, "gzip заменяет файл сжатым; текст ужимается в разы, фото JPG/PNG — почти нет.", "s")
     f.save(out(LX2 / "05-archives" / "img" / "tar-flow.svg"))
 
+
+LX3 = ROOT / "linux" / "03-users"
+
+
+def users_fig():
+    f = Figure(880, 320, "Кто работает на сервере магазина и к каким файлам ходит")
+    rows = [("root  (uid 0)", "может всё — только через sudo", "/etc, /var/log, всё остальное", "err"),
+            ("shop  (uid 1000; группы shop, sudo)", "вы и Gunicorn", "/srv/shop, /home/shop", "acc"),
+            ("www-data  (uid 33)", "Nginx", "читает media и static, пишет /var/log/nginx", "box2")]
+    for i, (who, what, files, cls) in enumerate(rows):
+        y = 20 + i * 80
+        f.box(20, y, 340, 60, who, cls, "onacc" if cls == "acc" else ("errt" if cls == "err" else "cs"))
+        f.text(380, y + 26, what, "t")
+        f.text(380, y + 48, files, "cs")
+    f.text(20, 280, "Взломали Nginx — у злоумышленника права www-data, а не root.", "s")
+    f.text(20, 302, "Проверить доступ службы: sudo -u www-data cat файл", "cs")
+    f.save(out(LX3 / "01-users" / "img" / "users.svg"))
+
+
+def permissions_fig():
+    f = Figure(880, 300, "Права в ls -l: тип и три тройки, каждая — сумма r=4, w=2, x=1")
+    parts = [("-", "тип: файл", "box"), ("rw-", "владелец shop: 4+2 = 6", "acc"),
+             ("r--", "группа www-data: 4", "box2"), ("---", "остальные: 0", "box")]
+    x = 20
+    for sym, note, cls in parts:
+        w = 60 if sym == "-" else 110
+        f.box(x, 30, w, 50, sym, cls, "onacc" if cls == "acc" else "c")
+        f.text(x, 104, note, "s")
+        x += w + 90
+    f.text(20, 150, "-rw-r----- 1 shop www-data 33 .env  →  chmod 640 .env", "cs")
+    f.box(20, 180, 400, 90, "", "box2")
+    f.text(36, 206, "файл: r — читать, w — менять, x — запускать", "t")
+    f.text(36, 232, "папка: r — список, w — создать/удалить,", "t")
+    f.text(36, 256, "x — войти и открыть файлы по пути", "t")
+    f.box(460, 180, 400, 90, "", "ok")
+    f.text(476, 206, "644 — файлы, 755 — папки и скрипты", "cs")
+    f.text(476, 232, "600 — .env и ключ SSH", "cs")
+    f.text(476, 256, "640 / 750 — для владельца и группы", "cs")
+    f.save(out(LX3 / "02-permissions" / "img" / "permissions.svg"))
+
+
+def owners_fig():
+    f = Figure(880, 320, "Фото, загруженное под root: chown возвращает владельца, chmod открывает чтение")
+    steps = [("-rw------- root root new-watch.jpg", "Nginx (www-data) — «остальные»: 403", "err"),
+             ("sudo chown -R shop:shop media", "-rw------- shop shop — всё ещё 403", "box2"),
+             ("chmod 644 …new-watch.jpg", "-rw-r--r-- shop shop — Nginx отдаёт фото", "ok")]
+    for i, (cmd, res, cls) in enumerate(steps):
+        y = 20 + i * 70
+        f.box(20, y, 380, 50, cmd, "box2" if i else cls, "errt" if i == 0 else "cs")
+        if i:
+            f.arrow(f"M210 {y - 20}V{y}")
+        f.box(440, y, 420, 50, res, cls, "errt" if cls == "err" else "cs")
+    f.text(20, 250, "Строже, через группу: sudo chgrp -R www-data media; папки 750, файлы 640 —", "s")
+    f.text(20, 272, "shop пишет, Nginx читает через группу, остальные пользователи — ничего.", "s")
+    f.save(out(LX3 / "03-owners" / "img" / "owners.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -3759,6 +3815,7 @@ if __name__ == "__main__":
                   command_parts, path_tree, cp_mv, argv, venv, requirements,
                   commits_chain, three_areas, diff_areas, gitignore, branches, conflict, push_pull,
                   fhs, head_tail, redirect_write, links_fig,
-                  find_filters, grep_keys, streams, pipeline_fig, tar_flow):
+                  find_filters, grep_keys, streams, pipeline_fig, tar_flow,
+                  users_fig, permissions_fig, owners_fig):
         build()
     print("ok")

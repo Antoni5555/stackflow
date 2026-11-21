@@ -1,0 +1,15 @@
+title: "Что чинить"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Файлы, созданные через sudo, принадлежат root; приложению нужен владелец, а не 777."
+statement: |
+  После `sudo tar -xzf static.tar.gz` в `/srv/shop` команда `python manage.py collectstatic` от `shop` падает: `PermissionError: [Errno 13] Permission denied: '/srv/shop/static/css/main.css'`. В `ls -l` у файлов — `root root`. Что сделать?
+options:
+  - "`chmod -R 777 /srv/shop/static`"
+  - "`sudo chown -R shop:shop /srv/shop/static`"
+  - "Запускать `collectstatic` через `sudo`"
+  - "`chmod u+x /srv/shop/static`"
+answer: [1]
+explanation: |
+  `sudo tar` создал файлы от `root`, и `shop` не может их перезаписать. Вернуть владельца — `sudo chown -R shop:shop /srv/shop/static`. `777` открыло бы файлы всем, а `sudo collectstatic` создал бы новые файлы `root` — проблема вернётся при следующем деплое.

@@ -1,0 +1,33 @@
+title: "Запустить скрипт деплоя"
+type: exercise
+difficulty: 1
+pitfall: "Скрипт запускается только с правом x: chmod u+x."
+statement: |
+  Скрипт `/srv/shop/deploy.sh` не запускается: `Permission denied`. Дайте владельцу право запуска и запустите скрипт с аргументом `v2` (последней командой).
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/.env: |
+      SECRET_KEY=change-me
+      DEBUG=False
+    /srv/shop/deploy.sh: |
+      #!/bin/bash
+      echo "Деплой магазина: $1"
+check:
+  type: state
+  expect:
+    - output_matches: '^Деплой магазина: v2$'
+      fail: "Последней командой должен быть запуск ./deploy.sh v2 с выводом «Деплой магазина: v2». Без права x — Permission denied: chmod u+x deploy.sh."
+    - path: /srv/shop/deploy.sh
+      contains: 'echo "Деплой магазина: \$1"'
+      fail: "Содержимое скрипта изменилось — менять нужно права, а не текст."
+solution: |
+  chmod u+x deploy.sh
+  ./deploy.sh v2
+hints:
+  - "Какого права не хватает файлу, чтобы его запустить как программу?"
+  - "`chmod u+x deploy.sh`, затем `./deploy.sh v2`."
+explanation: |
+  `-rw-r--r--` — у скрипта нет `x` ни у кого, и запуск даёт `bash: ./deploy.sh: Permission denied` с кодом 126. `u+x` добавляет право запуска только владельцу (`-rwxr--r--`); `chmod 755` дал бы его всем — для скрипта деплоя это лишнее.

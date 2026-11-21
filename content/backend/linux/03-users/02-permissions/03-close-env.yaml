@@ -1,0 +1,33 @@
+title: "Закрыть .env"
+type: exercise
+difficulty: 1
+pitfall: "Секреты — права 600: читать и менять может только владелец."
+statement: |
+  Файл `/srv/shop/.env` с секретами сейчас читают все пользователи сервера (`-rw-r--r--`). Оставьте чтение и запись только владельцу.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/.env: |
+      SECRET_KEY=change-me
+      DEBUG=False
+    /srv/shop/deploy.sh: |
+      #!/bin/bash
+      echo "Деплой магазина: $1"
+check:
+  type: state
+  expect:
+    - path: /srv/shop/.env
+      mode: '600'
+      fail: "Права .env должны быть 600 (rw-------): группе и остальным — ничего."
+    - path: /srv/shop/.env
+      contains: '^SECRET_KEY=change-me$'
+      fail: "Содержимое .env изменилось — менять нужно только права."
+solution: |
+  chmod 600 .env
+hints:
+  - "Владельцу — `rw` (4 + 2), группе и остальным — 0."
+  - "`chmod 600 .env` (или `chmod go-r .env`)."
+explanation: |
+  `600` — `rw-------`. Gunicorn работает от `shop` — владельца файла — и прочитает его, а Nginx (`www-data`) и другие пользователи получат `Permission denied`. То же буквами: `chmod go-r .env` (убрать чтение группе и остальным).

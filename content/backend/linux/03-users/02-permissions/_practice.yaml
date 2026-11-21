@@ -1,0 +1,51 @@
+- title: Права файлов проекта
+  text: |
+    Посмотрите права трёх файлов и объясните, чем они отличаются:
+    ```
+    .env manage.py deploy.sh
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ls -l .env manage.py deploy.sh
+    ```
+    Результат (даты у вас будут другие):
+    ```
+    -rw------- 1 shop shop 33 Nov 21 15:50 .env
+    -rw-r--r-- 1 shop shop 53 Nov 21 15:50 deploy.sh
+    -rwxr-xr-x 1 shop shop 23 Nov 21 15:50 manage.py
+    ```
+    `.env` — `600`, только владелец; `deploy.sh` — `644`, запускать нельзя; `manage.py` — `755`, запускается.
+- title: Запустить скрипт
+  text: |
+    Дайте владельцу право запуска скрипта и запустите его с аргументом:
+    ```
+    ./deploy.sh test
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    chmod u+x deploy.sh
+    ./deploy.sh test
+    ```
+    Результат:
+    ```
+    Деплой магазина: test
+    ```
+- title: Закрыть настройки буквами
+  text: |
+    Уберите право чтения у группы и остальных, не трогая права владельца. Файл:
+    ```
+    config/settings.ini
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    chmod go-r config/settings.ini
+    ls -l config/settings.ini
+    ```
+    Результат (дата у вас будет другая):
+    ```
+    -rw------- 1 shop shop 40 Nov 21 15:50 config/settings.ini
+    ```
+    `go-r` — «группе и остальным убрать чтение»; итог тот же, что у `chmod 600`.

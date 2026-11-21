@@ -1,0 +1,37 @@
+title: "Фото после загрузки под root"
+type: exercise
+difficulty: 2
+pitfall: "Файлы root чинят двумя шагами: sudo chown — владелец приложения, chmod 644 — чтение для Nginx."
+statement: |
+  Фото `new-watch.jpg` и `strap.jpg` в `/srv/shop/media/products` загрузили под `root` с правами `600`, и Nginx отвечает на них 403. Сделайте владельцем всей папки `media` пользователя `shop` (группа тоже `shop`), а новым фото поставьте права `644`.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/media/products/mouse.jpg: {size: 240K}
+    /srv/shop/media/products/new-watch.jpg: {size: 700K, owner: root, mode: '600'}
+    /srv/shop/media/products/strap.jpg: {size: 300K, owner: root, mode: '600'}
+check:
+  type: state
+  expect:
+    - path: /srv/shop/media/products/new-watch.jpg
+      owner: shop
+      fail: "new-watch.jpg всё ещё принадлежит root. Владельца меняет только root: sudo chown -R shop:shop media."
+    - path: /srv/shop/media/products/strap.jpg
+      owner: shop
+      fail: "strap.jpg всё ещё принадлежит root — нужен -R для всей папки."
+    - path: /srv/shop/media/products/new-watch.jpg
+      mode: '644'
+      fail: "Права new-watch.jpg — не 644: владелец сменился, но Nginx по-прежнему не может читать (rw-------)."
+    - path: /srv/shop/media/products/strap.jpg
+      mode: '644'
+      fail: "Права strap.jpg — не 644."
+solution: |
+  sudo chown -R shop:shop media
+  chmod 644 media/products/new-watch.jpg media/products/strap.jpg
+hints:
+  - "Сначала владелец (это делает только `root`), потом права (это может владелец)."
+  - "`sudo chown -R shop:shop media`, затем `chmod 644 media/products/new-watch.jpg media/products/strap.jpg`."
+explanation: |
+  `chown` делает фото «своими» для приложения: Gunicorn сможет их заменить или удалить. Но права `rw-------` остаются — Nginx (`www-data`) попадает в «остальных» и читать не может. `chmod 644` открывает чтение. Проверка — `sudo -u www-data cat media/products/new-watch.jpg > /dev/null; echo $?` должна дать 0.

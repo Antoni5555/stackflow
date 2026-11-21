@@ -1,0 +1,30 @@
+title: "Файл в настройках Nginx"
+type: exercise
+difficulty: 1
+pitfall: "В /etc пишет только root: файл создают через sudo, и он принадлежит root."
+statement: |
+  Создайте пустой файл настроек `/etc/nginx/conf.d/shop-cache.conf` (папки `conf.d` пока нет). Папка `/etc/nginx` принадлежит `root`.
+setup:
+  cwd: /home/shop
+  files:
+    /etc/nginx/nginx.conf:
+      content: |
+        user www-data;
+      owner: root
+check:
+  type: state
+  expect:
+    - path: /etc/nginx/conf.d/shop-cache.conf
+      exists: true
+      fail: "Файла /etc/nginx/conf.d/shop-cache.conf нет. В /etc создают через sudo: сначала папку (sudo mkdir), потом файл (sudo touch)."
+    - path: /etc/nginx/conf.d/shop-cache.conf
+      owner: root
+      fail: "Файл должен принадлежать root, как все настройки в /etc."
+solution: |
+  sudo mkdir /etc/nginx/conf.d
+  sudo touch /etc/nginx/conf.d/shop-cache.conf
+hints:
+  - "Что ответит `mkdir /etc/nginx/conf.d` от `shop`?"
+  - "`sudo mkdir /etc/nginx/conf.d`, затем `sudo touch /etc/nginx/conf.d/shop-cache.conf`."
+explanation: |
+  Без `sudo` — `mkdir: cannot create directory '/etc/nginx/conf.d': Permission denied`. Через `sudo` команда выполняется от `root`, и созданные файлы принадлежат `root` — для настроек в `/etc` так и должно быть. А вот в папке проекта `sudo` создал бы файлы, которые потом не сможет менять приложение.
