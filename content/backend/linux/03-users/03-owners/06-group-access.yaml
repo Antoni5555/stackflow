@@ -1,0 +1,48 @@
+title: "Фото только для Nginx"
+type: exercise
+difficulty: 3
+pitfall: "Доступ «владелец + одна служба»: группа www-data у папок и файлов, права 750 и 640; группу, в которой вас нет, меняют через sudo."
+statement: |
+  Сейчас фото в `/srv/shop/media` может читать любой пользователь сервера (`755` / `644`). Оставьте доступ только приложению и Nginx:
+  - группа папок `media`, `media/products` и всех файлов внутри — `www-data`, владелец остаётся `shop`;
+  - папки — `750`, файлы фото — `640`.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/media/products/mouse.jpg: {size: 240K}
+    /srv/shop/media/products/keyboard.jpg: {size: 900K}
+check:
+  type: state
+  expect:
+    - path: /srv/shop/media/products/mouse.jpg
+      group: www-data
+      fail: "Группа mouse.jpg — не www-data. Пользователь shop не в группе www-data, поэтому sudo chgrp -R www-data media."
+    - path: /srv/shop/media
+      group: www-data
+      fail: "Группа папки media — не www-data."
+    - path: /srv/shop/media/products/mouse.jpg
+      owner: shop
+      fail: "Владелец фото должен остаться shop — менять нужно группу, а не владельца."
+    - path: /srv/shop/media
+      mode: '750'
+      fail: "Права папки media — не 750 (rwxr-x---): владельцу всё, группе чтение и вход, остальным ничего."
+    - path: /srv/shop/media/products
+      mode: '750'
+      fail: "Права папки media/products — не 750."
+    - path: /srv/shop/media/products/mouse.jpg
+      mode: '640'
+      fail: "Права mouse.jpg — не 640 (rw-r-----)."
+    - path: /srv/shop/media/products/keyboard.jpg
+      mode: '640'
+      fail: "Права keyboard.jpg — не 640."
+solution: |
+  sudo chgrp -R www-data media
+  chmod 750 media media/products
+  chmod 640 media/products/mouse.jpg media/products/keyboard.jpg
+hints:
+  - "Три шага: группа (рекурсивно, через `sudo`), права папок, права файлов. Папкам нужен `x` для группы, файлам — нет."
+  - "`sudo chgrp -R www-data media`, `chmod 750 media media/products`, `chmod 640 media/products/mouse.jpg media/products/keyboard.jpg`."
+explanation: |
+  Владелец `shop` попадает в первую тройку (`rwx` / `rw-`) — Gunicorn сохраняет и удаляет фото. Nginx — в группе `www-data`, вторая тройка (`r-x` / `r--`) пускает его в папки и даёт читать файлы. Остальные пользователи — `---`. Без `sudo` — `chgrp: changing group of …: Operation not permitted` для каждого файла: `shop` не состоит в `www-data`. `chmod -R 640 media` не годится — он снял бы `x` с папок.

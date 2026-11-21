@@ -236,7 +236,7 @@ LINUX_COMMANDS = {
     "tar": {"-c", "-x", "-t", "-z", "-f", "-v", "-C"},
     "chmod": None, "chown": {"-R"},
     "whoami": None, "id": None, "chgrp": {"-R"}, "which": None, "df": {"-h"}, "du": {"-s", "-h"},
-    "gzip": None, "gunzip": None, "true": None,
+    "gzip": None, "gunzip": None, "true": None, "groups": None,
 }
 GIT_COMMANDS = {
     "init": None, "config": {"--global", "--list"}, "status": None, "add": {"-A"}, "rm": {"--cached", "-r"},
@@ -250,7 +250,7 @@ GIT_COMMANDS = {
 GIT_SUBCOMMANDS = {"stash": {"push", "list", "pop", "apply", "drop"}, "remote": {"add"}}
 PIP_COMMANDS = {"install": {"-r"}, "freeze": None, "uninstall": {"-y"}, "list": None}
 STATE_RULES = {  # ключ, по которому узнаём правило → какие ещё ключи обязательны
-    "exists": {"path"}, "contains": {"path"}, "not_contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "link_to": {"path"},
+    "exists": {"path"}, "contains": {"path"}, "not_contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "group": {"path"}, "link_to": {"path"},
     "output_matches": set(),
     "head": set(), "commit_in": set(), "commit_count": set(), "clean": set(), "merged": set(),
     "pushed": set(), "config": set(), "stash_count": set(), "pip_package": set(),
