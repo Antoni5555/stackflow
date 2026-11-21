@@ -352,14 +352,21 @@ export class Shell {
       }
     }
 
-    // Куда идёт вывод: проверяем файлы до запуска команды (bash создаёт их сразу)
-    const outFile = redirects.filter((r) => r.op === '>' || r.op === '>>').pop();
-    const errFile = redirects.filter((r) => r.op === '2>' || r.op === '2>>').pop();
-    const errToOut = redirects.some((r) => r.op === '2>&1');
-    for (const item of [outFile, errFile].filter(Boolean)) {
+    // Куда идут потоки: 1 — вывод, 2 — ошибки. Перенаправления — слева направо, как
+    // в bash: «2>&1 > f» — ошибки остаются на экране, «> f 2>&1» — оба потока в файл.
+    // Файлы bash открывает (создаёт и очищает) до запуска команды
+    const fds = { 1: { stream: 'out' }, 2: { stream: 'err' } };
+    for (const item of redirects) {
+      if (item.op === '2>&1') {
+        fds[2] = fds[1];
+        continue;
+      }
+      if (item.op === '<') continue;
+      const fd = item.op.startsWith('2') ? 2 : 1;
+      fds[fd] = { file: this.resolve(item.target) };
       try {
-        this.fs.writeFile(this.resolve(item.target), '', { append: true });
-        if (item.op === '>' || item.op === '2>') this.fs.writeFile(this.resolve(item.target), '');
+        this.fs.writeFile(fds[fd].file, '', { append: true });
+        if (!item.op.endsWith('>>')) this.fs.writeFile(fds[fd].file, '');
       } catch (e) {
         this.status = 1;
         return { out: '', err: `bash: ${item.target}: ${e.message}\n` };
@@ -367,22 +374,21 @@ export class Shell {
     }
 
     const result = words.length
-      ? this.exec(words, stdin, { tty: !piped && !outFile })
+      ? this.exec(words, stdin, { tty: !piped && fds[1].stream === 'out' })
       : { out: '', err: '', code: 0 };
     this.status = result.code;
 
-    let { out, err } = result;
-    if (errToOut) {
-      out += err;
-      err = '';
-    }
-    if (outFile) {
-      this.fs.writeFile(this.resolve(outFile.target), out, { append: true });
-      out = '';
-    }
-    if (errFile) {
-      this.fs.writeFile(this.resolve(errFile.target), err, { append: true });
-      err = '';
+    // Порядок, когда оба потока идут в одно место: обычно вывод, потом ошибки;
+    // ls сначала проверяет все аргументы — его ошибки первые (errFirst)
+    const parts = result.errFirst ? [[2, result.err], [1, result.out]] : [[1, result.out], [2, result.err]];
+    let out = '';
+    let err = '';
+    for (const [fd, text] of parts) {
+      const target = fds[fd];
+      if (!text) continue;
+      if (target.file) this.fs.writeFile(target.file, text, { append: true });
+      else if (target.stream === 'out') out += text;
+      else err += text;
     }
     return { out, err, action: result.action };
   }
@@ -410,7 +416,10 @@ export class Shell {
     }
     try {
       const result = command.run({ sh: this, fs: this.fs, args, stdin, tty, name }) ?? {};
-      return { out: result.out ?? '', err: result.err ?? '', code: result.code ?? 0, action: result.action };
+      return {
+        out: result.out ?? '', err: result.err ?? '', code: result.code ?? 0,
+        action: result.action, errFirst: result.errFirst,
+      };
     } catch (e) {
       if (e instanceof FsError) return { out: '', err: `${name}: ${e.message}\n`, code: 1 };
       throw e;

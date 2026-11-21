@@ -241,7 +241,8 @@ const ls = {
       }
     };
     for (const path of dirs) visit(path);
-    return { out: blocks.filter(Boolean).join('\n'), err, code };
+    // ls сначала проверяет все аргументы: «cannot access» — раньше списка (2>&1 в файл)
+    return { out: blocks.filter(Boolean).join('\n'), err, code, errFirst: true };
   },
 };
 
@@ -775,6 +776,13 @@ const find = {
     while (i < ctx.args.length) {
       const test = ctx.args[i];
       const value = ctx.args[i + 1];
+      if (!test.startsWith('-')) {
+        // find . -name *.jpg без кавычек: bash подставил все .jpg, лишние — после условия
+        const previous = ctx.args[i - 2];
+        const hint = ['-name', '-iname'].includes(previous)
+          ? `find: possible unquoted pattern after predicate \`${previous}'?\n` : '';
+        return fail(`find: paths must precede expression: \`${test}'\n${hint}`);
+      }
       if (test === '-print') {
         i += 1;
         continue;
@@ -1033,9 +1041,13 @@ const sudo = {
 const TAR = '\u0000TAR\u0000';
 const GZ = '\u0000GZ\u0000';
 
-/** Сжатый файл: внутри — исходный текст, размер — ~30 % исходного. */
-function gzipNode(content, size) {
-  return { content: GZ + JSON.stringify({ content, size }), size: Math.max(Math.round(size * 0.3), 20), binary: true };
+// Уже сжатые форматы: фото, видео, архивы — gzip почти не уменьшает
+const PACKED = /\.(jpe?g|png|gif|webp|avif|mp[34]|webm|zip|gz|tgz|bz2|xz|7z|woff2?|pdf)$/i;
+
+/** Сжатый файл: внутри — исходный текст; текст сжимается до ~30 %, packed байт — до ~99 %. */
+function gzipNode(content, size, packed = 0) {
+  const compressed = Math.round((size - packed) * 0.3 + packed * 0.99);
+  return { content: GZ + JSON.stringify({ content, size }), size: Math.max(compressed, 20), binary: true };
 }
 
 function gunzipContent(text) {
@@ -1064,7 +1076,7 @@ const gzip = {
         ctx.fs.createFile(abs.slice(0, -3), { content: data.content, size: data.size, binary: isTar, heavy: !data.content && data.size > 0 });
       } else {
         if (path.endsWith('.gz')) return `gzip: ${path} already has .gz suffix -- unchanged\n`;
-        ctx.fs.createFile(`${abs}.gz`, gzipNode(ctx.fs.readFile(abs), node.size));
+        ctx.fs.createFile(`${abs}.gz`, gzipNode(ctx.fs.readFile(abs), node.size, PACKED.test(path) ? node.size : 0));
       }
       if (!parsed.opts.k) ctx.fs.remove(abs);
       return '';
@@ -1076,20 +1088,35 @@ const gzip = {
 function packTar(ctx, paths) {
   const entries = [];
   let err = '';
+  let failed = false;
   for (const path of paths) {
     const abs = ctx.sh.resolve(path);
     const stored = path.replace(/^\/+/, '');
     if (stored !== path && !err) err = "tar: Removing leading `/' from member names\n";
+    try {
+      ctx.fs.lookup(abs, { follow: false });
+    } catch (e) {
+      if (!(e instanceof FsError)) throw e;
+      // как GNU tar: файла нет — сообщение, архив из остальных, в конце код 2
+      err += `tar: ${path}: Cannot stat: ${e.message}\n`;
+      failed = true;
+      continue;
+    }
     for (const [sub, node] of ctx.fs.walk(abs)) {
-      if (node.type === 'file') ctx.fs.require(node, 'r');
+      const name = stored.replace(/\/$/, '') + sub.slice(abs.length);
+      if (node.type === 'file' && !ctx.fs.can(node, 'r')) {
+        err += `tar: ${name}: Cannot open: Permission denied\n`;
+        failed = true;
+        continue;
+      }
       entries.push({
-        path: stored.replace(/\/$/, '') + sub.slice(abs.length),
-        type: node.type, content: node.content, size: node.size, mode: node.mode,
+        path: name, type: node.type, content: node.content, size: node.size, mode: node.mode,
         target: node.target, binary: node.binary,
       });
     }
   }
-  return { entries, err };
+  if (failed) err += 'tar: Exiting with failure status due to previous errors\n';
+  return { entries, err, failed };
 }
 
 const tar = {
@@ -1115,13 +1142,18 @@ const tar = {
     try {
       if (opts.c) {
         if (!operands.length) return fail('tar: Cowardly refusing to create an empty archive\nTry \'tar --help\' or \'tar --usage\' for more information.\n', 2);
-        const { entries, err } = packTar(ctx, operands);
+        const { entries, err, failed } = packTar(ctx, operands);
         const content = TAR + JSON.stringify(entries);
-        const size = entries.reduce((sum, entry) => sum + 512 + Math.ceil((entry.size ?? 0) / 512) * 512, 1024);
-        const props = opts.z ? gzipNode(content, size) : { content, size, binary: true };
+        const stored = (entry) => Math.ceil((entry.size ?? 0) / 512) * 512;
+        const size = entries.reduce((sum, entry) => sum + 512 + stored(entry), 1024);
+        const packed = entries.filter((entry) => PACKED.test(entry.path)).reduce((sum, entry) => sum + stored(entry), 0);
+        const props = opts.z ? gzipNode(content, size, packed) : { content, size, binary: true };
         ctx.fs.writeFile(archiveAbs, '');
         Object.assign(ctx.fs.lookup(archiveAbs), props);
-        return { out: opts.v ? joinLines(entries.map((e) => e.path + (e.type === 'dir' ? '/' : ''))) : '', err, code: 0 };
+        return {
+          out: opts.v ? joinLines(entries.map((e) => e.path + (e.type === 'dir' ? '/' : ''))) : '',
+          err, code: failed ? 2 : 0,
+        };
       }
       let content = ctx.fs.readFile(archiveAbs);
       if (opts.z) {

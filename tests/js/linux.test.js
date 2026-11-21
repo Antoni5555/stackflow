@@ -182,7 +182,7 @@ describe('перенаправления и конвейеры', () => {
     assert.match(run(sh, 'cat err.txt').out, /cannot access 'nope'/);
     assert.equal(run(sh, 'ls nope 2>/dev/null').err, '');
     run(sh, 'ls nope orders.csv > all.txt 2>&1');
-    assert.match(run(sh, 'cat all.txt').out, /orders\.csv\n.*cannot access/s);
+    assert.match(run(sh, 'cat all.txt').out, /cannot access 'nope'.*\norders\.csv\n$/s);
     assert.equal(run(sh, 'wc -l < orders.csv').out, '4\n');
     assert.equal(run(sh, 'echo x > /etc/hosts').err, 'bash: /etc/hosts: Permission denied\n');
     assert.equal(run(sh, 'echo x > nodir/file').err, 'bash: nodir/file: No such file or directory\n');
@@ -218,6 +218,59 @@ describe('перенаправления и конвейеры', () => {
     run(sh, 'foo');
     assert.equal(run(sh, 'echo $?').out, '127\n');
     assert.equal(run(sh, 'true; echo $?').out, '0\n');
+  });
+});
+
+describe('как в Ubuntu: перенаправления, find без кавычек, tar', () => {
+  const PROJECT = {
+    cwd: '/srv/shop',
+    files: {
+      '/srv/shop/manage.py': 'print()\n',
+      '/srv/shop/media/laptop-air.jpg': { size: '7M' },
+      '/srv/shop/media/laptop-pro.jpg': { size: '14M' },
+      '/srv/shop/notes.txt': { size: '1M' },
+    },
+  };
+
+  it('перенаправления — слева направо', () => {
+    const sh = shell(PROJECT);
+    // ошибки ушли туда, куда вёл вывод до «> out.txt», — на экран
+    const screen = run(sh, 'ls manage.py nope 2>&1 > out.txt');
+    assert.equal(screen.out, "ls: cannot access 'nope': No such file or directory\n");
+    assert.equal(run(sh, 'cat out.txt').out, 'manage.py\n');
+    run(sh, 'ls manage.py nope > out.txt 2>&1');
+    assert.equal(run(sh, 'cat out.txt').out,
+      "ls: cannot access 'nope': No such file or directory\nmanage.py\n");
+    // вывод в конвейер, ошибки — тоже туда
+    assert.equal(run(sh, 'ls nope 2>&1 | wc -l').out, '1\n');
+  });
+
+  it('find -name *.jpg без кавычек — подсказка bash-ловушки', () => {
+    const sh = shell({ ...PROJECT, cwd: '/srv/shop/media' });
+    const result = run(sh, 'find . -name *.jpg');
+    assert.equal(result.err, "find: paths must precede expression: `laptop-pro.jpg'\n"
+      + "find: possible unquoted pattern after predicate `-name'?\n");
+    assert.equal(result.code, 1);
+    assert.equal(run(sh, "find . -name '*.jpg'").out, './laptop-air.jpg\n./laptop-pro.jpg\n');
+  });
+
+  it('tar: нет файла — Cannot stat, архив из остальных, код 2', () => {
+    const sh = shell(PROJECT);
+    const result = run(sh, 'tar -czf a.tar.gz manage.py nope');
+    assert.equal(result.err, 'tar: nope: Cannot stat: No such file or directory\n'
+      + 'tar: Exiting with failure status due to previous errors\n');
+    assert.equal(result.code, 2);
+    assert.equal(run(sh, 'tar -tzf a.tar.gz').out, 'manage.py\n');
+  });
+
+  it('gzip почти не сжимает фото, текст — сжимает', () => {
+    const sh = shell(PROJECT);
+    run(sh, 'tar -czf media.tar.gz media');
+    const media = Number(run(sh, 'ls -l media.tar.gz').out.split(/\s+/)[4]);
+    assert.ok(media > 21 * 1024 * 1024 * 0.97, `архив фото ${media}`);
+    run(sh, 'gzip notes.txt');
+    const notes = Number(run(sh, 'ls -l notes.txt.gz').out.split(/\s+/)[4]);
+    assert.ok(notes < 1024 * 1024 * 0.5, `сжатый текст ${notes}`);
   });
 });
 
