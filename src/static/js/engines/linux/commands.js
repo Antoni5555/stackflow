@@ -959,18 +959,47 @@ const chmod = {
   },
 };
 
+/** Узлы для chown -R: как в coreutils, папка — после своего содержимого. */
+function postOrder(node, path, into = []) {
+  if (node.type === 'dir') {
+    for (const name of sortNames([...node.children.keys()])) {
+      postOrder(node.children.get(name), `${path.replace(/\/$/, '')}/${name}`, into);
+    }
+  }
+  into.push([path, node]);
+  return into;
+}
+
 function changeOwner(ctx, name, owner, group, paths, recursive) {
   if (owner && !USERS[owner]) return fail(`${name}: invalid user: ‘${owner}’\n`);
   if (group && !(group in GROUPS)) return fail(`${name}: invalid group: ‘${group}’\n`);
-  return eachPath(ctx, paths, (path) => recursively(ctx, path, recursive, (node) => {
-    const user = ctx.fs.user;
-    const groupAllowed = node.owner === user && (USERS[user]?.groups ?? []).includes(group);
-    if (user !== 'root' && (owner || !groupAllowed)) throw new FsError('EPERM');
-    if (owner) node.owner = owner;
-    if (group) node.group = group;
-  }), (path, e) => (e.code === 'EPERM'
-    ? `${name}: changing ${owner ? 'ownership' : 'group'} of '${path}': Operation not permitted\n`
-    : `${name}: cannot access '${path}': ${e.message}\n`));
+  const what = owner ? 'ownership' : 'group';
+  let err = '';
+  let code = 0;
+  for (const path of paths) {
+    let node;
+    try {
+      node = ctx.fs.lookup(ctx.sh.resolve(path));
+    } catch (e) {
+      if (!(e instanceof FsError)) throw e;
+      err += `${name}: cannot access '${path}': ${e.message}\n`;
+      code = 1;
+      continue;
+    }
+    // без прав — строка на каждый файл и папку, остальные всё равно пробуем
+    for (const [shown, item] of recursive ? postOrder(node, path) : [[path, node]]) {
+      const user = ctx.fs.user;
+      const groupAllowed = item.owner === user && (USERS[user]?.groups ?? []).includes(group);
+      if (user !== 'root' && (owner || !groupAllowed)) {
+        err += `${name}: changing ${what} of '${shown}': Operation not permitted\n`;
+        code = 1;
+        continue;
+      }
+      if (owner) item.owner = owner;
+      if (group) item.group = group;
+    }
+  }
+  return { out: '', err, code };
 }
 
 const chown = {
@@ -1017,10 +1046,24 @@ const id = {
   },
 };
 
+const groups = {
+  help: 'groups [пользователь] — в каких группах пользователь.',
+  run({ fs, args }) {
+    if (!args.length) return ok(`${(USERS[fs.user]?.groups ?? []).join(' ')}\n`);
+    let out = '';
+    let err = '';
+    for (const name of args) {
+      if (USERS[name]) out += `${name} : ${USERS[name].groups.join(' ')}\n`;
+      else err += `groups: ‘${name}’: no such user\n`;
+    }
+    return { out, err, code: err ? 1 : 0 };
+  },
+};
+
 const sudo = {
   help: `sudo команда — выполнить команду от имени root (администратора).
 Пример: sudo chown www-data file`,
-  run({ sh, fs, args, stdin }) {
+  run({ sh, fs, args, stdin, tty }) {
     let rest = args;
     let user = 'root';
     if (rest[0] === '-u') {
@@ -1032,7 +1075,7 @@ const sudo = {
     if (!(USERS[fs.user]?.groups ?? []).includes('sudo') && fs.user !== 'root') {
       return fail(`${fs.user} is not in the sudoers file.\n`);
     }
-    return fs.as(user, () => sh.exec(rest, stdin, { tty: true }));
+    return fs.as(user, () => sh.exec(rest, stdin, { tty }));
   },
 };
 
@@ -1225,17 +1268,17 @@ const exportCommand = {
 
 const bash = {
   help: 'bash файл [аргументы] — выполнить скрипт (права x не нужны).',
-  run({ sh, args }) {
+  run({ sh, args, tty }) {
     if (!args.length) return fail('bash: интерактивный bash не нужен — вы уже в нём\n');
-    return sh.runFile(args[0], args.slice(1), { requireExec: false });
+    return sh.runFile(args[0], args.slice(1), { requireExec: false, tty });
   },
 };
 
 const source = {
   help: 'source файл — выполнить скрипт в текущей оболочке (переменные и cd сохранятся).',
-  run({ sh, args }) {
+  run({ sh, args, tty }) {
     if (!args.length) return fail('bash: source: filename argument required\nsource: usage: source filename [arguments]\n', 2);
-    return sh.runFile(args[0], args.slice(1), { requireExec: false, inPlace: true });
+    return sh.runFile(args[0], args.slice(1), { requireExec: false, inPlace: true, tty });
   },
 };
 
@@ -1293,7 +1336,7 @@ const help = {
 export const COMMANDS = {
   pwd, cd, ls, cat, echo, mkdir, touch, rm, rmdir, cp, mv, ln,
   head, tail, wc, grep, sort, uniq, cut, find, du, df,
-  chmod, chown, chgrp, whoami, id, sudo,
+  chmod, chown, chgrp, whoami, id, groups, sudo,
   tar, gzip, gunzip: gzip,
   which, export: exportCommand, bash, sh: bash, source, '.': source, history, clear, nano,
   true: trueCommand, false: falseCommand, man, help,

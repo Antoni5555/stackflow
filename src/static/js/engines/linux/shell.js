@@ -129,8 +129,13 @@ export function parse(tokens) {
 // --- shell ---
 
 export class Shell {
-  constructor(fs = new VirtualFS(), { cwd = HOME, env = {}, args = [], depth = 0 } = {}) {
+  constructor(fs = new VirtualFS(), {
+    cwd = HOME, env = {}, args = [], depth = 0, tty = true,
+  } = {}) {
     this.fs = fs;
+    // Вывод оболочки идёт в терминал? Нет — у скрипта, чей вывод ушёл в конвейер или файл:
+    // тогда и ls внутри скрипта пишет по имени в строке
+    this.tty = tty;
     this.cwd = cwd;
     this.env = {
       HOME, USER: 'shop', SHELL: '/bin/bash', LANG: 'C.UTF-8',
@@ -374,7 +379,7 @@ export class Shell {
     }
 
     const result = words.length
-      ? this.exec(words, stdin, { tty: !piped && fds[1].stream === 'out' })
+      ? this.exec(words, stdin, { tty: this.tty && !piped && fds[1].stream === 'out' })
       : { out: '', err: '', code: 0 };
     this.status = result.code;
 
@@ -405,7 +410,7 @@ export class Shell {
     }
 
     // ./script.sh, /srv/shop/backup.sh — запуск файла
-    if (name.includes('/')) return this.runFile(name, args);
+    if (name.includes('/')) return this.runFile(name, args, { tty });
 
     const command = COMMANDS[name];
     if (!command) {
@@ -427,7 +432,7 @@ export class Shell {
   }
 
   /** Выполнить файл как скрипт: нужен доступ x и (для ./) shebang bash/sh. */
-  runFile(path, args, { requireExec = true, inPlace = false } = {}) {
+  runFile(path, args, { requireExec = true, inPlace = false, tty = true } = {}) {
     const abs = this.resolve(path);
     let node;
     try {
@@ -442,7 +447,7 @@ export class Shell {
     // Программа симулятора в файле (venv/bin/pip, venv/bin/python) — запуск этой команды
     if (node.program && COMMANDS[node.program]) {
       const result = COMMANDS[node.program].run({
-        sh: this, fs: this.fs, args, stdin: '', tty: true, name: path.split('/').pop(), venv: node.venv,
+        sh: this, fs: this.fs, args, stdin: '', tty, name: path.split('/').pop(), venv: node.venv,
       }) ?? {};
       return { out: result.out ?? '', err: result.err ?? '', code: result.code ?? 0 };
     }
@@ -460,17 +465,23 @@ export class Shell {
     }
     // Скрипт — в своей оболочке (переменные и cd не меняют текущую); source — в этой же
     const shell = inPlace ? this : new Shell(this.fs, {
-      cwd: this.cwd, env: { ...this.env }, args: [path, ...args], depth: this.depth + 1,
+      cwd: this.cwd, env: { ...this.env }, args: [path, ...args], depth: this.depth + 1, tty,
     });
+    const savedTty = shell.tty;
+    shell.tty = tty;
     let out = '';
     let err = '';
-    for (const line of text.split('\n')) {
-      if (!line.trim() || line.trim().startsWith('#')) continue;
-      const result = shell.run(line);
-      for (const chunk of result.chunks) {
-        if (chunk.err) err += chunk.text;
-        else out += chunk.text;
+    try {
+      for (const line of text.split('\n')) {
+        if (!line.trim() || line.trim().startsWith('#')) continue;
+        const result = shell.run(line);
+        for (const chunk of result.chunks) {
+          if (chunk.err) err += chunk.text;
+          else out += chunk.text;
+        }
       }
+    } finally {
+      shell.tty = savedTty;
     }
     return { out, err, code: shell.status };
   }

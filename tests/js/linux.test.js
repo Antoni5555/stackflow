@@ -274,6 +274,45 @@ describe('как в Ubuntu: перенаправления, find без кавы
   });
 });
 
+describe('как в Ubuntu: ls в конвейере через sudo и скрипт, chown -R, groups, group', () => {
+  const SITE = {
+    cwd: '/srv/shop',
+    files: {
+      '/srv/shop/a/x': '1', '/srv/shop/a/y': '2', '/srv/shop/a/z/w': '3',
+      '/srv/shop/list.sh': { content: '#!/bin/bash\nls a\n', mode: '755' },
+    },
+  };
+
+  it('ls через sudo и в скрипте с выводом в конвейер — по имени в строке', () => {
+    const sh = shell(SITE);
+    assert.equal(run(sh, 'sudo ls a | head -n 2').out, 'x\ny\n');
+    assert.equal(run(sh, './list.sh | cat').out, 'x\ny\nz\n');
+    assert.equal(run(sh, 'bash list.sh > out.txt && cat out.txt').out, 'x\ny\nz\n');
+    assert.equal(run(sh, './list.sh').out, 'x  y  z\n');      // в терминал — в строку
+  });
+
+  it('chgrp -R без прав — строка на каждый файл, папка после содержимого', () => {
+    const sh = shell({ ...SITE, dirs: [{ '/srv/www': { owner: 'root' } }],
+      files: { ...SITE.files, '/srv/www/s/i.html': { content: 'x', owner: 'root' } } });
+    const result = run(sh, 'chgrp -R www-data /srv/www/s');
+    assert.equal(result.err,
+      "chgrp: changing group of '/srv/www/s/i.html': Operation not permitted\n"
+      + "chgrp: changing group of '/srv/www/s': Operation not permitted\n");
+    assert.equal(result.code, 1);
+  });
+
+  it('groups и правило group', async () => {
+    const sh = shell(SITE);
+    assert.equal(run(sh, 'groups').out, 'shop sudo\n');
+    assert.equal(run(sh, 'groups www-data').out, 'www-data : www-data\n');
+    const { firstFailedRule } = await import('../../src/static/js/engines/linux/checker.js');
+    run(sh, 'sudo chgrp -R www-data a');
+    const rule = (group) => [{ path: '/srv/shop/a/z/w', group, fail: 'группа' }];
+    assert.equal(firstFailedRule(rule('www-data'), sh), null);
+    assert.ok(firstFailedRule(rule('shop'), sh));
+  });
+});
+
 describe('поиск и место', () => {
   it('find: -name, -type, -size, -mtime', () => {
     const sh = shell(SHOP);

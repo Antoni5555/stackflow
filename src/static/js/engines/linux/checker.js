@@ -1,6 +1,6 @@
 // Правила задач в терминале (check.type: state) — по итоговому состоянию ФС и выводу.
 // Формат — docs/content-format.md: path + exists | contains | not_contains | mode | owner
-// | link_to,
+// | group | link_to,
 // или output_matches — вывод последней команды. Проверка идёт от root: права ученика
 // не должны мешать проверке.
 
@@ -33,6 +33,7 @@ export function failedRule(rule, shell) {
     }
     if ('mode' in rule) return (node.mode & 0o7777) !== parseInt(rule.mode, 8);
     if ('owner' in rule) return node.owner !== rule.owner;
+    if ('group' in rule) return node.group !== rule.group;
     if ('link_to' in rule) {
       return node.type !== 'link'
         || normalize(node.target, dirname(normalize(rule.path))) !== normalize(rule.link_to);
