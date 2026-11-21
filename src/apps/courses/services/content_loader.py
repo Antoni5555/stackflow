@@ -261,8 +261,8 @@ STATE_PATH_CHECKS = {
 }
 # Git (курс с движком git): ключи setup и правила; «есть / нет» — через exists: false
 STATE_SETUP_KEYS = {
-    'cwd', 'files', 'dirs', 'links', 'repo', 'commits', 'head', 'remote', 'venv',
-    'gitconfig',
+    'cwd', 'files', 'dirs', 'links', 'services', 'processes', 'repo', 'commits', 'head',
+    'remote', 'venv', 'gitconfig',
 }
 GIT_RULES = {
     'branch': {'exists'}, 'tag': {'exists'},
@@ -271,6 +271,9 @@ GIT_RULES = {
     'merged': set(), 'pushed': set(), 'config': set(), 'stash_count': set(),
     'pip_package': {'venv'},
 }
+# Учебный systemd (js/engines/linux/system.js): сервис запущен/включён, процесс есть/нет
+SYSTEM_RULES = {'service': {'active', 'enabled'}, 'process': {'running'}}
+OBJECT_RULES = {**GIT_RULES, **SYSTEM_RULES}
 DOM_CHECKS = {'count', 'min', 'exists', 'attr', 'text', 'style'}
 SPEC_FIELDS = {
     'exercise': (['starter_code', 'solution', 'check'], ['inputs']),
@@ -308,6 +311,21 @@ def validate_state(spec, path):
         raise ContentError(path, f'setup: неизвестные ключи {sorted(unknown)}')
     if not isinstance(setup.get('files', {}), dict):
         raise ContentError(path, 'setup.files — словарь {путь: текст или настройки}')
+    services = setup.get('services', {})
+    if not isinstance(services, dict) or not all(
+        isinstance(state, dict) and set(state) <= {'active', 'enabled'}
+        for state in services.values()
+    ):
+        raise ContentError(path, 'setup.services — {сервис: {active, enabled}}')
+    processes = setup.get('processes', [])
+    if not isinstance(processes, list) or not all(
+        isinstance(proc, dict) and 'command' in proc
+        and set(proc) <= {'command', 'user', 'name', 'pid', 'cpu', 'mem'}
+        for proc in processes
+    ):
+        raise ContentError(
+            path, 'setup.processes — список {command, user?, name?, pid?, cpu?, mem?}',
+        )
     links = setup.get('links', {})
     if not isinstance(links, dict) or not all(
         isinstance(target, str) or (isinstance(target, dict) and 'target' in target)
@@ -320,13 +338,17 @@ def validate_state(spec, path):
         if not isinstance(rule, dict) or not rule.get('fail'):
             raise ContentError(path, f'правило {number}: нужен словарь с fail')
         checks = set(rule) - {'path', 'fail'}
-        git = [key for key in GIT_RULES if key in rule]
+        git = [key for key in OBJECT_RULES if key in rule]
         if git:
-            extra = set(rule) - {git[0], 'fail'} - GIT_RULES[git[0]]
+            extra = set(rule) - {git[0], 'fail'} - OBJECT_RULES[git[0]]
             if len(git) > 1 or extra:
                 raise ContentError(
                     path,
                     f'правило {number}: {git[0]} — без {sorted(extra or set(git[1:]))}',
+                )
+            if git[0] == 'service' and not {'active', 'enabled'} & set(rule):
+                raise ContentError(
+                    path, f'правило {number}: service — с active или enabled',
                 )
         elif 'output_matches' in rule:
             if checks != {'output_matches'} or 'path' in rule:

@@ -6,12 +6,15 @@
 
 import { FsError, VirtualFS, dirname, normalize } from './fs.js';
 import { Shell } from './shell.js';
+import { failedSystemRule } from './system.js';
 
 const search = (pattern, text) => new RegExp(pattern, 'm').test(text);
 
 /** true — правило не пройдено (правила Linux; Git добавляет свои — engines/git/checker.js). */
 export function failedRule(rule, shell) {
   const { fs } = shell;
+  const system = failedSystemRule(rule, fs);   // service: и process:
+  if (system !== null) return system;
   if ('output_matches' in rule) return !search(rule.output_matches, shell.lastOutput);
   return fs.as('root', () => {
     let node = null;

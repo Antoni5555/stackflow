@@ -316,7 +316,10 @@ export class Shell {
     const chunks = [];
     let stdin = '';
     let action = null;
+    // команды конвейера работают одновременно: ps видит и grep из «ps aux | grep nginx»
+    this.pipeline = stages.map((stage) => stage.words.map((word) => word.map((part) => part.text).join('')));
     stages.forEach((stage, index) => {
+      this.stageIndex = index;
       const last = index === stages.length - 1;
       const result = this.runStage(stage, stdin, { piped: !last });
       action = result.action ?? action;
@@ -414,6 +417,9 @@ export class Shell {
 
     const command = COMMANDS[name];
     if (!command) {
+      // свой скрипт в папке из PATH (~/bin/deploy после export PATH="$HOME/bin:$PATH")
+      const script = this.findInPath(name);
+      if (script) return this.runFile(script, args, { tty });
       return { out: '', err: `${name}: command not found\n`, code: 127 };
     }
     if (args.includes('--help') && command.help) {
@@ -429,6 +435,21 @@ export class Shell {
       if (e instanceof FsError) return { out: '', err: `${name}: ${e.message}\n`, code: 1 };
       throw e;
     }
+  }
+
+  /** Исполняемый текстовый файл name в папках PATH (программы-заглушки apt — не скрипты). */
+  findInPath(name) {
+    for (const dir of (this.env.PATH ?? '').split(':').filter(Boolean)) {
+      const path = normalize(name, this.resolve(dir));
+      try {
+        const node = this.fs.lookup(path);
+        const isScript = node.type === 'file' && node.content && !node.binary;
+        if (isScript && (node.mode & 0o111)) return path;
+      } catch (e) {
+        if (!(e instanceof FsError)) throw e;
+      }
+    }
+    return null;
   }
 
   /** Выполнить файл как скрипт: нужен доступ x и (для ./) shebang bash/sh. */

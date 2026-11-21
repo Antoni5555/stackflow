@@ -7,6 +7,7 @@ import {
   DAY, FsError, GROUPS, USERS, VirtualFS, basename, dirname, normalize,
 } from './fs.js';
 import { globMatch } from './glob.js';
+import { journalctl, kill, pgrep, pkill, ps, systemctl, top } from './system.js';
 
 // --- общие помощники ---
 
@@ -1267,7 +1268,7 @@ const which = {
   },
 };
 
-const BUILTINS = new Set(['cd', 'export', 'source', '.', 'history', 'help', 'clear', 'exit']);
+const BUILTINS = new Set(['cd', 'export', 'unset', 'source', '.', 'history', 'help', 'clear', 'exit']);
 
 const exportCommand = {
   help: 'export ИМЯ=значение — переменная окружения.',
@@ -1280,10 +1281,58 @@ const exportCommand = {
   },
 };
 
+const unset = {
+  help: 'unset ИМЯ… — удалить переменную.',
+  run({ sh, args }) {
+    for (const name of args) delete sh.env[name];
+    return ok();
+  },
+};
+
+const env = {
+  help: `env — переменные окружения, по одной в строке.
+  env ИМЯ=значение команда — выполнить команду с добавленной переменной`,
+  run({ sh, args, stdin, tty }) {
+    const extra = {};
+    let i = 0;
+    for (; i < args.length && /^[A-Za-z_]\w*=/.test(args[i]); i += 1) {
+      const eq = args[i].indexOf('=');
+      extra[args[i].slice(0, eq)] = args[i].slice(eq + 1);
+    }
+    if (i === args.length) {
+      return ok(joinLines(Object.entries({ ...sh.env, ...extra }).map(([name, value]) => `${name}=${value}`)));
+    }
+    // переменные — только на время команды
+    const saved = sh.env;
+    sh.env = { ...saved, ...extra };
+    try {
+      return sh.exec(args.slice(i), stdin, { tty });
+    } finally {
+      sh.env = saved;
+    }
+  },
+};
+
 const bash = {
-  help: 'bash файл [аргументы] — выполнить скрипт (права x не нужны).',
+  help: `bash файл [аргументы] — выполнить скрипт (права x не нужны).
+  bash -c 'команды' — выполнить строку в отдельной оболочке`,
   run({ sh, args, tty }) {
     if (!args.length) return fail('bash: интерактивный bash не нужен — вы уже в нём\n');
+    if (args[0] === '-c') {
+      if (args.length < 2) return fail('bash: -c: option requires an argument\n', 2);
+      // как скрипт: своя оболочка, cd и переменные не меняют текущую
+      const sub = new sh.constructor(sh.fs, {
+        // $0 — первый аргумент после строки, без него — bash
+        cwd: sh.cwd, env: { ...sh.env }, args: args.length > 2 ? args.slice(2) : ['bash'],
+        depth: sh.depth + 1, tty,
+      });
+      const { chunks } = sub.run(args[1]);
+      return {
+        out: chunks.filter((chunk) => !chunk.err).map((chunk) => chunk.text).join(''),
+        err: chunks.filter((chunk) => chunk.err).map((chunk) => chunk.text).join(''),
+        code: sub.status,
+      };
+    }
     return sh.runFile(args[0], args.slice(1), { requireExec: false, tty });
   },
 };
@@ -1340,9 +1389,12 @@ const help = {
   файлы:      cat touch mkdir rm rmdir cp mv ln nano
   текст:      echo head tail wc grep sort uniq cut
   поиск:      find du df
-  права:      chmod chown chgrp whoami id sudo
+  права:      chmod chown chgrp whoami id groups sudo
+  процессы:   ps pgrep kill pkill top
+  сервисы:    systemctl journalctl
+  пакеты:     apt
   архивы:     tar gzip gunzip
-  оболочка:   which export source bash history clear
+  оболочка:   which export unset env source bash history clear
 Конвейер |, перенаправления > >> 2> 2>&1 <, цепочки && || ;
 Код выхода последней команды — echo $?\n`),
 };
@@ -1351,8 +1403,9 @@ export const COMMANDS = {
   pwd, cd, ls, cat, echo, mkdir, touch, rm, rmdir, cp, mv, ln,
   head, tail, wc, grep, sort, uniq, cut, find, du, df,
   chmod, chown, chgrp, whoami, id, groups, sudo,
+  ps, kill, pkill, pgrep, top, systemctl, journalctl,
   tar, gzip, gunzip: gzip,
-  which, export: exportCommand, bash, sh: bash, source, '.': source, history, clear, nano,
+  which, export: exportCommand, unset, env, bash, sh: bash, source, '.': source, history, clear, nano,
   true: trueCommand, false: falseCommand, man, help,
   python3: { ...notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'), noWhich: true },
   python: { ...notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'), noWhich: true },

@@ -311,6 +311,29 @@ def test_state_setup_links(content_dir):
         ContentLoader(content_dir).load()
 
 
+def test_state_services_processes_and_rules(content_dir):
+    """setup.services/processes и правила service, process — учебный systemd."""
+    rules = ('    - service: gunicorn\n      active: true\n      fail: F\n'
+             '    - process: runserver\n      running: false\n      fail: F\n')
+    system = ('  services:\n    gunicorn: {active: false, enabled: true}\n'
+              '  processes:\n'
+              '    - {command: python3 manage.py runserver, user: shop}\n')
+    task = content_dir / HELLO / '06-copy.yaml'
+    task.write_text((STATE_TASK % rules).replace('check:', system + 'check:', 1),
+                    encoding='utf-8')
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='copy').spec
+    assert spec['setup']['services'] == {'gunicorn': {'active': False, 'enabled': True}}
+    rule = spec['check']['expect'][0]
+    assert rule == {'service': 'gunicorn', 'active': True, 'fail': 'F'}
+
+    no_state = '    - service: gunicorn\n      fail: F\n'
+    task.write_text(STATE_TASK % no_state, encoding='utf-8')
+    with pytest.raises(ContentError, match='service — с active или enabled'):
+        ContentLoader(content_dir).load()
+
+
 @pytest.mark.parametrize('rules, message', [
     ('    - path: /a\n      exists: true\n      mode: "644"\n      fail: F\n',
      'path \\+ одно из'),

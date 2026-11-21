@@ -12,6 +12,7 @@ export const APT = {
     version: '1.24.0-2ubuntu7.1',
     files: {
       '/usr/sbin/nginx': null,
+      '/usr/lib/systemd/system/nginx.service': '[Unit]\nDescription=A high performance web server and a reverse proxy server\nDocumentation=man:nginx(8)\nAfter=network-online.target remote-fs.target nss-lookup.target\nWants=network-online.target\n\n[Service]\nType=forking\nPIDFile=/run/nginx.pid\nExecStartPre=/usr/sbin/nginx -t -q -g \'daemon on; master_process on;\'\nExecStart=/usr/sbin/nginx -g \'daemon on; master_process on;\'\nExecReload=/usr/sbin/nginx -g \'daemon on; master_process on;\' -s reload\nExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/nginx.pid\nTimeoutStopSec=5\nKillMode=mixed\n\n[Install]\nWantedBy=multi-user.target\n',
       '/etc/nginx/nginx.conf': 'user www-data;\nworker_processes auto;\n\nhttp {\n    include /etc/nginx/sites-enabled/*;\n}\n',
       '/etc/nginx/sites-available/default': 'server {\n    listen 80 default_server;\n    root /var/www/html;\n}\n',
       '/var/www/html/index.nginx-debian.html': '<h1>Welcome to nginx!</h1>\n',
@@ -45,6 +46,9 @@ function removeEmptyDirs(fs, paths) {
     }
   }
 }
+
+/** Кто ещё реагирует на install/remove/purge (сервисы — engines/linux/system.js). */
+export const installHooks = [];
 
 /** Пакеты, которые уже стоят на сервере. */
 const PREINSTALLED = ['git', 'curl', 'python3-venv', 'python3-pip'];
@@ -99,6 +103,7 @@ build-essential, tree, htop, curl, git.`,
           if (ctx.fs.exists(path, { follow: false })) ctx.fs.remove(path);
         }
         if (list.includes(name)) {
+          for (const hook of installHooks) hook(ctx.fs, name, sub);
           list.splice(list.indexOf(name), 1);
           out += `Removing ${name} (${pkg.version}) ...\n`;
         }
@@ -132,6 +137,7 @@ build-essential, tree, htop, curl, git.`,
       }
       list.push(name);
       out += `Setting up ${name} (${pkg.version}) ...\n`;
+      for (const hook of installHooks) hook(ctx.fs, name, 'install');
     }
     return ok(out);
   },

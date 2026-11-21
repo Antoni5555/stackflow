@@ -155,8 +155,12 @@ export class VirtualFS {
         target: spec.target, owner: parent.owner, group: parent.group, mode: 0o777, ...own,
       }));
     }
+    for (const hook of VirtualFS.setupHooks) hook(fs, setup);
     return fs;
   }
+
+  // Дополнения setup из других модулей (сервисы и процессы — engines/linux/system.js)
+  static setupHooks = [];
 
   // --- права ---
 
