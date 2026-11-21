@@ -1,0 +1,45 @@
+title: "Выключить сайт"
+type: exercise
+difficulty: 1
+pitfall: "Выключить сайт в Nginx — удалить ссылку в sites-enabled; файл настроек в sites-available остаётся."
+statement: |
+  Сайт по умолчанию `default` больше не нужен — магазин работает на своём сайте `shop`. Выключите `default` в Nginx, но его настройки в `/etc/nginx/sites-available/default` сохраните: вдруг понадобятся. Сайт `shop` должен остаться включённым.
+setup:
+  cwd: /home/shop
+  files:
+    /etc/nginx/sites-available/default:
+      content: |
+        server {
+            listen 80 default_server;
+            root /var/www/html;
+        }
+      owner: root
+    /etc/nginx/sites-available/shop:
+      content: |
+        server {
+            listen 80;
+            server_name shop.example;
+        }
+      owner: root
+  links:
+    /etc/nginx/sites-enabled/default: /etc/nginx/sites-available/default
+    /etc/nginx/sites-enabled/shop: /etc/nginx/sites-available/shop
+check:
+  type: state
+  expect:
+    - path: /etc/nginx/sites-enabled/default
+      exists: false
+      fail: "Ссылка /etc/nginx/sites-enabled/default всё ещё есть — Nginx продолжает читать сайт default. Папка принадлежит root: rm через sudo."
+    - path: /etc/nginx/sites-available/default
+      exists: true
+      fail: "Пропали настройки в sites-available/default — удалять нужно ссылку в sites-enabled, а не сам файл."
+    - path: /etc/nginx/sites-enabled/shop
+      link_to: /etc/nginx/sites-available/shop
+      fail: "Сайт shop выключился — его ссылку в sites-enabled трогать не нужно."
+solution: |
+  sudo rm /etc/nginx/sites-enabled/default
+hints:
+  - "Что читает Nginx — `sites-available` или `sites-enabled`? Что из этого — ссылки?"
+  - "`sudo rm /etc/nginx/sites-enabled/default` — удаляется только ссылка."
+explanation: |
+  `rm` по символической ссылке удаляет саму ссылку, а не файл, на который она указывает: настройки в `sites-available/default` остаются, и включить сайт обратно можно тем же `ln -s`. Без `sudo` — `rm: cannot remove '/etc/nginx/sites-enabled/default': Permission denied`: папка принадлежит `root`.

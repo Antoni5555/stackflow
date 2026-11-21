@@ -80,13 +80,15 @@ ln: failed to create symbolic link '/etc/nginx/sites-enabled/shop': File exists
 ```bash
 cd sites-enabled
 sudo ln -s sites-available/shop shop2
+ls -l shop2
 cat shop2
 ```
 Результат:
 ```
+lrwxrwxrwx 1 root root 20 Nov 21 14:14 shop2 -> sites-available/shop
 cat: shop2: No such file or directory
 ```
-Ссылка создалась, но путь `sites-available/shop` считается от папки ссылки: `/etc/nginx/sites-enabled/sites-available/shop` — такого нет. На настоящем Ubuntu `ls -l shop2` покажет её как `shop2 -> sites-available/shop`, а Nginx при проверке настроек сообщит, что файла нет. Правильно — `../sites-available/shop` или абсолютный путь.
+Ссылка создалась, но путь `sites-available/shop` считается от папки ссылки: `/etc/nginx/sites-enabled/sites-available/shop` — такого нет, ссылка битая. Nginx при проверке настроек сообщит, что файла нет. Правильно — `../sites-available/shop` или абсолютный путь.
 
 ### Шаг 4. Выключить сайт
 Удаляем обе ссылки:

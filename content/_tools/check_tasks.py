@@ -321,7 +321,7 @@ def check_command(line):
 def check_state(task):
     problems = []
     setup, rules = task.get("setup") or {}, (task.get("check") or {}).get("expect") or []
-    unknown = set(setup) - {"cwd", "files", "dirs", "repo", "commits", "head", "remote", "venv", "gitconfig"}
+    unknown = set(setup) - {"cwd", "files", "dirs", "links", "repo", "commits", "head", "remote", "venv", "gitconfig"}
     if unknown:
         problems.append(f"неизвестные ключи setup: {sorted(unknown)}")
     if "cwd" in setup and not str(setup["cwd"]).startswith("/"):
@@ -358,6 +358,20 @@ def check_state(task):
                 problems.append(f"mode файла {path} — три цифры строкой")
         elif not isinstance(value, str):
             problems.append(f"файл {path}: текст или словарь content/size, owner, mode")
+    links = setup.get("links") or {}    # {путь: цель} или {путь: {target, owner}}; цели может не быть
+    if not isinstance(links, dict):
+        problems.append("setup.links — словарь {путь: цель} или {путь: {target, owner}}")
+        links = {}
+    for path, value in links.items():
+        if not str(path).startswith("/"):
+            problems.append(f"путь ссылки в setup.links не абсолютный: {path!r}")
+        if isinstance(value, dict):
+            if set(value) - {"target", "owner"} or not isinstance(value.get("target"), str) or not value["target"]:
+                problems.append(f"ссылка {path}: словарь target (обязательно) и owner")
+        elif not isinstance(value, str) or not value:
+            problems.append(f"ссылка {path}: цель — строка или словарь {{target, owner}}")
+    if clash := set(links) & (set(setup.get("files") or {}) | {p for p, _ in dir_items}):
+        problems.append(f"путь и в links, и в files/dirs: {sorted(clash)}")
     remote = setup.get("remote")
     if remote is not None and (not isinstance(remote, dict) or set(remote) - {"url", "commits", "pushed"}):
         problems.append("setup.remote — словарь с url, commits, pushed")
