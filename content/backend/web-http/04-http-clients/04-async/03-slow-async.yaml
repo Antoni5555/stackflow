@@ -1,0 +1,15 @@
+title: "Почему не быстрее"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "await в цикле — запросы по очереди; синхронный вызов внутри async останавливает цикл событий."
+statement: |
+  Какие варианты кода запрашивают три службы **по очереди**, хотя написаны через `async`?
+options:
+  - "`return [await quote(client, h) for h in SERVICES]`"
+  - "`return await asyncio.gather(*(quote(client, h) for h in SERVICES))`"
+  - "Внутри `async def quote` используется `httpx.get(...)` вместо `await client.get(...)`"
+  - "`for h in SERVICES: results.append(await quote(client, h))`"
+answer: [0, 2, 3]
+explanation: |
+  `await` в цикле или списке ждёт каждый запрос до конца и только потом начинает следующий — в уроке так вышло 0,6 с. Синхронный `httpx.get` внутри корутины вообще не отдаёт управление: цикл событий стоит, пока он не вернётся. Одновременно — только `gather` (или `TaskGroup`) над корутинами с `await client.get`.

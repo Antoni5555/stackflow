@@ -1,0 +1,84 @@
+title: "Не больше N запросов сразу"
+type: exercise
+difficulty: 3
+pitfall: "asyncio.Semaphore(n) ограничивает число одновременных запросов: каждый запрос — внутри async with semaphore."
+statement: |
+  Магазин обновляет остатки 100 товаров у поставщика, а тот разрешает не больше 5 одновременных запросов. Напишите корутину `fetch_all(client, urls, limit)`: запросить все `urls` (`GET`) одновременно, но так, чтобы в любой момент выполнялось не больше `limit` запросов; вернуть список `r.json()` в порядке `urls`.
+starter_code: |
+  import asyncio
+
+  import httpx
+
+
+  async def fetch_all(client, urls, limit):
+      async def one(url):
+          r = await client.get(url)
+          return r.json()
+
+      return await asyncio.gather(*(one(u) for u in urls))
+check:
+  type: tests
+  tests:
+    - code: |
+        import asyncio, httpx
+        async def api(request):
+            await asyncio.sleep(0.01)
+            return httpx.Response(200, json={"id": int(request.url.path.strip("/").split("/")[-1])})
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(api)) as c:
+                urls = [f"https://supplier.example/stock/{i}/" for i in range(6)]
+                return await fetch_all(c, urls, 3)
+        assert asyncio.run(run()) == [{"id": i} for i in range(6)]
+      fail: "Вернуть ответы в порядке urls."
+    - code: |
+        import asyncio, httpx
+        active = {"now": 0, "max": 0}
+        async def api(request):
+            active["now"] += 1
+            active["max"] = max(active["max"], active["now"])
+            await asyncio.sleep(0.02)
+            active["now"] -= 1
+            return httpx.Response(200, json={})
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(api)) as c:
+                urls = [f"https://supplier.example/stock/{i}/" for i in range(12)]
+                await fetch_all(c, urls, 4)
+        asyncio.run(run())
+        assert active["max"] == 4, f"одновременно было {active['max']}"
+      fail: "Одновременно должно выполняться не больше limit запросов (и ровно limit, если запросов больше) — asyncio.Semaphore(limit)."
+    - code: |
+        import asyncio, httpx
+        active = {"now": 0, "max": 0}
+        async def api(request):
+            active["now"] += 1
+            active["max"] = max(active["max"], active["now"])
+            await asyncio.sleep(0.02)
+            active["now"] -= 1
+            return httpx.Response(200, json={})
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(api)) as c:
+                urls = [f"https://supplier.example/stock/{i}/" for i in range(5)]
+                await fetch_all(c, urls, 1)
+        asyncio.run(run())
+        assert active["max"] == 1
+      fail: "limit=1 — строго по одному запросу."
+solution: |
+  import asyncio
+
+  import httpx
+
+
+  async def fetch_all(client, urls, limit):
+      semaphore = asyncio.Semaphore(limit)
+
+      async def one(url):
+          async with semaphore:
+              r = await client.get(url)
+          return r.json()
+
+      return await asyncio.gather(*(one(u) for u in urls))
+hints:
+  - "Какой примитив asyncio пускает внутрь не больше N корутин сразу?"
+  - "`semaphore = asyncio.Semaphore(limit)` и запрос внутри `async with semaphore:`."
+explanation: |
+  `gather` без ограничений отправил бы все 100 запросов разом — поставщик ответит 429 или заблокирует. `Semaphore(limit)` — счётчик мест: `async with` занимает место, а если мест нет, корутина ждёт, пока другая не освободит своё. Все корутины запущены сразу, но выполняются не больше `limit` запросов одновременно. Похожее ограничение на уровне клиента — `httpx.AsyncClient(limits=httpx.Limits(max_connections=5))`.

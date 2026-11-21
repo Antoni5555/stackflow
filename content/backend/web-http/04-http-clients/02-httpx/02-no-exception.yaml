@@ -1,0 +1,19 @@
+title: "Что вернёт httpx на 404"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "httpx не выбрасывает исключение на 4xx/5xx — нужен r.raise_for_status() или проверка r.status_code."
+statement: |
+  ```python
+  r = client.get("/v1/quotes/")   # опечатка: такого адреса нет
+  price = r.json()["price"]
+  ```
+  Служба ответила `404` и `{"error": "Нет такого адреса"}`. Что произойдёт?
+options:
+  - "`client.get` выбросит `httpx.HTTPStatusError`"
+  - "`client.get` вернёт ответ, а упадёт `r.json()[\"price\"]` с `KeyError: 'price'`"
+  - "`price` станет `None`"
+  - "`client.get` вернёт `None`"
+answer: [1]
+explanation: |
+  Для `httpx` ответ 404 — обычный ответ: `r.status_code == 404`, тело есть. Ошибка всплывёт позже и непонятно где — `KeyError` в разборе. `r.raise_for_status()` сразу после запроса превращает 4xx/5xx в `HTTPStatusError` с кодом и адресом: в уроке — `HTTPStatusError: 404 https://delivery.example/v1/quotes/`.

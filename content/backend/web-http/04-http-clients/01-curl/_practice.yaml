@@ -1,0 +1,58 @@
+- title: Код и тип ответа
+  text: |
+    Выведите одной строкой код ответа и `Content-Type` для товара 2 и несуществующего товара 99, без тела. Адрес:
+    ```
+    http://localhost:8000/api/v1/products/2/
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:8000/api/v1/products/2/
+    curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:8000/api/v1/products/99/
+    ```
+    Результат:
+    ```
+    200 application/json
+    404 application/json
+    ```
+    `-o /dev/null` выбрасывает тело, `-w` печатает выбранные поля. Ответ 404 — тоже JSON: в учебном API ошибки в едином формате.
+- title: Удалить дважды
+  text: |
+    Удалите позицию 7 из корзины два раза подряд и посмотрите код ответа и тело:
+    ```
+    DELETE http://localhost:8000/api/v1/cart/items/7/
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    curl -s -i -X DELETE http://localhost:8000/api/v1/cart/items/7/
+    curl -s -i -X DELETE http://localhost:8000/api/v1/cart/items/7/
+    ```
+    Результат (служебные заголовки убраны):
+    ```
+    HTTP/1.1 204 No Content
+    Content-Type: text/html; charset=utf-8
+
+    HTTP/1.1 404 Not Found
+    Content-Type: application/json
+    Content-Length: 86
+
+    {"error": {"code": "not_found", "message": "Позиции нет в корзине"}}
+    ```
+    Повторный `DELETE` — 404, но итог тот же: позиции нет. Это идемпотентность (раздел «HTTP подробнее»).
+- title: Параметры без склейки
+  text: |
+    Запросите две самые дорогие позиции категории 2, не собирая адрес вручную — параметры отдельными ключами:
+    ```
+    category=2, sort=-price, page_size=2
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    curl -s -G http://localhost:8000/api/v1/products/ -d category=2 -d sort=-price -d page_size=2
+    ```
+    Результат:
+    ```
+    {"count": 6, "next": "/api/v1/products/?category=2&sort=-price&page_size=2&page=2", "previous": null, "results": [{"id": 8, "name": "Наушники", "price": "6990.00"}, {"id": 7, "name": "Веб-камера", "price": "4590.00"}]}
+    ```
+    `-G` переносит данные `-d` в адрес запроса: ушло `GET /api/v1/products/?category=2&sort=-price&page_size=2`. Для значений с пробелами и кириллицей — `--data-urlencode`.

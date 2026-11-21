@@ -1,0 +1,78 @@
+- title: Что ушло на сервер
+  text: |
+    Соберите запрос, не отправляя его, и посмотрите адрес и заголовки:
+    ```python
+    import httpx
+    request = httpx.Request(
+        "GET",
+        "https://delivery.example/v1/points/",
+        params={"city": "Казань", "type": "pickup"},
+    )
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print(request.method, request.url)
+    print(request.url.params["city"])
+    print(request.headers["Host"])
+    ```
+    Результат:
+    ```
+    GET https://delivery.example/v1/points/?city=%D0%9A%D0%B0%D0%B7%D0%B0%D0%BD%D1%8C&type=pickup
+    Казань
+    delivery.example
+    ```
+    `params=` закодировал кириллицу, а `url.params` раскодирует её обратно. `Host` httpx взял из адреса.
+- title: Заголовки без учёта регистра
+  text: |
+    Прочитайте заголовки ответа под разными именами:
+    ```python
+    import httpx
+    r = httpx.Response(
+        201,
+        headers={"Location": "/v1/orders/77/"},
+        json={"id": 77},
+    )
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print(r.status_code, r.is_success, r.is_error)
+    print(r.headers["location"], r.headers["LOCATION"])
+    print(r.headers["content-type"], r.json())
+    ```
+    Результат:
+    ```
+    201 True False
+    /v1/orders/77/ /v1/orders/77/
+    application/json {'id': 77}
+    ```
+    `r.headers` не зависит от регистра имён, `is_success` — 2xx, `is_error` — 4xx и 5xx. `json=` в ответе тоже сам ставит `Content-Type`.
+- title: Ошибки по классам
+  text: |
+    Разберите, какое исключение httpx к какому классу относится:
+    ```python
+    import httpx
+    errors = [
+        httpx.ConnectError,
+        httpx.ReadTimeout,
+        httpx.HTTPStatusError,
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for e in errors:
+        print(
+            e.__name__,
+            issubclass(e, httpx.TransportError),
+            issubclass(e, httpx.HTTPError),
+        )
+    ```
+    Результат:
+    ```
+    ConnectError True True
+    ReadTimeout True True
+    HTTPStatusError False True
+    ```
+    Ошибки сети и тайм-ауты — `TransportError`, ответ с кодом ошибки после `raise_for_status()` — `HTTPStatusError`. Общий родитель — `HTTPError`: его ловят, когда реакция одна («служба недоступна»).

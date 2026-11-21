@@ -1,0 +1,15 @@
+title: "Пустой ответ"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Без -L curl не идёт по редиректу и показывает сам ответ 301/302."
+statement: |
+  `curl -s http://localhost:8000/api/products/` ничего не выводит, а `curl -s -i` показывает `HTTP/1.1 301 Moved Permanently` и `Location: /api/v1/products/?page_size=2`. Как получить список товаров одной командой?
+options:
+  - "Добавить `-v`"
+  - "Добавить `-L` — curl пойдёт по адресу из `Location`"
+  - "Добавить `-X GET`"
+  - "Добавить `-f`"
+answer: [1]
+explanation: |
+  Тело ответа `301` пустое (`Content-Length: 0`), поэтому `-s` ничего не печатает. `-L` повторяет запрос на адрес из `Location` — в уроке так пришёл JSON со списком. `-v` покажет тот же редирект подробнее, `-X GET` — метод и так `GET`, а `-f` на `301` ошибкой не считает.

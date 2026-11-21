@@ -1,0 +1,45 @@
+title: "Пауза перед повтором"
+type: exercise
+difficulty: 2
+pitfall: "Пауза растёт вдвое (base · 2^(попытка−1)) и ограничена сверху; Retry-After сервиса важнее своей формулы."
+statement: |
+  Напишите `retry_delay(attempt, retry_after=None, base=1.0, cap=30.0)` — сколько секунд ждать после неудачной попытки номер `attempt` (с 1):
+  - по умолчанию — `base * 2 ** (attempt - 1)`, но не больше `cap`;
+  - если сервис прислал заголовок `Retry-After` (строка `retry_after`) с целым числом секунд — ждать столько, тоже не больше `cap`;
+  - если `Retry-After` не число (например, дата) — использовать формулу.
+
+  Вернуть `float`.
+starter_code: |
+  def retry_delay(attempt, retry_after=None, base=1.0, cap=30.0):
+      return base * attempt
+check:
+  type: tests
+  tests:
+    - code: |
+        assert [retry_delay(a) for a in (1, 2, 3, 4)] == [1.0, 2.0, 4.0, 8.0]
+      fail: "Пауза удваивается: 1, 2, 4, 8 секунд."
+    - code: |
+        assert retry_delay(10) == 30.0 and retry_delay(3, base=0.5) == 2.0
+      fail: "Пауза не больше cap (30); base задаёт первую паузу: 0.5 → 0.5, 1, 2."
+    - code: |
+        assert retry_delay(1, retry_after="5") == 5.0 and retry_delay(4, retry_after="2") == 2.0
+      fail: "Retry-After с числом секунд важнее формулы: \"5\" → 5.0."
+    - code: |
+        assert retry_delay(1, retry_after="120") == 30.0
+      fail: "Retry-After тоже ограничен cap: \"120\" → 30.0."
+    - code: |
+        assert retry_delay(2, retry_after="Wed, 21 Oct 2026 07:28:00 GMT") == 2.0
+      fail: "Retry-After в виде даты — не число секунд: используйте формулу."
+    - code: |
+        assert isinstance(retry_delay(1), float) and isinstance(retry_delay(1, retry_after="5"), float)
+      fail: "Возвращайте float."
+solution: |
+  def retry_delay(attempt, retry_after=None, base=1.0, cap=30.0):
+      if retry_after is not None and retry_after.isdigit():
+          return float(min(int(retry_after), cap))
+      return float(min(base * 2 ** (attempt - 1), cap))
+hints:
+  - "Сначала проверьте `retry_after`: `str.isdigit()` отличит «5» от даты."
+  - "`min(base * 2 ** (attempt - 1), cap)` и `float(...)`."
+explanation: |
+  Линейная пауза (1, 2, 3 с) слишком быстро возвращает нагрузку на перегруженный сервис; удвоение даёт ему время восстановиться, а `cap` не даёт ждать минутами. Если сервис сам сказал, когда приходить (`Retry-After` у 429 и 503), — слушаемся его. По стандарту `Retry-After` бывает и датой; здесь для простоты дата не разбирается. В настоящем коде к паузе ещё добавляют случайную долю (jitter).

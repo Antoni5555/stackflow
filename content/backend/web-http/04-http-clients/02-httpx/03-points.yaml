@@ -1,0 +1,63 @@
+title: "Пункты выдачи"
+type: exercise
+difficulty: 2
+pitfall: "Query-параметры передают через params= (httpx сам кодирует), а после запроса вызывают raise_for_status()."
+statement: |
+  Напишите `get_points(client, city)` для клиента службы доставки: `GET /v1/points/` с параметром `city`, вернуть список из поля `points` ответа. На ответ 4xx/5xx — пусть вылетит `httpx.HTTPStatusError`. `client` — уже настроенный `httpx.Client` с `base_url`.
+starter_code: |
+  import httpx
+
+
+  def get_points(client, city):
+      r = client.get(f"/v1/points/?city={city}")
+      return r.json()["points"]
+check:
+  type: tests
+  tests:
+    - code: |
+        import httpx
+        seen = []
+        def api(request):
+            seen.append(request)
+            if request.url.path != "/v1/points/":
+                return httpx.Response(404)
+            return httpx.Response(200, json={"points": ["ул. Баумана, 1"]})
+        c = httpx.Client(base_url="https://delivery.example", transport=httpx.MockTransport(api))
+        assert get_points(c, "Казань") == ["ул. Баумана, 1"]
+        assert seen[-1].url.params["city"] == "Казань"
+      fail: "GET /v1/points/ с параметром city — вернуть список points."
+    - code: |
+        import httpx
+        seen = []
+        def api(request):
+            seen.append(request)
+            return httpx.Response(200, json={"points": []})
+        c = httpx.Client(base_url="https://delivery.example", transport=httpx.MockTransport(api))
+        get_points(c, "Ростов-на-Дону & область")
+        assert dict(seen[-1].url.params) == {"city": "Ростов-на-Дону & область"}, dict(seen[-1].url.params)
+      fail: "Значение с «&» и пробелами разорвало параметр — передавайте params={\"city\": city}, а не f-строку."
+    - code: |
+        import httpx
+        def api(request):
+            return httpx.Response(503, json={"error": "Перегрузка"})
+        c = httpx.Client(base_url="https://delivery.example", transport=httpx.MockTransport(api))
+        try:
+            get_points(c, "Казань")
+        except httpx.HTTPStatusError as e:
+            assert e.response.status_code == 503
+        else:
+            raise AssertionError("ошибки не было")
+      fail: "На 503 должна вылететь httpx.HTTPStatusError — вызовите r.raise_for_status() до разбора тела."
+solution: |
+  import httpx
+
+
+  def get_points(client, city):
+      r = client.get("/v1/points/", params={"city": city})
+      r.raise_for_status()
+      return r.json()["points"]
+hints:
+  - "Параметры — `params={...}`, проверка кода — метод ответа."
+  - "`client.get(\"/v1/points/\", params={\"city\": city})`, затем `r.raise_for_status()`."
+explanation: |
+  В f-строке `&` разрезает значение на два параметра, а кириллица и пробелы не кодируются — `params=` делает это правильно (в уроке — `?city=%D0%9A…`). Без `raise_for_status()` ответ 503 дошёл бы до `r.json()["points"]` и упал бы `KeyError` — непонятно, что служба просто перегружена.

@@ -1987,6 +1987,90 @@ def openapi_read():
     f.save(out(WH3 / "04-docs" / "img" / "openapi-read.svg"))
 
 
+WH4 = ROOT / "web-http" / "04-http-clients"
+
+
+def curl_verbose():
+    f = Figure(860, 330, "curl -v: строки > ушли на сервер, < пришли от него")
+    f.raw('<rect x="20" y="20" width="520" height="290" rx="14" class="fig-term"/>')
+    lines = [("> POST /api/v1/cart/items/ HTTP/1.1", "запрос: метод, путь, версия"),
+             ("> Host: localhost:8000", ""),
+             ("> Content-Type: application/json", "поставил --json"),
+             ("> Accept: application/json", "поставил --json"),
+             ("> Content-Length: 29", ""),
+             ("< HTTP/1.1 201 Created", "ответ: код"),
+             ("< Location: /api/v1/cart/items/9/", "адрес новой позиции"),
+             ("< Content-Length: 58", ""),
+             ('{"id": 9, "product": 2, "quantity": 1, …}', "тело ответа")]
+    for i, (line, note) in enumerate(lines):
+        y = 50 + i * 29
+        f.text(40, y, line, "tt")
+        if note:
+            f.text(560, y, note, "s")
+    f.save(out(WH4 / "01-curl" / "img" / "curl-verbose.svg"))
+
+
+def httpx_client():
+    f = Figure(860, 320, "Клиент службы доставки: что собирает httpx и что возвращает")
+    f.box(20, 20, 380, 110, "", "box2")
+    f.text(36, 46, "httpx.Client(", "cs")
+    f.text(52, 70, "base_url=\"https://delivery.example\",", "cs")
+    f.text(52, 94, "headers={Authorization: Bearer …}, timeout=5)", "cs")
+    f.text(36, 118, "client.post(\"/v1/quote/\", json={...})", "cs")
+    f.arrow("M400 75H446")
+    f.box(450, 20, 390, 110, "", "box")
+    f.text(466, 46, "POST https://delivery.example/v1/quote/", "cs")
+    f.text(466, 70, "Authorization: Bearer delivery-key", "cs")
+    f.text(466, 94, "Content-Type: application/json", "cs")
+    f.text(466, 118, '{"city":"Казань","weight_kg":1.2}', "cs")
+    f.arrow("M645 130V166")
+    f.box(450, 170, 390, 50, "200 → r.json() = {price: 340.00, days: 2}", "ok", "cs")
+    f.box(20, 170, 400, 50, "404 → r.raise_for_status() → HTTPStatusError", "err", "errt")
+    f.box(20, 240, 400, 50, "нет ответа → ReadTimeout (TransportError)", "err", "errt")
+    f.text(450, 270, "4xx/5xx — обычный ответ, пока не вызван raise_for_status()", "s")
+    f.save(out(WH4 / "02-httpx" / "img" / "httpx-client.svg"))
+
+
+def idempotency_key():
+    f = Figure(860, 330, "Потерянный ответ: повтор без ключа и с ключом идемпотентности")
+    f.text(20, 30, "Без ключа", "t")
+    f.box(20, 44, 400, 40, "POST /v1/payments/ → списано 9479 ₽", "box2", "cs")
+    f.box(20, 94, 400, 40, "ответ потерялся: ReadTimeout", "err", "errt")
+    f.box(20, 144, 400, 40, "повтор POST → списано ещё 9479 ₽", "err", "errt")
+    f.text(20, 210, "итог: два списания", "errt")
+    f.text(440, 30, "С Idempotency-Key: 5f1c…", "t")
+    f.box(440, 44, 400, 40, "POST + ключ → списано, ключ сохранён", "box2", "cs")
+    f.box(440, 94, 400, 40, "ответ потерялся: ReadTimeout", "err", "errt")
+    f.box(440, 144, 400, 40, "повтор с тем же ключом → сохранённый ответ", "ok", "cs")
+    f.text(440, 210, "итог: одно списание", "t")
+    f.text(20, 270, "Ключ — один на операцию (оплата заказа 126), а не на попытку.", "s")
+    f.text(20, 296, "Повторять без ключа можно только идемпотентные запросы: GET, PUT, DELETE.", "s")
+    f.save(out(WH4 / "03-reliable" / "img" / "idempotency-key.svg"))
+
+
+def gather_fig():
+    f = Figure(860, 330, "Три службы доставки: по очереди и через asyncio.gather")
+    scale = 1000
+    f.text(20, 34, "по очереди", "t")
+    x = 140
+    for name, d in (("fast 0,1", 0.1), ("post 0,3", 0.3), ("courier 0,2", 0.2)):
+        w = d * scale
+        f.box(x, 16, w - 4, 30, name, "box2", "cs")
+        x += w
+    f.text(x + 10, 36, "0,6 с", "t")
+    f.text(20, 104, "gather", "t")
+    for i, (name, d) in enumerate((("fast 0,1", 0.1), ("post 0,3", 0.3), ("courier 0,2", 0.2))):
+        f.box(140, 70 + i * 36, d * scale - 4, 30, name, "acc", "onacc")
+    f.text(450, 142, "0,3 с — самый медленный", "t")
+    f.text(20, 230, "wait_for 0,5", "t")
+    f.box(140, 212, 96, 30, "fast", "acc", "onacc")
+    f.box(140, 248, 196, 30, "courier", "acc", "onacc")
+    f.box(140, 284, 496, 30, "post — отменён через 0,5 с", "err", "errt")
+    f.raw('<path d="M640 200V320" stroke-dasharray="4 4" class="fig-lnd"/>')
+    f.text(652, 300, "цена: недоступно", "s")
+    f.save(out(WH4 / "04-async" / "img" / "gather.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3474,6 +3558,7 @@ if __name__ == "__main__":
                   api_methods, who_answers, etag_fig, body_formats,
                   token_flow, jwt_parts, cors_preflight, idor,
                   cart_api, list_pipeline, error_format, openapi_read,
+                  curl_verbose, httpx_client, idempotency_key, gather_fig,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

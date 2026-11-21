@@ -1,0 +1,15 @@
+title: "Код выхода curl"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Код 7 — не удалось соединиться, 28 — тайм-аут, 22 — сервер ответил 4xx/5xx (с -f)."
+statement: |
+  После деплоя скрипт проверки выполнил `curl -fsS -m 5 http://127.0.0.1:8000/api/v1/products/` и вывел `curl: (7) Failed to connect to 127.0.0.1 port 8000 after 0 ms: Couldn't connect to server`. Что это значит?
+options:
+  - "Приложение ответило ошибкой 500"
+  - "На порту 8000 никто не принимает соединения: Gunicorn не запущен или слушает другой порт"
+  - "Приложение отвечало дольше 5 секунд"
+  - "Адреса `/api/v1/products/` нет — 404"
+answer: [1]
+explanation: |
+  Код 7 — соединение не установлено, до HTTP дело не дошло. Ответ 4xx/5xx с `-f` дал бы код 22 (как `curl -f` на `/api/v1/products/99/` в уроке), а превышение `-m 5` — код 28 «Operation timed out». Проверяют, запущен ли Gunicorn и какой порт он слушает.

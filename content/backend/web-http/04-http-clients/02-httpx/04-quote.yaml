@@ -1,0 +1,74 @@
+title: "Стоимость доставки"
+type: exercise
+difficulty: 2
+pitfall: "Тело JSON — json= (httpx сам ставит Content-Type), ключ API — в заголовке, ошибки — raise_for_status()."
+statement: |
+  Напишите `delivery_price(client, city, weight_kg, api_key)`: `POST /v1/quote/` с телом JSON `{"city": …, "weight_kg": …}` и заголовком `Authorization: Bearer <api_key>`; вернуть поле `price` из ответа. На 4xx/5xx — `httpx.HTTPStatusError`.
+starter_code: |
+  import json
+
+  import httpx
+
+
+  def delivery_price(client, city, weight_kg, api_key):
+      body = json.dumps({"city": city, "weight_kg": weight_kg})
+      r = client.post("/v1/quote/", content=body)
+      return r.json()["price"]
+check:
+  type: tests
+  tests:
+    - code: |
+        import httpx, json as _json
+        seen = []
+        def api(request):
+            seen.append(request)
+            if request.headers.get("Content-Type") != "application/json":
+                return httpx.Response(415, json={"error": "Ожидается JSON"})
+            if request.headers.get("Authorization") != "Bearer k-1":
+                return httpx.Response(401, json={"error": "Нужен ключ API"})
+            data = _json.loads(request.content)
+            return httpx.Response(200, json={"price": f"{290 + 50 * round(data['weight_kg'])}.00"})
+        c = httpx.Client(base_url="https://delivery.example", transport=httpx.MockTransport(api))
+        assert delivery_price(c, "Казань", 1.2, "k-1") == "340.00"
+        assert _json.loads(seen[-1].content) == {"city": "Казань", "weight_kg": 1.2}
+      fail: "Нужен POST /v1/quote/ с JSON-телом (Content-Type: application/json) и Authorization: Bearer <ключ> — ответ \"340.00\"."
+    - code: |
+        import httpx
+        def api(request):
+            return httpx.Response(401, json={"error": "Нужен ключ API"})
+        c = httpx.Client(base_url="https://delivery.example", transport=httpx.MockTransport(api))
+        try:
+            delivery_price(c, "Казань", 1.2, "wrong")
+        except httpx.HTTPStatusError as e:
+            assert e.response.status_code == 401
+        else:
+            raise AssertionError("ошибки не было")
+      fail: "На 401 — httpx.HTTPStatusError (raise_for_status()), а не KeyError."
+    - code: |
+        import httpx
+        seen = []
+        def api(request):
+            seen.append(request)
+            return httpx.Response(200, json={"price": "290.00"})
+        c = httpx.Client(base_url="https://delivery.example", transport=httpx.MockTransport(api))
+        delivery_price(c, "Казань", 0.3, "k-2")
+        assert seen[-1].method == "POST" and seen[-1].url.path == "/v1/quote/"
+        assert seen[-1].headers["Authorization"] == "Bearer k-2"
+      fail: "Ключ — из аргумента api_key: Authorization: Bearer k-2."
+solution: |
+  import httpx
+
+
+  def delivery_price(client, city, weight_kg, api_key):
+      r = client.post(
+          "/v1/quote/",
+          json={"city": city, "weight_kg": weight_kg},
+          headers={"Authorization": f"Bearer {api_key}"},
+      )
+      r.raise_for_status()
+      return r.json()["price"]
+hints:
+  - "Какой параметр `post` и сериализует словарь, и ставит `Content-Type`?"
+  - "`client.post(\"/v1/quote/\", json={...}, headers={\"Authorization\": f\"Bearer {api_key}\"})`, затем `raise_for_status()`."
+explanation: |
+  `content=json.dumps(...)` отправляет те же байты, но без `Content-Type: application/json` — служба не знает, что это JSON (как `curl -d` и ответ 415). `json=` делает и то, и другое. Ключ — в заголовке `Authorization`, а не в теле или адресе. В настоящем клиенте общий заголовок задают один раз в `httpx.Client(headers=…)`.

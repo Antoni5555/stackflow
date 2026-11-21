@@ -1,0 +1,89 @@
+- title: Порядок результатов
+  text: |
+    Три корутины заканчиваются в разном порядке. В каком порядке `gather` вернёт результаты?
+    ```python
+    import asyncio
+
+    async def job(name, delay):
+        await asyncio.sleep(delay)
+        print("готово:", name)
+        return name
+    ```
+  answer: |
+    Ответ:
+    ```python
+    async def main():
+        return await asyncio.gather(
+            job("post", 0.03),
+            job("fast", 0.01),
+            job("courier", 0.02),
+        )
+
+    print(asyncio.run(main()))
+    ```
+    Результат:
+    ```
+    готово: fast
+    готово: courier
+    готово: post
+    ['post', 'fast', 'courier']
+    ```
+    Завершаются по мере готовности, а список — в порядке корутин. Поэтому результаты можно сопоставить с запросами через `zip`.
+- title: Ошибка в gather
+  text: |
+    Одна из трёх корутин падает. Соберите результаты, не теряя остальных:
+    ```python
+    import asyncio
+
+    async def quote(host):
+        if host == "bad.example":
+            raise ConnectionError(host)
+        return host, "390.00"
+
+    hosts = ["a.example", "bad.example", "c.example"]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    async def main():
+        tasks = [quote(h) for h in hosts]
+        return await asyncio.gather(
+            *tasks, return_exceptions=True
+        )
+
+    for result in asyncio.run(main()):
+        print(repr(result))
+    ```
+    Результат:
+    ```
+    ('a.example', '390.00')
+    ConnectionError('bad.example')
+    ('c.example', '390.00')
+    ```
+    Без `return_exceptions=True` из `gather` вылетел бы `ConnectionError`, а две цены потерялись бы.
+- title: Тайм-аут на корутину
+  text: |
+    Служба думает 1 секунду, а ждать её можно 0,1. Получите `None` вместо зависания:
+    ```python
+    import asyncio
+
+    async def slow_quote():
+        await asyncio.sleep(1)
+        return "250.00"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    async def main():
+        try:
+            return await asyncio.wait_for(slow_quote(), 0.1)
+        except asyncio.TimeoutError:
+            return None
+
+    print(asyncio.run(main()))
+    ```
+    Результат:
+    ```
+    None
+    ```
+    `wait_for` отменяет корутину по тайм-ауту. В Python 3.11+ `asyncio.TimeoutError` — то же, что встроенный `TimeoutError`.

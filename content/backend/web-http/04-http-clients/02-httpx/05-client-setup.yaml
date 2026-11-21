@@ -1,0 +1,71 @@
+title: "Клиент без тайм-аута"
+type: fix
+difficulty: 2
+pitfall: "Один httpx.Client на сервис с base_url и конечным тайм-аутом; параметры — params=, тело — json=."
+statement: |
+  Модуль `delivery.py` магазина ходит в службу доставки. Исправьте его:
+  - клиент — `httpx.Client` с `base_url="https://delivery.example"` и тайм-аутом `timeout=httpx.Timeout(10.0, connect=2.0)` вместо `timeout=None`;
+  - в `points` параметр — через `params={"city": city}`, а не в f-строке;
+  - в `quote` тело — через `json=`, без `json.dumps` и `content=`; модуль `json` больше не нужен.
+files:
+  delivery.py: |
+    import json
+
+    import httpx
+
+    client = httpx.Client(timeout=None)
+
+
+    def points(city):
+        r = client.get(f"https://delivery.example/v1/points/?city={city}")
+        r.raise_for_status()
+        return r.json()["points"]
+
+
+    def quote(city, weight_kg):
+        body = json.dumps({"city": city, "weight_kg": weight_kg})
+        r = client.post("https://delivery.example/v1/quote/", content=body)
+        r.raise_for_status()
+        return r.json()["price"]
+check:
+  type: rules
+  rules:
+    - must_not_match: 'timeout\s*=\s*None'
+      fail: "timeout=None — зависшая служба повесит view. Нужен конечный тайм-аут."
+    - must_match: '^\s*(client\s*=\s*httpx\.Client\(\s*)?base_url\s*=\s*"https://delivery\.example"'
+      fail: "Задайте клиенту base_url=\"https://delivery.example\"."
+    - must_match: '^\s*(client\s*=\s*httpx\.Client\(.*,\s*)?timeout\s*=\s*httpx\.Timeout\(\s*10(\.0)?\s*,\s*connect\s*=\s*2(\.0)?\s*\)'
+      fail: "Тайм-аут: timeout=httpx.Timeout(10.0, connect=2.0)."
+    - must_match: '^\s*r\s*=\s*client\.get\(\s*"/v1/points/"\s*,\s*params\s*=\s*\{\s*"city"\s*:\s*city\s*\}\s*\)'
+      fail: "points: client.get(\"/v1/points/\", params={\"city\": city})."
+    - must_match: '^\s*r\s*=\s*client\.post\(\s*"/v1/quote/"\s*,\s*json\s*=\s*\{\s*"city"\s*:\s*city\s*,\s*"weight_kg"\s*:\s*weight_kg\s*\}\s*\)'
+      fail: "quote: client.post(\"/v1/quote/\", json={\"city\": city, \"weight_kg\": weight_kg})."
+    - must_not_match: 'json\.dumps|content\s*=|^import json'
+      fail: "json.dumps, content= и import json больше не нужны — json= всё делает сам."
+    - must_not_match: 'https://delivery\.example/v1/'
+      fail: "Полный адрес в запросах не нужен — только путь, base_url подставит остальное."
+solution:
+  delivery.py: |
+    import httpx
+
+    client = httpx.Client(
+        base_url="https://delivery.example",
+        timeout=httpx.Timeout(10.0, connect=2.0),
+    )
+
+
+    def points(city):
+        r = client.get("/v1/points/", params={"city": city})
+        r.raise_for_status()
+        return r.json()["points"]
+
+
+    def quote(city, weight_kg):
+        r = client.post("/v1/quote/", json={"city": city, "weight_kg": weight_kg})
+        r.raise_for_status()
+        return r.json()["price"]
+hints:
+  - "Начните с клиента: `httpx.Client(base_url=…, timeout=httpx.Timeout(10.0, connect=2.0))`."
+  - "Дальше пути без хоста: `client.get(\"/v1/points/\", params=…)`, `client.post(\"/v1/quote/\", json=…)`."
+explanation: |
+  `timeout=None` — бесконечное ожидание: если служба зависла, воркер Gunicorn занят навсегда, а после нескольких таких запросов магазин перестаёт отвечать. `httpx.Timeout(10.0, connect=2.0)` — 2 секунды на соединение, 10 на остальное. `base_url` убирает повтор адреса, `params=` кодирует город, `json=` сериализует тело и ставит `Content-Type`.

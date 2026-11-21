@@ -1,0 +1,73 @@
+- title: Паузы с потолком
+  text: |
+    Посчитайте паузы перед повторами: удвоение от 0,5 с, не больше 5 с.
+    ```python
+    base, cap = 0.5, 5
+    attempts = range(1, 7)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print([min(base * 2 ** (a - 1), cap) for a in attempts])
+    ```
+    Результат:
+    ```
+    [0.5, 1.0, 2.0, 4.0, 5, 5]
+    ```
+    Без потолка шестая пауза была бы 16 с — пользователь столько ждать не станет.
+- title: Повторять или нет
+  text: |
+    Решите для каждого запроса, повторять ли его:
+    ```python
+    RETRY = {429, 502, 503, 504}
+    IDEMPOTENT = {"GET", "HEAD", "PUT", "DELETE"}
+    cases = [
+        ("GET", 503, False),
+        ("POST", 503, False),
+        ("POST", 503, True),
+        ("GET", 404, False),
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for method, status, has_key in cases:
+        safe = method in IDEMPOTENT or has_key
+        print(method, status, has_key, status in RETRY and safe)
+    ```
+    Результат:
+    ```
+    GET 503 False True
+    POST 503 False False
+    POST 503 True True
+    GET 404 False False
+    ```
+    `POST` без ключа идемпотентности не повторяют даже на 503: прокси мог вернуть 503, когда приложение уже выполнило запрос.
+- title: Сервер помнит ключи
+  text: |
+    Сделайте серверную сторону ключа идемпотентности: повтор с тем же ключом возвращает сохранённый результат.
+    ```python
+    import uuid
+    saved = {}
+    charges = []
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def pay(key, amount):
+        if key in saved:
+            return saved[key]
+        charges.append(amount)
+        saved[key] = {"payment": len(charges)}
+        return saved[key]
+
+    key = str(uuid.uuid4())
+    print(pay(key, "9479.00"), pay(key, "9479.00"), charges)
+    print(pay(str(uuid.uuid4()), "990.00"), charges)
+    ```
+    Результат:
+    ```
+    {'payment': 1} {'payment': 1} ['9479.00']
+    {'payment': 2} ['9479.00', '990.00']
+    ```
+    На настоящем сервере ключи хранят в базе с уникальным индексом — чтобы два одновременных запроса с одним ключом не прошли оба.

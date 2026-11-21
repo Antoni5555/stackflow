@@ -1,0 +1,15 @@
+title: "JSON из терминала"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "curl -d без заголовка шлёт форму; JSON — --json или -H 'Content-Type: application/json'."
+statement: |
+  Нужно добавить товар в корзину запросом `POST /api/v1/cart/items/` с телом `{"product": 2, "quantity": 1}`. Какая команда отправит тело **как JSON**?
+options:
+  - "`curl -X POST http://localhost:8000/api/v1/cart/items/ -d '{\"product\": 2, \"quantity\": 1}'`"
+  - "`curl http://localhost:8000/api/v1/cart/items/ --json '{\"product\": 2, \"quantity\": 1}'`"
+  - "`curl -X POST http://localhost:8000/api/v1/cart/items/?product=2&quantity=1`"
+  - "`curl -I http://localhost:8000/api/v1/cart/items/ --json '{\"product\": 2, \"quantity\": 1}'`"
+answer: [1]
+explanation: |
+  `--json` ставит `Content-Type: application/json` и `Accept: application/json` и сам выбирает `POST` — в `curl -v` это видно в строках `>`. С одним `-d` тело уходит как `application/x-www-form-urlencoded` — учебный API ответил на такое `415`. Параметры в адресе — не тело (и `&` без кавычек bash примет за «запустить в фоне»), а `-I` отправляет `HEAD`.

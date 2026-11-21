@@ -1,0 +1,40 @@
+title: "Проверка после деплоя"
+type: fix
+difficulty: 2
+pitfall: "В скриптах curl нужны -f (код выхода на 4xx/5xx), -m (тайм-аут) и -sS (тихо, но с ошибками)."
+statement: |
+  Скрипт `check.sh` проверяет сайт после выкатки, но пропускает поломки: на ответ 500 `curl` возвращает код выхода 0, а зависший сервер держит скрипт бесконечно. Добавьте к **обеим** командам `curl` ключи `-f` (ошибка на 4xx/5xx) и `-m 5` (тайм-аут 5 секунд); `-s` замените на `-sS`, чтобы текст ошибки попал в журнал.
+files:
+  check.sh: |
+    #!/bin/bash
+    set -e
+    curl -s -o /dev/null https://shop.example/
+    curl -s -o /dev/null https://shop.example/api/v1/products/
+    echo "ok"
+check:
+  type: rules
+  rules:
+    - must_not_match: '^\s*curl(?!.*\s-f(\s|S))(?!.*\s-fsS)(?!.*\s-sSf)'
+      fail: "У каждой команды curl должен быть ключ -f (можно вместе: -fsS)."
+    - must_not_match: '^\s*curl(?!.*\s-m\s*5\b)'
+      fail: "У каждой команды curl должен быть тайм-аут -m 5."
+    - must_not_match: '^\s*curl.*\s-s\s'
+      fail: "Вместо -s — -sS: тихо, но с текстом ошибки."
+    - must_match: '^\s*curl\s.*https://shop\.example/\s*$'
+      fail: "Проверка главной страницы https://shop.example/ должна остаться."
+    - must_match: '^\s*curl\s.*https://shop\.example/api/v1/products/\s*$'
+      fail: "Проверка https://shop.example/api/v1/products/ должна остаться."
+    - must_match: '^\s*set -e\s*$'
+      fail: "set -e не убирайте: он останавливает скрипт на первой ошибке."
+solution:
+  check.sh: |
+    #!/bin/bash
+    set -e
+    curl -fsS -m 5 -o /dev/null https://shop.example/
+    curl -fsS -m 5 -o /dev/null https://shop.example/api/v1/products/
+    echo "ok"
+hints:
+  - "Какой ключ превращает ответ 4xx/5xx в ненулевой код выхода, а какой ограничивает время?"
+  - "`curl -fsS -m 5 -o /dev/null https://…` в обеих строках."
+explanation: |
+  `set -e` останавливает скрипт на команде с ненулевым кодом выхода, но без `-f` curl на ответ 500 возвращает 0 — проверка «проходит». С `-f` код 22 (в уроке — `curl -f` на несуществующий товар), с `-m 5` зависание прерывается кодом 28. `-sS` прячет индикатор загрузки, но печатает `curl: (22) The requested URL returned error: 500` — видно в журнале CI.

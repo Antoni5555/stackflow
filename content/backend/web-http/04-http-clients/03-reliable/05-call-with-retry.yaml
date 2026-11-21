@@ -1,0 +1,111 @@
+title: "Повторы вызова"
+type: exercise
+difficulty: 3
+pitfall: "Повторять только TransportError и 429/502/503/504, с растущей паузой и ограниченным числом попыток; 4xx возвращать сразу."
+statement: |
+  Напишите `call_with_retry(send, attempts=3, base=1.0, sleep=time.sleep)`:
+  - `send()` — функция без аргументов, отправляет запрос и возвращает `httpx.Response` или выбрасывает `httpx.TransportError`;
+  - ответ с кодом **не** из `{429, 502, 503, 504}` (в том числе 4xx) — вернуть сразу;
+  - `TransportError` или код из этого множества — повторить, перед повтором вызвать `sleep(base * 2 ** (попытка - 1))` (1, 2, 4…);
+  - после последней попытки без паузы: если последней была ошибка сети — выбросить её, если ответ — вернуть этот ответ.
+
+  `sleep` — параметр, чтобы тесты не ждали по-настоящему.
+starter_code: |
+  import time
+
+  import httpx
+
+
+  def call_with_retry(send, attempts=3, base=1.0, sleep=time.sleep):
+      for attempt in range(attempts):
+          try:
+              return send()
+          except Exception:
+              sleep(1)
+check:
+  type: tests
+  tests:
+    - code: |
+        import httpx
+        replies = [httpx.Response(503), httpx.Response(503), httpx.Response(200, json={"price": "340.00"})]
+        waits = []
+        r = call_with_retry(lambda: replies.pop(0), sleep=waits.append)
+        assert r.status_code == 200 and waits == [1.0, 2.0], (r.status_code, waits)
+      fail: "Два ответа 503, потом 200: вернуть 200, паузы 1 и 2 секунды."
+    - code: |
+        import httpx
+        calls = []
+        def send():
+            calls.append(1)
+            return httpx.Response(422, json={"error": "weight_kg"})
+        waits = []
+        r = call_with_retry(send, sleep=waits.append)
+        assert r.status_code == 422 and len(calls) == 1 and waits == []
+      fail: "422 — ошибка запроса: вернуть сразу, без повторов и пауз."
+    - code: |
+        import httpx
+        req = httpx.Request("GET", "https://delivery.example/v1/quote/")
+        events = [httpx.ConnectError("нет связи", request=req), httpx.Response(200)]
+        def send():
+            e = events.pop(0)
+            if isinstance(e, Exception):
+                raise e
+            return e
+        waits = []
+        assert call_with_retry(send, sleep=waits.append).status_code == 200 and waits == [1.0]
+      fail: "httpx.ConnectError — временная ошибка сети: подождать и повторить."
+    - code: |
+        import httpx
+        req = httpx.Request("GET", "https://delivery.example/v1/quote/")
+        def send():
+            raise httpx.ReadTimeout("нет ответа", request=req)
+        waits = []
+        try:
+            call_with_retry(send, attempts=3, base=0.5, sleep=waits.append)
+        except httpx.ReadTimeout:
+            pass
+        else:
+            raise AssertionError("ошибка не выброшена")
+        assert waits == [0.5, 1.0], waits
+      fail: "Все 3 попытки — тайм-аут: паузы только между попытками (0.5, 1.0), потом выбросить последнюю ошибку."
+    - code: |
+        import httpx
+        waits = []
+        r = call_with_retry(lambda: httpx.Response(503), attempts=2, sleep=waits.append)
+        assert r.status_code == 503 and waits == [1.0]
+      fail: "Попытки кончились, а сервис всё ещё 503 — вернуть последний ответ (без паузы после последней попытки)."
+    - code: |
+        import httpx
+        def send():
+            raise ValueError("ошибка в нашем коде")
+        try:
+            call_with_retry(send, sleep=lambda s: None)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("ValueError проглочен")
+      fail: "Повторяют только httpx.TransportError; другие исключения (ошибки в коде) пропускайте сразу."
+solution: |
+  import time
+
+  import httpx
+
+  RETRY_STATUSES = {429, 502, 503, 504}
+
+
+  def call_with_retry(send, attempts=3, base=1.0, sleep=time.sleep):
+      for attempt in range(1, attempts + 1):
+          try:
+              r = send()
+          except httpx.TransportError:
+              if attempt == attempts:
+                  raise
+          else:
+              if r.status_code not in RETRY_STATUSES or attempt == attempts:
+                  return r
+          sleep(base * 2 ** (attempt - 1))
+hints:
+  - "Ловите только `httpx.TransportError`; ответ проверяйте по множеству `{429, 502, 503, 504}`."
+  - "Нумеруйте попытки с 1: пауза — `base * 2 ** (attempt - 1)`, на последней попытке — `raise` или `return r` без паузы."
+explanation: |
+  Заготовка ловит `Exception` и скрывает ошибки в своём коде, не повторяет 503 (это не исключение) и ждёт всегда секунду. Повторять имеет смысл только то, что может пройти со второго раза; паузы растут, чтобы не добивать перегруженный сервис; после последней попытки ждать уже нечего. Это та же функция, что в уроке, — она годится для `GET` и для `POST` с ключом идемпотентности.

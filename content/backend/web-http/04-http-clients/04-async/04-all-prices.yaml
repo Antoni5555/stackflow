@@ -1,0 +1,92 @@
+title: "Цены всех служб"
+type: exercise
+difficulty: 3
+pitfall: "Запросы — одновременно через gather; упавшая служба не должна ронять остальные (return_exceptions=True или try внутри корутины)."
+statement: |
+  Напишите корутину `all_prices(client, hosts)`: одновременно запросить `GET https://<host>/v1/quote/` у каждой службы и вернуть словарь `{host: цена}`, где цена — поле `price` ответа или `None`, если служба ответила 4xx/5xx или произошла ошибка сети (`httpx.HTTPError`). `client` — уже открытый `httpx.AsyncClient`.
+starter_code: |
+  import asyncio
+
+  import httpx
+
+
+  async def all_prices(client, hosts):
+      result = {}
+      for host in hosts:
+          r = await client.get(f"https://{host}/v1/quote/")
+          result[host] = r.json()["price"]
+      return result
+check:
+  type: tests
+  tests:
+    - code: |
+        import asyncio, httpx
+        prices = {"a.example": "390.00", "b.example": "250.00"}
+        async def api(request):
+            await asyncio.sleep(0.05)
+            return httpx.Response(200, json={"price": prices[request.url.host]})
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(api)) as c:
+                return await all_prices(c, ["a.example", "b.example"])
+        assert asyncio.run(run()) == {"a.example": "390.00", "b.example": "250.00"}
+      fail: "Две работающие службы — словарь {host: price}."
+    - code: |
+        import asyncio, httpx
+        async def api(request):
+            if request.url.host == "bad.example":
+                return httpx.Response(503)
+            return httpx.Response(200, json={"price": "520.00"})
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(api)) as c:
+                return await all_prices(c, ["ok.example", "bad.example"])
+        assert asyncio.run(run()) == {"ok.example": "520.00", "bad.example": None}
+      fail: "Служба ответила 503 — её цена None, остальные цены сохраняются."
+    - code: |
+        import asyncio, httpx
+        async def api(request):
+            if request.url.host == "down.example":
+                raise httpx.ConnectError("нет связи", request=request)
+            return httpx.Response(200, json={"price": "390.00"})
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(api)) as c:
+                return await all_prices(c, ["down.example", "a.example"])
+        assert asyncio.run(run()) == {"down.example": None, "a.example": "390.00"}
+      fail: "Ошибка сети (ConnectError) — тоже None, а не исключение."
+    - code: |
+        import asyncio, httpx
+        active = {"now": 0, "max": 0}
+        async def api(request):
+            active["now"] += 1
+            active["max"] = max(active["max"], active["now"])
+            await asyncio.sleep(0.05)
+            active["now"] -= 1
+            return httpx.Response(200, json={"price": "1.00"})
+        async def run():
+            async with httpx.AsyncClient(transport=httpx.MockTransport(api)) as c:
+                return await all_prices(c, ["a.example", "b.example", "c.example"])
+        asyncio.run(run())
+        assert active["max"] == 3, active["max"]
+      fail: "Запросы идут по очереди — запустите их одновременно через asyncio.gather."
+solution: |
+  import asyncio
+
+  import httpx
+
+
+  async def price(client, host):
+      try:
+          r = await client.get(f"https://{host}/v1/quote/")
+          r.raise_for_status()
+          return r.json()["price"]
+      except httpx.HTTPError:
+          return None
+
+
+  async def all_prices(client, hosts):
+      results = await asyncio.gather(*(price(client, h) for h in hosts))
+      return dict(zip(hosts, results))
+hints:
+  - "Вынесите запрос одной цены в отдельную корутину с `try/except httpx.HTTPError` — она вернёт цену или `None`."
+  - "`await asyncio.gather(*(price(client, h) for h in hosts))`, затем `dict(zip(hosts, results))` — порядок результатов как у корутин."
+explanation: |
+  `await` в цикле — запросы по очереди. `gather` запускает их одновременно, а `try` внутри корутины одной цены превращает ошибку одной службы в `None`, не ломая остальные (альтернатива — `return_exceptions=True`, как в уроке). `httpx.HTTPError` — общий родитель и `HTTPStatusError` (после `raise_for_status()`), и ошибок сети. Порядок результатов `gather` совпадает с порядком корутин, поэтому `zip(hosts, results)` сопоставляет их правильно.
