@@ -291,6 +291,26 @@ def test_state_exercise_is_loaded(content_dir):
     assert spec['solution'] == 'cp -r config backup/\n'
 
 
+def test_state_setup_links(content_dir):
+    """setup.links — символические ссылки: цель строкой или {target, owner}."""
+    rules = '    - path: /a\n      exists: false\n      fail: F\n'
+    task = content_dir / HELLO / '06-copy.yaml'
+    links = ('  links:\n    /etc/nginx/sites-enabled/shop: ../sites-available/shop\n'
+             '    /srv/current: {target: /srv/shop, owner: shop}\n')
+    task.write_text((STATE_TASK % rules).replace('check:', links + 'check:', 1),
+                    encoding='utf-8')
+    ContentLoader(content_dir).load()
+
+    setup = Exercise.objects.get(slug='copy').spec['setup']
+    assert setup['links']['/etc/nginx/sites-enabled/shop'] == '../sites-available/shop'
+
+    no_target = '  links:\n    /srv/current: {owner: shop}\ncheck:'
+    task.write_text((STATE_TASK % rules).replace('check:', no_target, 1),
+                    encoding='utf-8')
+    with pytest.raises(ContentError, match='setup.links'):
+        ContentLoader(content_dir).load()
+
+
 @pytest.mark.parametrize('rules, message', [
     ('    - path: /a\n      exists: true\n      mode: "644"\n      fail: F\n',
      'path \\+ одно из'),

@@ -126,6 +126,53 @@ describe('файлы', () => {
   });
 });
 
+describe('ls и символические ссылки — как в Ubuntu 24.04', () => {
+  const SITES = {
+    cwd: '/etc/nginx',
+    files: {
+      '/etc/nginx/sites-available/shop': { content: 'server {}\n', owner: 'root' },
+      '/srv/shop/data/a.txt': 'a\n',
+      '/srv/shop/backup/b.txt': 'b\n',
+    },
+    links: {
+      '/etc/nginx/sites-enabled/shop': '/etc/nginx/sites-available/shop',
+      '/etc/nginx/sites-enabled/shop2': 'sites-available/shop',   // битая: путь от sites-enabled
+      '/etc/nginx/conf': '/etc/nginx/sites-available',
+    },
+  };
+
+  it('ссылки из setup: владелец — как у папки, права lrwxrwxrwx', () => {
+    const sh = shell(SITES);
+    assert.match(run(sh, 'ls -l sites-enabled/shop').out,
+      /^lrwxrwxrwx 1 root root \d+ .* sites-enabled\/shop -> \/etc\/nginx\/sites-available\/shop\n$/);
+    assert.equal(run(sh, 'cat sites-enabled/shop').out, 'server {}\n');
+  });
+
+  it('битая ссылка: ls её показывает, cat — нет', () => {
+    const sh = shell(SITES);
+    assert.match(run(sh, 'ls -l sites-enabled/shop2').out, /sites-enabled\/shop2 -> sites-available\/shop\n$/);
+    assert.equal(run(sh, 'ls sites-enabled/shop2').out, 'sites-enabled/shop2\n');
+    assert.match(run(sh, 'cat sites-enabled/shop2').err, /No such file or directory/);
+  });
+
+  it('ссылка на папку: ls -l — сама ссылка, ls и «ссылка/» — содержимое', () => {
+    const sh = shell(SITES);
+    assert.match(run(sh, 'ls -l conf').out, /^lrwxrwxrwx .* conf -> \/etc\/nginx\/sites-available\n$/);
+    assert.match(run(sh, 'ls -l conf/').out, /^total 4\n-rw-r--r-- .* shop\n$/);
+    assert.equal(run(sh, 'ls conf').out, 'shop\n');
+  });
+
+  it('аргументы — по имени; total у папки из одних ссылок — 0; ссылок у папки — 2+', () => {
+    const sh = shell(SITES);
+    assert.equal(run(sh, 'ls /srv/shop/data/a.txt /srv/shop/backup/b.txt').out,
+      '/srv/shop/backup/b.txt  /srv/shop/data/a.txt\n');
+    assert.match(run(sh, 'ls -l sites-enabled').out, /^total 0\n/);
+    const dirs = run(sh, 'ls -ld /srv/shop /srv/shop/data').out.split('\n');
+    assert.match(dirs[0], /^drwxr-xr-x 4 /);   // . + имя в /srv + «..» в data и backup
+    assert.match(dirs[1], /^drwxr-xr-x 2 /);
+  });
+});
+
 describe('перенаправления и конвейеры', () => {
   it('>, >>, 2>, 2>&1, /dev/null, <', () => {
     const sh = shell(SHOP);

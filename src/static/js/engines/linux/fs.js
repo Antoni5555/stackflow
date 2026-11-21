@@ -145,6 +145,16 @@ export class VirtualFS {
       });
       parent.children.set(basename(path), file);
     }
+    // links — символические ссылки {путь: цель} или {путь: {target, owner}}; владелец по
+    // умолчанию — как у папки (в /etc/nginx/sites-enabled — root). Цели может не быть
+    for (const [path, value] of Object.entries(setup.links ?? {})) {
+      const spec = typeof value === 'string' ? { target: value } : value ?? {};
+      const parent = fs.mkdirAs(dirname(path));
+      const { mode, ...own } = props(spec);   // права ссылки всегда lrwxrwxrwx
+      parent.children.set(basename(path), makeNode('link', {
+        target: spec.target, owner: parent.owner, group: parent.group, mode: 0o777, ...own,
+      }));
+    }
     return fs;
   }
 

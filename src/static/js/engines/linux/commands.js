@@ -180,21 +180,34 @@ const ls = {
     const parsed = options('ls', ctx.args, { flags: 'lahR1d' });
     if (parsed.error) return parsed.error;
     const { opts } = parsed;
-    const paths = parsed.operands.length ? parsed.operands : ['.'];
+    // как GNU ls: файлы и папки из аргументов — по имени, а не в порядке набора
+    const paths = parsed.operands.length ? sortNames([...parsed.operands]) : ['.'];
     const files = [];
     const dirs = [];
     let err = '';
     let code = 0;
     for (const path of paths) {
+      let node;
       try {
-        const node = ctx.fs.lookup(ctx.sh.resolve(path));
-        if (node.type === 'dir' && !opts.d) dirs.push(path);
-        else files.push([path, lstat(ctx, path)]);
+        node = lstat(ctx, path);
       } catch (e) {
         if (!(e instanceof FsError)) throw e;
         err += `ls: cannot access '${path}': ${e.message}\n`;
         code = 2;
+        continue;
       }
+      // Ссылку из аргументов ls -l и -d показывает саму (shop -> …), без них — то, куда
+      // она ведёт; «ссылка/» — всегда цель. Битая ссылка — просто строка ссылки
+      const showLink = (opts.l || opts.d) && !path.endsWith('/');
+      if (node.type === 'link' && !showLink) {
+        try {
+          node = ctx.fs.lookup(ctx.sh.resolve(path));
+        } catch (e) {
+          if (!(e instanceof FsError)) throw e;
+        }
+      }
+      if (node.type === 'dir' && !opts.d) dirs.push(path);
+      else files.push([path, node.type === 'dir' ? node : lstat(ctx, path)]);
     }
     const blocks = [];
     if (files.length) blocks.push(formatEntries(ctx, files, opts, null));
@@ -232,6 +245,12 @@ const ls = {
   },
 };
 
+/** Число ссылок, как в ext4: у папки — 2 («.» и имя в родителе) + по «..» в каждой подпапке. */
+function linkCount(node) {
+  if (node.type !== 'dir') return node.nlink ?? 1;
+  return 2 + [...node.children.values()].filter((child) => child.type === 'dir').length;
+}
+
 function formatEntries(ctx, entries, opts, dirPath) {
   if (!entries.length) return dirPath && opts.l ? 'total 0\n' : '';
   if (!opts.l) {
@@ -242,7 +261,7 @@ function formatEntries(ctx, entries, opts, dirPath) {
   const rows = entries.map(([name, node]) => {
     const size = VirtualFS.sizeOf(node);
     return [
-      modeString(node), String(node.nlink ?? 1), node.owner, node.group,
+      modeString(node), String(linkCount(node)), node.owner, node.group,
       opts.h ? humanSize(size, { small: true }) : String(size),
       formatDate(node.mtime),
       node.type === 'link' ? `${name} -> ${node.target}` : name,
@@ -253,7 +272,9 @@ function formatEntries(ctx, entries, opts, dirPath) {
     row[0], row[1].padStart(width(1)), row[2].padEnd(width(2)), row[3].padEnd(width(3)),
     row[4].padStart(width(4)), row[5], row[6],
   ].join(' '));
-  const total = entries.reduce((sum, [, node]) => sum + Math.ceil(VirtualFS.sizeOf(node) / 4096) * 4, 0);
+  // короткая ссылка хранится в самом inode — блоков у неё нет, как в ext4
+  const blocks = (node) => (node.type === 'link' ? 0 : Math.ceil(VirtualFS.sizeOf(node) / 4096) * 4);
+  const total = entries.reduce((sum, [, node]) => sum + blocks(node), 0);
   const header = dirPath !== null ? `total ${opts.h ? humanSize(total * 1024) : total}\n` : '';
   return header + joinLines(text);
 }

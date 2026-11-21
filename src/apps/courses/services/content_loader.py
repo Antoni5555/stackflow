@@ -259,7 +259,8 @@ STATE_FIELDS = (['setup', 'check', 'solution'], [])
 STATE_PATH_CHECKS = {'exists', 'contains', 'not_contains', 'mode', 'owner', 'link_to'}
 # Git (курс с движком git): ключи setup и правила; «есть / нет» — через exists: false
 STATE_SETUP_KEYS = {
-    'cwd', 'files', 'dirs', 'repo', 'commits', 'head', 'remote', 'venv', 'gitconfig',
+    'cwd', 'files', 'dirs', 'links', 'repo', 'commits', 'head', 'remote', 'venv',
+    'gitconfig',
 }
 GIT_RULES = {
     'branch': {'exists'}, 'tag': {'exists'},
@@ -305,6 +306,12 @@ def validate_state(spec, path):
         raise ContentError(path, f'setup: неизвестные ключи {sorted(unknown)}')
     if not isinstance(setup.get('files', {}), dict):
         raise ContentError(path, 'setup.files — словарь {путь: текст или настройки}')
+    links = setup.get('links', {})
+    if not isinstance(links, dict) or not all(
+        isinstance(target, str) or (isinstance(target, dict) and 'target' in target)
+        for target in links.values()
+    ):
+        raise ContentError(path, 'setup.links — словарь {путь ссылки: цель}')
     if not isinstance(spec['solution'], str):
         raise ContentError(path, 'solution — команды по одной на строку (текст)')
     for number, rule in enumerate(spec['check']['expect'], start=1):
