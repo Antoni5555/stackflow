@@ -1,0 +1,46 @@
+title: "Список логов без шума"
+type: exercise
+difficulty: 2
+pitfall: "Ошибки доступа — поток 2: прячут 2> /dev/null; результат — > файл."
+statement: |
+  Найдите на всём сервере (`find /`) файлы `*.log` и сохраните список в `/home/shop/logs.txt`. Сообщений `Permission denied` в файле быть не должно — и на экране тоже: спрячьте их.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /var/log/shop/app.log:
+      content: |
+        2026-11-21 09:46:06 ERROR Internal Server Error: /checkout/
+      owner: root
+    /var/log/nginx/access.log:
+      content: ""
+      owner: root
+    /var/log/nginx/error.log:
+      content: ""
+      owner: root
+    /etc/nginx/nginx.conf:
+      content: |
+        user www-data;
+      owner: root
+check:
+  type: state
+  expect:
+    - path: /home/shop/logs.txt
+      contains: '^/var/log/shop/app\.log$'
+      fail: "В logs.txt нет /var/log/shop/app.log. Результат find — в файл через >."
+    - path: /home/shop/logs.txt
+      contains: '^/var/log/nginx/access\.log$'
+      fail: "В logs.txt нет /var/log/nginx/access.log — ищите от корня: find / -name \"*.log\"."
+    - path: /home/shop/logs.txt
+      not_contains: 'Permission denied'
+      fail: "В logs.txt попали ошибки — 2>&1 их добавил. Ошибки нужно не сохранить, а спрятать: 2> /dev/null."
+    - output_matches: '^(?![\s\S]*\.log)'
+      fail: "Список вывелся на экран — сохраните его в файл (> ~/logs.txt)."
+solution: |
+  find / -name "*.log" 2> /dev/null > ~/logs.txt; echo $?
+hints:
+  - "У команды два потока: результат и ошибки. Каждый можно направить отдельно."
+  - "`find / -name \"*.log\" 2> /dev/null > ~/logs.txt`."
+explanation: |
+  Найденные пути идут в stdout — `> ~/logs.txt`, сообщения `find: ‘/root’: Permission denied` — в stderr — `2> /dev/null`, где исчезают. Эти два перенаправления про разные потоки, поэтому их порядок не важен. Код выхода `find` всё равно 1 — его показывает `echo $?` в эталоне: ошибки были, их просто не видно.

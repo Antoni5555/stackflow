@@ -1,0 +1,42 @@
+title: "Пометки TODO в коде"
+type: exercise
+difficulty: 2
+pitfall: "Поиск по всем файлам папки — grep -r, с номерами строк — -n."
+statement: |
+  Соберите в `/home/shop/todo.txt` все строки с `TODO` во всех файлах `/srv/shop` — с именем файла и номером строки (`путь:номер:строка`).
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/shop/views.py: |
+      from django.shortcuts import render
+
+
+      def checkout(request):
+          # TODO: проверить остаток на складе
+          order = create_order(request)
+          return render(request, "shop/done.html")
+    /srv/shop/shop/models.py: |
+      from django.db import models
+
+
+      class Product(models.Model):
+          # TODO: индекс по цене
+          name = models.CharField(max_length=200)
+    /srv/shop/shop/settings.py: |
+      DEBUG = False
+check:
+  type: state
+  expect:
+    - path: /home/shop/todo.txt
+      contains: 'views\.py:5:.*TODO: проверить остаток'
+      fail: "В todo.txt нет строки из views.py с номером 5. Нужен поиск по папке (-r) с номерами строк (-n)."
+    - path: /home/shop/todo.txt
+      contains: 'models\.py:5:.*TODO: индекс по цене'
+      fail: "В todo.txt нет строки из models.py с номером 5."
+solution: |
+  grep -rn TODO /srv/shop > ~/todo.txt
+hints:
+  - "Для папки `grep` нужен ключ обхода, а для номеров строк — ещё один."
+  - "`grep -rn TODO /srv/shop > ~/todo.txt`."
+explanation: |
+  `-r` обходит папку со всеми вложенными, `-n` добавляет номер строки: `/srv/shop/shop/views.py:5:    # TODO: …`. По такому адресу место открывают сразу: `nano +5 /srv/shop/shop/views.py`. Без `-r` — `grep: /srv/shop: Is a directory`.

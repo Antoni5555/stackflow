@@ -1,0 +1,15 @@
+title: "Куда распакуется архив"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "tar -x распаковывает в текущую папку по путям из архива; в другую — -C."
+statement: |
+  Архив `~/backups/media.tar.gz` создан командой `tar -czf ~/backups/media.tar.gz media` из `/srv/shop`. Вы находитесь в `/tmp` и выполняете `tar -xzf ~/backups/media.tar.gz`. Где окажутся фото?
+options:
+  - "В `/srv/shop/media` — поверх текущих"
+  - "В `/tmp/media/products/…`"
+  - "В `~/backups/media/…`"
+  - "Нигде — без `-C` tar не распаковывает"
+answer: [1]
+explanation: |
+  Пути в архиве относительные — `media/products/…`, и `tar -x` создаёт их от текущей папки: `/tmp/media/products/…`. Так безопасно проверить бэкап, не задев настоящие фото. Распаковать в другую папку — `-C папка`; перед распаковкой поверх рабочих файлов смотрят содержимое `tar -tzf`.

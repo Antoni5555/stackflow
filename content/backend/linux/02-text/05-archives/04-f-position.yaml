@@ -1,0 +1,15 @@
+title: "Порядок ключей tar"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "У tar f — последним: сразу за ним идёт имя архива."
+statement: |
+  Какая команда создаст сжатый архив `media.tar.gz` из папки `media`?
+options:
+  - "`tar -cfz media.tar.gz media`"
+  - "`tar -czf media.tar.gz media`"
+  - "`tar -xzf media.tar.gz media`"
+  - "`tar -czf media media.tar.gz`"
+answer: [1]
+explanation: |
+  `c` — создать, `z` — сжать, `f` — имя архива, и оно идёт сразу после `f`. В `-cfz` за `f` стоит `z` — архивом стал бы файл `z`. `-x` распаковывает, а в последнем варианте архивом названа `media`, а упаковывается несуществующий `media.tar.gz`.

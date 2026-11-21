@@ -1,0 +1,53 @@
+- title: Города из заказов
+  text: |
+    Выведите только второе поле (город) файла заказов; разделитель — запятая. Файл:
+    ```
+    data/orders.csv
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    cut -d , -f 2 data/orders.csv
+    ```
+    Результат:
+    ```
+    city
+    Moscow
+    Kazan
+    Moscow
+    Omsk
+    ```
+- title: Заказы по городам
+  text: |
+    Посчитайте заказы по городам, самые частые — первыми, без строки заголовка. Файл:
+    ```
+    data/orders.csv
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    cut -d , -f 2 data/orders.csv | grep -v city | sort | uniq -c | sort -n -r
+    ```
+    Результат:
+    ```
+          2 Moscow
+          1 Omsk
+          1 Kazan
+    ```
+    `grep -v city` убрал заголовок, дальше — рецепт топ-N.
+- title: Самый дорогой заказ
+  text: |
+    Найдите самую большую сумму заказа (третье поле). Файл:
+    ```
+    data/orders.csv
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    cut -d , -f 3 data/orders.csv | grep -v total | sort -n -r | head -n 1
+    ```
+    Результат:
+    ```
+    1200
+    ```
+    Без `-n` первым стал бы `90`: как текст `9` больше `1`.

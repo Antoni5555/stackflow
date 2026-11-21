@@ -1,0 +1,51 @@
+- title: Ошибку — в файл
+  text: |
+    Сохраните сообщение об ошибке команды в файл `err.txt` и прочитайте его. Команда:
+    ```
+    ls nope
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ls nope 2> err.txt
+    cat err.txt
+    ```
+    Результат:
+    ```
+    ls: cannot access 'nope': No such file or directory
+    ```
+    На экране ничего — ошибка ушла в файл.
+- title: Ошибки лога — в файл
+  text: |
+    Сохраните строки с ошибками лога в `errors.txt`. Лог:
+    ```
+    logs/app.log
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    grep ERROR logs/app.log > errors.txt
+    cat errors.txt
+    ```
+    Результат:
+    ```
+    ERROR db connection lost
+    ERROR timeout /api/orders/
+    ```
+- title: Только код выхода
+  text: |
+    Узнайте, есть ли файл, не печатая ни результата, ни ошибки, — только код выхода. Файл:
+    ```
+    nope
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ls nope > /dev/null 2>&1
+    echo $?
+    ```
+    Результат:
+    ```
+    2
+    ```
+    Оба потока — в `/dev/null`. Код 2 у `ls` — «файла нет»; так проверяют в скриптах.

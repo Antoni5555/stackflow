@@ -1,0 +1,34 @@
+title: "Бэкап фото"
+type: exercise
+difficulty: 2
+pitfall: "Архив со сжатием — tar -czf имя папка; f последним, сразу за ним имя архива."
+statement: |
+  Упакуйте папку `/srv/shop/media` в сжатый архив `/home/shop/backups/media.tar.gz` (папки `backups` пока нет). Пути внутри архива должны начинаться с `media/` — архивируйте из `/srv/shop`. Исходные фото не трогайте.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/media/products/mouse.jpg: {size: 240K, mtime: 30}
+    /srv/shop/media/products/laptop-air.jpg: {size: 6M, mtime: 3}
+    /srv/shop/media/products/laptop-pro.png: {size: 8M, mtime: 40}
+    /srv/shop/media/products/keyboard.jpg: {size: 900K, mtime: 2}
+    /srv/shop/media/products/headphones.JPG: {size: 5500K, mtime: 1}
+check:
+  type: state
+  expect:
+    - path: /home/shop/backups/media.tar.gz
+      exists: true
+      fail: "Архива /home/shop/backups/media.tar.gz нет. Создайте папку backups и выполните tar -czf из /srv/shop."
+    - path: /srv/shop/media/products/laptop-air.jpg
+      exists: true
+      fail: "Исходные фото пропали — tar только упаковывает копию."
+solution: |
+  mkdir ~/backups
+  cd /srv/shop
+  tar -czf ~/backups/media.tar.gz media
+hints:
+  - "Ключи: `c` — создать, `z` — сжать, `f` — имя архива (последним). Пути в архиве — как вы их передали."
+  - "`mkdir ~/backups`, `cd /srv/shop`, `tar -czf ~/backups/media.tar.gz media`."
+explanation: |
+  Из `/srv/shop` с относительным путём `media` архив хранит `media/products/…` — при распаковке появится папка `media`. С абсолютным `/srv/shop/media` tar предупредил бы `Removing leading '/'` и сохранил `srv/shop/media/…`. Проверить содержимое — `tar -tzf ~/backups/media.tar.gz`.

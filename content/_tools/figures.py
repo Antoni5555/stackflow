@@ -3609,6 +3609,108 @@ def links_fig():
     f.text(20, 290, "Выключить сайт — rm sites-enabled/shop: удаляется только ссылка, настройки остаются.", "s")
     f.save(out(LX1 / "04-links" / "img" / "links.svg"))
 
+
+LX2 = ROOT / "linux" / "02-text"
+
+
+def find_filters():
+    f = Figure(880, 330, "find: каждое условие сужает список")
+    files = [("headphones.JPG", "5.4M"), ("keyboard.jpg", "900K"), ("laptop-air.jpg", "6M"),
+             ("laptop-pro.png", "8M"), ("mouse.jpg", "240K"), ("tmp/upload-7f3a.part", "12M")]
+    cols = [("find media -type f", {0, 1, 2, 3, 4, 5}), ("… -size +5M", {0, 2, 3, 5}),
+            ("… -name \"*.jpg\"", {2})]
+    for c, (title, keep) in enumerate(cols):
+        x = 20 + c * 290
+        f.text(x, 28, title, "cs")
+        for i, (name, size) in enumerate(files):
+            y = 44 + i * 40
+            if i in keep:
+                f.box(x, y, 270, 32, f"{name}  {size}", "acc" if c == 2 else "box2", "onacc" if c == 2 else "cs")
+            else:
+                f.box(x, y, 270, 32, "", "box")
+        if c < 2:
+            f.arrow(f"M{x + 272} 160H{x + 288}")
+    f.text(20, 316, "headphones.JPG отсеян регистром: «*.jpg» не совпадает с .JPG — для этого -iname.", "s")
+    f.save(out(LX2 / "01-find" / "img" / "find-filters.svg"))
+
+
+def grep_keys():
+    f = Figure(880, 330, "Ключи grep на одном логе")
+    rows = [("grep ERROR app.log", "4 строки с ERROR"),
+            ("grep -c ERROR app.log", "4"),
+            ("grep -n checkout app.log", "7:…  13:…  19:…  21:…"),
+            ("grep -v INFO app.log", "2 WARNING + 4 ERROR"),
+            ("grep \"^2026-11-21 09:4\" app.log", "записи 09:40–09:49"),
+            ("grep -rn TODO /srv/shop", "models.py:5:…  views.py:5:…")]
+    for i, (cmd, res) in enumerate(rows):
+        y = 20 + i * 48
+        f.box(20, y, 380, 38, cmd, "box2", "cs")
+        f.arrow(f"M400 {y + 19}H436")
+        f.box(440, y, 420, 38, res, "ok", "cs")
+    f.save(out(LX2 / "02-grep" / "img" / "grep-keys.svg"))
+
+
+def streams():
+    f = Figure(880, 330, "У команды два потока: stdout (1) — результат, stderr (2) — ошибки")
+    f.box(20, 120, 230, 60, "find / -name \"*.log\"", "box2", "cs")
+    f.arrow("M250 140H296"); f.text(262, 132, "1", "cs")
+    f.arrow("M250 165H296"); f.text(262, 182, "2", "cs")
+    rows = [("команда", "экран", "экран", "box"),
+            ("> logs.txt", "файл", "экран", "box"),
+            ("2> /dev/null", "экран", "исчезает", "box"),
+            ("> all.txt 2>&1", "файл", "тот же файл", "ok"),
+            ("2>&1 > out.txt", "файл", "экран (!)", "err")]
+    f.text(310, 26, "запись", "h"); f.text(520, 26, "stdout (1)", "h"); f.text(680, 26, "stderr (2)", "h")
+    for i, (r, o, e, cls) in enumerate(rows):
+        y = 40 + i * 52
+        f.box(310, y, 190, 40, r, cls, "errt" if cls == "err" else "cs")
+        f.text(520, y + 25, o, "t"); f.text(680, y + 25, e, "errt" if cls == "err" else "t")
+    f.text(20, 316, "Перенаправления выполняются слева направо: 2>&1 копирует то, куда stdout идёт в этот момент.", "s")
+    f.save(out(LX2 / "03-redirect" / "img" / "streams.svg"))
+
+
+def pipeline_fig():
+    f = Figure(880, 330, "Топ IP: что делает каждый шаг конвейера")
+    steps = [("cut -d \" \" -f 1", ["203.0.113.7", "203.0.113.7", "198.51.100.23", "…24 строки"]),
+             ("sort", ["192.0.2.10", "192.0.2.10", "192.0.2.10", "198.51.100.23 …"]),
+             ("uniq -c", ["3 192.0.2.10", "6 198.51.100.23", "2 198.51.100.99", "9 203.0.113.7", "4 93.184.216.34"]),
+             ("sort -n -r | head -n 3", ["9 203.0.113.7", "6 198.51.100.23", "4 93.184.216.34"])]
+    for c, (cmd, lines) in enumerate(steps):
+        x = 20 + c * 215
+        f.box(x, 20, 200, 36, cmd, "acc" if c == 3 else "box2", "onacc" if c == 3 else "cs")
+        f.box(x, 70, 200, 210, "", "box")
+        for i, l in enumerate(lines):
+            f.text(x + 12, 96 + i * 24, l, "cs")
+        if c < 3:
+            f.arrow(f"M{x + 200} 38H{x + 213}")
+    f.text(20, 310, "uniq -c считает только соседние строки — поэтому перед ним sort.", "s")
+    f.save(out(LX2 / "04-pipes" / "img" / "pipeline.svg"))
+
+
+def tar_flow():
+    f = Figure(880, 330, "tar упаковывает папку в один файл, gzip сжимает один файл")
+    f.box(20, 20, 230, 120, "", "box2")
+    f.text(36, 46, "/srv/shop/media", "cs")
+    f.text(52, 70, "products/  (5 фото)", "cs")
+    f.text(52, 94, "tmp/upload-7f3a.part", "cs")
+    f.arrow("M250 80H296")
+    f.text(262, 70, "", "cs")
+    f.box(300, 50, 300, 60, "~/backups/media-2026-11-21.tar.gz", "acc", "onacc")
+    f.text(300, 40, "tar -czf … media  (из /srv/shop)", "cs")
+    f.arrow("M600 80H646")
+    f.box(650, 20, 210, 120, "", "box")
+    f.text(666, 46, "cd /tmp; tar -xzf …", "cs")
+    f.text(666, 70, "/tmp/media/products/…", "cs")
+    f.text(666, 94, "пути — от текущей папки", "s")
+    f.text(300, 140, "tar -tzf … — список, без распаковки", "cs")
+    f.box(20, 200, 200, 40, "app.log", "box2", "cs")
+    f.arrow("M220 220H266"); f.text(228, 210, "gzip", "cs")
+    f.box(270, 200, 200, 40, "app.log.gz", "ok", "cs")
+    f.arrow("M470 220H516"); f.text(476, 210, "gunzip", "cs")
+    f.box(520, 200, 200, 40, "app.log", "box2", "cs")
+    f.text(20, 290, "gzip заменяет файл сжатым; текст ужимается в разы, фото JPG/PNG — почти нет.", "s")
+    f.save(out(LX2 / "05-archives" / "img" / "tar-flow.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -3656,6 +3758,7 @@ if __name__ == "__main__":
                   driver_flow, injection, with_connection,
                   command_parts, path_tree, cp_mv, argv, venv, requirements,
                   commits_chain, three_areas, diff_areas, gitignore, branches, conflict, push_pull,
-                  fhs, head_tail, redirect_write, links_fig):
+                  fhs, head_tail, redirect_write, links_fig,
+                  find_filters, grep_keys, streams, pipeline_fig, tar_flow):
         build()
     print("ok")

@@ -1,0 +1,31 @@
+title: "Старые недокачанные загрузки"
+type: exercise
+difficulty: 2
+pitfall: "Возраст файла — -mtime +7 (старше недели); условия find складываются."
+statement: |
+  В `/srv/shop/media/tmp` копятся недокачанные загрузки `*.part`. Выведите (последней командой) только те, что не менялись больше 7 дней — их можно удалять. Свежие загрузки ещё могут докачаться.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/media/tmp/upload-7f3a.part: {size: 12M, mtime: 20}
+    /srv/shop/media/tmp/upload-91bc.part: {size: 3M, mtime: 9}
+    /srv/shop/media/tmp/upload-c044.part: {size: 7M, mtime: 1}
+    /srv/shop/media/tmp/readme.txt: {content: "Временные загрузки\n", mtime: 60}
+check:
+  type: state
+  expect:
+    - output_matches: 'upload-7f3a\.part'
+      fail: "В выводе нет upload-7f3a.part (не менялся 20 дней). Нужен find с -mtime +7."
+    - output_matches: 'upload-91bc\.part'
+      fail: "В выводе нет upload-91bc.part (9 дней) — он тоже старше недели."
+    - output_matches: '^(?![\s\S]*upload-c044)'
+      fail: "В выводе свежая загрузка upload-c044.part (1 день) — она ещё может докачаться. -mtime +7, а не -7."
+    - output_matches: '^(?![\s\S]*readme)'
+      fail: "В выводе readme.txt — нужны только файлы *.part (-name \"*.part\")."
+solution: |
+  find media/tmp -name "*.part" -mtime +7
+hints:
+  - "Нужно два условия сразу: имя по шаблону и возраст."
+  - "`find media/tmp -name \"*.part\" -mtime +7`."
+explanation: |
+  `-mtime +7` — изменён больше 7 дней назад, `-mtime -7` — наоборот, свежее недели. Условия `find` объединяются «и»: только `.part` и только старые. Сначала смотрят список, потом удаляют — на настоящем сервере `find … -delete` в конце той же команды.

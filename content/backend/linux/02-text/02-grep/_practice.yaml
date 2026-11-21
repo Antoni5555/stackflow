@@ -1,0 +1,56 @@
+- title: Ошибки с номерами строк
+  text: |
+    Посчитайте ошибки в логе и выведите их с номерами строк. Лог:
+    ```
+    logs/app.log
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    grep -c ERROR logs/app.log
+    grep -n ERROR logs/app.log
+    ```
+    Результат:
+    ```
+    2
+    3:ERROR db connection lost
+    5:ERROR timeout /api/orders/
+    ```
+- title: Заказы не из Москвы
+  text: |
+    Выведите строки файла заказов, где город — не Москва (без учёта регистра в первой команде — все московские). Файл:
+    ```
+    data/orders.csv
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    grep -i moscow data/orders.csv
+    grep -v Moscow data/orders.csv
+    ```
+    Результат:
+    ```
+    1,Moscow,500
+    3,Moscow,90
+    id,city,total
+    2,Kazan,1200
+    4,Omsk,750
+    ```
+    `-v` оставил и заголовок `id,city,total` — в нём тоже нет `Moscow`.
+- title: Где упоминается домен
+  text: |
+    Найдите домен во всех файлах проекта и настроек Nginx, спрятав ошибки доступа. Домен:
+    ```
+    stack-flow.ru
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    grep -r stack-flow.ru /srv/shop /etc/nginx 2> /dev/null
+    ```
+    Результат:
+    ```
+    /srv/shop/config/settings.ini:ALLOWED_HOSTS=stack-flow.ru
+    /etc/nginx/sites-available/shop.conf:    server_name stack-flow.ru;
+    ```
+    Меняете домен — меняете в обоих местах. `grep -r` принимает несколько папок сразу.

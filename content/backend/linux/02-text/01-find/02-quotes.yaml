@@ -1,0 +1,15 @@
+title: "Шаблон в кавычках"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Шаблон -name берут в кавычки: без них * раскрывает оболочка по файлам текущей папки."
+statement: |
+  Из папки `/srv/shop/media/products`, где лежат `keyboard.jpg`, `laptop-air.jpg` и `mouse.jpg`, выполнили `find . -name *.jpg` и получили ошибку. Как исправить?
+options:
+  - "`find . -name \"*.jpg\"` — шаблон в кавычках"
+  - "`find . -iname *.jpg`"
+  - "`find -name *.jpg .`"
+  - "`find . -type f *.jpg`"
+answer: [0]
+explanation: |
+  Без кавычек оболочка до запуска `find` превращает `*.jpg` в `keyboard.jpg laptop-air.jpg mouse.jpg`, и `find` получает лишние слова: `find: paths must precede expression`. В кавычках шаблон доходит до `find` как есть. `-iname` с той же проблемой без кавычек не спасёт.

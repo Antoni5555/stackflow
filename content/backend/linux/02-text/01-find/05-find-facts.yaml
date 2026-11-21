@@ -1,0 +1,16 @@
+title: "Что найдёт find"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "-name учитывает регистр, -type d — папки, -mtime -1 — за последние сутки."
+statement: |
+  Какие утверждения о `find` верны?
+options:
+  - "`find media -name \"*.jpg\"` найдёт `headphones.JPG`"
+  - "`find media -type d` выведет только папки"
+  - "`find /var/log -name \"*.log\" -mtime -1` — логи, изменённые за последние сутки"
+  - "`find media -size 5M` найдёт все файлы больше 5 МБ"
+  - "`find / -name app.log` от обычного пользователя напечатает и найденное, и `Permission denied` для закрытых папок"
+answer: [1, 2, 4]
+explanation: |
+  `-name` учитывает регистр — `JPG` найдёт `-iname`. `-size 5M` без знака — «ровно 5 МБ», больше — `+5M`. `-type d` — папки, `-mtime -1` — моложе суток. Ошибки доступа идут в stderr и не мешают результату; спрятать их — `2> /dev/null`.

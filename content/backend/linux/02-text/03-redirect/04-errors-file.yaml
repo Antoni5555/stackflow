@@ -1,0 +1,43 @@
+title: "Ошибки отдельно"
+type: exercise
+difficulty: 2
+pitfall: "Только ошибки в файл — 2> файл; результат при этом остаётся на экране."
+statement: |
+  Выполните `find / -name nginx.conf`, сохранив **только сообщения об ошибках** в `/home/shop/find-errors.txt`. Найденный путь должен остаться на экране.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /var/log/shop/app.log:
+      content: |
+        2026-11-21 09:46:06 ERROR Internal Server Error: /checkout/
+      owner: root
+    /var/log/nginx/access.log:
+      content: ""
+      owner: root
+    /var/log/nginx/error.log:
+      content: ""
+      owner: root
+    /etc/nginx/nginx.conf:
+      content: |
+        user www-data;
+      owner: root
+check:
+  type: state
+  expect:
+    - path: /home/shop/find-errors.txt
+      contains: 'Permission denied'
+      fail: "В find-errors.txt нет сообщений об ошибках. Поток ошибок — 2: 2> ~/find-errors.txt."
+    - path: /home/shop/find-errors.txt
+      not_contains: 'nginx\.conf'
+      fail: "В find-errors.txt попал результат поиска — в файл нужен только поток 2."
+    - output_matches: '^/etc/nginx/nginx\.conf$'
+      fail: "На экран должен вывестись найденный путь /etc/nginx/nginx.conf (поиск — find / -name nginx.conf)."
+solution: |
+  find / -name nginx.conf 2> ~/find-errors.txt; echo $?
+hints:
+  - "Результат — поток 1, ошибки — поток 2. Какой нужно направить в файл?"
+  - "`find / -name nginx.conf 2> ~/find-errors.txt`."
+explanation: |
+  `2>` перенаправляет только stderr: в файле — `find: ‘/root’: Permission denied`, а `/etc/nginx/nginx.conf` печатается на экран. Так разбирают, почему скрипт что-то не нашёл: результат смотрят сразу, а ошибки — потом в файле. `echo $?` в эталоне показывает код выхода `find` — 1, раз были ошибки доступа.

@@ -1,0 +1,57 @@
+- title: Архив настроек
+  text: |
+    Упакуйте папку настроек проекта в `backup/config.tar.gz` и посмотрите, что внутри. Папка:
+    ```
+    config
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    tar -czf backup/config.tar.gz config
+    tar -tzf backup/config.tar.gz
+    ```
+    Результат:
+    ```
+    config/
+    config/settings.ini
+    ```
+- title: Проверить бэкап
+  text: |
+    Распакуйте архив во временную папку и прочитайте файл из него. Архив:
+    ```
+    /srv/shop/backup/config.tar.gz
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    cd /tmp
+    tar -xzf /srv/shop/backup/config.tar.gz
+    cat /tmp/config/settings.ini
+    ```
+    Результат:
+    ```
+    DEBUG=False
+    ALLOWED_HOSTS=stack-flow.ru
+    ```
+    Архив распаковался в текущую папку — `/tmp/config`, рабочие настройки не задеты.
+- title: Сжать и вернуть лог
+  text: |
+    Скопируйте лог во `/tmp`, сожмите его, посмотрите папку и распакуйте обратно. Лог:
+    ```
+    /srv/shop/logs/app.log
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    cp /srv/shop/logs/app.log /tmp/app.log
+    gzip /tmp/app.log
+    ls /tmp
+    gunzip /tmp/app.log.gz
+    head -n 1 /tmp/app.log
+    ```
+    Результат (если в `/tmp` уже распакован `config` из прошлого упражнения):
+    ```
+    app.log.gz  config
+    INFO  start server
+    ```
+    `gzip` заменил `app.log` на `app.log.gz`, `gunzip` вернул как было.

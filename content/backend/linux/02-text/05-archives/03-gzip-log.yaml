@@ -1,0 +1,37 @@
+title: "Сжать старый лог"
+type: exercise
+difficulty: 2
+pitfall: "gzip заменяет файл сжатым .gz; в папке root — через sudo."
+statement: |
+  Вчерашний лог `/var/log/shop/app.log.1` занимает место. Сожмите его в `app.log.1.gz` в той же папке. Текущий `app.log` не трогайте.
+setup:
+  cwd: /home/shop
+  files:
+    /var/log/shop/app.log:
+      content: |
+        2026-11-21 09:10:00 INFO Booting worker with pid: 812
+      owner: root
+    /var/log/shop/app.log.1:
+      content: |
+        2026-11-20 23:58:10 INFO GET /catalog/ 200
+        2026-11-20 23:59:41 INFO GET /cart/ 200
+      owner: root
+check:
+  type: state
+  expect:
+    - path: /var/log/shop/app.log.1.gz
+      exists: true
+      fail: "Нет /var/log/shop/app.log.1.gz. Папка принадлежит root — gzip через sudo."
+    - path: /var/log/shop/app.log.1
+      exists: false
+      fail: "Несжатый app.log.1 остался — gzip заменяет файл архивом, копию оставлять не нужно."
+    - path: /var/log/shop/app.log
+      exists: true
+      fail: "Текущий app.log пропал — сжимать нужно только app.log.1."
+solution: |
+  sudo gzip /var/log/shop/app.log.1
+hints:
+  - "Какая команда сжимает один файл? В чью папку она пишет?"
+  - "`sudo gzip /var/log/shop/app.log.1`."
+explanation: |
+  `gzip` создаёт `app.log.1.gz` и удаляет исходник. Без `sudo` — `Permission denied`: писать в `/var/log/shop` может только `root`. На настоящих серверах это делает `logrotate` по расписанию: переименовывает `app.log` в `app.log.1`, а старые сжимает. Прочитать сжатый лог без распаковки — `zcat` или `zless`.

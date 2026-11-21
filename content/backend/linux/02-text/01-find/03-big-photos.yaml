@@ -1,0 +1,38 @@
+title: "Тяжёлые фото"
+type: exercise
+difficulty: 2
+pitfall: "Размер в find — -size +5M (больше 5 МБ), только файлы — -type f; список сохраняют перенаправлением в файл."
+statement: |
+  Сохраните в файл `/home/shop/big.txt` список файлов в `/srv/shop/media` больше 5 МБ — по одному пути на строку.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/media/products/mouse.jpg: {size: 240K, mtime: 30}
+    /srv/shop/media/products/laptop-air.jpg: {size: 6M, mtime: 3}
+    /srv/shop/media/products/laptop-pro.png: {size: 8M, mtime: 40}
+    /srv/shop/media/products/keyboard.jpg: {size: 900K, mtime: 2}
+    /srv/shop/media/products/headphones.JPG: {size: 5500K, mtime: 1}
+check:
+  type: state
+  expect:
+    - path: /home/shop/big.txt
+      contains: 'laptop-air\.jpg'
+      fail: "В big.txt нет laptop-air.jpg (6 МБ). Нужен find по размеру: -size +5M, а вывод — в файл через >."
+    - path: /home/shop/big.txt
+      contains: 'laptop-pro\.png'
+      fail: "В big.txt нет laptop-pro.png (8 МБ) — ищите по размеру, а не по имени *.jpg."
+    - path: /home/shop/big.txt
+      contains: 'headphones\.JPG'
+      fail: "В big.txt нет headphones.JPG (5,4 МБ) — он тоже больше 5 МБ."
+    - path: /home/shop/big.txt
+      not_contains: 'mouse\.jpg|keyboard\.jpg'
+      fail: "В big.txt попали маленькие файлы (mouse.jpg, keyboard.jpg) — нужен -size +5M, со знаком плюс."
+solution: |
+  find /srv/shop/media -type f -size +5M > ~/big.txt
+hints:
+  - "Какое условие `find` отбирает по размеру и как сказать «больше»?"
+  - "`find /srv/shop/media -type f -size +5M > ~/big.txt`."
+explanation: |
+  `-size +5M` — больше 5 МБ, без плюса было бы «ровно 5». Под шаблон `*.jpg` не попали бы `laptop-pro.png` и `headphones.JPG` — поэтому ищем по размеру, а не по имени. `>` сохраняет список в файл вместо экрана.

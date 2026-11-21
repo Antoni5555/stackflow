@@ -1,0 +1,15 @@
+title: "Где окажутся ошибки"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "2>&1 копирует текущее назначение stdout; если оно ещё экран — ошибки останутся на экране."
+statement: |
+  Команда: `ls manage.py nope 2>&1 > out.txt` (файла `nope` нет). Где окажется сообщение `ls: cannot access 'nope': No such file or directory`?
+options:
+  - "В `out.txt` вместе с `manage.py`"
+  - "На экране, а в `out.txt` — только `manage.py`"
+  - "Нигде — `2>&1` его отбросит"
+  - "В файле `1`"
+answer: [1]
+explanation: |
+  Перенаправления выполняются слева направо. `2>&1` — «stderr туда же, куда сейчас stdout», а сейчас stdout — экран. Потом `> out.txt` меняет только stdout. Итог: ошибка на экране, `manage.py` в файле — так и вышло в уроке на настоящем Ubuntu. Чтобы в файл попало всё — `> out.txt 2>&1`.

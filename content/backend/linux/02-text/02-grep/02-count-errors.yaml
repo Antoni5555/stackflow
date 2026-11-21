@@ -1,0 +1,46 @@
+title: "Сколько ошибок"
+type: exercise
+difficulty: 1
+pitfall: "Число строк с шаблоном — grep -c."
+statement: |
+  Выведите (последней командой) одно число — сколько строк с `ERROR` в логе `/var/log/shop/app.log`.
+setup:
+  cwd: /home/shop
+  files:
+    /var/log/shop/app.log:
+      content: |
+        2026-11-21 09:10:00 INFO Booting worker with pid: 812
+        2026-11-21 09:12:07 INFO GET /catalog/ 200
+        2026-11-21 09:14:14 INFO GET /product/2/ 200
+        2026-11-21 09:16:21 WARNING Not Found: /favicon.ico
+        2026-11-21 09:18:28 INFO POST /cart/add/2/ 302
+        2026-11-21 09:20:35 INFO GET /cart/ 200
+        2026-11-21 09:22:42 ERROR Internal Server Error: /checkout/
+        2026-11-21 09:24:49 INFO GET /catalog/?page=2 200
+        2026-11-21 09:26:56 INFO GET /product/5/ 200
+        2026-11-21 09:28:03 WARNING Not Found: /wp-login.php
+        2026-11-21 09:30:10 INFO POST /accounts/login/ 302
+        2026-11-21 09:32:17 INFO GET /orders/124/ 200
+        2026-11-21 09:34:24 ERROR Internal Server Error: /checkout/
+        2026-11-21 09:36:31 INFO GET /catalog/ 200
+        2026-11-21 09:38:38 INFO GET /product/3/ 200
+        2026-11-21 09:40:45 ERROR OperationalError: connection to server at "127.0.0.1", port 5432 failed
+        2026-11-21 09:42:52 INFO GET /catalog/ 200
+        2026-11-21 09:44:59 INFO GET /product/8/ 200
+        2026-11-21 09:46:06 ERROR Internal Server Error: /checkout/
+        2026-11-21 09:48:13 INFO GET /cart/ 200
+        2026-11-21 09:50:20 INFO POST /checkout/ 302
+        2026-11-21 09:52:27 INFO GET /orders/126/ 200
+      owner: root
+check:
+  type: state
+  expect:
+    - output_matches: '^4\s*$'
+      fail: "Последняя команда должна вывести одно число — 4. Счёт строк с шаблоном — grep -c."
+solution: |
+  grep -c ERROR /var/log/shop/app.log
+hints:
+  - "У `grep` есть ключ, который вместо строк печатает их число."
+  - "`grep -c ERROR /var/log/shop/app.log`."
+explanation: |
+  `grep -c` считает строки, в которых есть шаблон. То же даёт `grep ERROR app.log | wc -l`. Обе команды считают строки, а не совпадения: строка с двумя `ERROR` посчитается один раз.
