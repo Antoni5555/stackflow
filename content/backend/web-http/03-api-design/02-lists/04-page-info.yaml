@@ -1,0 +1,55 @@
+title: "Срез страницы"
+type: exercise
+difficulty: 2
+pitfall: "Число страниц — деление с округлением вверх; пустой список — одна пустая страница; номер вне диапазона — ошибка."
+statement: |
+  Напишите `page_info(count, page, size)` для списка из `count` объектов: вернуть словарь `{"pages": …, "offset": …, "has_next": …, "has_previous": …}`, где `pages` — число страниц (округление вверх; пустой список — 1 страница), `offset` — сколько объектов пропустить, `has_next`/`has_previous` — есть ли соседние страницы. Если `page < 1` или `page > pages` — `ValueError`.
+starter_code: |
+  def page_info(count, page, size):
+      pages = count // size
+      return {
+          "pages": pages,
+          "offset": page * size,
+          "has_next": page < pages,
+          "has_previous": page > 0,
+      }
+check:
+  type: tests
+  tests:
+    - code: |
+        assert page_info(6, 1, 3) == {"pages": 2, "offset": 0, "has_next": True, "has_previous": False}
+      fail: "6 товаров по 3: страниц 2, первая начинается с offset 0, предыдущей нет."
+    - code: |
+        assert page_info(6, 2, 3) == {"pages": 2, "offset": 3, "has_next": False, "has_previous": True}
+      fail: "Вторая страница из двух: offset 3, следующей нет."
+    - code: |
+        assert page_info(8, 3, 3)["pages"] == 3 and page_info(8, 3, 3)["offset"] == 6
+      fail: "8 товаров по 3 — 3 страницы (последняя неполная): округление вверх."
+    - code: |
+        assert page_info(0, 1, 20) == {"pages": 1, "offset": 0, "has_next": False, "has_previous": False}
+      fail: "Пустой список — одна пустая страница, не ошибка."
+    - code: |
+        for count, page in [(6, 3), (6, 0), (0, 2)]:
+            try:
+                page_info(count, page, 3)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError((count, page))
+      fail: "Страница за пределами 1..pages — ValueError."
+solution: |
+  def page_info(count, page, size):
+      pages = max((count + size - 1) // size, 1)
+      if page < 1 or page > pages:
+          raise ValueError(f"Страницы {page} нет")
+      return {
+          "pages": pages,
+          "offset": (page - 1) * size,
+          "has_next": page < pages,
+          "has_previous": page > 1,
+      }
+hints:
+  - "Страницы нумеруются с 1, поэтому смещение — `(page - 1) * size`."
+  - "Округление вверх без `math`: `(count + size - 1) // size`; не меньше 1."
+explanation: |
+  `count // size` теряет неполную последнюю страницу: 8 товаров по 3 — это 3 страницы, а не 2. Смещение для страницы с номером от 1 — `(page - 1) * size` (в SQL — `OFFSET`). Пустой список — одна пустая страница с `count: 0`, а не 404. Так считает `Paginator` в Django: `num_pages`, `has_next()`, `has_previous()`, а на номер вне диапазона — исключение `EmptyPage`.

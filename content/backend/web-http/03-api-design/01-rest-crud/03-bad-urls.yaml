@@ -1,0 +1,16 @@
+title: "Что не так с адресами"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Адреса REST — существительные во множественном числе, строчными, без глаголов и расширений, вложенность — не глубже одного уровня."
+statement: |
+  Команда предложила адреса для API магазина. Какие из них нарушают правила оформления REST-адресов?
+options:
+  - "`GET /api/v1/getProducts`"
+  - "`GET /api/v1/products/2/`"
+  - "`GET /api/v1/Product/2.json`"
+  - "`GET /api/v1/users/1/orders/124/items/3/product/`"
+  - "`POST /api/v1/orders/126/payment/`"
+answer: [0, 2, 3]
+explanation: |
+  `getProducts` — глагол в адресе, действие уже в методе `GET`. `Product/2.json` — единственное число, заглавная буква и расширение (формат задаёт `Accept`). Пять уровней вложенности не нужны: заказ — `/api/v1/orders/124/`, товар — свой ресурс `/api/v1/products/…`. `products/2/` — образец, а `POST …/payment/` — ресурс-действие для операции вне CRUD (оплатить заказ).

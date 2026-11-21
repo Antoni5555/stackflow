@@ -1,0 +1,35 @@
+title: "Пройдёт ли запрос"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Схема задаёт обязательные поля (required), допустимые значения (enum) и ограничения (maxLength); условия из description схема сама не проверяет."
+statement: |
+  Схема тела `POST /api/v1/orders/`:
+  ```yaml
+  OrderCreate:
+    type: object
+    required:
+    - delivery
+    properties:
+      delivery:
+        type: string
+        enum:
+        - courier
+        - pickup
+      address:
+        type: string
+        description: Обязателен для courier
+      comment:
+        type: string
+        maxLength: 500
+  ```
+  Какие тела **соответствуют схеме** (без учёта условия из `description`)?
+options:
+  - "`{\"delivery\": \"pickup\"}`"
+  - "`{\"address\": \"Казань, ул. Баумана, 1\"}`"
+  - "`{\"delivery\": \"drone\"}`"
+  - "`{\"delivery\": \"courier\"}`"
+  - "`{\"delivery\": \"pickup\", \"comment\": \"Позвоните за час\"}`"
+answer: [0, 3, 4]
+explanation: |
+  Без `delivery` схема не выполнена — оно в `required`; `drone` нет в `enum`. `{"delivery": "courier"}` схеме **соответствует** — условие «адрес обязателен для курьера» записано только текстом в `description`, поэтому его проверяет код: учебный API ответил `422` и `{"address": ["Нужен адрес для курьера"]}`. Такие условия стоит описывать в документации, раз схема их не выражает.

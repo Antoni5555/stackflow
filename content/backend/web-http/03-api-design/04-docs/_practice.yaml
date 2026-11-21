@@ -1,0 +1,75 @@
+- title: Методы из документа
+  text: |
+    Выведите все методы API из `paths` в виде «МЕТОД адрес»:
+    ```python
+    paths = {
+        "/api/v1/cart/": {"get": {}},
+        "/api/v1/cart/items/": {"post": {}},
+        "/api/v1/cart/items/{id}/": {
+            "get": {}, "patch": {}, "delete": {},
+        },
+    }
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for path, methods in paths.items():
+        for method in methods:
+            print(method.upper(), path)
+    ```
+    Результат:
+    ```
+    GET /api/v1/cart/
+    POST /api/v1/cart/items/
+    GET /api/v1/cart/items/{id}/
+    PATCH /api/v1/cart/items/{id}/
+    DELETE /api/v1/cart/items/{id}/
+    ```
+    `{id}` — параметр пути (`in: path`); методы в OpenAPI пишут строчными.
+- title: Пройти по $ref
+  text: |
+    Найдите схему тела по ссылке `$ref`:
+    ```python
+    spec = {
+        "components": {"schemas": {"OrderCreate": {
+            "required": ["delivery"],
+        }}},
+    }
+    ref = "#/components/schemas/OrderCreate"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    node = spec
+    for key in ref.lstrip("#/").split("/"):
+        node = node[key]
+    print(node)
+    ```
+    Результат:
+    ```
+    {'required': ['delivery']}
+    ```
+    `$ref` — путь по ключам документа от корня (`#`). Так же его раскрывают Swagger UI и генераторы клиентов.
+- title: Какие методы с токеном
+  text: |
+    Перечислите методы, которым нужен токен (`security` непустой):
+    ```python
+    ops = [
+        ("GET", "/api/v1/products/", []),
+        ("POST", "/api/v1/orders/", [{"bearer": []}]),
+        ("GET", "/api/v1/cart/", [{"bearer": []}]),
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for method, path, security in ops:
+        if security:
+            print(method, path)
+    ```
+    Результат:
+    ```
+    POST /api/v1/orders/
+    GET /api/v1/cart/
+    ```
+    Каталог открыт всем, корзина и заказы — только с `Authorization: Bearer …`. В Swagger UI у таких методов значок замка.

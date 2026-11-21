@@ -1,0 +1,75 @@
+title: "Одна форма ошибки"
+type: fix
+difficulty: 2
+pitfall: "Все ошибки API — через одну функцию с одним форматом: {\"error\": {\"code\", \"message\", \"fields\"?}}."
+statement: |
+  В `views.py` три ошибки оформлены по-разному. Переделайте их через функцию `api_error` из этого же файла, оставив коды ответа: 400 — код `"parse_error"`, сообщение `"Тело — не JSON"`; 422 — код `"validation_error"`, сообщение `"Проверьте поля"` и `fields` с ошибкой адреса; 409 — код `"cart_empty"`, сообщение `"Корзина пуста"`. Других `JsonResponse` с ошибками не оставляйте.
+files:
+  views.py: |
+    import json
+
+    from django.http import JsonResponse
+
+
+    def api_error(status, code, message, fields=None):
+        body = {"error": {"code": code, "message": message}}
+        if fields:
+            body["error"]["fields"] = fields
+        return JsonResponse(body, status=status)
+
+
+    def create_order(request):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "Bad JSON"}, status=400)
+        if data.get("delivery") == "courier" and not data.get("address"):
+            return JsonResponse({"address": "Нужен адрес для курьера"}, status=422)
+        if not request.cart.items.exists():
+            return JsonResponse({"ok": False, "message": "Корзина пуста"}, status=409)
+        order = request.cart.checkout(data)
+        return JsonResponse({"id": order.id, "status": order.status}, status=201)
+check:
+  type: rules
+  rules:
+    - must_match: 'return\s+api_error\(\s*400\s*,\s*"parse_error"\s*,\s*"Тело — не JSON"\s*\)'
+      fail: "Битый JSON: return api_error(400, \"parse_error\", \"Тело — не JSON\")."
+    - must_match: 'return\s+api_error\(\s*422\s*,\s*"validation_error"\s*,\s*"Проверьте поля"\s*,\s*(fields\s*=\s*)?\{\s*"address"\s*:\s*\[\s*"Нужен адрес для курьера"\s*\]\s*\}\s*\)'
+      fail: "Ошибка поля: api_error(422, \"validation_error\", \"Проверьте поля\", {\"address\": [\"Нужен адрес для курьера\"]}) — ошибки поля списком."
+    - must_match: 'return\s+api_error\(\s*409\s*,\s*"cart_empty"\s*,\s*"Корзина пуста"\s*\)'
+      fail: "Пустая корзина: return api_error(409, \"cart_empty\", \"Корзина пуста\")."
+    - must_not_match: '"detail"|"ok"\s*:\s*False'
+      fail: "Старые форматы ({\"detail\": …}, {\"ok\": False, …}) уберите."
+    - must_match: 'return\s+JsonResponse\(\{"id":\s*order\.id,\s*"status":\s*order\.status\},\s*status=201\)'
+      fail: "Успешный ответ (201) менять не нужно."
+solution:
+  views.py: |
+    import json
+
+    from django.http import JsonResponse
+
+
+    def api_error(status, code, message, fields=None):
+        body = {"error": {"code": code, "message": message}}
+        if fields:
+            body["error"]["fields"] = fields
+        return JsonResponse(body, status=status)
+
+
+    def create_order(request):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return api_error(400, "parse_error", "Тело — не JSON")
+        if data.get("delivery") == "courier" and not data.get("address"):
+            return api_error(422, "validation_error", "Проверьте поля",
+                             {"address": ["Нужен адрес для курьера"]})
+        if not request.cart.items.exists():
+            return api_error(409, "cart_empty", "Корзина пуста")
+        order = request.cart.checkout(data)
+        return JsonResponse({"id": order.id, "status": order.status}, status=201)
+hints:
+  - "Функция `api_error(status, code, message, fields=None)` уже есть — замените ею три `JsonResponse`."
+  - "Ошибки поля — словарь списков: `{\"address\": [\"Нужен адрес для курьера\"]}`."
+explanation: |
+  Было три формата: `{"detail": …}`, `{"address": …}` без кода, `{"ok": False, …}` — приложению нужно три разбора. Через `api_error` все ошибки одинаковы: учебный API на курьера без адреса ответил `{"error": {"code": "validation_error", "message": "Проверьте поля", "fields": {"address": ["Нужен адрес для курьера"]}}}`. Ошибки поля — список: у поля их бывает несколько. Код ответа остаётся классом ошибки: 400 разбор, 422 данные, 409 состояние.

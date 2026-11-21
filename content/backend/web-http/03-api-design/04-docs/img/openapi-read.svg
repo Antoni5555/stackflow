@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 340" width="860" height="340" class="fig" role="img" aria-labelledby="t"><title id="t">Как читать метод в OpenAPI: путь → метод → тело, ответы, доступ</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<rect x="20" y="20" width="300" height="40" rx="12" class="fig-box2"/>
+<text x="170.0" y="45.0" text-anchor="middle" class="fig-cs">paths: /api/v1/orders/</text>
+<path d="M170 60V86" class="fig-ln" marker-end="url(#a)"/>
+<rect x="20" y="90" width="300" height="40" rx="12" class="fig-box2"/>
+<text x="170.0" y="115.0" text-anchor="middle" class="fig-cs">post: «Оформить заказ»</text>
+<path d="M320 110H366" class="fig-ln" marker-end="url(#a)"/>
+<rect x="370" y="20" width="470" height="110" rx="12" class="fig-box"/>
+<text x="386" y="46" text-anchor="start" class="fig-cs">requestBody → $ref: OrderCreate</text>
+<text x="386" y="72" text-anchor="start" class="fig-cs">responses: 201 → Order, 401, 422 → Error</text>
+<text x="386" y="98" text-anchor="start" class="fig-cs">security: bearer (JWT)</text>
+<path d="M500 130V166" class="fig-ln" marker-end="url(#a)"/>
+<rect x="370" y="170" width="470" height="130" rx="12" class="fig-ok"/>
+<text x="386" y="196" text-anchor="start" class="fig-cs">components.schemas.OrderCreate</text>
+<text x="386" y="222" text-anchor="start" class="fig-cs">delivery: required, enum courier | pickup</text>
+<text x="386" y="248" text-anchor="start" class="fig-cs">address: string — «обязателен для courier»</text>
+<text x="386" y="274" text-anchor="start" class="fig-cs">comment: string, maxLength 500</text>
+<text x="20" y="200" text-anchor="start" class="fig-t">Из одного документа:</text>
+<text x="20" y="226" text-anchor="start" class="fig-s">Swagger UI и ReDoc,</text>
+<text x="20" y="250" text-anchor="start" class="fig-s">клиенты для приложений,</text>
+<text x="20" y="274" text-anchor="start" class="fig-s">проверка ответов сервера.</text>
+</svg>

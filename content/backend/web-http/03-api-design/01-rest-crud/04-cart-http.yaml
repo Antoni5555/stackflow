@@ -1,0 +1,58 @@
+title: "API корзины по REST"
+type: fix
+difficulty: 2
+pitfall: "CRUD ложится на метод + адрес: POST в коллекцию, PATCH и DELETE на элемент; глаголов в адресе нет."
+statement: |
+  В `cart.http` описаны запросы к корзине в стиле «глагол в адресе». Перепишите их по REST, не меняя тела: добавление — в коллекцию `/api/v1/cart/items/`, изменение количества — частичное изменение позиции `/api/v1/cart/items/8/`, удаление — этой же позиции.
+files:
+  cart.http: |
+    ### Добавить клавиатуру
+    POST /api/v1/cart/addItem
+    Content-Type: application/json
+
+    {"product": 3, "quantity": 1}
+
+    ### Две клавиатуры
+    POST /api/v1/cart/updateItem/8
+    Content-Type: application/json
+
+    {"quantity": 2}
+
+    ### Удалить позицию
+    POST /api/v1/cart/removeItem/8
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*POST\s+/api/v1/cart/items/\s*$'
+      fail: "Добавление — POST в коллекцию: POST /api/v1/cart/items/."
+    - must_match: '^\s*PATCH\s+/api/v1/cart/items/8/\s*$'
+      fail: "Изменение количества — PATCH /api/v1/cart/items/8/."
+    - must_match: '^\s*DELETE\s+/api/v1/cart/items/8/\s*$'
+      fail: "Удаление — DELETE /api/v1/cart/items/8/."
+    - must_not_match: '(addItem|updateItem|removeItem)'
+      fail: "Глаголов в адресах быть не должно."
+    - must_match: '^\s*\{"product": 3, "quantity": 1\}\s*$'
+      fail: "Тело добавления не меняйте: {\"product\": 3, \"quantity\": 1}."
+    - must_match: '^\s*\{"quantity": 2\}\s*$'
+      fail: "Тело изменения не меняйте: {\"quantity\": 2}."
+solution:
+  cart.http: |
+    ### Добавить клавиатуру
+    POST /api/v1/cart/items/
+    Content-Type: application/json
+
+    {"product": 3, "quantity": 1}
+
+    ### Две клавиатуры
+    PATCH /api/v1/cart/items/8/
+    Content-Type: application/json
+
+    {"quantity": 2}
+
+    ### Удалить позицию
+    DELETE /api/v1/cart/items/8/
+hints:
+  - "Какой ресурс у каждого запроса — коллекция или элемент? Какой метод выражает действие?"
+  - "`POST /api/v1/cart/items/`, `PATCH /api/v1/cart/items/8/`, `DELETE /api/v1/cart/items/8/`."
+explanation: |
+  Пять адресов-шаблонов вместо трёх «глаголов»: коллекция `/api/v1/cart/items/` и элемент `/api/v1/cart/items/8/`. В учебном API `POST` в коллекцию вернул `201` с `Location: /api/v1/cart/items/8/`, `PATCH` — `200`, `DELETE` — `204`. Методы несут смысл: `DELETE` и `PATCH` с итоговым количеством можно безопасно повторить, а три `POST` — нет.

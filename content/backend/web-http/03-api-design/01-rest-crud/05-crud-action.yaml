@@ -1,0 +1,54 @@
+title: "Действие по методу"
+type: exercise
+difficulty: 2
+pitfall: "Коллекция: GET — список, POST — создать; элемент: GET, PUT, PATCH, DELETE; остальные пары — не CRUD."
+statement: |
+  Роутер API выбирает действие по методу и по тому, коллекция это или элемент (есть ли id в адресе). Напишите `crud_action(method, has_id)`, которая возвращает имя действия, как у ViewSet в DRF:
+  - коллекция (`has_id=False`): `GET` → `"list"`, `POST` → `"create"`;
+  - элемент (`has_id=True`): `GET` → `"retrieve"`, `PUT` → `"update"`, `PATCH` → `"partial_update"`, `DELETE` → `"destroy"`;
+  - остальные сочетания — `None` (на них API ответит 405).
+
+  Метод может прийти в любом регистре.
+starter_code: |
+  def crud_action(method, has_id):
+      actions = {"GET": "list", "POST": "create", "PUT": "update", "DELETE": "destroy"}
+      return actions.get(method)
+check:
+  type: tests
+  tests:
+    - code: |
+        assert crud_action("GET", False) == "list" and crud_action("POST", False) == "create"
+      fail: "Коллекция: GET — \"list\", POST — \"create\"."
+    - code: |
+        assert crud_action("GET", True) == "retrieve"
+      fail: "GET элемента — \"retrieve\", а не \"list\"."
+    - code: |
+        assert crud_action("PUT", True) == "update" and crud_action("PATCH", True) == "partial_update"
+      fail: "PUT — \"update\", PATCH — \"partial_update\"."
+    - code: |
+        assert crud_action("DELETE", True) == "destroy"
+      fail: "DELETE элемента — \"destroy\"."
+    - code: |
+        assert crud_action("POST", True) is None and crud_action("DELETE", False) is None and crud_action("PATCH", False) is None
+      fail: "POST на элемент, DELETE и PATCH на коллекцию — не CRUD: None."
+    - code: |
+        assert crud_action("patch", True) == "partial_update" and crud_action("get", False) == "list"
+      fail: "Регистр метода не важен."
+solution: |
+  ACTIONS = {
+      ("GET", False): "list",
+      ("POST", False): "create",
+      ("GET", True): "retrieve",
+      ("PUT", True): "update",
+      ("PATCH", True): "partial_update",
+      ("DELETE", True): "destroy",
+  }
+
+
+  def crud_action(method, has_id):
+      return ACTIONS.get((method.upper(), has_id))
+hints:
+  - "Действие зависит от двух вещей сразу — сделайте ключом словаря пару."
+  - "`ACTIONS.get((method.upper(), has_id))`."
+explanation: |
+  Один и тот же `GET` значит «список» на коллекции и «один объект» на элементе, а `POST` уместен только на коллекции. Ключ-кортеж `(метод, есть ли id)` описывает все шесть действий без цепочки `if`. Так устроен `DefaultRouter` в DRF: два адреса (`/products/` и `/products/<pk>/`) и таблица «метод → действие ViewSet»; для пары без действия — 405 с заголовком `Allow`.

@@ -1,0 +1,55 @@
+title: "Неполная схема"
+type: fix
+difficulty: 2
+pitfall: "Ограничения поля записывают в схеме: required, enum, minimum — иначе документация не говорит, что допустимо."
+statement: |
+  Схема тела `POST /api/v1/cart/items/` в `openapi.yaml` не говорит клиенту главного. Допишите в схему `CartItemCreate`: оба поля обязательны (`required` со списком `product` и `quantity`), `quantity` — не меньше 1 (`minimum: 1`), лишние поля запрещены (`additionalProperties: false`). Типы полей не меняйте.
+files:
+  openapi.yaml: |
+    components:
+      schemas:
+        CartItemCreate:
+          type: object
+          properties:
+            product:
+              type: integer
+              description: id товара
+            quantity:
+              type: integer
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*required:\s*$'
+      fail: "Добавьте в схему CartItemCreate ключ required: со списком полей."
+    - must_match: '^\s*-\s*product\s*$'
+      fail: "В required нужен product (строка «- product»)."
+    - must_match: '^\s*-\s*quantity\s*$'
+      fail: "В required нужен quantity (строка «- quantity»)."
+    - must_match: '^\s*minimum:\s*1\s*$'
+      fail: "quantity не меньше 1 — minimum: 1 у поля quantity."
+    - must_match: '^\s*additionalProperties:\s*false\s*$'
+      fail: "Лишние поля запрещает additionalProperties: false."
+    - must_match: '^\s*type:\s*integer\s*$'
+      fail: "Типы полей (integer) не меняйте."
+solution:
+  openapi.yaml: |
+    components:
+      schemas:
+        CartItemCreate:
+          type: object
+          required:
+          - product
+          - quantity
+          additionalProperties: false
+          properties:
+            product:
+              type: integer
+              description: id товара
+            quantity:
+              type: integer
+              minimum: 1
+hints:
+  - "`required` — на уровне схемы (рядом с `type: object`), `minimum` — внутри описания поля `quantity`."
+  - "`required:` и строки `- product`, `- quantity`; у `quantity` — `minimum: 1`; `additionalProperties: false` — рядом с `required`."
+explanation: |
+  Без `required` клиент не знает, что `quantity` нельзя пропустить, без `minimum` — что 0 недопустим; учебный API на `{"product": 99, "quantity": 0}` ответил `422`, и об этом можно было узнать из документации, а не из ошибки. `additionalProperties: false` описывает и защиту от лишних полей. В FastAPI такую схему строит модель Pydantic (`quantity: int = Field(ge=1)`).

@@ -1,0 +1,62 @@
+title: "Все ошибки сразу"
+type: exercise
+difficulty: 2
+pitfall: "Проверяют все поля и возвращают все ошибки одним ответом; ошибки поля — списком."
+statement: |
+  Напишите `validate_item(data, products)` для `POST /api/v1/cart/items/`: вернуть словарь ошибок по полям (значения — **списки** строк), пустой словарь — если всё верно. `products` — множество id существующих товаров.
+  - `product`: нет в `data` или не целое число — `"Обязательное поле"`; число, которого нет в `products`, — `"Такого товара нет"`;
+  - `quantity`: нет в `data` — `"Обязательное поле"`; не целое число — `"Нужно целое число"`; меньше 1 — `"Должно быть не меньше 1"`.
+
+  `True`/`False` целыми числами не считаются. Ошибки обоих полей — в одном ответе.
+starter_code: |
+  def validate_item(data, products):
+      if data.get("product") not in products:
+          return {"product": "Такого товара нет"}
+      if data.get("quantity", 0) < 1:
+          return {"quantity": "Должно быть не меньше 1"}
+      return {}
+check:
+  type: tests
+  tests:
+    - code: |
+        assert validate_item({"product": 3, "quantity": 1}, {1, 2, 3}) == {}
+      fail: "Верные данные — пустой словарь."
+    - code: |
+        assert validate_item({"product": 99, "quantity": 0}, {1, 2, 3}) == {
+            "product": ["Такого товара нет"], "quantity": ["Должно быть не меньше 1"]}
+      fail: "Ошибки обоих полей — сразу, значения — списки строк."
+    - code: |
+        assert validate_item({}, {1}) == {"product": ["Обязательное поле"], "quantity": ["Обязательное поле"]}
+      fail: "Нет полей — \"Обязательное поле\" для каждого."
+    - code: |
+        assert validate_item({"product": 1, "quantity": "два"}, {1}) == {"quantity": ["Нужно целое число"]}
+        assert validate_item({"product": 1, "quantity": 1.5}, {1}) == {"quantity": ["Нужно целое число"]}
+      fail: "quantity строкой или дробью — \"Нужно целое число\"."
+    - code: |
+        assert validate_item({"product": True, "quantity": True}, {1}) == {
+            "product": ["Обязательное поле"], "quantity": ["Нужно целое число"]}
+      fail: "True — не число товара и не количество: bool — подкласс int, проверьте его отдельно."
+solution: |
+  def is_int(value):
+      return isinstance(value, int) and not isinstance(value, bool)
+
+
+  def validate_item(data, products):
+      errors = {}
+      product = data.get("product")
+      if not is_int(product):
+          errors["product"] = ["Обязательное поле"]
+      elif product not in products:
+          errors["product"] = ["Такого товара нет"]
+      if "quantity" not in data:
+          errors["quantity"] = ["Обязательное поле"]
+      elif not is_int(data["quantity"]):
+          errors["quantity"] = ["Нужно целое число"]
+      elif data["quantity"] < 1:
+          errors["quantity"] = ["Должно быть не меньше 1"]
+      return errors
+hints:
+  - "Не выходите из функции на первой ошибке — собирайте их в словарь `errors`."
+  - "`isinstance(True, int)` — `True`; целое — `isinstance(v, int) and not isinstance(v, bool)`."
+explanation: |
+  Ранний `return` на первой ошибке заставляет пользователя исправлять поля по одному: отправил — увидел следующую ошибку. Учебный API на `{"product": 99, "quantity": 0}` вернул обе ошибки сразу. `bool` в Python — подкласс `int`, и `{"quantity": true}` из JSON прошёл бы как 1. Формы Django и сериализаторы DRF собирают ошибки так же — в `errors` по полям со списками.

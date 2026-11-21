@@ -1895,6 +1895,98 @@ def idor():
     f.save(out(WH2 / "04-api-attacks" / "img" / "idor.svg"))
 
 
+WH3 = ROOT / "web-http" / "03-api-design"
+
+
+def cart_api():
+    f = Figure(860, 340, "API корзины: адрес — ресурс, метод — действие, код — итог")
+    f.box(20, 20, 380, 44, "/api/v1/cart/items/  (коллекция)", "box2", "cs")
+    f.arrow("M400 42H446")
+    f.box(450, 20, 390, 44, "POST → 201 + Location: …/items/8/", "ok", "cs")
+    f.box(20, 90, 380, 140, "", "box2")
+    f.text(36, 116, "/api/v1/cart/items/8/  (элемент)", "cs")
+    f.text(36, 146, "позиция: product 3, quantity 1", "s")
+    rows = [("GET → 200  прочитать", "ok"), ("PATCH → 200  изменить часть", "ok"),
+            ("DELETE → 204  удалить", "ok")]
+    for i, (t, cls) in enumerate(rows):
+        y = 90 + i * 48
+        f.arrow(f"M400 {y + 20}H446")
+        f.box(450, y, 390, 40, t, cls, "cs")
+    f.box(20, 250, 380, 40, "GET /api/v1/cart/ → 200, позиции + total", "box2", "cs")
+    f.text(20, 318, "Страницы Django: /cart/add/3/, /cart/remove/8/ — действие в адресе; в API его выражает метод.", "s")
+    f.save(out(WH3 / "01-rest-crud" / "img" / "cart-api.svg"))
+
+
+def list_pipeline():
+    f = Figure(860, 330, "?category=2&sort=-price: фильтр → сортировка → страница → конверт")
+    f.text(20, 30, "все товары: 8", "t")
+    f.arrow("M130 24H176")
+    f.text(180, 30, "category=2: 6", "t")
+    f.arrow("M290 24H336")
+    f.text(340, 30, "sort=-price: от дорогих к дешёвым", "t")
+    names = [("Наушники", "6990"), ("Веб-камера", "4590"), ("Клавиатура", "3990"),
+             ("Мышь", "1499"), ("USB-хаб", "1290"), ("Коврик", "490")]
+    for i, (n, pr) in enumerate(names):
+        x = 20 + i * 138
+        cls = "acc" if i < 3 else "box2"
+        f.box(x, 56, 128, 50, "", cls)
+        tc = "onacc" if i < 3 else "cs"
+        f.text(x + 64, 78, n, tc, "middle"); f.text(x + 64, 96, pr, tc, "middle")
+    f.text(20, 136, "page=1 (по 3)", "cs"); f.text(434, 136, "page=2", "cs")
+    f.box(20, 160, 400, 120, "", "box")
+    f.text(36, 186, "count: 6", "cs")
+    f.text(36, 210, "next: …?category=2&sort=-price&page=2", "cs")
+    f.text(36, 234, "previous: null", "cs")
+    f.text(36, 258, "results: [8, 7, 3]", "cs")
+    f.box(440, 160, 400, 120, "", "box")
+    f.text(456, 186, "count: 6", "cs")
+    f.text(456, 210, "next: null", "cs")
+    f.text(456, 234, "previous: …&page=1", "cs")
+    f.text(456, 258, "results: [2, 6, 4]", "cs")
+    f.text(20, 314, "Ссылки next/previous сохраняют фильтр и сортировку — клиент просто идёт по ним.", "s")
+    f.save(out(WH3 / "02-lists" / "img" / "list-pipeline.svg"))
+
+
+def error_format():
+    f = Figure(860, 330, "Одна форма ошибки на весь API: разный код ответа и code")
+    rows = [("битый JSON", "400", "parse_error"),
+            ("форма вместо JSON", "415", "unsupported_media_type"),
+            ("курьер без адреса", "422", "validation_error + fields.address"),
+            ("/api/v1/carts/", "404", "not_found"),
+            ("PUT /api/v1/cart/items/7/", "405", "method_not_allowed + Allow")]
+    for i, (what, code, c) in enumerate(rows):
+        y = 20 + i * 48
+        f.box(20, y, 250, 38, what, "box2", "cs")
+        f.arrow(f"M270 {y + 19}H306")
+        f.box(310, y, 60, 38, code, "err", "errt")
+        f.text(390, y + 24, c, "cs")
+    f.box(20, 266, 820, 44, "{\"error\": {\"code\": …, \"message\": …, \"fields\": {…}}}", "ok", "cs")
+    f.save(out(WH3 / "03-errors-versions" / "img" / "error-format.svg"))
+
+
+def openapi_read():
+    f = Figure(860, 340, "Как читать метод в OpenAPI: путь → метод → тело, ответы, доступ")
+    f.box(20, 20, 300, 40, "paths: /api/v1/orders/", "box2", "cs")
+    f.arrow("M170 60V86")
+    f.box(20, 90, 300, 40, "post: «Оформить заказ»", "box2", "cs")
+    f.arrow("M320 110H366")
+    f.box(370, 20, 470, 110, "", "box")
+    f.text(386, 46, "requestBody → $ref: OrderCreate", "cs")
+    f.text(386, 72, "responses: 201 → Order, 401, 422 → Error", "cs")
+    f.text(386, 98, "security: bearer (JWT)", "cs")
+    f.arrow("M500 130V166")
+    f.box(370, 170, 470, 130, "", "ok")
+    f.text(386, 196, "components.schemas.OrderCreate", "cs")
+    f.text(386, 222, "delivery: required, enum courier | pickup", "cs")
+    f.text(386, 248, "address: string — «обязателен для courier»", "cs")
+    f.text(386, 274, "comment: string, maxLength 500", "cs")
+    f.text(20, 200, "Из одного документа:", "t")
+    f.text(20, 226, "Swagger UI и ReDoc,", "s")
+    f.text(20, 250, "клиенты для приложений,", "s")
+    f.text(20, 274, "проверка ответов сервера.", "s")
+    f.save(out(WH3 / "04-docs" / "img" / "openapi-read.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3381,6 +3473,7 @@ if __name__ == "__main__":
                   test_lifecycle,
                   api_methods, who_answers, etag_fig, body_formats,
                   token_flow, jwt_parts, cors_preflight, idor,
+                  cart_api, list_pipeline, error_format, openapi_read,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

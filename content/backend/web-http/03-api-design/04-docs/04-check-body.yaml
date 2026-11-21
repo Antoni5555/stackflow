@@ -1,0 +1,76 @@
+title: "Проверка тела по схеме"
+type: exercise
+difficulty: 3
+pitfall: "Проверка по схеме: все поля из required, значения из enum, длина строки не больше maxLength; лишние поля — ошибка, если additionalProperties: false."
+statement: |
+  Напишите `check_body(schema, body)` — упрощённую проверку тела по схеме OpenAPI. Вернуть словарь ошибок по полям (значения — списки строк), пустой — если всё верно:
+  - поле из `schema["required"]` отсутствует — `"Обязательное поле"`;
+  - у поля в `properties` есть `enum`, а значение не из него — `"Допустимо: <значения через ", ">"`;
+  - есть `maxLength`, а строка длиннее — `"Не длиннее <N> символов"`;
+  - если `schema.get("additionalProperties") is False`, поле не из `properties` — `"Неизвестное поле"`.
+
+  Типы полей проверять не нужно.
+starter_code: |
+  def check_body(schema, body):
+      errors = {}
+      for name in schema["required"]:
+          if name not in body:
+              errors[name] = "Обязательное поле"
+      return errors
+check:
+  type: tests
+  tests:
+    - code: |
+        S = {"type": "object", "required": ["delivery"], "properties": {
+            "delivery": {"type": "string", "enum": ["courier", "pickup"]},
+            "address": {"type": "string"},
+            "comment": {"type": "string", "maxLength": 10}}}
+        assert check_body(S, {"delivery": "pickup"}) == {}
+        assert check_body(S, {}) == {"delivery": ["Обязательное поле"]}
+      fail: "Нет поля из required — {\"delivery\": [\"Обязательное поле\"]} (значение — список)."
+    - code: |
+        S = {"type": "object", "required": ["delivery"], "properties": {
+            "delivery": {"type": "string", "enum": ["courier", "pickup"]}}}
+        assert check_body(S, {"delivery": "drone"}) == {"delivery": ["Допустимо: courier, pickup"]}
+      fail: "Значение не из enum — \"Допустимо: courier, pickup\"."
+    - code: |
+        S = {"type": "object", "required": [], "properties": {
+            "comment": {"type": "string", "maxLength": 10}}}
+        assert check_body(S, {"comment": "Позвоните за час"}) == {"comment": ["Не длиннее 10 символов"]}
+        assert check_body(S, {"comment": "Позвоните"}) == {}
+      fail: "Строка длиннее maxLength — \"Не длиннее 10 символов\"; ровно 10 и меньше — можно."
+    - code: |
+        S = {"type": "object", "required": [], "properties": {"name": {"type": "string"}},
+             "additionalProperties": False}
+        assert check_body(S, {"name": "Аня", "is_staff": True}) == {"is_staff": ["Неизвестное поле"]}
+        S2 = {"type": "object", "required": [], "properties": {"name": {"type": "string"}}}
+        assert check_body(S2, {"name": "Аня", "is_staff": True}) == {}
+      fail: "При additionalProperties: False лишнее поле — \"Неизвестное поле\"; без этого ключа лишние поля разрешены."
+    - code: |
+        S = {"type": "object", "properties": {"comment": {"type": "string"}}}
+        assert check_body(S, {}) == {}
+      fail: "required в схеме может не быть — значит, обязательных полей нет."
+solution: |
+  def check_body(schema, body):
+      errors = {}
+      props = schema.get("properties", {})
+      for name in schema.get("required", []):
+          if name not in body:
+              errors.setdefault(name, []).append("Обязательное поле")
+      for name, value in body.items():
+          rules = props.get(name)
+          if rules is None:
+              if schema.get("additionalProperties") is False:
+                  errors.setdefault(name, []).append("Неизвестное поле")
+              continue
+          if "enum" in rules and value not in rules["enum"]:
+              allowed = ", ".join(rules["enum"])
+              errors.setdefault(name, []).append(f"Допустимо: {allowed}")
+          if "maxLength" in rules and len(value) > rules["maxLength"]:
+              errors.setdefault(name, []).append(f"Не длиннее {rules['maxLength']} символов")
+      return errors
+hints:
+  - "Два прохода: по `required` — чего не хватает, по полям `body` — что не так с присланным."
+  - "`errors.setdefault(name, []).append(…)` собирает несколько ошибок поля в список; `schema.get(\"required\", [])` — если ключа нет."
+explanation: |
+  Схема OpenAPI — не только документация: по ней проверяют запросы (так делают FastAPI через Pydantic и `drf-spectacular` с валидаторами). `required` и `additionalProperties` — необязательные ключи схемы, поэтому `schema.get`. `additionalProperties: false` закрывает и mass assignment из темы «Атаки на API»: неизвестное поле — ошибка. Настоящую проверку делает библиотека `jsonschema`, а не самописный код.

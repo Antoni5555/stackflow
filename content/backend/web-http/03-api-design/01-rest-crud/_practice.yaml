@@ -1,0 +1,78 @@
+- title: Коллекция или элемент
+  text: |
+    Разберите адреса API: имя ресурса и id (если есть).
+    ```python
+    import re
+    paths = [
+        "/api/v1/products/",
+        "/api/v1/products/2/",
+        "/api/v1/cart/items/8/",
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    pattern = r"/api/v1/([a-z/-]+?)/(?:(\d+)/)?"
+    for path in paths:
+        name, pk = re.fullmatch(pattern, path).groups()
+        print(name, pk)
+    ```
+    Результат:
+    ```
+    products None
+    products 2
+    cart/items 8
+    ```
+    Без id — коллекция (`GET` — список, `POST` — создать), с id — элемент (`GET`, `PATCH`, `PUT`, `DELETE`).
+- title: Код успеха
+  text: |
+    Сопоставьте запросам корзины коды успешного ответа:
+    ```python
+    requests = [
+        ("GET", "/api/v1/cart/"),
+        ("POST", "/api/v1/cart/items/"),
+        ("PATCH", "/api/v1/cart/items/8/"),
+        ("DELETE", "/api/v1/cart/items/8/"),
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    SUCCESS = {"POST": 201, "DELETE": 204}
+    for method, path in requests:
+        print(method, path, SUCCESS.get(method, 200))
+    ```
+    Результат:
+    ```
+    GET /api/v1/cart/ 200
+    POST /api/v1/cart/items/ 201
+    PATCH /api/v1/cart/items/8/ 200
+    DELETE /api/v1/cart/items/8/ 204
+    ```
+    Создание — `201` и `Location`, удаление — `204` без тела, остальное — `200` с телом.
+- title: Заголовок Allow
+  text: |
+    Соберите заголовок `Allow` для каждого адреса из таблицы маршрутов — его отдают с ответом 405:
+    ```python
+    routes = [
+        ("GET", "/api/v1/cart/items/<id>/"),
+        ("POST", "/api/v1/cart/items/"),
+        ("PATCH", "/api/v1/cart/items/<id>/"),
+        ("DELETE", "/api/v1/cart/items/<id>/"),
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    allow = {}
+    for method, path in routes:
+        allow.setdefault(path, []).append(method)
+    for path, methods in allow.items():
+        print(path, "Allow:", ", ".join(methods))
+    ```
+    Результат:
+    ```
+    /api/v1/cart/items/<id>/ Allow: GET, PATCH, DELETE
+    /api/v1/cart/items/ Allow: POST
+    ```
+    Так же ответил учебный API на `PUT /api/v1/cart/items/7/`: `405` и `Allow: GET, PATCH, DELETE`.

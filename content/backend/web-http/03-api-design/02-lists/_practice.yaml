@@ -1,0 +1,68 @@
+- title: Фильтр и сортировка
+  text: |
+    Оставьте товары категории 2 дешевле 2000 ₽ и отсортируйте по цене по убыванию:
+    ```python
+    products = [
+        ("Наушники", 2, 6990),
+        ("Мышь", 2, 1499),
+        ("USB-хаб", 2, 1290),
+        ("Ноутбук Air 13", 1, 84990),
+        ("Коврик", 2, 490),
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    found = [p for p in products if p[1] == 2 and p[2] < 2000]
+    found.sort(key=lambda p: p[2], reverse=True)
+    for name, category, price in found:
+        print(name, price)
+    ```
+    Результат:
+    ```
+    Мышь 1499
+    USB-хаб 1290
+    Коврик 490
+    ```
+    В API это `?category=2&price_max=1999&sort=-price` — и в ORM `filter(...).order_by("-price")`.
+- title: Ссылка на следующую страницу
+  text: |
+    Соберите ссылку `next`, сохранив параметры запроса и заменив номер страницы:
+    ```python
+    from urllib.parse import parse_qs, urlencode
+    query = "category=2&sort=-price&page=1"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    params = {k: v[0] for k, v in parse_qs(query).items()}
+    params["page"] = int(params["page"]) + 1
+    print("/api/v1/products/?" + urlencode(params))
+    ```
+    Результат:
+    ```
+    /api/v1/products/?category=2&sort=-price&page=2
+    ```
+    Такую ссылку учебный API вернул в поле `next` первой страницы.
+- title: Одинаковые цены
+  text: |
+    Отсортируйте товары по цене по убыванию так, чтобы порядок был одинаковым при каждом запросе:
+    ```python
+    products = [
+        {"id": 9, "price": 990},
+        {"id": 4, "price": 1490},
+        {"id": 2, "price": 990},
+        {"id": 7, "price": 990},
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    products.sort(key=lambda p: (-p["price"], p["id"]))
+    print([p["id"] for p in products])
+    ```
+    Результат:
+    ```
+    [4, 2, 7, 9]
+    ```
+    Второй ключ — уникальный `id`: товары с ценой 990 всегда идут в одном порядке. В базе порядок равных строк не гарантирован, поэтому в ORM — `order_by("-price", "id")`, иначе товар «прыгает» между страницами.

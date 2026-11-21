@@ -1,0 +1,53 @@
+title: "Разобрать сортировку"
+type: exercise
+difficulty: 2
+pitfall: "Минус — по убыванию; поле проверяют по списку разрешённых без учёта минуса; без параметра — сортировка по умолчанию."
+statement: |
+  Напишите `parse_sort(value, allowed, default="id")`: разобрать параметр `sort` в пару `(поле, по_убыванию)`. Минус в начале — по убыванию: `"-price"` → `("price", True)`. Если `value` — `None` или пустая строка, вернуть `(default, False)`. Если поля нет в `allowed` — `ValueError` с текстом `"Нельзя сортировать по <поле>"`.
+starter_code: |
+  def parse_sort(value, allowed, default="id"):
+      if value.startswith("-"):
+          return value, True
+      return value, False
+check:
+  type: tests
+  tests:
+    - code: |
+        assert parse_sort("price", {"price", "name"}) == ("price", False)
+      fail: "\"price\" — по возрастанию: (\"price\", False)."
+    - code: |
+        assert parse_sort("-price", {"price", "name"}) == ("price", True)
+      fail: "\"-price\" — поле без минуса и True: (\"price\", True)."
+    - code: |
+        assert parse_sort(None, {"price"}) == ("id", False) and parse_sort("", {"price"}, default="name") == ("name", False)
+      fail: "Без параметра — сортировка по умолчанию: (default, False)."
+    - code: |
+        try:
+            parse_sort("-rating", {"price", "name"})
+        except ValueError as e:
+            assert str(e) == "Нельзя сортировать по rating", str(e)
+        else:
+            raise AssertionError("rating принят")
+      fail: "Поля нет в allowed — ValueError(\"Нельзя сортировать по rating\") (без минуса в имени)."
+    - code: |
+        try:
+            parse_sort("--price", {"price"})
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("--price принят")
+      fail: "\"--price\" — неверное значение: снимается только один минус, поле \"-price\" не разрешено."
+solution: |
+  def parse_sort(value, allowed, default="id"):
+      if not value:
+          return default, False
+      descending = value.startswith("-")
+      field = value[1:] if descending else value
+      if field not in allowed:
+          raise ValueError(f"Нельзя сортировать по {field.lstrip('-')}")
+      return field, descending
+hints:
+  - "Сначала обработайте пустое значение, потом снимите один минус."
+  - "`field = value[1:] if value.startswith(\"-\") else value`; проверка `field not in allowed`."
+explanation: |
+  Сортировка по полю из запроса без проверки — 500 на неизвестном поле и возможность сортировать по служебным полям. Поэтому поле сверяют со списком разрешённых, а результат передают в `order_by("-price")` уже проверенным. `lstrip("-")` убрал бы все минусы и пропустил `--price`; снимаем ровно один. В DRF то же делает `OrderingFilter` с `ordering_fields`.

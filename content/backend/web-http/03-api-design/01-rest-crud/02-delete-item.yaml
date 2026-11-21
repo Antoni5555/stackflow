@@ -1,0 +1,15 @@
+title: "Адрес для удаления"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "В REST адрес называет ресурс, а действие выражает метод: DELETE /api/v1/cart/items/8/."
+statement: |
+  Мобильное приложение удаляет позицию 8 из корзины. Какой запрос соответствует REST?
+options:
+  - "`POST /api/v1/cart/deleteItem/8`"
+  - "`GET /api/v1/cart/items/8/delete/`"
+  - "`DELETE /api/v1/cart/items/8/`"
+  - "`POST /api/v1/cart/items/` с `{\"delete\": 8}`"
+answer: [2]
+explanation: |
+  Адрес — ресурс (позиция 8), действие — метод `DELETE`; учебный API ответил `204 No Content`. Глагол в адресе дублирует метод, `GET` не должен ничего удалять, а «удаление через создание» в коллекцию прячет смысл запроса от клиентов, кэшей и журналов.

@@ -1,0 +1,15 @@
+title: "Где обязательные поля"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Обязательные поля тела — в required схемы, на которую ссылается requestBody через $ref."
+statement: |
+  Мобильный разработчик хочет узнать по OpenAPI-документу магазина, какие поля обязательно отправить в `POST /api/v1/orders/`. Где смотреть?
+options:
+  - "В `responses` → `201`"
+  - "В `required` схемы `components.schemas.OrderCreate`, на которую ссылается `requestBody`"
+  - "В `info.version`"
+  - "В `security`"
+answer: [1]
+explanation: |
+  `requestBody` метода ссылается через `$ref: '#/components/schemas/OrderCreate'`, а в схеме — `required: [delivery]`. `responses` описывает ответы, `security` — нужен ли токен, `info.version` — версию документа.

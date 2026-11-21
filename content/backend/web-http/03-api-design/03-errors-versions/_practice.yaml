@@ -1,0 +1,81 @@
+- title: Разобрать ошибку
+  text: |
+    Приложение получило ответ 422. Выведите сообщение и ошибки по полям:
+    ```python
+    import json
+    body = (
+        '{"error": {"code": "validation_error", '
+        '"message": "Проверьте поля", "fields": '
+        '{"product": ["Такого товара нет"], '
+        '"quantity": ["Должно быть не меньше 1"]}}}'
+    )
+    ```
+  answer: |
+    Ответ:
+    ```python
+    error = json.loads(body)["error"]
+    if error["code"] == "validation_error":
+        print(error["message"])
+        for field, messages in error["fields"].items():
+            print(" ", field, "—", "; ".join(messages))
+    ```
+    Результат:
+    ```
+    Проверьте поля
+      product — Такого товара нет
+      quantity — Должно быть не меньше 1
+    ```
+    Решение — по `code`, поля для подсветки — ключи `fields`, тексты — пользователю.
+- title: Понятный код ошибки
+  text: |
+    Выберите `code` для каждого кода ответа, неизвестный код — `"error"`:
+    ```python
+    CODES = {
+        400: "parse_error",
+        404: "not_found",
+        405: "method_not_allowed",
+        415: "unsupported_media_type",
+        422: "validation_error",
+    }
+    statuses = [404, 422, 418]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for status in statuses:
+        print(status, CODES.get(status, "error"))
+    ```
+    Результат:
+    ```
+    404 not_found
+    422 validation_error
+    418 error
+    ```
+    Общий `code` по статусу — запасной вариант; конкретные ситуации (`cart_empty`, `out_of_stock`) получают свои коды, чтобы клиент отличал их внутри одного 409.
+- title: Цена в v1 и v2
+  text: |
+    Одна запись товара — два представления для разных версий API:
+    ```python
+    product = {"id": 2, "name": "Мышь", "price": "1499.00"}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def v1(p):
+        return {"id": p["id"], "name": p["name"],
+                "price": p["price"]}
+
+    def v2(p):
+        price = {"amount": p["price"], "currency": "RUB"}
+        return {"id": p["id"], "name": p["name"],
+                "price": price}
+
+    print(v1(product))
+    print(v2(product))
+    ```
+    Результат:
+    ```
+    {'id': 2, 'name': 'Мышь', 'price': '1499.00'}
+    {'id': 2, 'name': 'Мышь', 'price': {'amount': '1499.00', 'currency': 'RUB'}}
+    ```
+    Данные одни, меняется представление — в DRF это два сериализатора для одной модели.
