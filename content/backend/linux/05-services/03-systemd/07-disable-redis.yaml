@@ -1,0 +1,32 @@
+title: "Лишняя служба"
+type: exercise
+difficulty: 2
+pitfall: "Выключить службу насовсем — stop (сейчас) и disable (не запускать при загрузке): disable --now."
+statement: |
+  На сервере работает `redis-server`, хотя магазин его не использует, — он занимает память. Остановите службу и выключите её автозапуск. Пакет не удаляйте.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+  services:
+    redis-server: {active: true, enabled: true}
+check:
+  type: state
+  expect:
+    - service: redis-server
+      active: false
+      fail: "redis-server всё ещё работает — sudo systemctl stop redis-server (или disable --now)."
+    - service: redis-server
+      enabled: false
+      fail: "redis-server остался в автозапуске — после перезагрузки снова запустится. sudo systemctl disable redis-server."
+    - path: /usr/bin/redis-server
+      exists: true
+      fail: "Пакет удалён — достаточно было остановить и выключить службу."
+solution: |
+  sudo systemctl disable --now redis-server
+hints:
+  - "Остановить сейчас и не запускать при загрузке — две разные вещи."
+  - "`sudo systemctl disable --now redis-server`."
+explanation: |
+  `stop` без `disable` — служба вернётся после перезагрузки; `disable` без `stop` — продолжит работать до неё. `disable --now` делает оба. Пакет остаётся — службу можно включить обратно `enable --now`, когда Redis понадобится (курс Celery, этап 2).

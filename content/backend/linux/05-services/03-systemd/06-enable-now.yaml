@@ -1,0 +1,48 @@
+title: "Запустить и включить Gunicorn"
+type: exercise
+difficulty: 1
+pitfall: "Постоянная служба — enable (автозапуск) и start (сейчас): sudo systemctl enable --now."
+statement: |
+  Unit-файл Gunicorn уже лежит в `/etc/systemd/system/gunicorn.service`, но служба не запущена и не включена в автозапуск. Запустите её сейчас и включите запуск при загрузке сервера.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/.env: "SECRET_KEY=change-me\n"
+    /srv/shop/venv/bin/gunicorn: {content: "#!/srv/shop/venv/bin/python3\n", mode: '755'}
+    /etc/systemd/system/gunicorn.service:
+      content: |
+        [Unit]
+        Description=Gunicorn for shop
+        After=network.target
+
+        [Service]
+        User=shop
+        Group=shop
+        WorkingDirectory=/srv/shop
+        EnvironmentFile=/srv/shop/.env
+        ExecStart=/srv/shop/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 config.wsgi:application
+        Restart=always
+
+        [Install]
+        WantedBy=multi-user.target
+      owner: root
+  services:
+    gunicorn: {active: false, enabled: false}
+check:
+  type: state
+  expect:
+    - service: gunicorn
+      active: true
+      fail: "Служба gunicorn не запущена. Управление службами — через sudo: sudo systemctl start (или enable --now)."
+    - service: gunicorn
+      enabled: true
+      fail: "Служба не включена в автозапуск — после перезагрузки сайт не поднимется. sudo systemctl enable gunicorn."
+solution: |
+  sudo systemctl enable --now gunicorn
+hints:
+  - "Нужны две вещи: запустить сейчас и запускать при загрузке. Одна команда умеет обе."
+  - "`sudo systemctl enable --now gunicorn`."
+explanation: |
+  `start` запускает службу до перезагрузки, `enable` включает автозапуск, `--now` делает и то, и другое. Без `sudo` — `Interactive authentication required`. Проверка — `systemctl status gunicorn`: `enabled` в строке `Loaded` и `active (running)`.

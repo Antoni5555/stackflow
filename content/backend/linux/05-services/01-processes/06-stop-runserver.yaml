@@ -1,0 +1,47 @@
+title: "Забытый runserver"
+type: exercise
+difficulty: 2
+pitfall: "Процесс находят по команде (ps aux | grep, pgrep -f) и останавливают kill/pkill; службу Gunicorn при этом не трогают."
+statement: |
+  Кто-то оставил на сервере запущенный `python3 manage.py runserver` — он грузит процессор почти на 100 %. Остановите его. Gunicorn магазина (служба `gunicorn`) должен продолжать работать.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/venv/bin/gunicorn: {content: "#!/srv/shop/venv/bin/python3\n", mode: '755'}
+    /etc/systemd/system/gunicorn.service:
+      content: |
+        [Unit]
+        Description=Gunicorn for shop
+        After=network.target
+
+        [Service]
+        User=shop
+        WorkingDirectory=/srv/shop
+        ExecStart=/srv/shop/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 config.wsgi:application
+        Restart=always
+
+        [Install]
+        WantedBy=multi-user.target
+      owner: root
+  services:
+    gunicorn: {active: true, enabled: true}
+  processes:
+    - {command: 'python3 manage.py runserver', user: shop, cpu: 97.5}
+check:
+  type: state
+  expect:
+    - process: 'manage\.py runserver'
+      running: false
+      fail: "runserver всё ещё работает. Найдите его PID (ps aux | grep runserver или pgrep -f runserver) и остановите kill PID — или pkill -f runserver."
+    - service: gunicorn
+      active: true
+      fail: "Gunicorn остановлен — останавливать нужно только runserver."
+solution: |
+  pkill -f "manage.py runserver"
+hints:
+  - "Как найти процесс по части его команды? `top` и `ps aux` покажут, кто грузит процессор."
+  - "`pgrep -f runserver` — номер, затем `kill номер`; или сразу `pkill -f \"manage.py runserver\"`."
+explanation: |
+  `runserver` — сервер разработки: на боевом сервере ему не место, а забытый в фоне он может крутить процессор. `top` показывает его первым (`%CPU 97.5`), `pkill -f` ищет по всей строке команды и посылает SIGTERM. `pkill -f python3` убил бы заодно и Gunicorn — в его командной строке тоже есть `python3` (`/srv/shop/venv/bin/python3 …/gunicorn`). Шаблон берут как можно точнее.

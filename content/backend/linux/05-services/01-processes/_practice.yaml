@@ -1,0 +1,56 @@
+- title: Процессы SSH
+  text: |
+    Найдите процессы SSH-сервера по имени, с полной командой:
+    ```
+    sshd
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    pgrep -a sshd
+    ```
+    Результат:
+    ```
+    520 sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
+    1001 sshd: shop [priv]
+    ```
+    Первый — главный процесс, ждёт подключений; второй обслуживает ваше подключение.
+- title: Свой терминал в ps
+  text: |
+    Найдите в списке процессов свою оболочку так, чтобы `grep` не нашёл сам себя:
+    ```
+    bash
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ps aux | grep [b]ash
+    ```
+    Результат:
+    ```
+    shop        1003  0.0  0.4  32120  8040 pts/0    Ss+  Nov18   0:00 -bash
+    ```
+    `pts/0` — терминал вашего SSH-подключения; `-bash` — оболочка входа.
+- title: Нагрузка сервера
+  text: |
+    Посмотрите сводку нагрузки и самые активные процессы — только первые строки:
+    ```
+    top
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    top | head -n 8
+    ```
+    Результат:
+    ```
+    top - 19:20:49 up 3 days,  2:14,  1 user,  load average: 0.00, 0.00, 0.00
+    Tasks:   8 total,   0 running,   8 sleeping,   0 stopped,   0 zombie
+    %Cpu(s):  0.0 us,  0.3 sy,  0.0 ni, 99.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+    MiB Mem :   1963.4 total,    412.8 free,    786.1 used,    764.5 buff/cache
+    MiB Swap:   2048.0 total,   2048.0 free,      0.0 used.   1177.3 avail Mem
+
+        PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+          1 root      20   0   32120   8040   2680 S   0.0   0.4   0:00.12 systemd
+    ```
+    `load average` — средняя нагрузка за 1, 5 и 15 минут, `id` — процент простоя процессора. В тренажёре `top` — один снимок; на сервере он обновляется, выход — `q`.

@@ -237,6 +237,11 @@ LINUX_COMMANDS = {
     "chmod": None, "chown": {"-R"},
     "whoami": None, "id": None, "chgrp": {"-R"}, "which": None, "df": {"-h"}, "du": {"-s", "-h"},
     "gzip": None, "gunzip": None, "true": None, "groups": None,
+    "unset": None, "env": None, "bash": {"-c"}, "ps": {"-e", "-f"}, "pgrep": {"-a", "-f", "-l", "-u"},
+    "kill": {"-9", "-15", "-1", "-2", "-HUP", "-INT", "-TERM", "-KILL", "-s", "-l"},
+    "pkill": {"-f", "-u", "-9", "-HUP", "-INT", "-TERM", "-KILL"}, "top": None,
+    "systemctl": {"--now", "--no-pager", "-l", "--full", "-q", "--quiet"},
+    "journalctl": {"-u", "-n", "-x", "-e", "--no-pager"},
 }
 GIT_COMMANDS = {
     "init": None, "config": {"--global", "--list"}, "status": None, "add": {"-A"}, "rm": {"--cached", "-r"},
@@ -253,7 +258,7 @@ APT_COMMANDS = {"update": None, "upgrade": {"-y"}, "install": {"-y"}, "remove": 
 PIP_COMMANDS = {"install": {"-r"}, "freeze": None, "uninstall": {"-y"}, "list": None}
 STATE_RULES = {  # ключ, по которому узнаём правило → какие ещё ключи обязательны
     "exists": {"path"}, "contains": {"path"}, "not_contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "group": {"path"}, "link_to": {"path"},
-    "output_matches": set(),
+    "output_matches": set(), "service": set(), "process": set(),
     "head": set(), "commit_in": set(), "commit_count": set(), "clean": set(), "merged": set(),
     "pushed": set(), "config": set(), "stash_count": set(), "pip_package": set(),
 }
@@ -325,7 +330,7 @@ def check_command(line):
 def check_state(task):
     problems = []
     setup, rules = task.get("setup") or {}, (task.get("check") or {}).get("expect") or []
-    unknown = set(setup) - {"cwd", "files", "dirs", "links", "repo", "commits", "head", "remote", "venv", "gitconfig"}
+    unknown = set(setup) - {"cwd", "files", "dirs", "links", "services", "processes", "repo", "commits", "head", "remote", "venv", "gitconfig"}
     if unknown:
         problems.append(f"неизвестные ключи setup: {sorted(unknown)}")
     if "cwd" in setup and not str(setup["cwd"]).startswith("/"):
@@ -376,6 +381,22 @@ def check_state(task):
             problems.append(f"ссылка {path}: цель — строка или словарь {{target, owner}}")
     if clash := set(links) & (set(setup.get("files") or {}) | {p for p, _ in dir_items}):
         problems.append(f"путь и в links, и в files/dirs: {sorted(clash)}")
+    services = setup.get("services") or {}     # {имя: {active, enabled}} — unit своего сервиса — файлом в files
+    if not isinstance(services, dict):
+        problems.append("setup.services — словарь {имя: {active, enabled}}")
+        services = {}
+    for name, spec in services.items():
+        if not isinstance(spec, dict) or set(spec) - {"active", "enabled"} \
+                or any(not isinstance(v, bool) for v in spec.values()):
+            problems.append(f"сервис {name}: словарь active/enabled со значениями true/false")
+    processes = setup.get("processes") or []  # [{command, user?, name?, cpu?, mem?, pid?}]
+    if not isinstance(processes, list):
+        problems.append("setup.processes — список процессов {command, user, …}")
+        processes = []
+    for proc in processes:
+        if not isinstance(proc, dict) or not isinstance(proc.get("command"), str) \
+                or set(proc) - {"command", "user", "name", "cpu", "mem", "pid"}:
+            problems.append(f"процесс в setup.processes — {{command, user?, name?, cpu?, mem?, pid?}}: {proc!r}")
     remote = setup.get("remote")
     if remote is not None and (not isinstance(remote, dict) or set(remote) - {"url", "commits", "pushed"}):
         problems.append("setup.remote — словарь с url, commits, pushed")

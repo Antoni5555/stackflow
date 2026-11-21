@@ -1,0 +1,57 @@
+- title: Служба после установки
+  text: |
+    Поставьте Nginx и посмотрите начало его статуса:
+    ```
+    nginx
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo apt install -y nginx
+    systemctl status nginx --no-pager | head -n 3
+    ```
+    Результат (без строк установки):
+    ```
+    ● nginx.service - A high performance web server and a reverse proxy server
+         Loaded: loaded (/usr/lib/systemd/system/nginx.service; enabled; preset: enabled)
+         Active: active (running) since Sat 2026-11-21 19:20:49 MSK; 0s ago
+    ```
+    Пакет сам включил и запустил службу; unit пакета — в `/usr/lib/systemd/system`, свои кладут в `/etc/systemd/system`.
+- title: Остановить и запустить
+  text: |
+    Остановите Nginx, проверьте состояние коротко и запустите снова:
+    ```
+    stop, is-active, start
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo systemctl stop nginx
+    systemctl is-active nginx
+    sudo systemctl start nginx
+    systemctl is-active nginx
+    ```
+    Результат:
+    ```
+    inactive
+    active
+    ```
+    `is-active` возвращает код 0 только для `active` — удобно в скриптах.
+- title: Журнал службы
+  text: |
+    Посмотрите последние три записи журнала Nginx:
+    ```
+    journalctl
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    journalctl -u nginx -n 3
+    ```
+    Результат (время у вас будет другое):
+    ```
+    Nov 21 19:20:49 server systemd[1]: Stopped nginx.service - A high performance web server and a reverse proxy server.
+    Nov 21 19:20:49 server systemd[1]: Starting nginx.service - A high performance web server and a reverse proxy server...
+    Nov 21 19:20:49 server systemd[1]: Started nginx.service - A high performance web server and a reverse proxy server.
+    ```
+    Видны остановка и запуск из прошлого упражнения.
