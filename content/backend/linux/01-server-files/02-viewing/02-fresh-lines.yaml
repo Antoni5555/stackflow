@@ -1,0 +1,15 @@
+title: "Самые свежие записи"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Новые записи лог дописывает в конец — свежее показывает tail, а не head."
+statement: |
+  Нужно посмотреть 50 самых свежих записей лога `/var/log/shop/app.log`. Какая команда?
+options:
+  - "`head -n 50 /var/log/shop/app.log`"
+  - "`tail -n 50 /var/log/shop/app.log`"
+  - "`cat /var/log/shop/app.log`"
+  - "`wc -l /var/log/shop/app.log`"
+answer: [1]
+explanation: |
+  Программа дописывает строки в конец файла, поэтому самые новые — последние: `tail -n 50`. `head` покажет самые старые (в уроке — запуск воркера), `cat` выведет весь лог, а `wc -l` только посчитает строки.

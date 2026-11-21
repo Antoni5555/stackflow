@@ -1,0 +1,35 @@
+title: "Текущая версия кода"
+type: exercise
+difficulty: 2
+pitfall: "Постоянный путь к текущей версии — символическая ссылка на папку релиза; удалить старую ссылку — rm без / на конце."
+statement: |
+  Новые версии магазина выкладываются в `/srv/shop/releases/<дата>`, а сервис запускает код из `/srv/shop/current`. Сейчас `current` — папка-копия старой версии. Удалите её и создайте вместо неё символическую ссылку `/srv/shop/current` на `/srv/shop/releases/2026-11-21`. Папки релизов не трогайте.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/releases/2026-11-20/manage.py: |
+      VERSION = "2026-11-20"
+    /srv/shop/releases/2026-11-21/manage.py: |
+      VERSION = "2026-11-21"
+    /srv/shop/current/manage.py: |
+      VERSION = "2026-11-20"
+check:
+  type: state
+  expect:
+    - path: /srv/shop/current
+      link_to: /srv/shop/releases/2026-11-21
+      fail: "/srv/shop/current — не ссылка на /srv/shop/releases/2026-11-21. Сначала удалите папку-копию (rm -r current), потом ln -s."
+    - path: /srv/shop/current/manage.py
+      contains: 'VERSION = "2026-11-21"'
+      fail: "Через current не виден код версии 2026-11-21."
+    - path: /srv/shop/releases/2026-11-20/manage.py
+      exists: true
+      fail: "Старый релиз пропал — его оставляют для отката."
+solution: |
+  rm -r current
+  ln -s /srv/shop/releases/2026-11-21 /srv/shop/current
+hints:
+  - "Пока `current` — папка, `ln -s … current` создаст ссылку внутри неё. Что сделать сначала?"
+  - "`rm -r current`, затем `ln -s /srv/shop/releases/2026-11-21 /srv/shop/current`."
+explanation: |
+  Если `current` — существующая папка, `ln -s цель current` положит ссылку **внутрь** неё (`current/2026-11-21`). Поэтому сначала убираем копию. Дальше выкладка новой версии — переключить ссылку, откат — переключить обратно на `2026-11-20`; сервис всегда запускает `/srv/shop/current`.

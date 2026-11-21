@@ -1,0 +1,19 @@
+title: "Permission denied при sudo"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Перенаправление выполняет оболочка без прав; в файл root пишут через | sudo tee -a или sudo nano."
+statement: |
+  ```
+  $ sudo echo "client_max_body_size 10m;" >> /etc/nginx/nginx.conf
+  bash: /etc/nginx/nginx.conf: Permission denied
+  ```
+  Почему ошибка, хотя есть `sudo`, и как дописать строку?
+options:
+  - "Пароль `sudo` введён неверно — повторить команду"
+  - "`sudo` получил только `echo`, а `>>` выполняет оболочка пользователя; правильно — `echo \"…\" | sudo tee -a /etc/nginx/nginx.conf`"
+  - "Файл занят Nginx — сначала остановить Nginx"
+  - "Нужно писать `sudo >> /etc/nginx/nginx.conf echo \"…\"`"
+answer: [1]
+explanation: |
+  Ошибку печатает `bash`, а не `sudo`: файл для `>>` открывает ваша оболочка, ещё до запуска `sudo echo`, и прав у неё нет. `tee -a` запускается через `sudo` сам и сам дописывает в файл — с правами `root`. Другой путь — `sudo nano /etc/nginx/nginx.conf`.

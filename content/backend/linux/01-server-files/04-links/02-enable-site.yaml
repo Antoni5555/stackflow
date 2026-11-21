@@ -1,0 +1,41 @@
+title: "Включить сайт"
+type: exercise
+difficulty: 1
+pitfall: "Сайт в Nginx включают символической ссылкой из sites-enabled на файл в sites-available; папка — root, нужен sudo."
+statement: |
+  Включите сайт магазина в Nginx: создайте в `/etc/nginx/sites-enabled/` символическую ссылку `shop` на `/etc/nginx/sites-available/shop`. Файл настроек не копируйте и не перемещайте.
+setup:
+  cwd: /home/shop
+  files:
+    /etc/nginx/nginx.conf:
+      content: |
+        user www-data;
+      owner: root
+    /etc/nginx/sites-available/shop:
+      content: |
+        server {
+            listen 80;
+            server_name shop.example;
+        }
+      owner: root
+  dirs:
+    - /etc/nginx/sites-enabled: {owner: root}
+check:
+  type: state
+  expect:
+    - path: /etc/nginx/sites-enabled/shop
+      exists: true
+      fail: "В /etc/nginx/sites-enabled нет shop. Папка принадлежит root — ln -s через sudo."
+    - path: /etc/nginx/sites-enabled/shop
+      link_to: /etc/nginx/sites-available/shop
+      fail: "sites-enabled/shop — не символическая ссылка на /etc/nginx/sites-available/shop (копия или неверный путь). Нужен ln -s с абсолютным путём к цели."
+    - path: /etc/nginx/sites-available/shop
+      exists: true
+      fail: "Файл настроек пропал из sites-available — его нельзя перемещать."
+solution: |
+  sudo ln -s /etc/nginx/sites-available/shop /etc/nginx/sites-enabled/shop
+hints:
+  - "Порядок аргументов `ln -s` — как у `cp`: сначала цель, потом где создать ссылку."
+  - "`sudo ln -s /etc/nginx/sites-available/shop /etc/nginx/sites-enabled/shop`."
+explanation: |
+  Nginx на Ubuntu читает только `sites-enabled`, а настройки хранятся в `sites-available`. Ссылка вместо копии: правите один файл — Nginx видит изменения. Без `sudo` — `ln: failed to create symbolic link '/etc/nginx/sites-enabled/shop': Permission denied`.

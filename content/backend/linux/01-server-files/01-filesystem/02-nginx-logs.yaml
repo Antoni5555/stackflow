@@ -1,0 +1,15 @@
+title: "Где логи Nginx"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Логи программ на сервере — в /var/log/<программа>, а не рядом с кодом."
+statement: |
+  Сайт отвечает `502 Bad Gateway`. Где на сервере Ubuntu искать журнал ошибок Nginx по умолчанию?
+options:
+  - "`/etc/nginx/error.log`"
+  - "`/var/log/nginx/error.log`"
+  - "`/srv/shop/logs/nginx.log`"
+  - "`/usr/bin/nginx/error.log`"
+answer: [1]
+explanation: |
+  Изменяемые данные программ — в `/var`, журналы — в `/var/log/<программа>`: у Nginx это `access.log` и `error.log` в `/var/log/nginx`. В `/etc/nginx` — настройки, в `/usr/bin` — сама программа, а папку проекта Nginx не знает.

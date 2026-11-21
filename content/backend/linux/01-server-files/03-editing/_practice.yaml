@@ -1,0 +1,59 @@
+- title: Дописать в .env
+  text: |
+    Добавьте в `.env` строку с доменом и проверьте файл:
+    ```
+    ALLOWED_HOSTS=stack-flow.ru
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    echo "ALLOWED_HOSTS=stack-flow.ru" >> .env
+    cat .env
+    ```
+    Результат:
+    ```
+    DEBUG=False
+    SECRET_KEY=change-me
+    ALLOWED_HOSTS=stack-flow.ru
+    ```
+- title: Копия спасает
+  text: |
+    Сделайте копию настроек, затем «случайно» перезапишите файл через `>` и восстановите его из копии. Файл:
+    ```
+    config/settings.ini
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    cp config/settings.ini config/settings.ini.bak
+    echo "DEBUG=True" > config/settings.ini
+    cat config/settings.ini
+    cp config/settings.ini.bak config/settings.ini
+    cat config/settings.ini
+    ```
+    Результат:
+    ```
+    DEBUG=True
+    DEBUG=False
+    ALLOWED_HOSTS=stack-flow.ru
+    ```
+    `>` оставил одну строку; копия `.bak` вернула обе.
+- title: Новая зависимость
+  text: |
+    Допишите в `requirements.txt` библиотеку и проверьте список:
+    ```
+    httpx==0.28.1
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    echo "httpx==0.28.1" >> requirements.txt
+    cat requirements.txt
+    ```
+    Результат:
+    ```
+    Django==5.2
+    psycopg==3.2
+    httpx==0.28.1
+    ```
+    Для правки нескольких строк удобнее `nano requirements.txt` (`Ctrl+O`, `Enter`, `Ctrl+X`).

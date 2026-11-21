@@ -1,0 +1,34 @@
+title: "Какие логи есть"
+type: exercise
+difficulty: 1
+pitfall: "Логи Nginx — /var/log/nginx; список файлов папки — ls с путём, cd не обязателен."
+statement: |
+  Выведите список файлов в папке логов Nginx на сервере магазина (последней командой).
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /var/log/nginx/access.log:
+      content: |
+        203.0.113.7 - - [21/Nov/2026:09:47:31 +0300] "POST /checkout/ HTTP/1.1" 500 145
+      owner: root
+    /var/log/nginx/error.log:
+      content: ""
+      owner: root
+    /var/log/shop/app.log:
+      content: |
+        2026-11-21 09:46:06 ERROR Internal Server Error: /checkout/
+      owner: root
+check:
+  type: state
+  expect:
+    - output_matches: '^access\.log\s+error\.log\s*$'
+      fail: "Последняя команда должна вывести содержимое /var/log/nginx: access.log и error.log."
+solution: |
+  ls /var/log/nginx
+hints:
+  - "Логи программ лежат в `/var/log/<программа>`."
+  - "`ls /var/log/nginx`."
+explanation: |
+  Журналы Nginx на Ubuntu — `/var/log/nginx/access.log` (все запросы) и `/var/log/nginx/error.log` (ошибки самого Nginx, например «не удалось соединиться с Gunicorn» при 502). Логи приложения магазина — отдельно, в `/var/log/shop`.

@@ -3531,6 +3531,84 @@ def push_pull():
     f.save(out(TG2 / "07-github" / "img" / "push-pull.svg"))
 
 
+
+LX1 = ROOT / "linux" / "01-server-files"
+
+
+def fhs():
+    f = Figure(880, 352, "Где на сервере лежат части магазина")
+    f.box(20, 140, 60, 44, "/", "acc", "onacc")
+    rows = [("/etc", "настройки", "/etc/nginx/sites-available/shop"),
+            ("/var/log", "логи", "/var/log/shop/app.log, /var/log/nginx/access.log"),
+            ("/srv/shop", "код магазина", "manage.py, shop/settings.py, .env, media/products/"),
+            ("/home/shop", "домашняя папка (~)", "~/backups"),
+            ("/tmp", "временное, для всех", "очищается при перезагрузке"),
+            ("/usr/bin", "программы", "python3, git, ls")]
+    for i, (path, what, example) in enumerate(rows):
+        y = 20 + i * 50
+        f.line(f"M80 162H100V{y + 20}H126")
+        f.box(130, y, 130, 40, path, "box2", "cs")
+        f.text(276, y + 18, what, "t")
+        f.text(276, y + 35, example, "cs")
+    f.text(20, 340, "Пользователь shop пишет в /srv/shop, /home/shop и /tmp; /etc и /var/log — только через sudo.", "s")
+    f.save(out(LX1 / "01-filesystem" / "img" / "fhs.svg"))
+
+
+def head_tail():
+    f = Figure(880, 330, "Какие строки лога показывают head, tail и tail -f")
+    f.box(20, 20, 340, 290, "", "box2")
+    labels = ["1  09:10:00 INFO Booting worker", "2  09:12:07 INFO GET /catalog/", "3  09:14:14 INFO GET /product/2/",
+              "…", "11 09:30:10 INFO POST /accounts/login/", "12 09:32:17 INFO GET /orders/124/", "…",
+              "18 09:44:59 INFO GET /product/8/", "19 09:46:06 ERROR … /checkout/", "20 09:48:13 INFO GET /cart/",
+              "21 09:50:20 INFO POST /checkout/", "22 09:52:27 INFO GET /orders/126/"]
+    for i, t in enumerate(labels):
+        f.text(34, 44 + i * 22, t, "errt" if "ERROR" in t else "cs")
+    f.text(20, 326, "старые записи — вверху, новые программа дописывает в конец", "s")
+    f.raw('<path d="M362 30H380V82H362" class="fig-ln"/>')
+    f.box(400, 36, 240, 36, "head -n 3 — начало", "box", "cs")
+    f.raw('<path d="M362 120H380V158H362" class="fig-ln"/>')
+    f.box(400, 120, 340, 36, "", "box")
+    f.text(416, 143, "head -n 12 | tail -n 2 — середина", "cs")
+    f.raw('<path d="M362 194H380V302H362" class="fig-ln"/>')
+    f.box(400, 210, 240, 36, "tail -n 5 — свежее", "acc", "onacc")
+    f.box(400, 258, 460, 36, "tail -f — конец + новые строки, выход Ctrl+C", "ok", "cs")
+    f.save(out(LX1 / "02-viewing" / "img" / "head-tail.svg"))
+
+
+def redirect_write():
+    f = Figure(880, 280, "> заменяет файл, >> дописывает в конец")
+    f.text(20, 30, ".env до", "t")
+    f.box(20, 44, 260, 64, "SECRET_KEY=change-me|DEBUG=False", "box2", "cs")
+    f.arrow("M280 76H316")
+    f.text(320, 30, "echo \"ALLOWED_HOSTS=shop.example\" >> .env", "cs")
+    f.box(320, 44, 300, 90, "SECRET_KEY=change-me|DEBUG=False|ALLOWED_HOSTS=shop.example", "ok", "cs")
+    f.arrow("M150 108V200H316")
+    f.text(320, 166, "echo \"DEBUG=True\" > .env", "cs")
+    f.box(320, 180, 300, 40, "DEBUG=True", "err", "errt")
+    f.text(640, 94, "старое на месте,", "s"); f.text(640, 112, "новая строка — в конце", "s")
+    f.text(640, 196, "остальное стёрто", "errt"); f.text(640, 214, "без предупреждения", "s")
+    f.text(20, 262, "Перед правкой важного файла — копия: cp .env .env.bak", "s")
+    f.save(out(LX1 / "03-editing" / "img" / "redirect-write.svg"))
+
+
+def links_fig():
+    f = Figure(880, 320, "Символическая ссылка хранит путь, жёсткая — второе имя тех же данных")
+    f.text(20, 30, "символическая: ln -s", "t")
+    f.box(20, 44, 400, 40, "sites-enabled/shop -> …/sites-available/shop", "box2", "cs")
+    f.arrow("M210 84V110")
+    f.box(20, 114, 380, 40, "sites-available/shop  (файл настроек)", "ok", "cs")
+    f.text(20, 186, "удалили цель → ссылка битая:", "s")
+    f.text(20, 206, "No such file or directory", "errt")
+    f.text(460, 30, "жёсткая: ln", "t")
+    f.box(460, 44, 180, 40, ".env", "box2", "cs")
+    f.box(680, 44, 180, 40, "env-hard", "box2", "cs")
+    f.arrow("M550 84L640 110"); f.arrow("M770 84L680 110")
+    f.box(560, 114, 200, 40, "данные (ссылок: 2)", "ok", "cs")
+    f.text(460, 186, "удалили .env → данные доступны", "s")
+    f.text(460, 206, "по имени env-hard", "s")
+    f.text(20, 290, "Выключить сайт — rm sites-enabled/shop: удаляется только ссылка, настройки остаются.", "s")
+    f.save(out(LX1 / "04-links" / "img" / "links.svg"))
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -3577,6 +3655,7 @@ if __name__ == "__main__":
                   btree, composite, explain_node, transaction, mvcc, deadlock,
                   driver_flow, injection, with_connection,
                   command_parts, path_tree, cp_mv, argv, venv, requirements,
-                  commits_chain, three_areas, diff_areas, gitignore, branches, conflict, push_pull):
+                  commits_chain, three_areas, diff_areas, gitignore, branches, conflict, push_pull,
+                  fhs, head_tail, redirect_write, links_fig):
         build()
     print("ok")

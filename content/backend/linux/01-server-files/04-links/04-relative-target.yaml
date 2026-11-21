@@ -1,0 +1,19 @@
+title: "Куда указывает ссылка"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Относительная цель символической ссылки считается от папки, где лежит ссылка, а не от текущей папки."
+statement: |
+  Из папки `/etc/nginx` выполнили:
+  ```
+  sudo ln -s sites-available/shop sites-enabled/shop
+  ```
+  Какой файл откроет Nginx, читая `/etc/nginx/sites-enabled/shop`?
+options:
+  - "`/etc/nginx/sites-available/shop`"
+  - "`/etc/nginx/sites-enabled/sites-available/shop` — его нет, ссылка битая"
+  - "`/home/shop/sites-available/shop`"
+  - "Копию файла, сделанную в момент `ln`"
+answer: [1]
+explanation: |
+  Ссылка хранит путь как есть — `sites-available/shop`, а система достраивает его от папки ссылки: `/etc/nginx/sites-enabled/`. Получается несуществующий путь, `cat` ответит `No such file or directory`. Надёжно — абсолютный путь или `../sites-available/shop`.

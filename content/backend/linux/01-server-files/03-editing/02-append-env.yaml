@@ -1,0 +1,33 @@
+title: "Домен в .env"
+type: exercise
+difficulty: 1
+pitfall: "Дописать строку — >>; одна > заменяет весь файл."
+statement: |
+  Добавьте в файл `/srv/shop/.env` строку `ALLOWED_HOSTS=shop.example`. Строки, которые там уже есть, должны остаться.
+setup:
+  cwd: /srv/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/.env: |
+      SECRET_KEY=change-me
+      DEBUG=False
+check:
+  type: state
+  expect:
+    - path: /srv/shop/.env
+      contains: '^ALLOWED_HOSTS=shop\.example$'
+      fail: "В .env нет строки ALLOWED_HOSTS=shop.example."
+    - path: /srv/shop/.env
+      contains: '^SECRET_KEY=change-me$'
+      fail: "Пропала строка SECRET_KEY — файл перезаписан. Дописывают через >>, а не >."
+    - path: /srv/shop/.env
+      contains: '^DEBUG=False$'
+      fail: "Пропала строка DEBUG=False — файл перезаписан. Дописывают через >>, а не >."
+solution: |
+  echo 'ALLOWED_HOSTS=shop.example' >> .env
+hints:
+  - "Какое перенаправление дописывает в конец, а какое заменяет файл?"
+  - "`echo 'ALLOWED_HOSTS=shop.example' >> .env`."
+explanation: |
+  `>>` открывает файл на дописывание — новая строка встаёт в конец. С `>` в файле осталась бы только `ALLOWED_HOSTS`, и Django упал бы без `SECRET_KEY`. Проверить результат — `cat .env`.

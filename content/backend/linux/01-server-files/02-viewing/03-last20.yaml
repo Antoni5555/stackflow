@@ -1,0 +1,56 @@
+title: "Последние 20 строк для разработчика"
+type: exercise
+difficulty: 1
+pitfall: "Конец файла — tail -n N; вывод в файл — перенаправление >."
+statement: |
+  Сохраните последние 20 строк лога приложения `/var/log/shop/app.log` в файл `/home/shop/last20.log`, чтобы отправить разработчику.
+setup:
+  cwd: /home/shop
+  files:
+    /var/log/shop/app.log:
+      content: |
+        2026-11-21 09:10:00 INFO Booting worker with pid: 812
+        2026-11-21 09:12:07 INFO GET /catalog/ 200
+        2026-11-21 09:14:14 INFO GET /product/2/ 200
+        2026-11-21 09:16:21 WARNING Not Found: /favicon.ico
+        2026-11-21 09:18:28 INFO POST /cart/add/2/ 302
+        2026-11-21 09:20:35 INFO GET /cart/ 200
+        2026-11-21 09:22:42 ERROR Internal Server Error: /checkout/
+        2026-11-21 09:24:49 INFO GET /catalog/?page=2 200
+        2026-11-21 09:26:56 INFO GET /product/5/ 200
+        2026-11-21 09:28:03 WARNING Not Found: /wp-login.php
+        2026-11-21 09:30:10 INFO POST /accounts/login/ 302
+        2026-11-21 09:32:17 INFO GET /orders/124/ 200
+        2026-11-21 09:34:24 ERROR Internal Server Error: /checkout/
+        2026-11-21 09:36:31 INFO GET /catalog/ 200
+        2026-11-21 09:38:38 INFO GET /product/3/ 200
+        2026-11-21 09:40:45 ERROR OperationalError: connection to server at "127.0.0.1", port 5432 failed
+        2026-11-21 09:42:52 INFO GET /catalog/ 200
+        2026-11-21 09:44:59 INFO GET /product/8/ 200
+        2026-11-21 09:46:06 ERROR Internal Server Error: /checkout/
+        2026-11-21 09:48:13 INFO GET /cart/ 200
+        2026-11-21 09:50:20 INFO POST /checkout/ 302
+        2026-11-21 09:52:27 INFO GET /orders/126/ 200
+      owner: root
+check:
+  type: state
+  expect:
+    - path: /home/shop/last20.log
+      exists: true
+      fail: "Файла /home/shop/last20.log нет. Вывод команды сохраняют перенаправлением: команда > файл."
+    - path: /home/shop/last20.log
+      contains: 'GET /orders/126/ 200'
+      fail: "В файле нет самой свежей записи лога (GET /orders/126/) — нужен вывод tail, а файл — через перенаправление > ~/last20.log."
+    - path: /home/shop/last20.log
+      not_contains: 'Booting worker|09:12:07 INFO GET /catalog/'
+      fail: "В файле лишние старые строки: нужны только последние 20 (tail -n 20)."
+    - path: /home/shop/last20.log
+      contains: '09:14:14 INFO GET /product/2/ 200'
+      fail: "Строк меньше 20: первой должна быть запись 09:14:14 GET /product/2/ — проверьте число в tail -n."
+solution: |
+  tail -n 20 /var/log/shop/app.log > ~/last20.log
+hints:
+  - "Какая команда показывает конец файла и как направить её вывод в файл?"
+  - "`tail -n 20 /var/log/shop/app.log > ~/last20.log`."
+explanation: |
+  В логе 22 строки; `tail -n 20` пропускает две самые старые (запуск воркера и первый запрос) и выводит остальные. `>` записывает вывод в файл вместо экрана. Лог принадлежит `root`, но права `644` разрешают его читать — `sudo` не нужен.

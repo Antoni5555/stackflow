@@ -1,0 +1,40 @@
+title: "Конец лога Nginx"
+type: exercise
+difficulty: 2
+pitfall: "Лог Nginx закрыт для обычного пользователя — читать через sudo; файл с результатом пишется в свою папку."
+statement: |
+  Сохраните последние 3 строки журнала запросов Nginx `/var/log/nginx/access.log` в файл `/home/shop/access-tail.log`. Журнал доступен только `root`.
+setup:
+  cwd: /home/shop
+  files:
+    /var/log/nginx/access.log:
+      content: |
+        93.184.216.34 - - [21/Nov/2026:09:40:00 +0300] "GET /catalog/ HTTP/1.1" 200 5120
+        203.0.113.7 - - [21/Nov/2026:09:41:13 +0300] "GET /product/2/ HTTP/1.1" 200 4380
+        198.51.100.23 - - [21/Nov/2026:09:42:26 +0300] "POST /checkout/ HTTP/1.1" 500 145
+        93.184.216.34 - - [21/Nov/2026:09:43:39 +0300] "GET /static/css/main.css HTTP/1.1" 200 18230
+        203.0.113.7 - - [21/Nov/2026:09:44:52 +0300] "GET /wp-login.php HTTP/1.1" 404 162
+        198.51.100.23 - - [21/Nov/2026:09:45:05 +0300] "GET /catalog/ HTTP/1.1" 200 5120
+        93.184.216.34 - - [21/Nov/2026:09:46:18 +0300] "GET /product/2/ HTTP/1.1" 200 4380
+        203.0.113.7 - - [21/Nov/2026:09:47:31 +0300] "POST /checkout/ HTTP/1.1" 500 145
+      owner: root
+      mode: '640'
+check:
+  type: state
+  expect:
+    - path: /home/shop/access-tail.log
+      contains: 'POST /checkout/ HTTP/1\.1" 500 145'
+      fail: "В файле нет последней строки журнала (POST /checkout/ … 500). Без sudo tail ответит Permission denied."
+    - path: /home/shop/access-tail.log
+      contains: '198\.51\.100\.23 - - \[21/Nov/2026:09:45:05'
+      fail: "Строк меньше трёх: первой должна быть запись 09:45:05 с 198.51.100.23."
+    - path: /home/shop/access-tail.log
+      not_contains: '21/Nov/2026:09:4[0-4]:'
+      fail: "Лишние строки: нужны только три последние (tail -n 3)."
+solution: |
+  sudo tail -n 3 /var/log/nginx/access.log > ~/access-tail.log
+hints:
+  - "Что ответит `tail` без `sudo` на файл с правами 640 у root?"
+  - "`sudo tail -n 3 /var/log/nginx/access.log > ~/access-tail.log` — читает root, а файл пишется в вашу папку."
+explanation: |
+  Без `sudo` — `tail: cannot open '/var/log/nginx/access.log' for reading: Permission denied`. С `sudo` файл читает `root`, а перенаправление `>` выполняет ваша оболочка — и это нормально, ведь результат пишется в домашнюю папку, где у `shop` есть права. Последняя строка — `POST /checkout/` с кодом 500: Nginx видит ту же ошибку оформления заказа.

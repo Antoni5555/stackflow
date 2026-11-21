@@ -1,0 +1,55 @@
+- title: Что лежит в проекте
+  text: |
+    Выведите все файлы и папки проекта магазина, включая скрытые. Проект:
+    ```
+    /srv/shop
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ls -a /srv/shop
+    ```
+    Результат:
+    ```
+    .  ..  .env  backup  config  data  deploy.sh  logs  manage.py  media  requirements.txt
+    ```
+    `.env` с секретами виден только с `-a`: имена на точку — скрытые.
+- title: Настройки сайта в Nginx
+  text: |
+    Найдите, какие сайты описаны в настройках Nginx, и прочитайте настройки магазина. Папка с описаниями сайтов:
+    ```
+    /etc/nginx/sites-available
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ls /etc/nginx/sites-available
+    cat /etc/nginx/sites-available/shop.conf
+    ```
+    Результат:
+    ```
+    shop.conf
+    server {
+        listen 80;
+        server_name stack-flow.ru;
+    }
+    ```
+    Читать `/etc` может любой; менять — только через `sudo`.
+- title: Логи Nginx
+  text: |
+    Посмотрите, какие логи пишет Nginx, их размер и владельца — размеры в удобных единицах. Папка:
+    ```
+    /var/log/nginx
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ls -lh /var/log/nginx
+    ```
+    Результат (даты у вас будут другие):
+    ```
+    total 12M
+    -rw-r--r-- 1 www-data www-data 12M Nov 12 14:07 access.log
+    -rw-r--r-- 1 www-data www-data   0 Nov 19 14:07 error.log
+    ```
+    Логи принадлежат `www-data` — пользователю, от имени которого работает Nginx. `access.log` — 12 МБ, `error.log` пуст: ошибок у самого Nginx нет.

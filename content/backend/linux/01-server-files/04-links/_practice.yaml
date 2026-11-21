@@ -1,0 +1,51 @@
+- title: Включить сайт
+  text: |
+    Включите сайт магазина в Nginx символической ссылкой и посмотрите её. Настройки сайта:
+    ```
+    /etc/nginx/sites-available/shop.conf
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo ln -s /etc/nginx/sites-available/shop.conf /etc/nginx/sites-enabled/shop.conf
+    ls -l /etc/nginx/sites-enabled/shop.conf
+    ```
+    Результат (дата у вас будет другая):
+    ```
+    lrwxrwxrwx 1 root root 36 Nov 21 14:07 /etc/nginx/sites-enabled/shop.conf -> /etc/nginx/sites-available/shop.conf
+    ```
+    `sudo` — потому что `sites-enabled` принадлежит `root`. 36 — длина пути цели.
+- title: Логи Nginx рядом с проектом
+  text: |
+    Сделайте в папке `logs` проекта ссылку `nginx` на папку логов Nginx и посмотрите через неё список логов. Папка логов Nginx:
+    ```
+    /var/log/nginx
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ln -s /var/log/nginx logs/nginx
+    ls logs/nginx/
+    ```
+    Результат:
+    ```
+    access.log  error.log
+    ```
+    Символическая ссылка может вести на папку. Удалить её — `rm logs/nginx` (без `/` на конце): сама папка логов останется.
+- title: Второе имя файла
+  text: |
+    Сделайте жёсткую ссылку на файл заказов в папке `backup` и посмотрите счётчик ссылок. Файл:
+    ```
+    data/orders.csv
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ln data/orders.csv backup/orders.csv
+    ls -l data/orders.csv
+    ```
+    Результат (дата у вас будет другая):
+    ```
+    -rw-r--r-- 2 shop shop 63 Nov 21 14:07 data/orders.csv
+    ```
+    Число `2` после прав — у данных два имени. Это не резервная копия: правка одного имени видна во втором, а бэкап делают через `cp` или `tar`.

@@ -1,0 +1,15 @@
+title: "Выйти из vim"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Выход из vim без сохранения — Esc, :q!, Enter; с сохранением — :wq."
+statement: |
+  `git commit` без `-m` открыл на сервере `vim`, вы случайно что-то набрали и хотите выйти, **ничего не сохраняя**. Что нажать?
+options:
+  - "`Ctrl+X`"
+  - "`Esc`, затем `:q!` и `Enter`"
+  - "`Esc`, затем `:wq` и `Enter`"
+  - "`Ctrl+C`"
+answer: [1]
+explanation: |
+  `vim` модальный: `Esc` возвращает в обычный режим, `:` открывает командную строку, `q!` — выйти, отбросив изменения. `:wq` — сохранить и выйти, `Ctrl+X` — выход из `nano`, а `Ctrl+C` в `vim` не закрывает редактор. Чтобы Git открывал `nano`: `git config --global core.editor nano`.

@@ -1,0 +1,53 @@
+- title: Размер и начало лога
+  text: |
+    Узнайте, сколько строк в логе приложения, и выведите первые две. Лог (из `/srv/shop`):
+    ```
+    logs/app.log
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    wc -l logs/app.log
+    head -n 2 logs/app.log
+    ```
+    Результат:
+    ```
+    5 logs/app.log
+    INFO  start server
+    INFO  GET /catalog/ 200
+    ```
+- title: Свежие записи
+  text: |
+    Выведите три самые свежие записи лога:
+    ```
+    logs/app.log
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    tail -n 3 logs/app.log
+    ```
+    Результат:
+    ```
+    ERROR db connection lost
+    INFO  GET /cart/ 200
+    ERROR timeout /api/orders/
+    ```
+    Новые записи — в конце файла; две ошибки из трёх — повод разбираться.
+- title: Строки из середины
+  text: |
+    Выведите вторую и третью строки лога одной командой с конвейером:
+    ```
+    logs/app.log
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    head -n 3 logs/app.log | tail -n 2
+    ```
+    Результат:
+    ```
+    INFO  GET /catalog/ 200
+    ERROR db connection lost
+    ```
+    `head -n 3` оставляет первые три строки, `tail -n 2` — из них последние две.

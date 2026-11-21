@@ -1,0 +1,35 @@
+title: "Копия настроек сайта"
+type: exercise
+difficulty: 1
+pitfall: "Настройки читаем из /etc, а копии кладём к себе: в /etc пользователь shop писать не может."
+statement: |
+  Перед правкой настроек Nginx сохраните копию файла настроек сайта `/etc/nginx/sites-available/shop` в папку `backups` в своей домашней папке (`/home/shop/backups`, её пока нет). Оригинал должен остаться на месте.
+setup:
+  cwd: /home/shop
+  files:
+    /etc/nginx/sites-available/shop:
+      content: |
+        server {
+            listen 80;
+            server_name shop.example;
+        }
+      owner: root
+    /srv/shop/manage.py: |
+      import os
+check:
+  type: state
+  expect:
+    - path: /home/shop/backups/shop
+      contains: 'server_name shop\.example;'
+      fail: "В /home/shop/backups нет копии shop. Создайте папку (mkdir ~/backups) и скопируйте туда файл."
+    - path: /etc/nginx/sites-available/shop
+      exists: true
+      fail: "Оригинал из /etc/nginx/sites-available пропал — нужен cp, а не mv."
+solution: |
+  mkdir ~/backups
+  cp /etc/nginx/sites-available/shop ~/backups/
+hints:
+  - "Где у пользователя shop есть право писать? `~` — это `/home/shop`."
+  - "`mkdir ~/backups`, затем `cp /etc/nginx/sites-available/shop ~/backups/`."
+explanation: |
+  Читать настройки в `/etc` может любой, а писать — только `root`, поэтому копию кладём в свою домашнюю папку. `~` — сокращение для `/home/shop`. `cp` оставляет оригинал, `mv` унёс бы его — и Nginx потерял бы настройки сайта.
