@@ -1,17 +1,17 @@
-// Движок git: подключает к Linux-симулятору git, «GitHub», окружение Python и apt
+// Движок git: подключает к Linux-симулятору git, «GitHub» и окружение Python
 // (только на страницах Git — на страницах Linux эти команды отвечают, что появятся позже).
+// apt — часть самого Linux-симулятора (engines/linux/apt.js).
 
 import { COMMANDS } from '../linux/commands.js';
 import { VirtualFS } from '../linux/fs.js';
 import { Shell } from '../linux/shell.js';
-import { apt } from './apt.js';
 import { git } from './commands.js';
 import { deactivate, pip, python, buildVenv } from './python.js';
 import { buildRemote } from './remote.js';
 import { buildRepo } from './repo.js';
 
 Object.assign(COMMANDS, {
-  git, pip, pip3: pip, python, python3: python, deactivate, apt, 'apt-get': apt,
+  git, pip, pip3: pip, python, python3: python, deactivate,
 });
 
 /** Оболочка по setup задачи Git: файлы, ~/.gitconfig, история, «GitHub», venv. */

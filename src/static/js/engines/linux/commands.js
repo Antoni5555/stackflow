@@ -2,6 +2,7 @@
 // run возвращает { out, err, code, action }. Сообщения об ошибках — дословно как в Ubuntu
 // (их цитируют уроки), справка --help — коротко по-русски.
 
+import { apt } from './apt.js';
 import {
   DAY, FsError, GROUPS, USERS, VirtualFS, basename, dirname, normalize,
 } from './fs.js';
@@ -672,10 +673,11 @@ const grep = {
 const sort = {
   help: `sort [флаги] [файл…] — отсортировать строки.
   -n   как числа (10 после 9, а не после 1)
+  -h   как размеры из du -h и ls -lh (95M раньше 1.8G)
   -r   в обратном порядке
   -u   без повторов`,
   run(ctx) {
-    const parsed = options('sort', ctx.args, { flags: 'nru' });
+    const parsed = options('sort', ctx.args, { flags: 'nhru' });
     if (parsed.error) return parsed.error;
     const { opts } = parsed;
     let all = [];
@@ -684,8 +686,14 @@ const sort = {
       return '';
     });
     const number = (line) => parseFloat(line.trim()) || 0;
-    all.sort(opts.n
-      ? (a, b) => number(a) - number(b) || byteOrder(a, b)
+    // -h: число с приставкой K, M, G, T (по 1024) в начале строки
+    const human = (line) => {
+      const match = /^\s*([\d.]+)([KMGTP]?)/.exec(line);
+      return match ? parseFloat(match[1]) * 1024 ** ' KMGTP'.indexOf(match[2] || ' ') : 0;
+    };
+    const key = opts.h ? human : number;
+    all.sort(opts.n || opts.h
+      ? (a, b) => key(a) - key(b) || byteOrder(a, b)
       : byteOrder);
     if (opts.r) all.reverse();
     if (opts.u) all = all.filter((line, i) => i === 0 || line !== all[i - 1]);
@@ -858,17 +866,21 @@ const du = {
     const parsed = options('du', ctx.args, { flags: 'sha' });
     if (parsed.error) return parsed.error;
     const { opts } = parsed;
-    const format = (bytes) => (opts.h ? humanSize(bytes) : String(Math.ceil(bytes / 1024)));
+    // пустой файл — «0», как у du -h в Ubuntu, а не 0.0K
+    const format = (bytes) => {
+      if (!opts.h) return String(Math.ceil(bytes / 1024));
+      return bytes ? humanSize(bytes) : '0';
+    };
     const paths = parsed.operands.length ? parsed.operands : ['.'];
     return eachPath(ctx, paths, (path) => {
       const abs = ctx.sh.resolve(path);
-      if (opts.s) return `${format(diskUsage(ctx, abs))}\t${path}\n`;
-      let out = '';
-      for (const [sub, node] of ctx.fs.walk(abs)) {
-        if (node.type !== 'dir') continue;
-        out = `${format(diskUsage(ctx, sub))}\t${path.replace(/\/$/, '')}${sub.slice(abs.length)}\n${out}`;
-      }
-      return out.split('\n').filter(Boolean).reverse().join('\n') + '\n';
+      const node = ctx.fs.lookup(abs);
+      if (opts.s || node.type !== 'dir') return `${format(diskUsage(ctx, abs))}\t${path}\n`;
+      // как в Ubuntu: сначала вложенные папки, итог самой папки — последним
+      const shown = path.replace(/\/$/, '') || '/';
+      return joinLines(postOrder(node, abs)
+        .filter(([, item]) => item.type === 'dir')
+        .map(([sub]) => `${format(diskUsage(ctx, sub))}\t${shown}${sub.slice(abs.length)}`));
     }, (path, e) => `du: cannot access '${path}': ${e.message}\n`);
   },
 };
@@ -899,7 +911,9 @@ const df = {
         fs, format(size), format(use), format(size - use), `${Math.ceil((use / size) * 100)}%`, mount,
       ]),
     ];
-    const widths = table[0].map((_, col) => Math.max(...table.map((row) => row[col].length)));
+    // как GNU df: у колонок есть наименьшая ширина — заголовок стоит над числами
+    const least = human ? [14, 5, 5, 5, 4, 0] : [14, 9, 4, 9, 4, 0];
+    const widths = table[0].map((_, col) => Math.max(least[col], ...table.map((row) => row[col].length)));
     return ok(joinLines(table.map((row) => row.map((cell, col) => (col === 0 || col === 5
       ? cell.padEnd(widths[col]) : cell.padStart(widths[col]))).join(' ').trimEnd())));
   },
@@ -1344,5 +1358,5 @@ export const COMMANDS = {
   python: { ...notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'), noWhich: true },
   git: notHere('Git появится в тренажёре Git'),
   pip: notHere('pip появится вместе с тренажёром Git (venv и pip)'),
-  apt: notHere('apt появится вместе с тренажёром Git'),
+  apt, 'apt-get': apt,
 };

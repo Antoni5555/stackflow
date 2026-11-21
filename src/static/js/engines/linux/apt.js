@@ -1,6 +1,7 @@
 // apt — пакеты Ubuntu (учебный справочник): ставить можно только через sudo, без него —
 // настоящая ошибка блокировки dpkg. Установленное хранится в корне ФС (fs.root.apt)
-// и видно файлами: /usr/sbin/nginx, /etc/nginx/… .
+// и видно файлами: /usr/sbin/nginx, /etc/nginx/… . Настройки пакета — файлы в /etc:
+// remove их оставляет, purge удаляет (как dpkg). Есть и в тренажёре Linux, и в Git.
 
 const ok = (out = '') => ({ out, err: '', code: 0 });
 const fail = (err, code = 100) => ({ out: '', err, code });
@@ -23,9 +24,27 @@ export const APT = {
   htop: { version: '3.3.0-4build1', files: { '/usr/bin/htop': null } },
   'python3-venv': { version: '3.12.3-0ubuntu2', files: {} },
   'python3-pip': { version: '24.0+dfsg-1ubuntu1.1', files: { '/usr/bin/pip3': null } },
+  'postgresql-client': { version: '16+257build1.1', files: { '/usr/bin/psql': null, '/usr/bin/pg_dump': null } },
+  'build-essential': { version: '12.10ubuntu1', files: { '/usr/bin/gcc': null, '/usr/bin/make': null } },
   postgresql: { version: '16+257build1.1', files: { '/usr/lib/postgresql/16/bin/postgres': null, '/etc/postgresql/16/main/postgresql.conf': "listen_addresses = 'localhost'\n" } },
   'redis-server': { version: '5:7.0.15-1build2', files: { '/usr/bin/redis-server': null, '/etc/redis/redis.conf': 'bind 127.0.0.1\nport 6379\n' } },
 };
+
+/** Настройки пакета — всё в /etc: apt remove их не трогает. */
+const isConfig = (path) => path.startsWith('/etc/');
+
+/** После purge — пустые папки настроек пакета (/etc/nginx/sites-enabled…) тоже долой. */
+function removeEmptyDirs(fs, paths) {
+  for (const path of paths) {
+    let dir = path.slice(0, path.lastIndexOf('/'));
+    while (dir.startsWith('/etc/') && fs.exists(dir)) {
+      const node = fs.lookup(dir);
+      if (node.type !== 'dir' || node.children.size) break;
+      fs.remove(dir);
+      dir = dir.slice(0, dir.lastIndexOf('/'));
+    }
+  }
+}
 
 /** Пакеты, которые уже стоят на сервере. */
 const PREINSTALLED = ['git', 'curl', 'python3-venv', 'python3-pip'];
@@ -43,8 +62,10 @@ export const apt = {
   help: `apt — пакеты Ubuntu (нужен sudo).
   sudo apt update           обновить списки пакетов
   sudo apt install nginx    поставить пакет
-  sudo apt remove nginx     удалить
-В тренажёре — учебный набор: nginx, postgresql, redis-server, tree, htop, curl, git.`,
+  sudo apt remove nginx     удалить (настройки в /etc остаются)
+  sudo apt purge nginx      удалить вместе с настройками
+В тренажёре — учебный набор: nginx, postgresql, postgresql-client, redis-server,
+build-essential, tree, htop, curl, git.`,
   run(ctx) {
     const [sub, ...args] = ctx.args;
     const names = args.filter((arg) => !arg.startsWith('-'));
@@ -52,7 +73,7 @@ export const apt = {
     if (sub === 'list' && args.includes('--installed')) {
       return ok(`Listing... Done\n${installedSet(ctx.fs).sort().map((name) => `${name}/noble,now ${APT[name].version} amd64 [installed]\n`).join('')}`);
     }
-    if (!['update', 'install', 'remove', 'upgrade'].includes(sub)) return fail(`E: Invalid operation ${sub}\n`);
+    if (!['update', 'install', 'remove', 'purge', 'upgrade'].includes(sub)) return fail(`E: Invalid operation ${sub}\n`);
     if (ctx.fs.user !== 'root') return fail(LOCK);
     if (sub === 'update' || sub === 'upgrade') {
       return ok('Hit:1 http://archive.ubuntu.com/ubuntu noble InRelease\nHit:2 http://security.ubuntu.com/ubuntu noble-security InRelease\nReading package lists... Done\nBuilding dependency tree... Done\nReading state information... Done\nAll packages are up to date.\n');
@@ -62,15 +83,29 @@ export const apt = {
     for (const name of names) {
       if (!APT[name]) return fail(`${out}E: Unable to locate package ${name}\n`);
     }
-    if (sub === 'remove') {
+    if (sub === 'remove' || sub === 'purge') {
+      const purge = sub === 'purge';
       for (const name of names) {
-        if (!list.includes(name)) {
+        const pkg = APT[name];
+        const paths = [...Object.keys(pkg.files), ...Object.keys(pkg.links ?? {})];
+        const configs = paths.filter(isConfig);
+        const leftConfigs = configs.some((path) => ctx.fs.exists(path, { follow: false }));
+        if (!list.includes(name) && !(purge && leftConfigs)) {
           out += `Package '${name}' is not installed, so not removed\n`;
           continue;
         }
-        for (const path of Object.keys(APT[name].files)) if (ctx.fs.exists(path)) ctx.fs.remove(path);
-        list.splice(list.indexOf(name), 1);
-        out += `Removing ${name} (${APT[name].version}) ...\n`;
+        // remove — только программа; purge — ещё и настройки в /etc
+        for (const path of paths.filter((item) => purge || !isConfig(item))) {
+          if (ctx.fs.exists(path, { follow: false })) ctx.fs.remove(path);
+        }
+        if (list.includes(name)) {
+          list.splice(list.indexOf(name), 1);
+          out += `Removing ${name} (${pkg.version}) ...\n`;
+        }
+        if (purge && configs.length) {
+          removeEmptyDirs(ctx.fs, configs);
+          out += `Purging configuration files for ${name} (${pkg.version}) ...\n`;
+        }
       }
       return ok(out);
     }

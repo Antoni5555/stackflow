@@ -313,6 +313,32 @@ describe('как в Ubuntu: ls в конвейере через sudo и скри
   });
 });
 
+describe('как в Ubuntu: apt в Linux-тренажёре, df, du, sort -h', () => {
+  it('apt: install, remove оставляет /etc, purge удаляет; новые пакеты', () => {
+    const sh = shell({});
+    assert.match(run(sh, 'apt install nginx').err, /are you root\?/);
+    run(sh, 'sudo apt install nginx postgresql-client build-essential');
+    assert.equal(run(sh, 'which psql make').out, '/usr/bin/psql\n/usr/bin/make\n');
+    run(sh, 'sudo apt remove nginx');
+    assert.equal(run(sh, 'ls /usr/sbin/nginx').code, 2);
+    assert.equal(run(sh, 'cat /etc/nginx/nginx.conf').code, 0);       // настройки остались
+    assert.match(run(sh, 'sudo apt purge nginx').out, /Purging configuration files for nginx/);
+    assert.match(run(sh, 'ls /etc/nginx').err, /No such file or directory/);
+  });
+
+  it('df -h — заголовок над колонками; du — вложенные папки первыми, пустой файл — 0', () => {
+    const sh = shell({ cwd: '/srv/shop', files: {
+      '/srv/shop/a/b/x': { size: '2M' }, '/srv/shop/a/c/y': { size: '95M' }, '/srv/shop/e': '',
+      '/srv/shop/sizes.txt': '1.8G\n95M\n12K\n' } });
+    assert.match(run(sh, 'df -h').out, /^Filesystem {6}Size {2}Used Avail Use% Mounted on\n\/dev\/sda1 {8}15G /);
+    assert.deepEqual(run(sh, 'du -h a').out.split('\n').map((line) => line.split('\t')[1]),
+      ['a/b', 'a/c', 'a', undefined]);
+    assert.equal(run(sh, 'du -sh e').out, '0\te\n');
+    assert.equal(run(sh, 'sort -h sizes.txt').out, '12K\n95M\n1.8G\n');
+    assert.equal(run(sh, 'sort -hr sizes.txt').out, '1.8G\n95M\n12K\n');
+  });
+});
+
 describe('поиск и место', () => {
   it('find: -name, -type, -size, -mtime', () => {
     const sh = shell(SHOP);
