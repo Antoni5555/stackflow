@@ -1,0 +1,116 @@
+title: "Проверить JWT"
+type: exercise
+difficulty: 3
+pitfall: "Сначала подпись (compare_digest с секретом сервера), потом exp; данным без проверки подписи не доверяют."
+statement: |
+  Напишите проверку токена для API магазина `verify(token, secret, now)`: вернуть данные токена (словарь), если подпись HS256 верна и срок не истёк, иначе выбросить `ValueError` с текстом:
+  - `"Токен должен состоять из трёх частей"` — частей не три;
+  - `"Подпись неверна"` — HMAC-SHA256 от строки `заголовок.данные` с ключом `secret` не совпал с подписью;
+  - `"Токен истёк"` — `now >= exp` (`now` — секунды Unix).
+
+  Подпись проверяйте **до** чтения данных. Функция `unb64` (base64url без `=`) уже есть в заготовке.
+starter_code: |
+  import base64
+  import hashlib
+  import hmac
+  import json
+
+
+  def unb64(part):
+      return base64.urlsafe_b64decode(part + "=" * (-len(part) % 4))
+
+
+  def verify(token, secret, now):
+      header, payload, signature = token.split(".")
+      return json.loads(unb64(payload))
+check:
+  type: tests
+  tests:
+    - code: |
+        anna = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+                ".eyJzdWIiOjEsImlhdCI6MTc5NTI0MDExMCwiZXhwIjoxNzk1MjQxMDEwfQ"
+                ".xn1uqT_fA6H-oJxMgGCsbV8YhH85mp0JOPpUCtRnqtI")
+        assert verify(anna, "shop-demo-secret", 1795240200) == {"sub": 1, "iat": 1795240110, "exp": 1795241010}
+      fail: "Верный токен Анны до exp — вернуть его данные."
+    - code: |
+        forged = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+                  ".eyJzdWIiOjIsImlhdCI6MTc5NTI0MDExMCwiZXhwIjoxNzk1MjQxMDEwfQ"
+                  ".xn1uqT_fA6H-oJxMgGCsbV8YhH85mp0JOPpUCtRnqtI")
+        try:
+            verify(forged, "shop-demo-secret", 1795240200)
+        except ValueError as e:
+            assert str(e) == "Подпись неверна", str(e)
+        else:
+            raise AssertionError("подделка принята")
+      fail: "Токен с sub, заменённым на 2, и старой подписью — ValueError(\"Подпись неверна\"). Пересчитайте HMAC-SHA256 от «заголовок.данные»."
+    - code: |
+        anna = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+                ".eyJzdWIiOjEsImlhdCI6MTc5NTI0MDExMCwiZXhwIjoxNzk1MjQxMDEwfQ"
+                ".xn1uqT_fA6H-oJxMgGCsbV8YhH85mp0JOPpUCtRnqtI")
+        try:
+            verify(anna, "other-secret", 1795240200)
+        except ValueError as e:
+            assert str(e) == "Подпись неверна", str(e)
+        else:
+            raise AssertionError("чужой секрет принят")
+      fail: "С другим секретом подпись не сходится — «Подпись неверна»."
+    - code: |
+        old = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+               ".eyJzdWIiOjEsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAwOTAwfQ"
+               ".K1OhbXoEeNHLbcU_ImC2ocLWNZQYJLmrD2rRvmINvHc")
+        try:
+            verify(old, "shop-demo-secret", 1795240200)
+        except ValueError as e:
+            assert str(e) == "Токен истёк", str(e)
+        else:
+            raise AssertionError("истёкший токен принят")
+      fail: "Подпись верна, но exp в прошлом — ValueError(\"Токен истёк\")."
+    - code: |
+        anna = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+                ".eyJzdWIiOjEsImlhdCI6MTc5NTI0MDExMCwiZXhwIjoxNzk1MjQxMDEwfQ"
+                ".xn1uqT_fA6H-oJxMgGCsbV8YhH85mp0JOPpUCtRnqtI")
+        try:
+            verify(anna, "shop-demo-secret", 1795241010)
+        except ValueError as e:
+            assert str(e) == "Токен истёк", str(e)
+        else:
+            raise AssertionError("токен в секунду exp принят")
+      fail: "В момент exp токен уже недействителен: now >= exp — «Токен истёк»."
+    - code: |
+        for bad in ["abc", "a.b", "a.b.c.d"]:
+            try:
+                verify(bad, "shop-demo-secret", 0)
+            except ValueError as e:
+                assert str(e) == "Токен должен состоять из трёх частей", str(e)
+            else:
+                raise AssertionError(bad)
+      fail: "Если частей не три — ValueError(\"Токен должен состоять из трёх частей\")."
+solution: |
+  import base64
+  import hashlib
+  import hmac
+  import json
+
+
+  def unb64(part):
+      return base64.urlsafe_b64decode(part + "=" * (-len(part) % 4))
+
+
+  def verify(token, secret, now):
+      parts = token.split(".")
+      if len(parts) != 3:
+          raise ValueError("Токен должен состоять из трёх частей")
+      header, payload, signature = parts
+      signing_input = f"{header}.{payload}".encode()
+      expected = hmac.new(secret.encode(), signing_input, hashlib.sha256).digest()
+      if not hmac.compare_digest(expected, unb64(signature)):
+          raise ValueError("Подпись неверна")
+      data = json.loads(unb64(payload))
+      if now >= data["exp"]:
+          raise ValueError("Токен истёк")
+      return data
+hints:
+  - "Подпись считается от строки `f\"{header}.{payload}\"` — закодированных частей, а не от словаря."
+  - "`hmac.new(secret.encode(), signing_input, hashlib.sha256).digest()` и `hmac.compare_digest(expected, unb64(signature))`."
+explanation: |
+  Порядок важен: сначала подпись, потом данные. Пока подпись не проверена, в `exp` и `sub` может быть что угодно — их вписал тот, кто прислал токен. Подпись считается от **закодированных** частей: сервер не пересобирает JSON, а берёт байты как пришли. `compare_digest` сравнивает за постоянное время. В реальном проекте — `jwt.decode(token, key, algorithms=["HS256"])` из PyJWT: он делает то же самое и ещё проверяет `alg` в заголовке.

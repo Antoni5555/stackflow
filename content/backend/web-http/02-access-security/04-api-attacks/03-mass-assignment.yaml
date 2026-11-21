@@ -1,0 +1,65 @@
+title: "Лишние поля профиля"
+type: fix
+difficulty: 2
+pitfall: "Записывают только поля из явного списка; на остальные — 400, а не setattr по всем ключам."
+statement: |
+  View `PATCH /api/me/` записывает в пользователя все поля из тела — так покупатель делает себя сотрудником (`{"is_staff": true}`). Исправьте: менять можно только `name` и `phone` (множество `EDITABLE`), если в теле есть другие поля — ответ `400` с `{"error": "Эти поля менять нельзя", "fields": [...]}` (имена полей по алфавиту) и ничего не сохранять.
+files:
+  views.py: |
+    import json
+
+    from django.http import JsonResponse
+
+    from .auth import token_required
+
+
+    @token_required
+    def me(request):
+        data = json.loads(request.body)
+        user = request.user
+        for field, value in data.items():
+            setattr(user, field, value)
+        user.save()
+        return JsonResponse({"id": user.id, "name": user.name, "is_staff": user.is_staff})
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*EDITABLE\s*=\s*\{\s*"(name|phone)"\s*,\s*"(name|phone)"\s*\}'
+      fail: "Заведите множество разрешённых полей: EDITABLE = {\"name\", \"phone\"}."
+    - must_match: 'set\(data\)\s*-\s*EDITABLE'
+      fail: "Найдите лишние поля: set(data) - EDITABLE."
+    - must_match: 'status\s*=\s*400'
+      fail: "На лишние поля — ответ со status=400."
+    - must_match: '"Эти поля менять нельзя"'
+      fail: "Текст ошибки — \"Эти поля менять нельзя\"."
+    - must_match: 'sorted\('
+      fail: "Имена лишних полей — по алфавиту: sorted(...)."
+    - must_not_match: '^\s*for\s+field,\s*value\s+in\s+data\.items\(\):\s*$'
+      fail: "Цикл по всем полям тела — и есть дыра. Записывайте только разрешённые поля."
+solution:
+  views.py: |
+    import json
+
+    from django.http import JsonResponse
+
+    from .auth import token_required
+
+    EDITABLE = {"name", "phone"}
+
+
+    @token_required
+    def me(request):
+        data = json.loads(request.body)
+        extra = sorted(set(data) - EDITABLE)
+        if extra:
+            return JsonResponse({"error": "Эти поля менять нельзя", "fields": extra}, status=400)
+        user = request.user
+        for field in EDITABLE & set(data):
+            setattr(user, field, data[field])
+        user.save()
+        return JsonResponse({"id": user.id, "name": user.name, "is_staff": user.is_staff})
+hints:
+  - "Какие ключи тела не входят в `EDITABLE`? Разность множеств."
+  - "`extra = sorted(set(data) - EDITABLE)`; если `extra` не пустой — `JsonResponse(..., status=400)`; иначе записать только `EDITABLE & set(data)`."
+explanation: |
+  `setattr` по всем ключам — mass assignment: в учебном API `/api/v0/me/` принял `{"name": "Аня", "is_staff": true}` и вернул `"is_staff": true`. Явный список разрешённых полей защищает и от полей, которые добавят в модель позже (`balance`, `discount`). 400 со списком лишних полей лучше молчаливого игнорирования: клиент увидит свою ошибку. В Django то же даёт `ModelForm` с `fields`, в DRF — сериализатор с `read_only_fields`.

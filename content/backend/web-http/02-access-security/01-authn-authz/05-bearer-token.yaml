@@ -1,0 +1,46 @@
+title: "Достать токен из заголовка"
+type: exercise
+difficulty: 2
+pitfall: "Заголовок Authorization бывает пустым, с другой схемой или с лишними пробелами; схема Bearer — без учёта регистра."
+statement: |
+  Напишите `bearer_token(header)` для API магазина: из значения заголовка `Authorization` вернуть токен, если схема — `Bearer` (в любом регистре), иначе `None`. Заголовка может не быть (`None`) или в нём может быть пустая строка, другая схема (`Basic …`) или схема без токена (`"Bearer"`, `"Bearer   "`). Лишние пробелы по краям и между схемой и токеном игнорируйте.
+starter_code: |
+  def bearer_token(header):
+      return header[7:]
+check:
+  type: tests
+  tests:
+    - code: |
+        assert bearer_token("Bearer abc.def.ghi") == "abc.def.ghi"
+      fail: "Из «Bearer abc.def.ghi» нужно вернуть «abc.def.ghi»."
+    - code: |
+        assert bearer_token(None) is None and bearer_token("") is None
+      fail: "Нет заголовка или он пустой — None."
+    - code: |
+        assert bearer_token("Basic YW5uYTpwYXNz") is None
+      fail: "Другая схема (Basic) — не Bearer-токен: None."
+    - code: |
+        assert bearer_token("bearer abc") == "abc" and bearer_token("BEARER abc") == "abc"
+      fail: "Схему сравнивают без учёта регистра: «bearer abc» — тоже токен."
+    - code: |
+        assert bearer_token("  Bearer    abc  ") == "abc"
+      fail: "Лишние пробелы по краям и между схемой и токеном не входят в токен."
+    - code: |
+        assert bearer_token("Bearer") is None and bearer_token("Bearer   ") is None
+      fail: "Схема без токена — None, а не пустая строка."
+    - code: |
+        assert bearer_token("Bearer a b") is None
+      fail: "Токен — одно слово; «Bearer a b» — неверный заголовок: None."
+solution: |
+  def bearer_token(header):
+      if not header:
+          return None
+      parts = header.split()
+      if len(parts) != 2 or parts[0].lower() != "bearer":
+          return None
+      return parts[1]
+hints:
+  - "`str.split()` без аргумента режет по любым пробелам и отбрасывает пустые куски."
+  - "Ровно две части, первая — `bearer` в нижнем регистре."
+explanation: |
+  `header[7:]` работает только на идеальном заголовке: `Basic …` превращается в «токен», пустая строка — в пустой токен, `None` роняет view. `split()` без аргумента убирает все лишние пробелы; проверка «ровно две части и схема `bearer`» отсекает остальное. Так же разбирает заголовок `TokenAuthentication` в DRF — и отвечает 401 на неверный формат.

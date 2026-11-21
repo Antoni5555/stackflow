@@ -1,0 +1,35 @@
+title: "Токен в адресе"
+type: fix
+difficulty: 1
+pitfall: "Bearer-токен — в заголовке Authorization со схемой Bearer, а не в query-параметре."
+statement: |
+  В файле `orders.http` клиент передаёт токен в адресе. Перенесите его в заголовок `Authorization` со схемой `Bearer`, адрес оставьте `/api/orders/`.
+files:
+  orders.http: |
+    ### Заказы Анны
+    GET /api/orders/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjF9.c2ln HTTP/1.1
+    Host: api.shop.example
+    Accept: application/json
+check:
+  type: rules
+  rules:
+    - must_match: '^\s*GET\s+/api/orders/\s+HTTP/1\.1\s*$'
+      fail: "Адрес — /api/orders/ без параметров."
+    - must_not_match: '\?token='
+      fail: "Токена в адресе быть не должно."
+    - must_match: '^\s*Authorization:\s*Bearer\s+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJzdWIiOjF9\.c2ln\s*$'
+      fail: "Добавьте заголовок Authorization: Bearer <тот же токен>."
+    - must_match: '^\s*Accept:\s*application/json\s*$'
+      fail: "Заголовок Accept трогать не нужно."
+solution:
+  orders.http: |
+    ### Заказы Анны
+    GET /api/orders/ HTTP/1.1
+    Host: api.shop.example
+    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjF9.c2ln
+    Accept: application/json
+hints:
+  - "Какой заголовок несёт учётные данные?"
+  - "`Authorization: Bearer eyJ…` — между схемой и токеном один пробел."
+explanation: |
+  Адрес с токеном попадает в журналы Nginx и Django, историю браузера и `Referer`: любой, кто их прочитает, войдёт как Анна, пока токен действует. Заголовок `Authorization` — стандартное место для учётных данных; `Bearer` — схема «кто предъявил токен, тот и владелец».

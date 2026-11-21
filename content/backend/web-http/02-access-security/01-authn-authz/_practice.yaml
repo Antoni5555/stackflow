@@ -1,0 +1,67 @@
+- title: Схема и токен
+  text: |
+    Разберите заголовки `Authorization` на схему и учётные данные:
+    ```python
+    headers = [
+        "Bearer eyJhbGci.eyJzdWIi.xn1u",
+        "Basic YW5uYTpwYXNz",
+        "Token 9f2c",
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for h in headers:
+        scheme, credentials = h.split(" ", 1)
+        print(scheme, credentials)
+    ```
+    Результат:
+    ```
+    Bearer eyJhbGci.eyJzdWIi.xn1u
+    Basic YW5uYTpwYXNz
+    Token 9f2c
+    ```
+    `Basic` — почта и пароль в base64 (в каждом запросе), `Token` — схема непрозрачных токенов DRF, `Bearer` — стандартная для OAuth и JWT.
+- title: Что внутри Basic
+  text: |
+    Покажите, почему `Basic` без HTTPS — это пароль открытым текстом:
+    ```python
+    import base64
+    credentials = "YW5uYUBzaG9wLmV4YW1wbGU6YW5uYS1wYXNzLTE="
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print(base64.b64decode(credentials).decode())
+    ```
+    Результат:
+    ```
+    anna@shop.example:anna-pass-1
+    ```
+    base64 — кодирование, а не шифрование. `Basic` отправляет пароль в каждом запросе; токен отправляет пароль один раз — при входе.
+- title: 401 или 403
+  text: |
+    Напишите функцию, которая выбирает код для запроса заказа: `user` — id из токена (`None`, если токена нет или он неверный), `owner` — id владельца заказа.
+    ```python
+    cases = [(None, 1), (1, 1), (2, 1)]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def status(user, owner):
+        if user is None:
+            return 401
+        if user != owner:
+            return 404
+        return 200
+
+    for user, owner in cases:
+        print(user, owner, status(user, owner))
+    ```
+    Результат:
+    ```
+    None 1 401
+    1 1 200
+    2 1 404
+    ```
+    Сначала аутентификация (401), потом авторизация. Чужой заказ — 404, чтобы не подтверждать, что он существует; 403 — если существование не секрет.

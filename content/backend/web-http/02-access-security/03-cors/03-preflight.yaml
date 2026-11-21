@@ -1,0 +1,16 @@
+title: "Когда будет preflight"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Preflight — для непростых запросов: методы кроме GET/HEAD/POST, заголовок Authorization, Content-Type: application/json."
+statement: |
+  Страница `https://app.shop.example` отправляет запросы на `https://api.shop.example`. Перед какими из них браузер сначала отправит `OPTIONS` (preflight)?
+options:
+  - "`GET /api/products/` без особых заголовков"
+  - "`GET /api/orders/` с заголовком `Authorization: Bearer …`"
+  - "`POST /api/orders/` с `Content-Type: application/json`"
+  - "`DELETE /api/cart/items/7/`"
+  - "`POST /api/search/` с `Content-Type: application/x-www-form-urlencoded`"
+answer: [1, 2, 3]
+explanation: |
+  Простые запросы — `GET`/`HEAD`/`POST` без своих заголовков и с `Content-Type` формы или `text/plain` — браузер отправляет сразу (такие запросы умела отправлять и обычная HTML-форма). `Authorization`, `application/json` и метод `DELETE` делают запрос непростым: сначала `OPTIONS` с `Access-Control-Request-Method`/`-Headers`, и только при разрешении — основной запрос.

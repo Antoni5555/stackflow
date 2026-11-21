@@ -1,0 +1,55 @@
+title: "Прочитать данные JWT"
+type: exercise
+difficulty: 2
+pitfall: "Части JWT — base64url без «=» на конце; перед декодированием выравнивание нужно вернуть."
+statement: |
+  Напишите `jwt_payload(token)`: вернуть словарь из средней части JWT (данные), **без** проверки подписи — это нужно клиенту, чтобы узнать `exp` и заранее обновить токен. Части токена — base64url без `=` на конце. Если частей не три — `ValueError`.
+starter_code: |
+  import base64
+  import json
+
+
+  def jwt_payload(token):
+      payload = token.split(".")[1]
+      return json.loads(base64.b64decode(payload))
+check:
+  type: tests
+  tests:
+    - code: |
+        anna = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+                ".eyJzdWIiOjEsImlhdCI6MTc5NTI0MDExMCwiZXhwIjoxNzk1MjQxMDEwfQ"
+                ".xn1uqT_fA6H-oJxMgGCsbV8YhH85mp0JOPpUCtRnqtI")
+        assert jwt_payload(anna) == {"sub": 1, "iat": 1795240110, "exp": 1795241010}
+      fail: "Данные токена Анны — {\"sub\": 1, \"iat\": 1795240110, \"exp\": 1795241010}. Не забудьте вернуть «=» на конец перед декодированием."
+    - code: |
+        assert jwt_payload("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOjJ9.c2ln") == {"sub": 2}
+      fail: "Для «eyJzdWIiOjJ9» (длина 12) выравнивание не нужно: {\"sub\": 2}."
+    - code: |
+        assert jwt_payload("x.eyJuYW1lIjoi0JDQvdGPIiwiYSI6Ij8_In0.y") == {"name": "Аня", "a": "??"}
+      fail: "Это base64url: «-» и «_» вместо «+» и «/». Нужен urlsafe_b64decode."
+    - code: |
+        for bad in ["abc", "a.b", "a.b.c.d"]:
+            try:
+                jwt_payload(bad)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(bad)
+      fail: "Если частей не три — ValueError."
+solution: |
+  import base64
+  import json
+
+
+  def jwt_payload(token):
+      parts = token.split(".")
+      if len(parts) != 3:
+          raise ValueError("Токен должен состоять из трёх частей")
+      payload = parts[1]
+      payload += "=" * (-len(payload) % 4)
+      return json.loads(base64.urlsafe_b64decode(payload))
+hints:
+  - "Длина base64 кратна 4; сколько `=` не хватает — `-len(s) % 4`."
+  - "`base64.urlsafe_b64decode` понимает `-` и `_`."
+explanation: |
+  JWT использует base64url: `-` и `_` вместо `+` и `/` (чтобы токен можно было вставить в URL) и без `=` на конце. Обычный `b64decode` ругается на нехватку выравнивания и не знает `-`/`_`. `-len(s) % 4` — сколько `=` дописать: 0, 1 или 2. Клиент читает `exp` без секрета — но доверять этим данным может только сервер после проверки подписи.

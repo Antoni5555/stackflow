@@ -1,0 +1,93 @@
+- title: Источник из адреса
+  text: |
+    Получите источник (схема + домен + порт) из адресов страниц:
+    ```python
+    from urllib.parse import urlsplit
+    urls = [
+        "https://app.shop.example/cart/?step=2",
+        "http://app.shop.example/cart/",
+        "https://app.shop.example:8443/",
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for url in urls:
+        parts = urlsplit(url)
+        print(f"{parts.scheme}://{parts.netloc}")
+    ```
+    Результат:
+    ```
+    https://app.shop.example
+    http://app.shop.example
+    https://app.shop.example:8443
+    ```
+    Путь и параметры в источник не входят. Все три источника — разные: другая схема или порт.
+- title: Простой запрос или preflight
+  text: |
+    Определите, нужен ли preflight: простые методы — `GET`, `HEAD`, `POST`; простые `Content-Type` — форма, multipart и `text/plain`; любые другие заголовки, кроме `Content-Type`, делают запрос непростым.
+    ```python
+    SIMPLE_METHODS = {"GET", "HEAD", "POST"}
+    SIMPLE_TYPES = {
+        "application/x-www-form-urlencoded",
+        "multipart/form-data",
+        "text/plain",
+    }
+    requests = [
+        ("GET", {}),
+        ("POST", {"Content-Type": "application/json"}),
+        ("GET", {"Authorization": "Bearer eyJ…"}),
+        ("DELETE", {}),
+        ("POST", {"Content-Type": "text/plain"}),
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def needs_preflight(method, headers):
+        if method not in SIMPLE_METHODS:
+            return True
+        for name, value in headers.items():
+            if name != "Content-Type":
+                return True
+            if value not in SIMPLE_TYPES:
+                return True
+        return False
+
+    for method, headers in requests:
+        result = needs_preflight(method, headers)
+        print(method, list(headers), result)
+    ```
+    Результат:
+    ```
+    GET [] False
+    POST ['Content-Type'] True
+    GET ['Authorization'] True
+    DELETE [] True
+    POST ['Content-Type'] False
+    ```
+    Упрощённо: браузер разрешает ещё несколько заголовков (`Accept`, `Accept-Language`). Почти любой запрос к API с токеном или JSON — с preflight; `Access-Control-Max-Age` избавляет от повтора.
+- title: Подстрока против равенства
+  text: |
+    Сравните проверку «содержит» и проверку по списку для разных `Origin`:
+    ```python
+    ALLOWED = {"https://app.shop.example"}
+    origins = [
+        "https://app.shop.example",
+        "https://app.shop.example.evil.example",
+        "https://evil.example/?https://app.shop.example",
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    for origin in origins:
+        print("app.shop.example" in origin, origin in ALLOWED)
+    ```
+    Результат:
+    ```
+    True True
+    True False
+    True False
+    ```
+    Подстрока пропускает два чужих источника. В настоящий `Origin` путь не попадает, но регулярные выражения и `startswith`/`endswith` без точки ошибаются так же: `endswith("shop.example")` пропустит `evilshop.example`.

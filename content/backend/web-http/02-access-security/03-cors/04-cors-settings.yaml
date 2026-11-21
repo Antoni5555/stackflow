@@ -1,0 +1,57 @@
+title: "Настройки CORS"
+type: fix
+difficulty: 2
+pitfall: "CORS_ALLOW_ALL_ORIGINS вместе с cookie разрешает любому сайту читать ответы пользователя; источники перечисляют явно."
+statement: |
+  В `settings.py` API магазина CORS открыт для всех, хотя к API ходят только приложение `https://app.shop.example` и админ-панель `https://admin.shop.example`. Запросы идут с cookie. Оставьте разрешение только этим двум источникам (`CORS_ALLOWED_ORIGINS`), `CORS_ALLOW_ALL_ORIGINS` уберите.
+files:
+  settings.py: |
+    INSTALLED_APPS = [
+        "corsheaders",
+        "shop",
+    ]
+
+    MIDDLEWARE = [
+        "corsheaders.middleware.CorsMiddleware",
+        "django.middleware.common.CommonMiddleware",
+    ]
+
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+check:
+  type: rules
+  rules:
+    - must_not_match: '^\s*CORS_ALLOW_ALL_ORIGINS\s*=\s*True'
+      fail: "CORS_ALLOW_ALL_ORIGINS = True разрешает любой источник — уберите."
+    - must_match: '^\s*CORS_ALLOWED_ORIGINS\s*=\s*\['
+      fail: "Перечислите источники в CORS_ALLOWED_ORIGINS = [...]."
+    - must_match: '"https://app\.shop\.example"'
+      fail: "В списке нужен \"https://app.shop.example\" — схема и домен, без пути и «/» на конце."
+    - must_match: '"https://admin\.shop\.example"'
+      fail: "В списке нужен \"https://admin.shop.example\"."
+    - must_not_match: 'shop\.example/"'
+      fail: "Источник — без «/» на конце: \"https://app.shop.example\"."
+    - must_match: '^\s*CORS_ALLOW_CREDENTIALS\s*=\s*True'
+      fail: "Запросы идут с cookie — CORS_ALLOW_CREDENTIALS = True оставьте."
+solution:
+  settings.py: |
+    INSTALLED_APPS = [
+        "corsheaders",
+        "shop",
+    ]
+
+    MIDDLEWARE = [
+        "corsheaders.middleware.CorsMiddleware",
+        "django.middleware.common.CommonMiddleware",
+    ]
+
+    CORS_ALLOWED_ORIGINS = [
+        "https://app.shop.example",
+        "https://admin.shop.example",
+    ]
+    CORS_ALLOW_CREDENTIALS = True
+hints:
+  - "Какая настройка `django-cors-headers` принимает список источников?"
+  - "`CORS_ALLOWED_ORIGINS = [\"https://app.shop.example\", \"https://admin.shop.example\"]`."
+explanation: |
+  `CORS_ALLOW_ALL_ORIGINS = True` с `CORS_ALLOW_CREDENTIALS = True` заставляет `django-cors-headers` отражать любой `Origin`: страница любого сайта отправит запрос с cookie покупателя и прочитает ответ — заказы, адрес. Источник — схема + домен (+ порт), без пути: `"https://app.shop.example/"` пакет не примет (проверка настроек выдаст ошибку).

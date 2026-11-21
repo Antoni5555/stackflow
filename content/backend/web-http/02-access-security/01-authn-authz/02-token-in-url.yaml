@@ -1,0 +1,15 @@
+title: "Куда положить токен"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Токен передают в заголовке Authorization, а не в URL: адрес попадает в журналы, историю и Referer."
+statement: |
+  Мобильное приложение магазина получило токен на `POST /api/token/`. Как правильно передать его в запросе заказов?
+options:
+  - "`GET /api/orders/?token=eyJ…`"
+  - "`GET /api/orders/` с заголовком `Authorization: Bearer eyJ…`"
+  - "`GET /api/orders/eyJ…/`"
+  - "`POST /api/orders/` с телом `{\"token\": \"eyJ…\"}`"
+answer: [1]
+explanation: |
+  Токен — как пароль: адрес запроса записывается в журнал сервера и прокси, в историю браузера и уходит в заголовке `Referer` на другие сайты. Заголовок `Authorization: Bearer …` в журналы обычно не пишут. `POST` вместо `GET` ради токена ломает смысл метода: получение заказов — чтение.

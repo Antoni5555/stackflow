@@ -1,0 +1,79 @@
+- title: base64 и base64url
+  text: |
+    Закодируйте одни и те же байты обычным base64 и base64url:
+    ```python
+    import base64
+    data = b"\xfb\xff\xfe"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print(base64.b64encode(data))
+    print(base64.urlsafe_b64encode(data))
+    ```
+    Результат:
+    ```
+    b'+//+'
+    b'-__-'
+    ```
+    `+` и `/` в URL имеют особый смысл, поэтому JWT использует base64url: `-` и `_`. Ещё JWT убирает `=` на конце.
+- title: Собрать JWT
+  text: |
+    Соберите токен для Бориса (`sub: 2`) со стандартной библиотекой — подпись HS256 с секретом `shop-demo-secret`:
+    ```python
+    import base64
+    import hashlib
+    import hmac
+    import json
+
+    def b64(data):
+        encoded = base64.urlsafe_b64encode(data)
+        return encoded.rstrip(b"=").decode()
+
+    header = {"alg": "HS256", "typ": "JWT"}
+    payload = {"sub": 2, "iat": 1795240110, "exp": 1795241010}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def part(obj):
+        text = json.dumps(obj, separators=(",", ":"))
+        return b64(text.encode())
+
+    signing_input = f"{part(header)}.{part(payload)}"
+    mac = hmac.new(b"shop-demo-secret", signing_input.encode(),
+                   hashlib.sha256)
+    signature = mac.digest()
+    token = f"{signing_input}.{b64(signature)}"
+    print(token.split(".")[1])
+    print(len(token.split(".")))
+    ```
+    Результат:
+    ```
+    eyJzdWIiOjIsImlhdCI6MTc5NTI0MDExMCwiZXhwIjoxNzk1MjQxMDEwfQ
+    3
+    ```
+    Данные — те же, что у подделанного токена из урока, а подпись теперь правильная: её посчитал владелец секрета. Поэтому секрет хранят как `SECRET_KEY` — в `.env`, не в коде.
+- title: Сколько жить токену
+  text: |
+    Переведите `iat` и `exp` токена Анны в дату (UTC) и посчитайте срок жизни:
+    ```python
+    from datetime import datetime, timezone
+    iat, exp = 1795240110, 1795241010
+    ```
+  answer: |
+    Ответ:
+    ```python
+    issued = datetime.fromtimestamp(iat, timezone.utc)
+    expires = datetime.fromtimestamp(exp, timezone.utc)
+    print(issued)
+    print(expires)
+    print(expires - issued)
+    ```
+    Результат:
+    ```
+    2026-11-21 05:48:30+00:00
+    2026-11-21 06:03:30+00:00
+    0:15:00
+    ```
+    15 минут — обычный срок access-токена. Клиент читает `exp` из токена и обновляет его через refresh заранее, не дожидаясь 401.

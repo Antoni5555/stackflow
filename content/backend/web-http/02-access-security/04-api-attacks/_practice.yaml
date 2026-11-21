@@ -1,0 +1,79 @@
+- title: Заказы в рамках пользователя
+  text: |
+    Сделайте поиск заказа, который не находит чужие:
+    ```python
+    ORDERS = {
+        124: {"id": 124, "user_id": 1, "total": "2998.00"},
+        125: {"id": 125, "user_id": 2, "total": "980.00"},
+    }
+    ```
+  answer: |
+    Ответ:
+    ```python
+    def get_order(pk, user_id):
+        order = ORDERS.get(pk)
+        if order is None or order["user_id"] != user_id:
+            return 404, {"error": "Заказ не найден"}
+        return 200, order
+
+    print(get_order(124, 1))
+    print(get_order(125, 1))
+    print(get_order(999, 1))
+    ```
+    Результат:
+    ```
+    (200, {'id': 124, 'user_id': 1, 'total': '2998.00'})
+    (404, {'error': 'Заказ не найден'})
+    (404, {'error': 'Заказ не найден'})
+    ```
+    Чужой и несуществующий заказ неотличимы — перебор id ничего не даёт. В Django — `get_object_or_404(Order, pk=pk, user=request.user)`.
+- title: Только нужные поля
+  text: |
+    Пользователь из базы содержит служебные поля. Отдайте в API только публичные:
+    ```python
+    user = {
+        "id": 1,
+        "name": "Анна",
+        "email": "anna@shop.example",
+        "password_hash": "pbkdf2_sha256$…",
+        "is_staff": False,
+        "phone": "+7 900 000-00-00",
+    }
+    PUBLIC = ["id", "name", "email"]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    print({field: user[field] for field in PUBLIC})
+    ```
+    Результат:
+    ```
+    {'id': 1, 'name': 'Анна', 'email': 'anna@shop.example'}
+    ```
+    Список полей ответа — явный, как и список полей ввода: новое поле модели не утечёт в API само. В DRF — `fields` сериализатора, а не `"__all__"`.
+- title: Неудачи по аккаунту
+  text: |
+    Перебор пароля Анны идёт с трёх адресов. Посчитайте неудачи по IP и по почте:
+    ```python
+    from collections import Counter
+    attempts = [
+        ("10.0.0.7", "anna@shop.example"),
+        ("10.0.0.8", "anna@shop.example"),
+        ("10.0.0.9", "anna@shop.example"),
+        ("10.0.0.7", "anna@shop.example"),
+        ("10.0.0.8", "anna@shop.example"),
+        ("10.0.0.9", "anna@shop.example"),
+    ]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    by_ip = Counter(ip for ip, email in attempts)
+    by_email = Counter(email for ip, email in attempts)
+    print(max(by_ip.values()), by_email["anna@shop.example"])
+    ```
+    Результат:
+    ```
+    2 6
+    ```
+    С лимитом 5 по IP ни один адрес не упёрся в ограничение, а лимит по почте сработал бы. Поэтому лимитируют по обоим ключам.

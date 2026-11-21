@@ -1,0 +1,52 @@
+title: "Разрешить источник"
+type: exercise
+difficulty: 2
+pitfall: "Источник сравнивают со списком целиком: подстрока пропустит shop.example.evil.example, http и https — разные источники."
+statement: |
+  Напишите `cors_headers(origin, allowed)` для API магазина: если `origin` есть в списке `allowed` — вернуть словарь `{"Access-Control-Allow-Origin": origin, "Vary": "Origin"}`, иначе пустой словарь. `origin` может быть `None` (запрос не из браузера). Сравнивайте источник целиком, регистр домена не учитывайте (`https://App.Shop.Example` — тот же источник; в заголовок ответа — значение из `allowed`).
+starter_code: |
+  def cors_headers(origin, allowed):
+      for item in allowed:
+          if item in (origin or ""):
+              return {"Access-Control-Allow-Origin": "*"}
+      return {}
+check:
+  type: tests
+  tests:
+    - code: |
+        allowed = ["https://app.shop.example"]
+        assert cors_headers("https://app.shop.example", allowed) == {
+            "Access-Control-Allow-Origin": "https://app.shop.example", "Vary": "Origin"}
+      fail: "Разрешённый источник — его же в Access-Control-Allow-Origin (не «*») и Vary: Origin."
+    - code: |
+        allowed = ["https://app.shop.example"]
+        assert cors_headers("https://evil.example", allowed) == {}
+        assert cors_headers(None, allowed) == {}
+      fail: "Чужой источник или запрос без Origin — пустой словарь."
+    - code: |
+        allowed = ["https://app.shop.example"]
+        assert cors_headers("https://app.shop.example.evil.example", allowed) == {}
+      fail: "https://app.shop.example.evil.example — чужой домен, хотя содержит разрешённую строку. Сравнивайте целиком."
+    - code: |
+        allowed = ["https://app.shop.example"]
+        assert cors_headers("http://app.shop.example", allowed) == {}
+        assert cors_headers("https://app.shop.example:8443", allowed) == {}
+      fail: "Другая схема или порт — другой источник."
+    - code: |
+        allowed = ["https://app.shop.example", "https://admin.shop.example"]
+        assert cors_headers("https://Admin.Shop.Example", allowed) == {
+            "Access-Control-Allow-Origin": "https://admin.shop.example", "Vary": "Origin"}
+      fail: "Домен не зависит от регистра; в ответ — значение из allowed."
+solution: |
+  def cors_headers(origin, allowed):
+      if not origin:
+          return {}
+      for item in allowed:
+          if item.lower() == origin.lower():
+              return {"Access-Control-Allow-Origin": item, "Vary": "Origin"}
+      return {}
+hints:
+  - "Нужно равенство строк, а не `in`."
+  - "Сравнивайте `item.lower() == origin.lower()`, возвращайте `item`."
+explanation: |
+  Проверка подстрокой — частая дыра: злоумышленник регистрирует `app.shop.example.evil.example` и получает разрешение. `"*"` вместо источника нельзя отправлять с cookie, а отражать любой `Origin` — значит разрешить всем. `Vary: Origin` нужен кэшам: ответ различается по источнику.

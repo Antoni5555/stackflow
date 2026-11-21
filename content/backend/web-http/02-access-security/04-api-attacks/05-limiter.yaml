@@ -1,0 +1,88 @@
+title: "Лимит попыток входа"
+type: exercise
+difficulty: 3
+pitfall: "Скользящее окно: старые попытки выбрасывают перед подсчётом; ждать — пока самая старая не выйдет из окна."
+statement: |
+  Напишите класс `LoginLimiter(limit, window)` для входа в API магазина:
+  - `fail(key, now)` — записать неудачную попытку для ключа (IP или почта) в момент `now` (секунды);
+  - `retry_after(key, now)` — `0`, если за последние `window` секунд (попытки с временем `> now - window`) неудач меньше `limit`; иначе — через сколько секунд освободится место: `самая старая попытка в окне + window - now`.
+
+  Попытки разных ключей не влияют друг на друга.
+starter_code: |
+  class LoginLimiter:
+      def __init__(self, limit, window):
+          self.limit = limit
+          self.window = window
+          self.count = {}
+
+      def fail(self, key, now):
+          self.count[key] = self.count.get(key, 0) + 1
+
+      def retry_after(self, key, now):
+          if self.count.get(key, 0) >= self.limit:
+              return self.window
+          return 0
+check:
+  type: tests
+  tests:
+    - code: |
+        lim = LoginLimiter(5, 60)
+        for t in [0, 2, 4, 6]:
+            lim.fail("10.0.0.7", t)
+        assert lim.retry_after("10.0.0.7", 8) == 0
+      fail: "4 неудачи при лимите 5 — входить можно: 0."
+    - code: |
+        lim = LoginLimiter(5, 60)
+        for t in [0, 2, 4, 6, 8]:
+            lim.fail("10.0.0.7", t)
+        assert lim.retry_after("10.0.0.7", 10) == 50
+      fail: "5 неудач с 0-й секунды: на 10-й ждать до 60-й — 50 секунд (самая старая + window − now)."
+    - code: |
+        lim = LoginLimiter(5, 60)
+        for t in [0, 2, 4, 6, 8]:
+            lim.fail("10.0.0.7", t)
+        assert lim.retry_after("10.0.0.7", 59) == 1
+        assert lim.retry_after("10.0.0.7", 60) == 0
+      fail: "Попытка на 0-й секунде выходит из окна в 60: тогда неудач 4 — снова 0."
+    - code: |
+        lim = LoginLimiter(5, 60)
+        for t in [0, 2, 4, 6, 8]:
+            lim.fail("10.0.0.7", t)
+        assert lim.retry_after("10.0.0.8", 10) == 0
+        assert lim.retry_after("anna@shop.example", 10) == 0
+      fail: "Счётчики у разных ключей отдельные."
+    - code: |
+        lim = LoginLimiter(3, 60)
+        for t in [0, 100, 110, 120]:
+            lim.fail("10.0.0.7", t)
+        assert lim.retry_after("10.0.0.7", 125) == 35
+      fail: "Попытка на 0-й секунде давно вне окна: на 125-й в окне 100, 110, 120 — ждать до 100 + 60 = 160, то есть 35 секунд."
+solution: |
+  from collections import defaultdict, deque
+
+
+  class LoginLimiter:
+      def __init__(self, limit, window):
+          self.limit = limit
+          self.window = window
+          self.failures = defaultdict(deque)
+
+      def _clean(self, key, now):
+          q = self.failures[key]
+          while q and q[0] <= now - self.window:
+              q.popleft()
+          return q
+
+      def fail(self, key, now):
+          self.failures[key].append(now)
+
+      def retry_after(self, key, now):
+          q = self._clean(key, now)
+          if len(q) < self.limit:
+              return 0
+          return q[0] + self.window - now
+hints:
+  - "Храните для каждого ключа список времён неудач, а не счётчик."
+  - "Перед подсчётом выбросьте времена `<= now - window`; ждать — `q[0] + window - now`."
+explanation: |
+  Простой счётчик не умеет «забывать»: после 5 неудач вход закрыт навсегда, а через минуту должен открыться. Скользящее окно хранит времена попыток и выбрасывает устаревшие; `deque` удаляет с начала за O(1). Ждать нужно, пока самая старая попытка не выйдет из окна. На сервере то же делают в Redis (сортированное множество или счётчик с `EXPIRE`), чтобы лимит был общий для всех воркеров.

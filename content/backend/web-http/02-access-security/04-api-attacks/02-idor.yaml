@@ -1,0 +1,15 @@
+title: "Чужой заказ"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Объект выбирают в рамках пользователя: get(pk=…, user=request.user); чужой — 404."
+statement: |
+  View `GET /api/orders/<pk>/` уже проверяет токен (`request.user` — Анна). Какая строка закрывает IDOR лучше всего?
+options:
+  - "`order = Order.objects.get(pk=pk)`"
+  - "`order = get_object_or_404(Order, pk=pk, user=request.user)`"
+  - "`order = Order.objects.get(pk=pk)` и спрятать поле `user_id` из ответа"
+  - "Заменить числовые id заказов на UUID, остальное оставить"
+answer: [1]
+explanation: |
+  Заказ ищется среди заказов Анны: чужой не найдётся и даст 404, как в учебном API (`{"error": "Заказ не найден"}`). Без фильтра `/api/v0/orders/125/` с токеном Анны вернул заказ Бориса. Спрятанное поле ничего не меняет — данные заказа всё равно отданы. UUID затрудняет перебор, но утёкший id (из письма, журнала) по-прежнему открывает чужой заказ.

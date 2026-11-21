@@ -1813,6 +1813,88 @@ def body_formats():
     f.save(out(WH1 / "04-body" / "img" / "body-formats.svg"))
 
 
+WH2 = ROOT / "web-http" / "02-access-security"
+
+
+def token_flow():
+    f = Figure(860, 330, "Вход по паролю один раз, дальше — токен в каждом запросе")
+    f.box(20, 20, 140, 290, "", "box2")
+    f.text(90, 165, "клиент", "t", "middle")
+    f.box(700, 20, 140, 290, "", "box")
+    f.text(770, 165, "API", "t", "middle")
+    f.text(180, 44, "POST /api/token/  {email, password}", "cs")
+    f.arrow("M170 54H690")
+    f.text(180, 92, "200  {access: \"eyJ…\", expires_in: 900}", "cs")
+    f.arrow("M690 102H170")
+    f.text(180, 150, "GET /api/orders/  Authorization: Bearer eyJ…", "cs")
+    f.arrow("M170 160H690")
+    f.box(400, 176, 290, 56, "", "ok")
+    f.text(410, 198, "1. токен верный → это Анна", "s")
+    f.text(410, 220, "2. заказы — только её", "s")
+    f.text(180, 262, "200  {orders: [124]}", "cs")
+    f.arrow("M690 272H170")
+    f.text(180, 302, "без заголовка → 401 «Нужен токен»", "errt")
+    f.save(out(WH2 / "01-authn-authz" / "img" / "token-flow.svg"))
+
+
+def jwt_parts():
+    f = Figure(860, 300, "JWT — три части base64url; подпись покрывает заголовок и данные")
+    f.box(20, 20, 230, 44, "eyJhbGciOiJIUzI1…", "box2", "cs")
+    f.text(256, 48, ".", "t")
+    f.box(270, 20, 300, 44, "eyJzdWIiOjEsImlhdCI6…", "box2", "cs")
+    f.text(576, 48, ".", "t")
+    f.box(590, 20, 250, 44, "xn1uqT_fA6H-oJx…", "acc", "onacc")
+    f.text(135, 92, "заголовок", "t", "middle")
+    f.text(135, 114, "{\"alg\": \"HS256\", \"typ\": \"JWT\"}", "cs", "middle")
+    f.text(420, 92, "данные", "t", "middle")
+    f.text(420, 114, "{\"sub\": 1, \"iat\": …, \"exp\": …}", "cs", "middle")
+    f.text(715, 92, "подпись", "t", "middle")
+    f.text(715, 114, "HMAC-SHA256", "cs", "middle")
+    f.box(20, 140, 820, 44, "подпись = HMAC-SHA256(\"заголовок.данные\", секрет сервера)", "box", "cs")
+    f.text(20, 220, "Прочитать заголовок и данные может любой — это base64, не шифрование.", "t")
+    f.text(20, 248, "Заменили sub на 2 — подпись от новых данных другая: сервер отвечает 401 «Подпись неверна».", "s")
+    f.text(20, 274, "Истёк exp — 401 «Токен истёк», даже при верной подписи.", "s")
+    f.save(out(WH2 / "02-jwt" / "img" / "jwt-parts.svg"))
+
+
+def cors_preflight():
+    f = Figure(860, 340, "Запрос с другого источника: сначала preflight OPTIONS, потом основной запрос")
+    f.box(20, 20, 200, 300, "", "box2")
+    f.text(120, 150, "браузер", "t", "middle")
+    f.text(120, 174, "страница", "cs", "middle")
+    f.text(120, 194, "app.shop.example", "cs", "middle")
+    f.box(680, 20, 160, 300, "", "box")
+    f.text(760, 160, "API", "t", "middle")
+    f.text(232, 44, "OPTIONS /api/orders/  Origin: https://app.shop.example", "cs")
+    f.text(232, 62, "Access-Control-Request-Headers: authorization", "cs")
+    f.arrow("M230 72H670")
+    f.text(232, 102, "204  Allow-Origin, Allow-Methods,", "cs")
+    f.text(232, 120, "Allow-Headers: Authorization, Max-Age: 600", "cs")
+    f.arrow("M670 130H230")
+    f.text(232, 166, "GET /api/orders/  Authorization: Bearer …", "cs")
+    f.arrow("M230 176H670")
+    f.text(232, 206, "200  Access-Control-Allow-Origin: https://app.shop.example", "cs")
+    f.arrow("M670 216H230")
+    f.box(232, 236, 396, 36, "скрипт страницы читает ответ", "ok", "cs")
+    f.text(232, 302, "evil.example: на preflight нет Allow-* → GET не отправляется", "errt")
+    f.save(out(WH2 / "03-cors" / "img" / "cors-preflight.svg"))
+
+
+def idor():
+    f = Figure(860, 300, "IDOR: токен проверен, а владелец заказа — нет")
+    f.box(20, 20, 820, 120, "", "err")
+    f.text(36, 46, "/api/v0/orders/125/  (токен Анны, user 1)", "cs")
+    f.text(36, 72, "Order.objects.get(pk=125)", "cs")
+    f.text(36, 98, "200  {\"id\": 125, \"user_id\": 2, \"total\": \"980.00\"} — заказ Бориса", "errt")
+    f.text(36, 124, "перебором id Анна прочитает все заказы магазина", "s")
+    f.box(20, 160, 820, 100, "", "ok")
+    f.text(36, 186, "/api/orders/125/  (токен Анны, user 1)", "cs")
+    f.text(36, 212, "Order.objects.get(pk=125, user=request.user)", "cs")
+    f.text(36, 238, "404  {\"error\": \"Заказ не найден\"} — как будто заказа нет", "cs")
+    f.text(20, 288, "Аутентификация ответила «кто», авторизация на уровне объекта — «чьё».", "s")
+    f.save(out(WH2 / "04-api-attacks" / "img" / "idor.svg"))
+
+
 # ---------- HTML/CSS 1.01: клиент и сервер ----------
 HC1 = ROOT / "html-css" / "01-how-web-works"
 
@@ -3298,6 +3380,7 @@ if __name__ == "__main__":
                   settings_split, xss_fig, production_fig,
                   test_lifecycle,
                   api_methods, who_answers, etag_fig, body_formats,
+                  token_flow, jwt_parts, cors_preflight, idor,
                   client_server, url_anatomy, dns_lookup, http_message,
                   post_redirect_get, session_cookie, https_visibility,
                   document_tree, semantic_layout, path_resolution, table_anatomy, escaping_flow,

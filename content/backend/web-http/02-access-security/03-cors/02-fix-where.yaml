@@ -1,0 +1,15 @@
+title: "В curl работает, в браузере — нет"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Ошибку CORS исправляют на сервере (разрешённые источники), а не в клиенте."
+statement: |
+  Фронтенд на `https://app.shop.example` запрашивает `https://api.shop.example/api/products/`. В консоли браузера: «blocked by CORS policy: No 'Access-Control-Allow-Origin' header». Тот же запрос из `curl` возвращает 200 и JSON. Что исправить?
+options:
+  - "Добавить в запрос фронтенда заголовок `Access-Control-Allow-Origin: *`"
+  - "Добавить `https://app.shop.example` в разрешённые источники API (`CORS_ALLOWED_ORIGINS`)"
+  - "Перейти с `fetch` на `curl` в браузере"
+  - "Отключить проверку токена в API"
+answer: [1]
+explanation: |
+  `Access-Control-Allow-Origin` — заголовок **ответа**: разрешение даёт сервер, а браузер его проверяет. `curl` CORS не смотрит, поэтому у него всё работает. В учебном API ответ для `app.shop.example` пришёл с `Access-Control-Allow-Origin: https://app.shop.example`, а для `evil.example` — без него. Токен к CORS отношения не имеет.
