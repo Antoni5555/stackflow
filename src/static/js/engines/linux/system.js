@@ -38,7 +38,7 @@ const PACKAGED = {
     type: 'forking',
     reload: true,
     processes: () => [
-      { user: 'postgres', comm: 'postgres', cmd: '/usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/16/main -c config_file=/etc/postgresql/16/main/postgresql.conf', main: true },
+      { user: 'postgres', comm: 'postgres', cmd: '/usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/16/main -c config_file=/etc/postgresql/16/main/postgresql.conf', main: true, listen: ['127.0.0.1:5432'] },
       { user: 'postgres', comm: 'postgres', cmd: 'postgres: 16/main: checkpointer', worker: true },
       { user: 'postgres', comm: 'postgres', cmd: 'postgres: 16/main: walwriter', worker: true },
     ],
@@ -50,7 +50,7 @@ const PACKAGED = {
     type: 'notify',
     reload: false,
     restart: 'always',
-    processes: () => [{ user: 'redis', comm: 'redis-server', cmd: '/usr/bin/redis-server 127.0.0.1:6379', main: true }],
+    processes: () => [{ user: 'redis', comm: 'redis-server', cmd: '/usr/bin/redis-server 127.0.0.1:6379', main: true, listen: ['127.0.0.1:6379'] }],
   },
 };
 
@@ -77,8 +77,9 @@ export function systemState(fs) {
     boot: Date.now() - 3 * 24 * 3600 * 1000,
     procs: [
       { pid: 1, user: 'root', comm: 'systemd', cmd: '/sbin/init' },
+      { pid: 380, user: 'systemd-resolve', comm: 'systemd-resolve', cmd: '/usr/lib/systemd/systemd-resolved', listen: ['127.0.0.53:53'] },
       { pid: 412, user: 'root', comm: 'cron', cmd: '/usr/sbin/cron -f -P' },
-      { pid: 520, user: 'root', comm: 'sshd', cmd: 'sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups' },
+      { pid: 520, user: 'root', comm: 'sshd', cmd: 'sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups', listen: ['0.0.0.0:22', '[::]:22'] },
       { pid: 1001, user: 'root', comm: 'sshd', cmd: 'sshd: shop [priv]' },
       { pid: 1003, user: 'shop', comm: 'bash', cmd: '-bash', tty: 'pts/0' },
     ],
@@ -213,12 +214,127 @@ function customProcesses(spec) {
     const workers = Number(/(?:--workers|-w)[=\s]+(\d+)/.exec(spec.exec)?.[1] ?? 1);
     const python = `${dirname(spec.program)}/python3`;
     const cmd = `${python} ${spec.exec}`;
+    const binds = [...spec.exec.matchAll(/(?:--bind|-b)[=\s]+(\S+)/g)].map((match) => match[1]);
     return [
-      { user: spec.user, comm: 'gunicorn', cmd, main: true },
+      { user: spec.user, comm: 'gunicorn', cmd, main: true, listen: binds.length ? binds : ['127.0.0.1:8000'] },
       ...Array.from({ length: workers }, () => ({ user: spec.user, comm: 'gunicorn', cmd, worker: true })),
     ];
   }
   return [{ user: spec.user, comm, cmd: spec.exec, main: true }];
+}
+
+// --- порты ---
+
+/** «0.0.0.0:80», «[::]:80», «127.0.0.1:8000», «unix:/run/gunicorn.sock» → {host, port} или {unix}. */
+export function parseAddress(address) {
+  if (address.startsWith('unix:')) return { unix: address.slice(5) };
+  const match = /^(?:\[([^\]]*)\]|([^:]*)):(\d+)$/.exec(address);
+  if (match) return { host: match[1] !== undefined ? `[${match[1]}]` : match[2] || '0.0.0.0', port: Number(match[3]) };
+  return { host: '0.0.0.0', port: Number(address) };
+}
+
+const ANY = new Set(['0.0.0.0', '*', '[::]']);
+
+/** Два адреса мешают друг другу: один порт и пересекающиеся адреса (IPv4 и IPv6 — отдельно). */
+function sameSocket(a, b) {
+  if (a.unix || b.unix) return Boolean(a.unix) && a.unix === b.unix;
+  if (a.port !== b.port) return false;
+  const v6 = (host) => host.startsWith('[');
+  if (v6(a.host) !== v6(b.host)) return false;
+  return a.host === b.host || ANY.has(a.host) || ANY.has(b.host);
+}
+
+/** Порт уже занят другим процессом — сервис не запустится. [строки журнала, статус] или null. */
+function portProblem(state, service, processes, time) {
+  const main = processes.find((proc) => proc.main);
+  const busy = state.procs.filter((proc) => proc.unit !== service.name && proc.listen?.length);
+  for (const address of main?.listen ?? []) {
+    const wanted = parseAddress(address);
+    if (!busy.some((proc) => proc.listen.some((other) => sameSocket(wanted, parseAddress(other))))) continue;
+    const unit = `${service.name}.service`;
+    if (main.comm === 'gunicorn') {
+      const where = wanted.unix ?? `('${wanted.host}', ${wanted.port})`;
+      const pid = state.nextPid;
+      const line = (text) => log(state, unit, `${gunicornTime(time)} [${pid}] ${text}`, { source: `gunicorn[${pid}]`, time });
+      line('[INFO] Starting gunicorn 23.0.0');
+      line(`[ERROR] Connection in use: ${where}`);
+      line('[ERROR] Retrying in 1 second.');
+      line(`[ERROR] Can't connect to ${where}`);
+      service.record.failedPid = pid;
+      state.nextPid += 1;
+      return [[], '1/FAILURE'];
+    }
+    log(state, unit, `${main.comm}: [emerg] bind() to ${address} failed (98: Address already in use)`, { source: `${main.comm}[${state.nextPid}]`, time });
+    return [[`${unit}: Control process exited, code=exited, status=1/FAILURE`], '1/FAILURE'];
+  }
+  return null;
+}
+
+// --- конфиги nginx ---
+
+/** Текст конфига nginx → дерево {name, args, children}. Комментарии — до конца строки. */
+function parseNginx(text) {
+  const tokens = text.replace(/#.*$/gm, '').match(/"[^"]*"|'[^']*'|[{};]|[^\s{};]+/g) ?? [];
+  const root = { children: [] };
+  const stack = [root];
+  let words = [];
+  for (const token of tokens) {
+    if (token === ';') {
+      if (words.length) stack.at(-1).children.push({ name: words[0], args: words.slice(1) });
+      words = [];
+    } else if (token === '{') {
+      const block = { name: words[0], args: words.slice(1), children: [] };
+      stack.at(-1).children.push(block);
+      stack.push(block);
+      words = [];
+    } else if (token === '}') {
+      if (stack.length > 1) stack.pop();
+      words = [];
+    } else {
+      words.push(token.replace(/^["']|["']$/g, ''));
+    }
+  }
+  return root.children;
+}
+
+const directive = (block, name) => block.children?.find((item) => item.name === name)?.args;
+
+/** Сайты nginx (sites-enabled, conf.d): порты, root, index, location с proxy_pass/alias. */
+export function nginxServers(fs) {
+  const files = [];
+  for (const dir of ['/etc/nginx/conf.d', '/etc/nginx/sites-enabled']) {
+    try {
+      for (const [entry] of fs.as('root', () => fs.list(dir))) files.push(`${dir}/${entry}`);
+    } catch (e) {
+      if (!(e instanceof FsError)) throw e;
+    }
+  }
+  const servers = [];
+  for (const path of files) {
+    const text = readFile(fs, path);
+    if (text === null) continue;
+    for (const block of parseNginx(text).filter((item) => item.name === 'server')) {
+      const listen = block.children.filter((item) => item.name === 'listen').map((item) => {
+        const { host, port } = parseAddress(item.args[0]);
+        return `${host}:${port}`;
+      });
+      servers.push({
+        file: path,
+        listen: listen.length ? listen : ['0.0.0.0:80'],
+        isDefault: block.children.some((item) => item.name === 'listen' && item.args.includes('default_server')),
+        name: directive(block, 'server_name')?.[0] ?? '',
+        root: directive(block, 'root')?.[0] ?? '/usr/share/nginx/html',
+        index: directive(block, 'index') ?? ['index.html', 'index.htm'],
+        locations: block.children.filter((item) => item.name === 'location').map((item) => ({
+          path: item.args.at(-1),
+          proxy: directive(item, 'proxy_pass')?.[0] ?? null,
+          alias: directive(item, 'alias')?.[0] ?? null,
+          root: directive(item, 'root')?.[0] ?? null,
+        })),
+      });
+    }
+  }
+  return servers;
 }
 
 /** Почему свой сервис не запустится: [строки журнала, статус] или null. */
@@ -300,6 +416,13 @@ function startService(fs, service, time = Date.now()) {
     }
     processes = customProcesses(spec);
   }
+  // nginx слушает порты из своих конфигов — снимок на момент запуска (как настоящий)
+  if (service.name === 'nginx' && !problem) {
+    const nginx = processes.find((proc) => proc.main);
+    nginx.nginx = nginxServers(fs);
+    nginx.listen = [...new Set(nginx.nginx.flatMap((server) => server.listen))];
+  }
+  if (!problem) problem = portProblem(state, service, processes, time);
   if (problem) {
     const [lines, status] = problem;
     for (const text of lines) log(state, unit, text, { time });
@@ -517,6 +640,11 @@ export const systemctl = {
             code = 1;
           } else {
             respawnWorkers(state, service.name);
+            const master = procsOf(state, service.name).find((proc) => proc.main);
+            if (service.name === 'nginx' && master) {
+              master.nginx = nginxServers(fs);
+              master.listen = [...new Set(master.nginx.flatMap((server) => server.listen))];
+            }
             log(state, unit, `Reloaded ${unit} - ${description(service)}.`);
           }
         }
@@ -866,8 +994,13 @@ export function buildSystem(fs, setup) {
   }
   for (const proc of setup.processes ?? []) {
     const command = proc.command;
+    // manage.py runserver [адрес:]порт — слушает порт (по умолчанию 127.0.0.1:8000)
+    const runserver = /runserver(?:\s+(?:([\d.]+):)?(\d+))?/.exec(command);
+    const listen = proc.listen ? [].concat(proc.listen)
+      : runserver ? [`${runserver[1] ?? '127.0.0.1'}:${runserver[2] ?? 8000}`] : undefined;
     spawn(state, {
       ...(proc.pid ? { pid: proc.pid } : {}),
+      ...(listen ? { listen } : {}),
       user: proc.user ?? 'shop',
       comm: proc.name ?? basename(command.split(/\s+/)[0]),
       cmd: command,
@@ -905,6 +1038,10 @@ export function failedSystemRule(rule, fs) {
     if ('active' in rule && (procsOf(state, service.name).length > 0) !== rule.active) return true;
     if ('enabled' in rule && isEnabled(fs, service) !== rule.enabled) return true;
     return false;
+  }
+  if ('port' in rule) {
+    const listening = state.procs.some((proc) => (proc.listen ?? []).some((address) => parseAddress(address).port === Number(rule.port)));
+    return listening !== (rule.listening ?? true);
   }
   if ('process' in rule) {
     const regex = new RegExp(rule.process);

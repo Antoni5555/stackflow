@@ -14,7 +14,7 @@ export const APT = {
       '/usr/sbin/nginx': null,
       '/usr/lib/systemd/system/nginx.service': '[Unit]\nDescription=A high performance web server and a reverse proxy server\nDocumentation=man:nginx(8)\nAfter=network-online.target remote-fs.target nss-lookup.target\nWants=network-online.target\n\n[Service]\nType=forking\nPIDFile=/run/nginx.pid\nExecStartPre=/usr/sbin/nginx -t -q -g \'daemon on; master_process on;\'\nExecStart=/usr/sbin/nginx -g \'daemon on; master_process on;\'\nExecReload=/usr/sbin/nginx -g \'daemon on; master_process on;\' -s reload\nExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/nginx.pid\nTimeoutStopSec=5\nKillMode=mixed\n\n[Install]\nWantedBy=multi-user.target\n',
       '/etc/nginx/nginx.conf': 'user www-data;\nworker_processes auto;\n\nhttp {\n    include /etc/nginx/sites-enabled/*;\n}\n',
-      '/etc/nginx/sites-available/default': 'server {\n    listen 80 default_server;\n    root /var/www/html;\n}\n',
+      '/etc/nginx/sites-available/default': 'server {\n    listen 80 default_server;\n    listen [::]:80 default_server;\n\n    root /var/www/html;\n    index index.html index.htm index.nginx-debian.html;\n\n    server_name _;\n\n    location / {\n        try_files $uri $uri/ =404;\n    }\n}\n',
       '/var/www/html/index.nginx-debian.html': '<h1>Welcome to nginx!</h1>\n',
     },
     links: { '/etc/nginx/sites-enabled/default': '/etc/nginx/sites-available/default' },

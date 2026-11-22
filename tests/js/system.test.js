@@ -41,7 +41,8 @@ const SERVER = {
     '/srv/shop/venv/bin/gunicorn': { content: '#!/srv/shop/venv/bin/python3\n', mode: '755' },
   },
   services: { nginx: { active: true, enabled: true }, gunicorn: { active: true, enabled: true } },
-  processes: [{ user: 'shop', command: 'python3 manage.py runserver 0.0.0.0:8000' }],
+  // runserver на другом порту: 8000 занят gunicorn
+  processes: [{ user: 'shop', command: 'python3 manage.py runserver 0.0.0.0:8001' }],
 };
 
 const pids = (sh, pattern) => run(sh, `pgrep -f '${pattern}'`).out.split('\n').filter(Boolean).map(Number);
@@ -212,5 +213,90 @@ describe('задачи: правила service и process', () => {
     };
     assert.deepEqual(verifyTask(task), []);
     assert.match(verifyTask({ ...task, solution: 'sudo systemctl start gunicorn' }).join('\n'), /После перезагрузки/);
+  });
+});
+
+describe('сеть: ss, curl через nginx, ping, ssh', () => {
+  const SITE = `server {
+    listen 80 default_server;
+    server_name _;
+
+    location /static/ {
+        alias /srv/shop/static/;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+`;
+  const WEB = {
+    ...SERVER,
+    files: {
+      ...SERVER.files,
+      '/etc/nginx/sites-available/shop': { content: SITE, owner: 'root' },
+      '/srv/shop/static/app.css': 'body {}\n',
+      '/srv/shop/static/secret.css': { content: 'x', mode: '600' },
+    },
+    links: { '/etc/nginx/sites-enabled/shop': '/etc/nginx/sites-available/shop' },
+    services: { nginx: { active: true, enabled: true }, gunicorn: { active: true, enabled: true } },
+    processes: [],
+  };
+
+  it('ss -tlnp: порты сервисов; процессы чужих — только с sudo', () => {
+    const sh = shell(WEB);
+    const plain = run(sh, 'ss -tlnp').out;
+    assert.match(plain, /^State {2}Recv-Q Send-Q Local Address:Port Peer Address:Port Process$/m);
+    assert.match(plain, /^LISTEN 0 +511 +0\.0\.0\.0:80 /m);
+    assert.match(plain, /^LISTEN 0 +2048 +127\.0\.0\.1:8000 0\.0\.0\.0:\*$/m);      // без sudo — без процесса
+    assert.match(run(sh, 'sudo ss -tlnp').out, /127\.0\.0\.1:8000 0\.0\.0\.0:\* +users:\(\("gunicorn",pid=\d+/);
+    assert.match(run(sh, 'ss -tl').out, /localhost:irdmi/);                      // без -n — имена
+  });
+
+  it('curl через nginx: приложение, статика, 403 без прав, 502 без gunicorn', () => {
+    const sh = shell(WEB);
+    assert.match(run(sh, 'curl -s localhost/').out, /<h1>Магазин<\/h1>/);
+    assert.equal(run(sh, 'curl -s localhost/static/app.css').out, 'body {}\n');
+    assert.equal(run(sh, 'curl -s -o /dev/null -w "%{http_code}" localhost/static/secret.css').out, '403');
+    assert.match(run(sh, 'curl -I localhost/').out, /^HTTP\/1\.1 200 OK\nServer: nginx\/1\.24\.0 \(Ubuntu\)\n/);
+    run(sh, 'sudo systemctl stop gunicorn');
+    assert.match(run(sh, 'curl -s localhost/').out, /<title>502 Bad Gateway<\/title>/);
+    const errors = run(sh, 'sudo cat /var/log/nginx/error.log').out;
+    assert.match(errors, /open\(\) "\/srv\/shop\/static\/secret\.css" failed \(13: Permission denied\)/);
+    assert.match(errors, /connect\(\) failed \(111: Connection refused\) while connecting to upstream/);
+    assert.match(run(sh, 'tail -1 /var/log/nginx/access.log').out, /"GET \/ HTTP\/1\.1" 502 \d+ "-" "curl\/8\.5\.0"$/m);
+  });
+
+  it('curl: никто не слушает — (7), чужой сайт — (6), -L по редиректам, -f', () => {
+    const sh = shell(WEB);
+    assert.equal(run(sh, 'curl localhost:9000').err, "curl: (7) Failed to connect to localhost port 9000 after 0 ms: Couldn't connect to server\n");
+    assert.equal(run(sh, 'curl example.com').code, 6);
+    assert.match(run(sh, 'curl -sIL localhost:8000/admin').out, /301 Moved Permanently[\s\S]*302 Found[\s\S]*200 OK/);
+    assert.equal(run(sh, 'curl -sf localhost:8000/nope').code, 22);
+  });
+
+  it('порт занят runserver — gunicorn не стартует; правило port', () => {
+    const sh = shell({ ...WEB, services: { gunicorn: { active: false } },
+      processes: [{ user: 'shop', command: 'python3 manage.py runserver' }] });
+    run(sh, 'sudo systemctl start gunicorn');
+    assert.equal(run(sh, 'systemctl is-active gunicorn').out, 'failed\n');
+    assert.match(run(sh, 'journalctl -u gunicorn').out, /\[ERROR\] Connection in use: \('127\.0\.0\.1', 8000\)/);
+    const task = {
+      setup: { ...WEB, services: { gunicorn: { active: false } }, processes: [{ user: 'shop', command: 'python3 manage.py runserver' }] },
+      solution: 'pkill -f runserver\nsudo systemctl start gunicorn',
+      rules: [
+        { service: 'gunicorn', active: true, fail: 'gunicorn не запущен.' },
+        { port: 8000, listening: true, fail: 'Порт 8000 никто не слушает.' },
+      ],
+    };
+    assert.deepEqual(verifyTask(task), []);
+  });
+
+  it('ping, hostname, ssh — теория', () => {
+    const sh = shell();
+    assert.match(run(sh, 'ping -c 2 localhost').out, /^PING localhost \(127\.0\.0\.1\) 56\(84\) bytes of data\.\n64 bytes from localhost \(127\.0\.0\.1\): icmp_seq=1 [\s\S]*2 packets transmitted, 2 received, 0% packet loss/);
+    assert.equal(run(sh, 'ping -c 1 example.com').err, 'ping: example.com: Temporary failure in name resolution\n');
+    assert.equal(run(sh, 'hostname').out, 'server\n');
+    assert.equal(run(sh, 'ssh deploy@1.2.3.4').code, 255);
   });
 });

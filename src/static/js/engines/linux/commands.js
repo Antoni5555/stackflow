@@ -7,6 +7,7 @@ import {
   DAY, FsError, GROUPS, USERS, VirtualFS, basename, dirname, normalize,
 } from './fs.js';
 import { globMatch } from './glob.js';
+import { curl, hostname, ping, scp, ss, ssh } from './network.js';
 import { journalctl, kill, pgrep, pkill, ps, systemctl, top } from './system.js';
 
 // --- общие помощники ---
@@ -1392,6 +1393,7 @@ const help = {
   права:      chmod chown chgrp whoami id groups sudo
   процессы:   ps pgrep kill pkill top
   сервисы:    systemctl journalctl
+  сеть:       ss curl ping hostname
   пакеты:     apt
   архивы:     tar gzip gunzip
   оболочка:   which export unset env source bash history clear
@@ -1404,6 +1406,7 @@ export const COMMANDS = {
   head, tail, wc, grep, sort, uniq, cut, find, du, df,
   chmod, chown, chgrp, whoami, id, groups, sudo,
   ps, kill, pkill, pgrep, top, systemctl, journalctl,
+  ss, curl, ping, hostname, ssh, scp,
   tar, gzip, gunzip: gzip,
   which, export: exportCommand, unset, env, bash, sh: bash, source, '.': source, history, clear, nano,
   true: trueCommand, false: falseCommand, man, help,

@@ -272,7 +272,10 @@ GIT_RULES = {
     'pip_package': {'venv'},
 }
 # Учебный systemd (js/engines/linux/system.js): сервис запущен/включён, процесс есть/нет
-SYSTEM_RULES = {'service': {'active', 'enabled'}, 'process': {'running'}}
+SYSTEM_RULES = {
+    'service': {'active', 'enabled'}, 'process': {'running'}, 'port': {'listening'},
+}
+PROCESS_FIELDS = {'command', 'user', 'name', 'pid', 'cpu', 'mem', 'listen'}
 OBJECT_RULES = {**GIT_RULES, **SYSTEM_RULES}
 DOM_CHECKS = {'count', 'min', 'exists', 'attr', 'text', 'style'}
 SPEC_FIELDS = {
@@ -320,11 +323,11 @@ def validate_state(spec, path):
     processes = setup.get('processes', [])
     if not isinstance(processes, list) or not all(
         isinstance(proc, dict) and 'command' in proc
-        and set(proc) <= {'command', 'user', 'name', 'pid', 'cpu', 'mem'}
+        and set(proc) <= PROCESS_FIELDS
         for proc in processes
     ):
         raise ContentError(
-            path, 'setup.processes — список {command, user?, name?, pid?, cpu?, mem?}',
+            path, 'setup.processes — список {command, user?, listen?, …}',
         )
     links = setup.get('links', {})
     if not isinstance(links, dict) or not all(
