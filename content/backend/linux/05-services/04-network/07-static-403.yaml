@@ -42,4 +42,4 @@ hints:
   - "От чьего имени Nginx читает файлы и какая тройка прав к нему относится?"
   - "`chmod 755 /srv/shop/static`."
 explanation: |
-  `700` пускает в папку только владельца `shop`, а Nginx работает от `www-data` — для него это «остальные», и в `error.log` пишется `open() "/srv/shop/static/css/main.css" failed (13: Permission denied)`. `755` даёт остальным вход и чтение. Проверка — `curl -I http://localhost/static/css/main.css` должен вернуть 200 (сайт `default` из пакета перед этим убирают: `sudo rm /etc/nginx/sites-enabled/default` и `sudo systemctl reload nginx`).
+  `700` пускает в папку только владельца `shop`, а Nginx работает от `www-data` — для него это «остальные», и в `error.log` пишется `open() "/srv/shop/static/css/main.css" failed (13: Permission denied)`. `755` даёт остальным вход и чтение. Проверка — `curl -I http://localhost/static/css/main.css` вернёт 200: `localhost` есть в `server_name` сайта магазина. А `curl http://127.0.0.1/…` попадёт в сайт `default` из пакета — для него нужен заголовок: `curl -H "Host: shop.example" http://127.0.0.1/static/css/main.css`.

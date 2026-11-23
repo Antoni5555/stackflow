@@ -243,7 +243,7 @@ LINUX_COMMANDS = {
     "systemctl": {"--now", "--no-pager", "-l", "--full", "-q", "--quiet"},
     "journalctl": {"-u", "-n", "-x", "-e", "--no-pager"},
     "ss": {"-t", "-u", "-l", "-n", "-p"}, "ping": {"-c"}, "hostname": {"-I"},
-    "curl": {"-I", "-i", "-s", "-S", "-o", "-w", "-L", "-f", "-v", "-X", "--unix-socket"},
+    "curl": {"-I", "-i", "-s", "-S", "-o", "-w", "-L", "-f", "-v", "-X", "-H", "--unix-socket"},
 }
 GIT_COMMANDS = {
     "init": None, "config": {"--global", "--list"}, "status": None, "add": {"-A"}, "rm": {"--cached", "-r"},

@@ -35,9 +35,9 @@
     curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
     HTTP/1.1 200 OK
     Server: nginx/1.24.0 (Ubuntu)
-    Date: Sun, 22 Nov 2026 03:59:57 GMT
+    Date: Mon, 23 Nov 2026 08:46:05 GMT
     Content-Type: text/html
-    Content-Length: 27
+    Content-Length: 615
     Connection: keep-alive
     ```
     До установки порт 80 никто не слушал (код 7), после — отвечает сайт `default` из пакета.
