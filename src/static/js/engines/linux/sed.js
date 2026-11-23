@@ -223,18 +223,32 @@ class Parser {
   }
 
   /** Текст команд a, i, c: «a текст» или «a\» + перевод строки + текст. */
-  readText(cmd) {
+  /**
+   * Текст команд a, i, c, как в GNU sed: «a текст» (пробелы в начале отбрасываются),
+   * «a\текст» и «a\» + перевод строки + текст (пробелы сохраняются). В тексте \n —
+   * перевод строки, \t — табуляция, \ в конце строки — продолжение, \x — просто x.
+   * null — «a\» в самом конце: команда ничего не добавляет.
+   */
+  readText() {
     this.skipSpaces();
     if (this.peek() === '\\') {
       this.i += 1;
       if (this.peek() === '\n') this.i += 1;
-      else this.skipSpaces();
+      if (this.i >= this.text.length) return null;
+    } else if (this.i >= this.text.length || this.peek() === '\n') {
+      this.error("expected \\ after `a', `c' or `i'");
     }
-    const start = this.i;
-    while (this.i < this.text.length && this.text[this.i] !== '\n') this.i += 1;
-    const text = this.text.slice(start, this.i).replace(/\\(.)/g, '$1');
-    if (this.i === start && this.i >= this.text.length && cmd) {
-      this.error("expected \\ after `a', `c' or `i'", start);
+    let text = '';
+    while (this.i < this.text.length && this.text[this.i] !== '\n') {
+      const ch = this.text[this.i];
+      if (ch === '\\' && this.i + 1 < this.text.length) {
+        const next = this.text[this.i + 1];
+        text += { n: '\n', t: '\t' }[next] ?? next;
+        this.i += 2;
+      } else {
+        text += ch;
+        this.i += 1;
+      }
     }
     this.i += 1;
     return text;
@@ -318,7 +332,7 @@ class Parser {
         if (match) this.i += match[0].length;
         this.endCommand();
       } else if (cmd === 'a' || cmd === 'i' || cmd === 'c') {
-        command.text = this.readText(cmd);
+        command.text = this.readText();
       } else if (cmd === 's') {
         this.readSubstitute(command);
       } else if ('yhHgGxnNDPbtTlrRwWvzeFL{}:'.includes(cmd)) {
@@ -462,12 +476,13 @@ function runStream(commands, text, quiet, state) {
       } else if (cmd === '=') {
         write(`${ctx.number}\n`);
       } else if (cmd === 'a') {
-        append.push(command.text);
+        if (command.text !== null) append.push(command.text);
       } else if (cmd === 'i') {
-        write(`${command.text}\n`);
+        if (command.text !== null) write(`${command.text}\n`);
       } else if (cmd === 'c') {
         // В диапазоне текст печатается один раз — в конце диапазона
-        if (!command.addr2 || command.negate || !command.active) write(`${command.text}\n`);
+        const once = !command.addr2 || command.negate || !command.active;
+        if (once && command.text !== null) write(`${command.text}\n`);
         deleted = true;
         break;
       } else if (cmd === 'q') {
@@ -562,7 +577,14 @@ export const sed = {
     if (parsed.error) return parsed.error;
     const { opts } = parsed;
     let commands = [];
-    for (const [index, script] of opts.scripts.entries()) {
+    // -e 'a\' -e 'текст' — одна команда: сценарий с \ в конце склеивается со следующим
+    const scripts = [];
+    for (const script of opts.scripts) {
+      const last = scripts[scripts.length - 1];
+      if (last !== undefined && /(^|[^\\])(\\\\)*\\$/.test(last)) scripts[scripts.length - 1] = `${last}\n${script}`;
+      else scripts.push(script);
+    }
+    for (const [index, script] of scripts.entries()) {
       try {
         commands = commands.concat(new Parser(script, opts.extended).parse());
       } catch (e) {

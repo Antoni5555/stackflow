@@ -187,6 +187,38 @@ describe('exit, $#, $@, ( … )', () => {
   });
 });
 
+describe('>&2 и sed a/i/c с \n — сообщения об ошибках в скриптах', () => {
+  it('>&2 и 1>&2 пишут в поток ошибок, слева направо, как bash', () => {
+    const sh = shell({ files: { '/home/shop/s.sh': { content: '#!/bin/bash\necho one >&2\necho two\n', mode: '755' } } });
+    assert.deepEqual(run(sh, 'echo x >&2'), { out: '', err: 'x\n', all: 'x\n', code: 0, action: null });
+    assert.equal(run(sh, './s.sh').all, 'one\ntwo\n');
+    assert.equal(run(sh, './s.sh 2>/dev/null').all, 'two\n');
+    run(sh, './s.sh > out.txt');
+    assert.equal(run(sh, 'cat out.txt').out, 'two\n');
+    assert.equal(run(sh, 'echo x >&2 2>/dev/null').err, 'x\n');        // >&2 взял экран до 2>
+    assert.equal(run(sh, 'echo y 2>/dev/null >&2').all, '');
+    assert.deepEqual([run(sh, 'echo z 1>&2 | wc -c').out, run(sh, 'echo z 1>&2 | wc -c').err], ['0\n', 'z\n']);
+    assert.equal(run(sh, '(echo w >&2) 2>&1 | wc -c').out, '2\n');
+    assert.equal(run(sh, 'echo u 2>&1 >&2').out, 'u\n');        // после 2>&1 поток 2 — это вывод
+    run(sh, 'echo v >&2 > o.txt');
+    assert.equal(run(sh, 'cat o.txt').out, 'v\n');
+  });
+
+  it('sed a/i/c: \\n — перевод строки, \\t, \\&, a\\ с пробелами, -e a\\ -e текст', () => {
+    const sh = shell({ files: { '/home/shop/f': '1\n2\n' } });
+    const out = (line) => run(sh, line).out;
+    assert.equal(out("sed '1a if [ -z \"$1\" ]; then\\n    exit 1\\nfi' f"), '1\nif [ -z "$1" ]; then\n    exit 1\nfi\n2\n');
+    assert.equal(out("sed '1a a\\tb\\&c\\\\d\\qe' f"), '1\na\tb&c\\dqe\n2\n');
+    assert.equal(out("sed '1i\\   lead' f"), '   lead\n1\n2\n');
+    assert.equal(out("sed '1c x\\ny' f"), 'x\ny\n2\n');
+    assert.equal(out("sed '1a\\' f"), '1\n2\n');
+    assert.equal(out("sed -e '1a\\' -e 'foo' f"), '1\nfoo\n2\n');
+    assert.equal(run(sh, "sed a f").err, "sed: -e expression #1, char 1: expected \\ after `a', `c' or `i'\n");
+    run(sh, "sed -i '1a if [ -z \"$1\" ]; then\\n    exit 1\\nfi' f");
+    assert.equal(out('cat f'), '1\nif [ -z "$1" ]; then\n    exit 1\nfi\n2\n');
+  });
+});
+
 describe('tar -C при создании архива', () => {
   it('файлы — от папки -C, архив — от текущей, пути в архиве — от -C', () => {
     const sh = shell({ cwd: '/home/shop', files: { '/srv/shop/static/css/main.css': 'body{}\n' } });

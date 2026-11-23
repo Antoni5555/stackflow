@@ -1,10 +1,12 @@
 // Разбор команд bash для симулятора: текст → токены → дерево команд.
 // Поддержано: кавычки, \, $(…) и `…`, комментарии, | && || ; перевод строки,
-// перенаправления > >> 2> 2>> 2>&1 <, ( … ), if/elif/else/fi, for … in …; do … done, «!».
+// перенаправления > >> 2> 2>> 2>&1 >&2 1>&2 <, ( … ), if/elif/else/fi, for … in …; do … done, «!».
 // Ошибки — как в bash 5.2: «syntax error near unexpected token `fi'».
 
-const OPERATORS = ['&&', '||', '2>&1', '2>>', '2>', '>>', '>', '<', '|', ';', '(', ')'];
-const REDIRECTS = new Set(['>', '>>', '2>', '2>>', '<', '2>&1']);
+const OPERATORS = ['&&', '||', '2>&1', '1>&2', '2>>', '2>', '>&2', '>>', '>', '<', '|', ';', '(', ')'];
+const REDIRECTS = new Set(['>', '>>', '2>', '2>>', '<', '2>&1', '>&2', '1>&2']);
+// без цели: 2>&1 — ошибки туда же, куда вывод; >&2 и 1>&2 — вывод туда же, куда ошибки
+const DUPLICATES = new Set(['2>&1', '>&2', '1>&2']);
 const RESERVED = new Set(['if', 'then', 'elif', 'else', 'fi', 'for', 'do', 'done', '!']);
 
 /** Синтаксическая ошибка; line — номер строки (для скриптов), source — текст этой строки. */
@@ -103,8 +105,8 @@ export function tokenize(text) {
       i = backquote(i, '');
       continue;
     }
-    // «2>» — оператор, только если 2 стоит отдельным словом
-    const op = OPERATORS.find((item) => text.startsWith(item, i) && (!item.startsWith('2') || !word));
+    // «2>», «1>&2» — операторы, только если цифра стоит отдельным словом
+    const op = OPERATORS.find((item) => text.startsWith(item, i) && (!/^\d/.test(item) || !word));
     if (op) {
       end();
       tokens.push({ op, line });
@@ -163,7 +165,7 @@ export function tokenize(text) {
     }
     let j = i;
     while (j < text.length && !/[\s'"\\`]/.test(text[j]) && !text.startsWith('$(', j)
-      && !OPERATORS.some((item) => !item.startsWith('2') && text.startsWith(item, j))) {
+      && !OPERATORS.some((item) => !/^\d/.test(item) && text.startsWith(item, j))) {
       j += 1;
     }
     push({ text: text.slice(i, j), quote: '' });
@@ -312,7 +314,7 @@ export class Parser {
   readRedirect(command) {
     const { op } = this.peek();
     this.i += 1;
-    if (op === '2>&1') {
+    if (DUPLICATES.has(op)) {
       command.redirects.push({ op });
       return;
     }

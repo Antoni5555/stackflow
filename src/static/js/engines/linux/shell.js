@@ -463,6 +463,10 @@ export class Shell {
         fds[2] = fds[1];
         continue;
       }
+      if (item.op === '>&2' || item.op === '1>&2') {
+        fds[1] = fds[2];
+        continue;
+      }
       const [target] = this.expandWord(item.target, { split: false });
       try {
         if (item.op === '<') {
