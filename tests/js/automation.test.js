@@ -268,7 +268,7 @@ describe('crontab', () => {
       'cat: /var/spool/cron/crontabs/www-data: Permission denied\n');
     assert.equal(run(sh, 'crontab -u www-data -l').err, 'must be privileged to use -u\n');
     assert.equal(run(sh, 'sudo crontab -u www-data -l').out, '*/5 * * * * echo hi\n');
-    assert.match(run(sh, 'crontab').err, /^crontab: usage error: file name or - \(for stdin\) must be specified\n/);
+    assert.match(run(sh, 'crontab').err, /^crontab: usage error: file name must be specified for replace\n/);
   });
 
   it('-e: шаблон в первый раз, проверка строк, установка', () => {
@@ -278,7 +278,7 @@ describe('crontab', () => {
     assert.match(sh.fs.as('root', () => sh.fs.readFile(action.path)), /^# Edit this file to introduce tasks.*# m h {2}dom mon dow {3}command\n$/s);
     assert.equal(action.onClose().map((c) => c.text).join(''), 'crontab: no changes made to crontab\n');
     assert.match(edit(sh, '61 3 * * * x\n'),
-      /^crontab: installing new crontab\n"\/tmp\/crontab\.\w+\/crontab":1: bad minute\nerrors in crontab file, can't install\.\n/);
+      /^crontab: installing new crontab\n"\/tmp\/crontab\.\w+\/crontab":0: bad minute\nerrors in crontab file, can't install\.\n/);
     assert.equal(run(sh, 'crontab -l').code, 1);
     assert.match(edit(sh, '0 3 * * * /srv/shop/bin/backup.sh'), /missing newline before EOF, can't install/);
     assert.equal(edit(sh, '0 3 * * * /srv/shop/bin/backup.sh\n'), 'crontab: installing new crontab\n');
@@ -291,10 +291,18 @@ describe('crontab', () => {
     run(sh, '(crontab -l; echo "*/10 * * * * date >> /tmp/d") | crontab -');
     assert.equal(run(sh, 'crontab -l').out, '0 3 * * * /srv/shop/bin/backup.sh\n*/10 * * * * date >> /tmp/d\n');
     run(sh, 'echo "0 25 * * * x" > c.txt');
-    assert.equal(run(sh, 'crontab c.txt').err, '"c.txt":1: bad hour\nerrors in crontab file, can\'t install.\n');
+    assert.equal(run(sh, 'crontab c.txt').err, '"c.txt":0: bad hour\nerrors in crontab file, can\'t install.\n');
     assert.equal(run(sh, 'echo "0 3 * *" | crontab -').err, '"-":1: bad day-of-week\nerrors in crontab file, can\'t install.\n');
     assert.equal(run(sh, 'echo "0 3 * * mon-fri x" | crontab -').code, 0);
     assert.equal(run(sh, 'echo "@daily x" | crontab -').code, 0);
+    // как cron 3.0pl1: строки с нуля, комментарии и пустые считаются, только первая ошибка,
+    // не хватило полей — номер на 1 больше; строка без команды допустима
+    const check = (text) => run(sh, `echo -ne '${text}' | crontab -n -`);
+    assert.equal(check('# c\\n0 3 * * * /x\\n60 3 * * * /y\\n').err, '"-":2: bad minute\nerrors in crontab file, can\'t install.\n');
+    assert.equal(check('0 3 * * * /x\\n60 3 * * * /y\\n0 99 * * * /z\\n').err, '"-":1: bad minute\nerrors in crontab file, can\'t install.\n');
+    assert.equal(check('@foo x\\n').err, '"-":0: bad time specifier\nerrors in crontab file, can\'t install.\n');
+    assert.deepEqual([check('0 3 * * *\\n').out, sh.status], ['The syntax of the crontab file was successfully checked.\n', 0]);
+    assert.equal(check('0 3 * * 8 x\\n').err, '"-":0: bad day-of-week\nerrors in crontab file, can\'t install.\n');
     assert.equal(run(sh, 'crontab -r; crontab -l').err, 'no crontab for shop\n');
   });
 

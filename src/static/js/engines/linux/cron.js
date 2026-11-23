@@ -67,23 +67,28 @@ function validField(text, field) {
   });
 }
 
-/** Ошибки файла crontab: [{line, message}] (пусто — можно ставить). */
-export function crontabErrors(text) {
-  const errors = [];
-  text.split('\n').forEach((raw, index) => {
+/**
+ * Первая ошибка файла crontab {line, message} или null — как cron 3.0pl1 (Ubuntu): он
+ * останавливается на первой ошибке, строки считает с нуля (с комментариями и пустыми),
+ * а если полей не хватило — уже дочитал до конца строки, и номер на 1 больше.
+ * Строка без команды («0 3 * * *», «@daily») cron принимает.
+ */
+export function crontabError(text) {
+  const lines = text.split('\n');
+  for (const [index, raw] of lines.entries()) {
     const line = raw.trim();
-    if (!line || line.startsWith('#') || /^[A-Za-z_]\w*\s*=/.test(line)) return;
+    if (!line || line.startsWith('#') || /^[A-Za-z_]\w*\s*=/.test(line)) continue;
     const words = line.split(/\s+/);
     if (words[0].startsWith('@')) {
-      if (!SPECIAL.test(words[0])) errors.push({ line: index + 1, message: 'bad time specifier' });
-      else if (words.length < 2) errors.push({ line: index + 1, message: 'bad command' });
-      return;
+      if (!SPECIAL.test(words[0])) return { line: index, message: 'bad time specifier' };
+      continue;
     }
-    const bad = FIELDS.find((field, k) => words[k] === undefined || !validField(words[k], field));
-    if (bad) errors.push({ line: index + 1, message: `bad ${bad.name}` });
-    else if (words.length < 6) errors.push({ line: index + 1, message: 'bad command' });
-  });
-  return errors;
+    const k = FIELDS.findIndex((field, n) => words[n] === undefined || !validField(words[n], field));
+    if (k !== -1) {
+      return { line: words[k] === undefined ? index + 1 : index, message: `bad ${FIELDS[k].name}` };
+    }
+  }
+  return null;
 }
 
 const spoolPath = (user) => `${SPOOL}/${user}`;
@@ -116,27 +121,37 @@ function removeCrontab(fs, user) {
  * Проверить и поставить текст. source — имя файла в сообщениях ("-", "/tmp/…").
  * Возвращает {err, code}; prefix — строки до ошибок (crontab -e пишет «installing» первым).
  */
-function install(fs, user, text, source, prefix = '') {
+function install(fs, user, text, source, prefix = '', dryRun = false) {
   if (text && !text.endsWith('\n')) {
     return { err: `${prefix}new crontab file is missing newline before EOF, can't install.\n`, code: 1 };
   }
-  const errors = crontabErrors(text);
-  if (errors.length) {
-    const lines = errors.map((error) => `"${source}":${error.line}: ${error.message}\n`).join('');
-    return { err: `${prefix}${lines}errors in crontab file, can't install.\n`, code: 1 };
+  const error = crontabError(text);
+  if (error) {
+    return {
+      err: `${prefix}"${source}":${error.line}: ${error.message}\nerrors in crontab file, can't install.\n`,
+      code: 1,
+    };
   }
+  if (dryRun) return { out: 'The syntax of the crontab file was successfully checked.\n', err: prefix, code: 0 };
   writeCrontab(fs, user, text);
   return { err: prefix, code: 0 };
 }
 
 // --- команда ---
 
-const USAGE = `usage:\tcrontab [-u user] file
+const USAGE = `usage:\tcrontab [-u user] [-n] file
 \tcrontab [ -u user ] [ -i ] { -e | -l | -r }
-\t\t(default operation is replace, per 1003.2)
+
+\t-h\t(displays this help message)
+
+\tfile\t(default operation is replace, per 1003.2)
+\t-n\t(dry run: checks the syntax, then bails out)
+\t-u user\t(choose the user whose crontab is touched)
+
 \t-e\t(edit user's crontab)
 \t-l\t(list user's crontab)
 \t-r\t(delete user's crontab)
+
 \t-i\t(prompt before deleting user's crontab)
 `;
 
@@ -180,6 +195,7 @@ export const crontab = {
   crontab -e          изменить в nano
   crontab -r          удалить всё расписание
   crontab файл        поставить расписание из файла (crontab - — из ввода)
+  crontab -n файл     только проверить строки, не ставить
   sudo crontab -u ИМЯ -l    расписание другого пользователя
 Строка: минута час день месяц день_недели команда
   0 3 * * * /srv/shop/bin/backup.sh     каждый день в 03:00
@@ -189,6 +205,7 @@ export const crontab = {
   run({ sh, fs, args, stdin }) {
     let user = fs.user;
     let mode = null;
+    let dryRun = false;
     const files = [];
     for (let i = 0; i < args.length; i += 1) {
       const arg = args[i];
@@ -200,6 +217,8 @@ export const crontab = {
       } else if (/^-[elr]$/.test(arg)) {
         if (mode) return fail(`crontab: usage error: only one operation permitted\n${USAGE}`);
         mode = arg[1];
+      } else if (arg === '-n') {
+        dryRun = true;
       } else if (arg === '-i') {
         // спросить перед -r: в тренажёре не спрашиваем
       } else if (arg.startsWith('-') && arg !== '-') {
@@ -208,7 +227,7 @@ export const crontab = {
     }
     if (mode && files.length) return fail(`crontab: usage error: no arguments permitted after this option\n${USAGE}`);
     if (!mode && !files.length) {
-      return fail(`crontab: usage error: file name or - (for stdin) must be specified\n${USAGE}`);
+      return fail(`crontab: usage error: file name must be specified for replace\n${USAGE}`);
     }
     const current = readCrontab(fs, user);
     if (mode === 'l') return current === null ? fail(`no crontab for ${user}\n`) : ok(current);
@@ -244,8 +263,8 @@ export const crontab = {
         return fail(`${source}: ${e.message}\n`);
       }
     }
-    const result = install(fs, user, text, source);
-    return { out: '', err: result.err, code: result.code };
+    const result = install(fs, user, text, source, '', dryRun);
+    return { out: result.out ?? '', err: result.err, code: result.code };
   },
 };
 
