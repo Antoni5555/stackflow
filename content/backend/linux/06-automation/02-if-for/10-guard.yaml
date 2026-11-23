@@ -1,0 +1,55 @@
+title: "Скрипт останавливается с ошибкой"
+type: exercise
+difficulty: 3
+pitfall: "Проверка аргумента: if [ -z \"$1\" ]; сообщение — в >&2; exit 1, иначе код останется 0."
+statement: |
+  Скрипт `~/bin/backup.sh` без аргумента упаковывает пустое имя и всё равно пишет «Готово». Добавьте в него проверку **сразу после shebang и комментария** (`nano ~/bin/backup.sh`):
+  ```
+  if [ -z "$1" ]; then
+      echo "Использование: $0 папка" >&2
+      exit 1
+  fi
+  ```
+  Потом проверьте: `~/bin/backup.sh` без аргумента должен напечатать подсказку и завершиться с кодом 1, а `~/bin/backup.sh media` — создать архив.
+setup:
+  cwd: /home/shop
+  now: "2026-11-23 03:00"
+  files:
+    /home/shop/bin/backup.sh:
+      mode: '755'
+      content: |
+        #!/bin/bash
+        # Бэкап папки магазина: ./backup.sh media
+        DEST=/home/shop/backups
+        NAME="$1-$(date +%F).tar.gz"
+
+        mkdir -p "$DEST"
+        tar -czf "$DEST/$NAME" -C /srv/shop "$1" && echo "Готово: $DEST/$NAME"
+    /srv/shop/media/products/1.jpg: {size: 300K}
+check:
+  type: state
+  expect:
+    - path: /home/shop/bin/backup.sh
+      contains: '(?<![\s\S])#!/bin/bash\n'
+      fail: "Shebang должен остаться первой строкой."
+    - path: /home/shop/bin/backup.sh
+      contains: '^if \[ -z "\$1" \]; then\n\s+echo "Использование: \$0 папка" >&2\n\s+exit 1\nfi$'
+      fail: "Нет блока проверки: if [ -z \"$1\" ]; then / echo … >&2 / exit 1 / fi."
+    - path: /home/shop/bin/backup.sh
+      contains: '^fi\n[\s\S]*^NAME='
+      fail: "Проверка должна стоять до NAME= и tar — иначе скрипт сначала сделает пустой архив."
+    - path: /home/shop/backups/media-2026-11-23.tar.gz
+      exists: true
+      fail: "Нет архива media — запустите ~/bin/backup.sh media."
+    - path: /home/shop/backups/-2026-11-23.tar.gz
+      exists: false
+      fail: "Есть архив с пустым именем -2026-11-23.tar.gz — проверка не сработала или стоит после tar."
+solution: |
+  echo -e '#!/bin/bash\n# Бэкап папки магазина: ./backup.sh media\nif [ -z "$1" ]; then\n    echo "Использование: $0 папка" >&2\n    exit 1\nfi\nDEST=/home/shop/backups\nNAME="$1-$(date +%F).tar.gz"\n\nmkdir -p "$DEST"\ntar -czf "$DEST/$NAME" -C /srv/shop "$1" && echo "Готово: $DEST/$NAME"' > ~/bin/backup.sh
+  ~/bin/backup.sh || true
+  ~/bin/backup.sh media
+hints:
+  - "Блок ставится между строкой-комментарием и `DEST=`. После правки запустите скрипт без аргумента и посмотрите `echo $?`."
+  - "В `nano` вставьте четыре строки после комментария, сохраните (Ctrl+O, Enter), выйдите (Ctrl+X), затем `~/bin/backup.sh` и `~/bin/backup.sh media`."
+explanation: |
+  Без аргумента `[ -z "$1" ]` истинна: скрипт печатает подсказку в поток ошибок и выходит с кодом `1` до `tar` — пустой архив не создаётся, а cron или `&&` увидят ошибку. `$0` в подсказке — имя, под которым скрипт вызвали.

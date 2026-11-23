@@ -1,0 +1,39 @@
+title: "Бэкап нескольких папок циклом"
+type: exercise
+difficulty: 2
+pitfall: "for X in список; do …; done — одна команда для каждого слова; в одну строку — ; перед do и done."
+statement: |
+  Одной строкой с циклом `for` упакуйте папки магазина `media` и `static` — каждую в свой архив с датой:
+  ```
+  /home/shop/backups/media-ГГГГ-ММ-ДД.tar.gz
+  /home/shop/backups/static-ГГГГ-ММ-ДД.tar.gz
+  ```
+  В архивах пути — от `/srv/shop` (`-C /srv/shop`), дата — из `date +%F`.
+setup:
+  cwd: /home/shop
+  now: "2026-11-23 03:00"
+  dirs:
+    - /home/shop/backups
+  files:
+    /srv/shop/media/products/1.jpg: {size: 300K}
+    /srv/shop/static/css/main.css: "body { margin: 0; }\n"
+    /srv/shop/logs/app.log: "INFO start\n"
+check:
+  type: state
+  expect:
+    - path: /home/shop/backups/media-2026-11-23.tar.gz
+      exists: true
+      fail: "Нет архива media-2026-11-23.tar.gz."
+    - path: /home/shop/backups/static-2026-11-23.tar.gz
+      exists: true
+      fail: "Нет архива static-2026-11-23.tar.gz."
+    - path: /home/shop/backups/logs-2026-11-23.tar.gz
+      exists: false
+      fail: "Логи упаковывать не нужно — только media и static."
+solution: |
+  for d in media static; do tar -czf ~/backups/$d-$(date +%F).tar.gz -C /srv/shop $d; done
+hints:
+  - "Переменная цикла получит по очереди `media` и `static`. Как подставить её в имя архива и в имя папки?"
+  - "`for d in media static; do tar -czf ~/backups/$d-$(date +%F).tar.gz -C /srv/shop $d; done`."
+explanation: |
+  Цикл выполнил `tar` дважды: с `d=media` и `d=static`. В скрипте то же пишут на нескольких строках, а переменную — в кавычках: `tar -czf "$DEST/$d-$(date +%F).tar.gz" -C /srv/shop "$d"`.

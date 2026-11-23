@@ -1,0 +1,31 @@
+title: "Архив с датой"
+type: exercise
+difficulty: 2
+pitfall: "$(команда) подставляет её вывод: $(date +%F) → 2026-11-23."
+statement: |
+  Без скрипта, одной командой, упакуйте папку `static` магазина в архив с сегодняшней датой в имени:
+  ```
+  /home/shop/backups/static-ГГГГ-ММ-ДД.tar.gz
+  ```
+  В архиве пути должны начинаться со `static/` (`-C /srv/shop`). Дату не набирайте руками — подставьте вывод `date +%F`.
+setup:
+  cwd: /home/shop
+  now: "2026-11-23 03:00"
+  dirs:
+    - /home/shop/backups
+  files:
+    /srv/shop/static/css/main.css: "body { margin: 0; }\n"
+    /srv/shop/static/js/cart.js: "console.log('cart');\n"
+check:
+  type: state
+  expect:
+    - path: /home/shop/backups/static-2026-11-23.tar.gz
+      exists: true
+      fail: "Нет /home/shop/backups/static-2026-11-23.tar.gz. Имя: static-$(date +%F).tar.gz."
+solution: |
+  tar -czf /home/shop/backups/static-$(date +%F).tar.gz -C /srv/shop static
+hints:
+  - "Как вставить вывод команды `date +%F` прямо в имя файла?"
+  - "`tar -czf /home/shop/backups/static-$(date +%F).tar.gz -C /srv/shop static`."
+explanation: |
+  bash сначала выполняет `$(date +%F)` и вставляет её вывод в слово — `tar` получает уже готовое имя `static-2026-11-23.tar.gz`. Так же имя собирается в скрипте бэкапа, только там оно сохраняется в переменную: `NAME="static-$(date +%F).tar.gz"`.

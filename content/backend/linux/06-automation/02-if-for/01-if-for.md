@@ -236,4 +236,6 @@ bash: [-z: command not found
 </details>
 
 ## Глубже
+В тренажёре есть `if`, `for`, `[ ]`/`test`, `exit` и `find -delete` — и в скриптах, и одной строкой в терминале; `while` и `case` — нет.
+
 Чтобы бэкап и уборка шли каждую ночь без вас — следующая тема, cron. Цикл `while read line` (строки файла) и `case` (выбор по значению) — в документации bash: `help while`, `help case`.

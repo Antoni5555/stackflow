@@ -1,0 +1,48 @@
+- title: Есть ли .env
+  text: |
+    Одной строкой с `if` выведите, есть ли в текущей папке файл:
+    ```
+    .env
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    if [ -f .env ]; then echo "есть .env"; else echo "нет .env"; fi
+    ```
+    Результат:
+    ```
+    есть .env
+    ```
+    `[ -f … ]` — есть обычный файл; пробелы после `[` и перед `]` обязательны.
+- title: Ошибки в каждом логе
+  text: |
+    Циклом `for` по файлам `logs/*.log` выведите для каждого число строк с:
+    ```
+    ERROR
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    for f in logs/*.log; do echo "$f: $(grep -c ERROR $f)"; done
+    ```
+    Результат:
+    ```
+    logs/app.log: 2
+    ```
+    Лог пока один — когда появятся `error.log`, `cron.log`, цикл пройдёт и по ним.
+- title: Старые логи Nginx
+  text: |
+    Найдите логи Nginx старше 7 дней (не удаляя):
+    ```
+    /var/log/nginx
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    find /var/log/nginx -name '*.log' -mtime +7
+    ```
+    Результат:
+    ```
+    /var/log/nginx/access.log
+    ```
+    `access.log` не менялся 9 дней. Удалять — той же командой с `-delete` в конце (здесь — через `sudo`: файлы принадлежат `www-data`). На настоящем сервере старые логи чистит `logrotate`.

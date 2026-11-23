@@ -1,0 +1,50 @@
+title: "Скрипт подсчёта ошибок"
+type: exercise
+difficulty: 2
+pitfall: "Скрипт: shebang первой строкой, аргумент — \"$1\", право x — chmod +x."
+statement: |
+  Напишите скрипт `~/bin/errors.sh`, который печатает, сколько строк с `ERROR` в файле, переданном первым аргументом. Скрипт из двух строк:
+  ```
+  #!/bin/bash
+  grep -c ERROR "$1"
+  ```
+  Сделайте его исполняемым и запустите для лога магазина:
+  ```
+  ~/bin/errors.sh /srv/shop/logs/app.log
+  ```
+  Создать файл удобно через `nano ~/bin/errors.sh`.
+setup:
+  cwd: /home/shop
+  dirs:
+    - /home/shop/bin
+  files:
+    /srv/shop/logs/app.log: |
+      INFO  start server
+      INFO  GET /catalog/ 200
+      ERROR db connection lost
+      INFO  GET /cart/ 200
+      ERROR timeout /api/orders/
+      ERROR timeout /api/orders/
+check:
+  type: state
+  expect:
+    - path: /home/shop/bin/errors.sh
+      contains: '(?<![\s\S])#!/bin/bash\n'
+      fail: "Первой строкой файла должен быть shebang #!/bin/bash."
+    - path: /home/shop/bin/errors.sh
+      contains: '^grep -c ERROR "\$1"$'
+      fail: "Вторая строка: grep -c ERROR \"$1\" — аргумент в двойных кавычках."
+    - path: /home/shop/bin/errors.sh
+      mode: '755'
+      fail: "Скрипт не исполняемый — chmod +x ~/bin/errors.sh."
+    - output_matches: '^3$'
+      fail: "Последней командой запустите ~/bin/errors.sh /srv/shop/logs/app.log — он должен напечатать 3."
+solution: |
+  echo -e '#!/bin/bash\ngrep -c ERROR "$1"' > ~/bin/errors.sh
+  chmod +x ~/bin/errors.sh
+  ~/bin/errors.sh /srv/shop/logs/app.log
+hints:
+  - "Откройте `nano ~/bin/errors.sh`, впишите две строки, сохраните (Ctrl+O, Enter) и выйдите (Ctrl+X). Что ещё нужно, чтобы файл запускался?"
+  - "`chmod +x ~/bin/errors.sh`, затем `~/bin/errors.sh /srv/shop/logs/app.log`."
+explanation: |
+  `$1` внутри скрипта — первое слово после его имени, здесь путь к логу; кавычки сохранят путь целым, даже если в нём будет пробел. Скрипт запускается по полному пути `~/bin/errors.sh` из любой папки, а если `~/bin` есть в `PATH` — и просто `errors.sh`.

@@ -1,0 +1,42 @@
+title: "Первый запуск бэкапа"
+type: exercise
+difficulty: 1
+pitfall: "Новый файл создаётся без права x: перед ./скрипт — chmod +x."
+statement: |
+  Скрипт `~/bin/backup.sh` из урока уже лежит на сервере (посмотрите его: `cat ~/bin/backup.sh`), но запуск `./backup.sh` даёт `Permission denied`. Сделайте скрипт исполняемым и создайте им бэкап папки `media`:
+  ```
+  ./backup.sh media
+  ```
+setup:
+  cwd: /home/shop/bin
+  now: "2026-11-23 03:00"
+  files:
+    /home/shop/bin/backup.sh: |
+      #!/bin/bash
+      # Бэкап папки магазина: архив с датой в имени
+      DEST=/home/shop/backups
+      NAME="$1-$(date +%F).tar.gz"
+
+      mkdir -p "$DEST"
+      tar -czf "$DEST/$NAME" -C /srv/shop "$1"
+      echo "Готово: $DEST/$NAME"
+    /srv/shop/media/products/1.jpg: {size: 300K}
+    /srv/shop/media/products/2.jpg: {size: 250K}
+    /srv/shop/static/css/main.css: "body { margin: 0; }\n"
+check:
+  type: state
+  expect:
+    - path: /home/shop/bin/backup.sh
+      mode: '755'
+      fail: "У скрипта нет права на выполнение для всех — chmod +x backup.sh."
+    - path: /home/shop/backups/media-2026-11-23.tar.gz
+      exists: true
+      fail: "Архива /home/shop/backups/media-2026-11-23.tar.gz нет — запустите ./backup.sh media."
+solution: |
+  chmod +x backup.sh
+  ./backup.sh media
+hints:
+  - "Какого права не хватает файлу, чтобы его можно было запустить как программу?"
+  - "`chmod +x backup.sh`, затем `./backup.sh media`."
+explanation: |
+  `chmod +x` добавляет право `x` владельцу, группе и остальным (`644` → `755`). Скрипт подставил аргумент `media` в `$1`, а `$(date +%F)` — сегодняшнюю дату в имя архива. Без `chmod` можно было и `bash backup.sh media`, но cron и systemd запускают файл как программу — им право `x` нужно.

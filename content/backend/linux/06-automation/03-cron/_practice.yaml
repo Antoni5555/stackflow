@@ -1,0 +1,56 @@
+- title: Своё расписание
+  text: |
+    Посмотрите свой crontab, поставьте ночной запуск деплоя в 03:00 с логом и проверьте:
+    ```
+    /srv/shop/deploy.sh nightly >> /srv/shop/logs/cron.log 2>&1
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    crontab -l
+    echo "0 3 * * * /srv/shop/deploy.sh nightly >> /srv/shop/logs/cron.log 2>&1" | crontab -
+    crontab -l
+    ```
+    Результат:
+    ```
+    no crontab for shop
+    0 3 * * * /srv/shop/deploy.sh nightly >> /srv/shop/logs/cron.log 2>&1
+    ```
+    `crontab -` установил строку из входа; через `crontab -e` получится то же самое в редакторе.
+- title: Ещё одна задача
+  text: |
+    Не потеряв ночной запуск, добавьте проверку каждые 15 минут:
+    ```
+    /srv/shop/deploy.sh check >> /srv/shop/logs/cron.log 2>&1
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    (crontab -l; echo "*/15 * * * * /srv/shop/deploy.sh check >> /srv/shop/logs/cron.log 2>&1") | crontab -
+    crontab -l
+    ```
+    Результат:
+    ```
+    0 3 * * * /srv/shop/deploy.sh nightly >> /srv/shop/logs/cron.log 2>&1
+    */15 * * * * /srv/shop/deploy.sh check >> /srv/shop/logs/cron.log 2>&1
+    ```
+    Старые строки (`crontab -l`) и новая (`echo`) вместе ушли в `crontab -`.
+- title: Ошибка в расписании
+  text: |
+    Попробуйте установить строку с несуществующей минутой и убедитесь, что старое расписание не пострадало:
+    ```
+    60 3 * * * /srv/shop/deploy.sh
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    echo "60 3 * * * /srv/shop/deploy.sh" | crontab -
+    crontab -l | wc -l
+    ```
+    Результат:
+    ```
+    "-":0: bad minute
+    errors in crontab file, can't install.
+    2
+    ```
+    Минуты — от 0 до 59. cron отказался ставить новый crontab целиком, и две прежние строки остались. `"-"` — crontab читался со входа, `0` — номер строки с нуля.

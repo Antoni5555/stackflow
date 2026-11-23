@@ -1,0 +1,31 @@
+title: "Добавить строку, не потеряв расписание"
+type: exercise
+difficulty: 3
+pitfall: "crontab - и crontab файл заменяют весь crontab; дописать — (crontab -l; echo …) | crontab -."
+statement: |
+  В crontab уже стоит бэкап в 03:00. Добавьте уборку архивов старше 7 дней в 03:30 — **без редактора**, одной командой, как в скриптах настройки сервера. Строка бэкапа должна остаться.
+  ```
+  30 3 * * * find /home/shop/backups -name '*.tar.gz' -mtime +7 -delete
+  ```
+setup:
+  cwd: /home/shop
+  crontab:
+    shop: |
+      0 3 * * * /home/shop/bin/backup.sh media >> /home/shop/backups/backup.log 2>&1
+check:
+  type: state
+  expect:
+    - crontab: shop
+      matches: '^30 3 \* \* \* find /home/shop/backups -name ''\*\.tar\.gz'' -mtime \+7 -delete$'
+      fail: "Нет строки уборки 30 3 * * * find /home/shop/backups -name '*.tar.gz' -mtime +7 -delete."
+    - crontab: shop
+      matches: '^0 3 \* \* \* /home/shop/bin/backup\.sh media'
+      fail: "Пропала строка бэкапа: crontab - заменил весь crontab. Сначала выведите старый: (crontab -l; echo …) | crontab -."
+solution: |
+  (crontab -l; echo "30 3 * * * find /home/shop/backups -name '*.tar.gz' -mtime +7 -delete") | crontab -
+  crontab -l
+hints:
+  - "`crontab -` берёт **весь** новый crontab из входа. Как подать на вход старые строки и новую вместе?"
+  - "`(crontab -l; echo \"30 3 * * * find …\") | crontab -` — скобки объединяют вывод двух команд."
+explanation: |
+  В скобках `crontab -l` печатает старое расписание, `echo` — новую строку, и всё вместе через `|` уходит в `crontab -`, который устанавливает результат. Просто `echo … | crontab -` стёр бы бэкап. Так строки добавляют скрипты настройки сервера — например, обновление сертификата HTTPS. Запустите команду дважды — и строка задвоится: перед добавлением проверяют `crontab -l | grep`.

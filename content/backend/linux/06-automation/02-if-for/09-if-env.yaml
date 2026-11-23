@@ -1,0 +1,29 @@
+title: "Создать .env, если его нет"
+type: exercise
+difficulty: 2
+pitfall: "if [ ! -f файл ]; then …; fi — действие только если файла нет; пробелы внутри [ ]."
+statement: |
+  При деплое на новый сервер `.env` надо создать из шаблона `.env.example`, но **только если его ещё нет** — на старом сервере уже настроенный `.env` затирать нельзя. Напишите одну строку с `if`, которая копирует `/srv/shop/.env.example` в `/srv/shop/.env`, если `.env` не существует, и выполните её на двух серверах — в папках `/srv/shop` (новый) и `/srv/old-shop` (старый, `.env` уже есть).
+setup:
+  cwd: /srv
+  files:
+    /srv/shop/.env.example: "DEBUG=False\nSECRET_KEY=change-me\n"
+    /srv/old-shop/.env.example: "DEBUG=False\nSECRET_KEY=change-me\n"
+    /srv/old-shop/.env: {content: "DEBUG=False\nSECRET_KEY=k8s-Hq2-real\n", mode: '600'}
+check:
+  type: state
+  expect:
+    - path: /srv/shop/.env
+      contains: '^SECRET_KEY=change-me$'
+      fail: "На новом сервере нет /srv/shop/.env из шаблона."
+    - path: /srv/old-shop/.env
+      contains: '^SECRET_KEY=k8s-Hq2-real$'
+      fail: "Настоящий .env в /srv/old-shop затёрт шаблоном — копировать только если файла нет: [ ! -f … ]."
+solution: |
+  if [ ! -f /srv/shop/.env ]; then cp /srv/shop/.env.example /srv/shop/.env; fi
+  if [ ! -f /srv/old-shop/.env ]; then cp /srv/old-shop/.env.example /srv/old-shop/.env; fi
+hints:
+  - "Какая проверка в `[ ]` истинна, если файл есть? Как её отрицать?"
+  - "`if [ ! -f /srv/shop/.env ]; then cp /srv/shop/.env.example /srv/shop/.env; fi` — и то же для `/srv/old-shop`."
+explanation: |
+  `[ ! -f путь ]` истинна, когда обычного файла нет, — `cp` выполнился только на новом сервере. Простой `cp` без проверки молча затёр бы настоящий секретный ключ на старом. В скрипте деплоя то же пишут через переменную: `if [ ! -f "$APP/.env" ]; then …`.

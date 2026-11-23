@@ -1,0 +1,34 @@
+title: "Бэкап каждую ночь"
+type: exercise
+difficulty: 2
+pitfall: "Строка crontab: минута, час, день, месяц, день недели, команда — с полными путями и логом >> файл 2>&1."
+statement: |
+  Поставьте бэкап `media` на каждый день в 03:00. Строка расписания:
+  ```
+  0 3 * * * /home/shop/bin/backup.sh media >> /home/shop/backups/backup.log 2>&1
+  ```
+  Откройте свой crontab (`crontab -e`), допишите строку в конец, сохраните и выйдите. Проверьте результат `crontab -l`.
+setup:
+  cwd: /home/shop
+  files:
+    /home/shop/bin/backup.sh:
+      mode: '755'
+      content: |
+        #!/bin/bash
+        tar -czf "/home/shop/backups/$1-$(date +%F).tar.gz" -C /srv/shop "$1" && echo "Готово: $1"
+  dirs:
+    - /home/shop/backups
+check:
+  type: state
+  expect:
+    - crontab: shop
+      matches: '^0 3 \* \* \* /home/shop/bin/backup\.sh media >> /home/shop/backups/backup\.log 2>&1$'
+      fail: "В crontab нет строки 0 3 * * * /home/shop/bin/backup.sh media >> /home/shop/backups/backup.log 2>&1."
+solution: |
+  echo "0 3 * * * /home/shop/bin/backup.sh media >> /home/shop/backups/backup.log 2>&1" | crontab -
+  crontab -l
+hints:
+  - "`crontab -e` откроет `nano` с шаблоном-комментарием. Строку пишите в самом конце, после комментариев."
+  - "Ctrl+O, Enter — сохранить, Ctrl+X — выйти; cron ответит `crontab: installing new crontab`."
+explanation: |
+  `0 3 * * *` — минута 0, час 3, любой день: каждую ночь в 03:00. Полный путь нужен, потому что у cron `PATH=/usr/bin:/bin`, а `>> … 2>&1` собирает в лог и «Готово», и ошибки. Задачу можно поставить и без редактора: `echo "строка" | crontab -` — но так весь crontab **заменяется** этой строкой.

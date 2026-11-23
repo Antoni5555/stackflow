@@ -1,0 +1,49 @@
+title: "Уборка старых бэкапов"
+type: exercise
+difficulty: 2
+pitfall: "Сначала find без -delete — посмотреть список; -mtime +7 — больше 7 полных суток; -delete — последним."
+statement: |
+  Диск сервера заполняется архивами. Удалите из `~/backups` архивы `.tar.gz` старше 7 дней. Свежие архивы и `notes.txt` должны остаться. Сначала посмотрите, что попадёт под удаление.
+setup:
+  cwd: /home/shop/backups
+  now: "2026-11-23 03:00"
+  files:
+    /home/shop/backups/media-2026-11-01.tar.gz: {size: 300K, mtime: 22}
+    /home/shop/backups/media-2026-11-10.tar.gz: {size: 300K, mtime: 13}
+    /home/shop/backups/media-2026-11-14.tar.gz: {size: 300K, mtime: 9}
+    /home/shop/backups/media-2026-11-16.tar.gz: {size: 300K, mtime: 7}
+    /home/shop/backups/media-2026-11-20.tar.gz: {size: 300K, mtime: 3}
+    /home/shop/backups/media-2026-11-23.tar.gz: {size: 300K, mtime: 0}
+    /home/shop/backups/notes.txt: {content: "пароль от архива — у админа\n", mtime: 30}
+check:
+  type: state
+  expect:
+    - path: /home/shop/backups/media-2026-11-01.tar.gz
+      exists: false
+      fail: "Архив от 1 ноября (22 дня) ещё на месте."
+    - path: /home/shop/backups/media-2026-11-10.tar.gz
+      exists: false
+      fail: "Архив от 10 ноября (13 дней) ещё на месте."
+    - path: /home/shop/backups/media-2026-11-14.tar.gz
+      exists: false
+      fail: "Архив от 14 ноября (9 дней) ещё на месте."
+    - path: /home/shop/backups/media-2026-11-16.tar.gz
+      exists: true
+      fail: "Архив от 16 ноября — ровно 7 дней, он не старше 7: -mtime +7, а не +6."
+    - path: /home/shop/backups/media-2026-11-23.tar.gz
+      exists: true
+      fail: "Удалён сегодняшний архив — проверьте условие -mtime."
+    - path: /home/shop/backups/media-2026-11-20.tar.gz
+      exists: true
+      fail: "Удалён свежий архив от 20 ноября."
+    - path: /home/shop/backups/notes.txt
+      exists: true
+      fail: "Удалён notes.txt — ограничьте удаление шаблоном -name '*.tar.gz'."
+solution: |
+  find ~/backups -name '*.tar.gz' -mtime +7
+  find ~/backups -name '*.tar.gz' -mtime +7 -delete
+hints:
+  - "Какая проверка у `find` отбирает файлы по возрасту в днях? Как ограничить поиск только архивами?"
+  - "`find ~/backups -name '*.tar.gz' -mtime +7` — посмотреть, затем та же команда с `-delete` в конце."
+explanation: |
+  `-mtime +7` — больше 7 полных суток, поэтому архив от 16-го (ровно 7) остался. `-name '*.tar.gz'` защитил `notes.txt`, хотя он самый старый. Порядок важен: `-delete` в конце выполняется только для файлов, прошедших обе проверки. Эту команду дописывают в скрипт бэкапа или ставят отдельной строкой в cron.

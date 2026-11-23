@@ -228,11 +228,12 @@ def check_dom(task):
 
 # Команды симулятора Linux/Git и их флаги (docs/content-format.md, «exercise с проверкой состояния»).
 # None — флаги не поддерживаются; набор — разрешённые флаги.
+ANY = "any"   # флаги не проверяем: у test и [ «флаги» — это проверки (-f, -z, -gt)
 LINUX_COMMANDS = {
-    "pwd": None, "cd": None, "ls": {"-l", "-a", "-h", "-R"}, "cat": None, "echo": None, "mkdir": {"-p"},
+    "pwd": None, "cd": None, "ls": {"-l", "-a", "-h", "-R"}, "cat": None, "echo": {"-e", "-n"}, "mkdir": {"-p"},
     "touch": None, "rm": {"-r"}, "cp": {"-r"}, "mv": None, "ln": {"-s"}, "head": {"-n"}, "tail": {"-n"},
     "wc": {"-l"}, "grep": {"-i", "-n", "-r", "-c", "-v", "-E"}, "sort": {"-n", "-r", "-h"}, "uniq": {"-c"},
-    "cut": {"-d", "-f"}, "find": {"-name", "-iname", "-type", "-size", "-mtime", "-maxdepth"},
+    "cut": {"-d", "-f"}, "find": {"-name", "-iname", "-type", "-size", "-mtime", "-maxdepth", "-delete", "-exec", "-print"},
     "tar": {"-c", "-x", "-t", "-z", "-f", "-v", "-C"},
     "chmod": None, "chown": {"-R"},
     "whoami": None, "id": None, "chgrp": {"-R"}, "which": None, "df": {"-h"}, "du": {"-s", "-h"},
@@ -245,7 +246,10 @@ LINUX_COMMANDS = {
     "ss": {"-t", "-u", "-l", "-n", "-p"}, "ping": {"-c"}, "hostname": {"-I"},
     "curl": {"-I", "-i", "-s", "-S", "-o", "-w", "-L", "-f", "-v", "-X", "-H", "--unix-socket"},
     "sed": {"-n", "-e", "-E", "-s", "-i"}, "tee": {"-a"},
+    "date": None, "test": ANY, "[": ANY, "exit": None, "dirname": None, "basename": None,
+    "crontab": {"-l", "-e", "-r", "-u", "-n"},
 }
+SHELL_KEYWORDS = {"if", "then", "elif", "else", "fi", "for", "do", "done", "!", "(", ")"}
 GIT_COMMANDS = {
     "init": None, "config": {"--global", "--list"}, "status": None, "add": {"-A"}, "rm": {"--cached", "-r"},
     "commit": {"-m", "--amend", "--no-edit"}, "log": {"--oneline", "--graph", "--all", "-n", "-S", "--grep"},
@@ -261,7 +265,7 @@ APT_COMMANDS = {"update": None, "upgrade": {"-y"}, "install": {"-y"}, "remove": 
 PIP_COMMANDS = {"install": {"-r"}, "freeze": None, "uninstall": {"-y"}, "list": None}
 STATE_RULES = {  # ключ, по которому узнаём правило → какие ещё ключи обязательны
     "exists": {"path"}, "contains": {"path"}, "not_contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "group": {"path"}, "link_to": {"path"},
-    "output_matches": set(), "service": set(), "process": set(), "port": set(),
+    "output_matches": set(), "service": set(), "process": set(), "port": set(), "crontab": set(),
     "head": set(), "commit_in": set(), "commit_count": set(), "clean": set(), "merged": set(),
     "pushed": set(), "config": set(), "stash_count": set(), "pip_package": set(),
 }
@@ -272,13 +276,18 @@ def check_command(line):
     """Проблемы одной строки solution: неизвестные команды и флаги."""
     problems = []
     line_wo_strings = re.sub(r"\"[^\"]*\"|'[^']*'", "STR", line)   # текст в кавычках — не флаги
-    for part in re.split(r"\|\|?|&&", line_wo_strings):
+    line_wo_strings = re.sub(r"\$\([^()]*\)", "SUB", line_wo_strings)   # $(…) — подстановка
+    for part in re.split(r"\|\|?|&&|;", line_wo_strings):
         part = re.split(r"\d?>>?", part)[0]       # перенаправление (>, >>, 2>, 2>&1): дальше — цель
         tokens = part.split()
-        while tokens and (tokens[0] == "sudo" or re.fullmatch(r"[A-Za-z_]\w*=\S*", tokens[0])):
+        if tokens[:1] == ["for"] or tokens[:1] == ["(for"]:
+            continue                             # for X in список — слова, а не команда
+        while tokens and (tokens[0] in ("sudo", *SHELL_KEYWORDS) or re.fullmatch(r"[A-Za-z_]\w*=\S*", tokens[0])):
             tokens = tokens[1:]                  # sudo и присваивание NAME=x перед командой
-        if not tokens or tokens[0].startswith("./"):
-            continue                             # ./script.sh — свой скрипт
+        if tokens and tokens[0].startswith("(") and len(tokens[0]) > 1:
+            tokens[0] = tokens[0][1:]              # (crontab -l; …) — подоболочка
+        if not tokens or tokens[0].startswith(("./", "~/", "/")):
+            continue                             # ./script.sh, ~/bin/x.sh — свой скрипт по пути
         if tokens[0] == "nano":
             problems.append(f"nano в solution не выполнить — пишем файл через echo > / >>: {line!r}")
             continue
@@ -318,6 +327,10 @@ def check_command(line):
         else:
             problems.append(f"команды {tokens[0]!r} нет в симуляторе: {line!r}")
             continue
+        if allowed == ANY:
+            continue
+        if tokens[0] == "find":                 # после -exec — своя команда до ; или +
+            flags = flags[:flags.index("-exec")] if "-exec" in flags else flags
         for flag in (t for t in flags if t.startswith("-") and not re.fullmatch(r"[-+]?\d+[KMG]?", t)):
             flag = flag.split("=")[0]           # --grep=текст
             letters = [flag] if flag.startswith("--") or len(flag) == 2 else [f"-{c}" for c in flag[1:]]
@@ -333,7 +346,7 @@ def check_command(line):
 def check_state(task):
     problems = []
     setup, rules = task.get("setup") or {}, (task.get("check") or {}).get("expect") or []
-    unknown = set(setup) - {"cwd", "files", "dirs", "links", "services", "processes", "repo", "commits", "head", "remote", "venv", "gitconfig"}
+    unknown = set(setup) - {"cwd", "files", "dirs", "links", "services", "processes", "repo", "commits", "head", "remote", "venv", "gitconfig", "now", "crontab"}
     if unknown:
         problems.append(f"неизвестные ключи setup: {sorted(unknown)}")
     if "cwd" in setup and not str(setup["cwd"]).startswith("/"):

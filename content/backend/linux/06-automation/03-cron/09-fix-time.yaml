@@ -1,0 +1,34 @@
+title: "Бэкап в 00:03"
+type: exercise
+difficulty: 2
+pitfall: "Первое поле — минута, второе — час: 03:00 — это 0 3."
+statement: |
+  Бэкапы почему-то появляются в 00:03, а должны — в 03:00. Посмотрите crontab и исправьте время у строки бэкапа. Остальные строки не трогайте. Подойдёт `crontab -e` или `crontab -l | sed … | crontab -`.
+setup:
+  cwd: /home/shop
+  crontab:
+    shop: |
+      # m h  dom mon dow   command
+      3 0 * * * /home/shop/bin/backup.sh media >> /home/shop/backups/backup.log 2>&1
+      30 3 * * * find /home/shop/backups -name '*.tar.gz' -mtime +7 -delete
+check:
+  type: state
+  expect:
+    - crontab: shop
+      matches: '^0 3 \* \* \* /home/shop/bin/backup\.sh media >> /home/shop/backups/backup\.log 2>&1$'
+      fail: "Строка бэкапа должна начинаться с 0 3 * * * — минута 0, час 3."
+    - crontab: shop
+      not_matches: '^3 0 '
+      fail: "Осталась строка с 3 0 — это 00:03."
+    - crontab: shop
+      matches: '^30 3 \* \* \* find '
+      fail: "Пропала строка уборки в 03:30 — её трогать не нужно."
+solution: |
+  crontab -l
+  crontab -l | sed 's/^3 0 /0 3 /' | crontab -
+  crontab -l
+hints:
+  - "В строке `3 0 * * *` какое поле — минута, а какое — час?"
+  - "`crontab -e` и поменяйте `3 0` на `0 3`, или `crontab -l | sed 's/^3 0 /0 3 /' | crontab -`."
+explanation: |
+  Поля идут «минута, час»: `3 0` — 3 минуты после полуночи. Синтаксически строка верна, поэтому cron её молча принял. Конвейер `crontab -l | sed … | crontab -` правит crontab без редактора: вывести, заменить, установить обратно — все строки сохраняются.
