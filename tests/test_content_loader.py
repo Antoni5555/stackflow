@@ -364,6 +364,44 @@ def test_state_now_crontab_and_rule(content_dir):
         ContentLoader(content_dir).load()
 
 
+def test_state_docker_setup_and_rules(content_dir):
+    """setup.docker (образы, тома, контейнеры) и правила {docker: …}."""
+    rules = ('    - docker: container\n      name: web\n      fail: F\n'
+             '    - docker: port\n      container: web\n      host: 8080\n'
+             '      port: 80\n      fail: F\n')
+    extra = ('  docker:\n    images: [nginx:1.27]\n    volumes: [pgdata]\n'
+             '    containers:\n      - name: db\n        image: postgres:16\n'
+             '        env: {POSTGRES_PASSWORD: x}\n')
+    task = content_dir / HELLO / '06-copy.yaml'
+    task.write_text((STATE_TASK % rules).replace('check:', extra + 'check:', 1),
+                    encoding='utf-8')
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='copy').spec
+    assert spec['setup']['docker']['containers'][0]['name'] == 'db'
+    assert spec['check']['expect'][1]['docker'] == 'port'
+
+    for bad_extra, bad_rules, message in [
+        ('  docker:\n    containers:\n      - name: db\n', rules,
+         'setup.docker.containers'),
+        ('  docker: [nginx]\n', rules, 'setup.docker'),
+        ('', '    - docker: box\n      name: web\n      fail: F\n',
+         'docker — одно из'),
+        ('', '    - docker: port\n      container: web\n      fail: F\n',
+         'нужен host'),
+        ('', '    - docker: container\n      name: web\n      status: up\n'
+         '      fail: F\n', 'status — одно из'),
+        ('', '    - docker: image\n      name: x\n      fail: F\n',
+         'docker image — поля'),
+    ]:
+        text = STATE_TASK % bad_rules
+        if bad_extra:
+            text = text.replace('check:', bad_extra + 'check:', 1)
+        task.write_text(text, encoding='utf-8')
+        with pytest.raises(ContentError, match=message):
+            ContentLoader(content_dir).load()
+
+
 @pytest.mark.parametrize('rules, message', [
     ('    - path: /a\n      exists: true\n      mode: "644"\n      fail: F\n',
      'path \\+ одно из'),

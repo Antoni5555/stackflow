@@ -26,14 +26,17 @@ const errText = (chunks) => chunks.filter((chunk) => chunk.err).map((chunk) => c
 
 export class Shell {
   constructor(fs = new VirtualFS(), {
-    cwd = HOME, env = {}, args = [], depth = 0, tty = true,
+    cwd = HOME, env = {}, args = [], depth = 0, tty = true, machine = null,
   } = {}) {
     this.fs = fs;
+    // Машина, где работает оболочка: null — сервер; контейнер Docker —
+    // {host, commands (какие команды есть в образе), env (окружение целиком), nested, notFound}
+    this.machine = machine;
     // Вывод оболочки идёт в терминал? Нет — у скрипта, чей вывод ушёл в конвейер или файл:
     // тогда и ls внутри скрипта пишет по имени в строке
     this.tty = tty;
     this.cwd = cwd;
-    this.env = {
+    this.env = machine?.env ? { ...env } : {
       HOME, USER: 'shop', SHELL: '/bin/bash', LANG: 'C.UTF-8',
       PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
       ...env,
@@ -61,6 +64,7 @@ export class Shell {
   child({ tty = this.tty } = {}) {
     const sub = new Shell(this.fs, {
       cwd: this.cwd, env: { ...this.env }, args: this.args, depth: this.depth + 1, tty,
+      machine: this.inner(),
     });
     Object.assign(sub, { scriptName: this.scriptName, line: this.line, status: this.status });
     return sub;
@@ -70,15 +74,27 @@ export class Shell {
     return this.fs.user;
   }
 
+  /** Машина для вложенной оболочки ($(…), bash -c, скрипт): та же, но не интерактивная. */
+  inner() {
+    return this.machine && { ...this.machine, nested: false };
+  }
+
+  /** Есть ли команда на этой машине (в контейнере — только то, что есть в образе). */
+  hasCommand(name) {
+    if (this.machine?.extra?.[name]) return true;
+    return name in COMMANDS && (!this.machine?.commands || this.machine.commands.includes(name));
+  }
+
   /** Приглашение: shop@server:~/shop$ (у root — #). */
   prompt() {
     const home = this.user === 'root' ? '/root' : HOME;
+    if (this.machine?.prompt) return this.machine.prompt(this);
     // (venv) — активное виртуальное окружение Python (source venv/bin/activate)
     const venv = this.env.VIRTUAL_ENV ? `(${this.env.VIRTUAL_ENV.split('/').pop()}) ` : '';
     let where = this.cwd;
     if (where === home) where = '~';
     else if (where.startsWith(`${home}/`)) where = `~${where.slice(home.length)}`;
-    return `${venv}${this.user}@server:${where}${this.user === 'root' ? '#' : '$'} `;
+    return `${venv}${this.user}@${this.machine?.host ?? 'server'}:${where}${this.user === 'root' ? '#' : '$'} `;
   }
 
   /**
@@ -93,7 +109,8 @@ export class Shell {
     let candidates;
     let prefix = '';
     if (isCommand && !word.includes('/')) {
-      candidates = Object.keys(COMMANDS).filter((name) => name.startsWith(word) && name !== '.')
+      candidates = Object.keys(COMMANDS)
+        .filter((name) => name.startsWith(word) && name !== '.' && this.hasCommand(name))
         .map((name) => [name, ' ']);
     } else {
       const slash = word.lastIndexOf('/');
@@ -300,6 +317,8 @@ export class Shell {
     } catch (e) {
       if (!(e instanceof ExitSignal)) throw e;
       this.status = e.code;
+      // exit во вложенной оболочке (docker exec -it … bash) — назад в оболочку сервера
+      if (this.machine?.nested) return { chunks: [{ text: 'exit\n', err: false }], action: { type: 'leave', code: e.code } };
       // настоящий терминал закрылся бы
       if (this.depth === 0) chunks.push({ text: 'exit\n(в тренажёре терминал не закрывается)\n', err: false });
     }
@@ -573,11 +592,12 @@ export class Shell {
     // ./script.sh, /srv/shop/backup.sh — запуск файла
     if (name.includes('/')) return this.runFile(name, args, { tty });
 
-    const command = COMMANDS[name];
+    const command = this.machine?.extra?.[name] ?? (this.hasCommand(name) ? COMMANDS[name] : null);
     if (!command) {
       // свой скрипт в папке из PATH (~/bin/deploy после export PATH="$HOME/bin:$PATH")
       const script = this.findInPath(name);
       if (script) return this.runFile(script, args, { tty });
+      if (this.machine?.notFound) return { out: '', err: this.machine.notFound(this, name), code: 127 };
       return { out: '', err: `${this.scriptName ? this.errPrefix() : ''}${name}: command not found\n`, code: 127 };
     }
     if (args.includes('--help') && command.help && !command.noHelp) {
@@ -647,6 +667,7 @@ export class Shell {
     // Скрипт — в своей оболочке (переменные и cd не меняют текущую); source — в этой же
     const shell = inPlace ? this : new Shell(this.fs, {
       cwd: this.cwd, env: { ...this.env }, args: [path, ...args], depth: this.depth + 1, tty,
+      machine: this.inner(),
     });
     const savedTty = shell.tty;
     shell.tty = tty;

@@ -3,6 +3,7 @@
 // Разметка — trainers/components/_terminal.html.
 
 import { CodeEditor } from '../../editor.js';
+import { lineNeedsDocker, loadDocker } from './docker-loader.js';
 
 const MAX_LINES = 500;          // старые строки вывода убираем, чтобы страница не тяжелела
 
@@ -23,6 +24,7 @@ export class Terminal {
     this.input = root.querySelector('[data-terminal-input]');
     this.title = root.querySelector('[data-terminal-title]');
     this.historyIndex = null;
+    this.outer = [];             // оболочки снаружи: docker exec -it … bash — вход в контейнер
     this.nano = new Nano(root.querySelector('[data-nano]'), shell.fs, () => this.closeNano());
 
     this.input.addEventListener('keydown', (event) => this.keydown(event));
@@ -63,12 +65,36 @@ export class Terminal {
     this.body.scrollTop = this.body.scrollHeight;
   }
 
+  /** Строка из поля ввода: если нужна, сначала догружается учебный Docker. */
+  async submit(line) {
+    if (lineNeedsDocker(line)) {
+      this.input.disabled = true;
+      try {
+        await loadDocker();
+      } finally {
+        this.input.disabled = false;
+        this.input.focus();
+      }
+    }
+    this.execute(line);
+  }
+
   /** Выполнить строку (и показать её), как если бы её набрали. */
   execute(line) {
     this.echo(line);
     const result = this.shell.run(line);
     for (const chunk of result.chunks) this.print(chunk.text, chunk.err ? 'err' : 'out');
     if (result.action?.type === 'clear') this.output.replaceChildren();
+    this.shell.machine?.afterCommand?.();
+    if (result.action?.type === 'enter') {
+      // внутрь контейнера: дальше команды выполняет его оболочка, exit — назад
+      this.outer.push({ shell: this.shell, onLeave: result.action.onLeave });
+      this.shell = result.action.shell;
+    } else if (result.action?.type === 'leave' && this.outer.length) {
+      const { shell, onLeave } = this.outer.pop();
+      this.shell = shell;
+      onLeave?.(result.action.code);
+    }
     this.updatePrompt();
     if (result.action?.type === 'edit') this.openNano(result.action);
     this.onCommand(line, result);
@@ -84,7 +110,7 @@ export class Terminal {
       const line = this.input.value;
       this.input.value = '';
       this.historyIndex = null;
-      if (line.trim()) this.execute(line);
+      if (line.trim()) this.submit(line);
       else {
         this.echo('');
         this.scrollToEnd();
@@ -121,6 +147,7 @@ export class Terminal {
   /** Сбросить экран (новая ФС после «Сбросить»). */
   reset(shell) {
     this.shell = shell;
+    this.outer = [];
     this.nano.fs = shell.fs;
     this.afterNano = null;
     this.nano.close();

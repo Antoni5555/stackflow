@@ -109,7 +109,7 @@ function nginxPage(code) {
 const httpDate = () => new Date(now()).toUTCString();
 
 /** Ответ Django-приложения (gunicorn или runserver). */
-function appResponse(proc, path) {
+export function appResponse(proc, path) {
   const server = proc.comm === 'gunicorn' ? 'gunicorn' : 'WSGIServer/0.2 CPython/3.12.3';
   const headers = (type, length) => [['Server', server], ['Date', httpDate()], ['Content-Type', type], ['Content-Length', String(length)]];
   const redirect = (code, location) => ({
@@ -214,10 +214,23 @@ function nginxResponse(fs, state, master, request) {
   return { code: response.code, headers, body: response.body };
 }
 
+/**
+ * Кто ещё отвечает на запросы: учебный Docker (engines/docker) — за опубликованные порты
+ * (процесс docker-proxy) и процессы внутри контейнеров (у них есть поле container).
+ * hook(fs, proc, request) → {code, headers, body} | {error} | null (не его процесс).
+ */
+export const requestHooks = [];
+
 /** Запрос к адресу: {code, headers, body} или {error: [номер, текст]}. */
 function request(fs, target, method, path) {
   const state = systemState(fs);
   const proc = listenerFor(state, target);
+  if (proc?.container) {
+    for (const hook of requestHooks) {
+      const answer = hook(fs, proc, { ...target, method, path });
+      if (answer) return answer;
+    }
+  }
   const where = target.unix ? target.unix : `${target.host} port ${target.port}`;
   if (!proc) {
     return { error: target.unix
@@ -364,7 +377,10 @@ export const ping = {
 
 export const hostname = {
   help: 'hostname — имя сервера; hostname -I — его IP-адреса.',
-  run: ({ args }) => ok(args.includes('-I') ? `${SERVER_IP}\n` : `${HOST}\n`),
+  run: ({ sh, args }) => {
+    const machine = sh.machine ?? { host: HOST, ip: SERVER_IP };
+    return ok(args.includes('-I') ? `${machine.ip}\n` : `${machine.host}\n`);
+  },
 };
 
 const theory = (name) => ({

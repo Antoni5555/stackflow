@@ -23,7 +23,7 @@
 | Интерактив | ванильный JS (ES-модули), без сборщика | каждая страница грузит только своё |
 | Python-движок | Pyodide в Web Worker | Python в браузере; позже Django через тестовый клиент |
 | SQL-движок | PGlite в Web Worker | Postgres в браузере |
-| Linux | свой симулятор на JS | лёгкий и безопасный |
+| Linux | свой симулятор на JS | лёгкий и безопасный; учебный Docker (`engines/docker`) — его часть, грузится только при первой команде `docker` |
 | Сервер | Gunicorn + Nginx, HTTPS — Let's Encrypt | |
 | Инфраструктура | Docker Compose, GitHub Actions, образы в GHCR | деплой только после зелёных тестов — [deploy.md](deploy.md) |
 | Тесты | pytest, pytest-django, factory-boy, flake8 | |

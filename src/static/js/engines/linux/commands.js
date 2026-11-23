@@ -1482,7 +1482,7 @@ const bash = {
       const sub = new sh.constructor(sh.fs, {
         // $0 — первый аргумент после строки, без него — bash
         cwd: sh.cwd, env: { ...sh.env }, args: args.length > 2 ? args.slice(2) : ['bash'],
-        depth: sh.depth + 1, tty,
+        depth: sh.depth + 1, tty, machine: sh.inner(),
       });
       const { chunks } = sub.run(args[1]);
       return {

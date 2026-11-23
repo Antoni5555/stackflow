@@ -11,9 +11,17 @@ import { failedSystemRule } from './system.js';
 
 const search = (pattern, text) => new RegExp(pattern, 'm').test(text);
 
+/** Правила других модулей (учебный Docker): hook(rule, shell) → true | false | null (не его). */
+export const ruleHooks = [];
+
 /** true — правило не пройдено (правила Linux; Git добавляет свои — engines/git/checker.js). */
 export function failedRule(rule, shell) {
   const { fs } = shell;
+  // правила других модулей — первыми: у {docker: port} есть ключ port, как у правила порта
+  for (const hook of ruleHooks) {
+    const failed = hook(rule, shell);
+    if (failed !== null) return failed;
+  }
   const system = failedSystemRule(rule, fs);   // service: и process:
   if (system !== null) return system;
   const cron = failedCronRule(rule, fs);       // crontab:

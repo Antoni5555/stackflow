@@ -2,6 +2,7 @@
 // «Проверить» — правила по итоговому состоянию, «Сбросить» — снова setup.
 
 import { firstFailedRule, shellFromSetup } from '../engines/linux/checker.js';
+import { loadDocker, taskNeedsDocker } from '../engines/linux/docker-loader.js';
 import { HOME } from '../engines/linux/fs.js';
 import { linuxWorkspace } from '../linux-workspace.js';
 import { solved } from '../task-ui.js';
@@ -10,6 +11,9 @@ import { hideAlert, inlineCode, showAlert } from '../trainer-ui.js';
 const root = document.querySelector('[data-exercise]');
 const exercise = JSON.parse(document.getElementById('exercise-data').textContent);
 const alertEl = root.querySelector('[data-alert]');
+
+// задача курса Docker: учебный Docker нужен уже для setup и проверки
+if (taskNeedsDocker(exercise.setup, exercise.check.expect)) await loadDocker();
 
 const workspace = linuxWorkspace(root, {
   makeShell: () => shellFromSetup(exercise.setup),

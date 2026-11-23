@@ -1,6 +1,7 @@
 // Тренажёр Linux: свободная работа в терминале сервера магазина.
 // Файлы, папка и история сохраняются в браузере; «Начать заново» — сервер по умолчанию.
 
+import { loadDocker } from '../engines/linux/docker-loader.js';
 import { VirtualFS } from '../engines/linux/fs.js';
 import { Shell } from '../engines/linux/shell.js';
 import { linuxWorkspace } from '../linux-workspace.js';
@@ -32,6 +33,9 @@ function save(shell) {
     fs: shell.fs, cwd: shell.cwd, env: shell.env, history: shell.history.slice(-100),
   }));
 }
+
+// в сохранённом сервере есть контейнеры — учебный Docker нужен сразу (curl на их порты)
+if (drafts.get(STORAGE_KEY)?.includes('"docker":')) await loadDocker();
 
 let fresh = false;
 const workspace = linuxWorkspace(root, {

@@ -262,7 +262,7 @@ STATE_PATH_CHECKS = {
 # Git (курс с движком git): ключи setup и правила; «есть / нет» — через exists: false
 STATE_SETUP_KEYS = {
     'cwd', 'files', 'dirs', 'links', 'services', 'processes', 'repo', 'commits', 'head',
-    'remote', 'venv', 'gitconfig', 'now', 'crontab',
+    'remote', 'venv', 'gitconfig', 'now', 'crontab', 'docker',
 }
 # setup.now — «сейчас» симулятора (время Москвы): от него date, ls -l, find -mtime
 SETUP_NOW = re.compile(r'^\d{4}-\d\d-\d\d( \d\d:\d\d(:\d\d)?)?$')
@@ -281,6 +281,21 @@ PROCESS_FIELDS = {'command', 'user', 'name', 'pid', 'cpu', 'mem', 'listen'}
 # crontab пользователя (js/engines/linux/cron.js): строка есть / нет, crontab есть / нет
 CRON_RULES = {'crontab': {'matches', 'not_matches', 'exists'}}
 OBJECT_RULES = {**GIT_RULES, **SYSTEM_RULES, **CRON_RULES}
+# Учебный Docker (js/engines/docker/rules.js): {docker: вид, поля…};
+# первое множество — поля, из которых нужно хотя бы одно, второе — необязательные
+DOCKER_RULES = {
+    'container': ({'name', 'image'}, {'status'}),
+    'port': ({'container'}, {'host', 'port'}),
+    'volume': ({'name'}, {'exists', 'mounted_in', 'path'}),
+    'image': ({'ref'}, {'exists', 'max_size_mb', 'user_not_root'}),
+    'network': ({'name'}, {'exists', 'containers'}),
+}
+DOCKER_STATUSES = {'running', 'exited', 'created', 'exists', 'absent'}
+DOCKER_SETUP_KEYS = {'images', 'volumes', 'containers'}
+DOCKER_CONTAINER_KEYS = {
+    'name', 'image', 'ports', 'env', 'volumes', 'running', 'command', 'network',
+    'restart',
+}
 DOM_CHECKS = {'count', 'min', 'exists', 'attr', 'text', 'style'}
 SPEC_FIELDS = {
     'exercise': (['starter_code', 'solution', 'check'], ['inputs']),
@@ -346,6 +361,7 @@ def validate_state(spec, path):
         isinstance(text, str) for text in crontabs.values()
     ):
         raise ContentError(path, 'setup.crontab — {пользователь: строки расписания}')
+    validate_docker_setup(setup.get('docker'), path)
     if not isinstance(spec['solution'], str):
         raise ContentError(path, 'solution — команды по одной на строку (текст)')
     for number, rule in enumerate(spec['check']['expect'], start=1):
@@ -353,7 +369,9 @@ def validate_state(spec, path):
             raise ContentError(path, f'правило {number}: нужен словарь с fail')
         checks = set(rule) - {'path', 'fail'}
         git = [key for key in OBJECT_RULES if key in rule]
-        if git:
+        if 'docker' in rule:
+            validate_docker_rule(rule, number, path)
+        elif git:
             extra = set(rule) - {git[0], 'fail'} - OBJECT_RULES[git[0]]
             if len(git) > 1 or extra:
                 raise ContentError(
@@ -379,6 +397,56 @@ def validate_state(spec, path):
             raise ContentError(
                 path, f'правило {number}: path + одно из {sorted(STATE_PATH_CHECKS)}',
             )
+
+
+def validate_docker_setup(docker, path):
+    """setup.docker: {images: [...], volumes: [...], containers: [{name, image, …}]}."""
+    if docker is None:
+        return
+    if not isinstance(docker, dict) or set(docker) - DOCKER_SETUP_KEYS:
+        raise ContentError(
+            path, f'setup.docker — словарь с ключами {sorted(DOCKER_SETUP_KEYS)}',
+        )
+    for key in ('images', 'volumes'):
+        items = docker.get(key, [])
+        if not isinstance(items, list) or not all(
+            isinstance(item, str) for item in items
+        ):
+            raise ContentError(path, f'setup.docker.{key} — список строк')
+    containers = docker.get('containers', [])
+    if not isinstance(containers, list) or not all(
+        isinstance(item, dict) and 'image' in item
+        and set(item) <= DOCKER_CONTAINER_KEYS
+        for item in containers
+    ):
+        raise ContentError(
+            path,
+            'setup.docker.containers — список {image, name?, ports?, env?, volumes?, '
+            'running?, command?, network?, restart?}',
+        )
+
+
+def validate_docker_rule(rule, number, path):
+    """Правило {docker: container|port|volume|image|network, …}."""
+    kind = rule['docker']
+    if kind not in DOCKER_RULES:
+        raise ContentError(
+            path, f'правило {number}: docker — одно из {sorted(DOCKER_RULES)}',
+        )
+    required, optional = DOCKER_RULES[kind]
+    fields = set(rule) - {'docker', 'fail'}
+    if not fields & required or fields - required - optional:
+        raise ContentError(
+            path,
+            f'правило {number}: docker {kind} — поля {sorted(required)} '
+            f'и необязательные {sorted(optional)}',
+        )
+    if kind == 'container' and rule.get('status', 'running') not in DOCKER_STATUSES:
+        raise ContentError(
+            path, f'правило {number}: status — одно из {sorted(DOCKER_STATUSES)}',
+        )
+    if kind == 'port' and 'host' not in rule:
+        raise ContentError(path, f'правило {number}: docker port — нужен host')
 
 
 # SQL (курс с движком sql): setup — SQL после учебных данных, проверка — по результату
