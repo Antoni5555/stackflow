@@ -187,6 +187,22 @@ describe('exit, $#, $@, ( … )', () => {
   });
 });
 
+describe('tar -C при создании архива', () => {
+  it('файлы — от папки -C, архив — от текущей, пути в архиве — от -C', () => {
+    const sh = shell({ cwd: '/home/shop', files: { '/srv/shop/static/css/main.css': 'body{}\n' } });
+    const made = run(sh, 'tar -czvf /home/shop/a.tgz -C /srv/shop static');
+    assert.deepEqual([made.out, made.err, made.code], ['static/\nstatic/css/\nstatic/css/main.css\n', '', 0]);
+    assert.equal(run(sh, 'tar -tzf a.tgz').out, 'static/\nstatic/css/\nstatic/css/main.css\n');
+    assert.equal(run(sh, 'tar -czf b.tgz -C /nope static').err,
+      'tar: /nope: Cannot open: No such file or directory\ntar: Error is not recoverable: exiting now\n');
+    assert.ok(sh.fs.exists('/home/shop/b.tgz'));        // GNU tar успевает создать файл архива
+    assert.equal(run(sh, 'tar -czf c.tgz -C /srv/shop nope').err,
+      'tar: nope: Cannot stat: No such file or directory\ntar: Exiting with failure status due to previous errors\n');
+    run(sh, 'mkdir out && tar -xzf a.tgz -C out');
+    assert.equal(run(sh, 'cat out/static/css/main.css').out, 'body{}\n');
+  });
+});
+
 describe('find -delete и -exec', () => {
   it('удаление старых бэкапов, -exec … \\; и {} +', () => {
     const sh = shell(BACKUP);

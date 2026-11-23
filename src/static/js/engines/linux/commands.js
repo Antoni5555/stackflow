@@ -1211,12 +1211,13 @@ const gzip = {
 };
 
 /** Архив tar: внутри — список записей {path, type, content, size, mode, target}. */
-function packTar(ctx, paths) {
+/** Файлы для архива; base — папка, от которой ищутся пути (tar -C), иначе текущая. */
+function packTar(ctx, paths, base = ctx.sh.cwd) {
   const entries = [];
   let err = '';
   let failed = false;
   for (const path of paths) {
-    const abs = ctx.sh.resolve(path);
+    const abs = normalize(path, base);
     const stored = path.replace(/^\/+/, '');
     if (stored !== path && !err) err = "tar: Removing leading `/' from member names\n";
     try {
@@ -1251,7 +1252,8 @@ const tar = {
   tar -xzf backup.tar.gz         — распаковать в текущую папку
   tar -tzf backup.tar.gz         — показать, что внутри
   c — создать, x — распаковать, t — список, z — сжатие gzip, f — имя архива, v — подробно
-  -C папка  — куда распаковать`,
+  -C папка  — при распаковке: куда; при создании: откуда брать файлы
+             (tar -czf /backups/media.tar.gz -C /srv/shop media — в архиве пути media/…)`,
   run(ctx) {
     let args = [...ctx.args];
     if (args[0] && !args[0].startsWith('-')) args[0] = `-${args[0]}`;   // tar czf → -czf
@@ -1268,7 +1270,23 @@ const tar = {
     try {
       if (opts.c) {
         if (!operands.length) return fail('tar: Cowardly refusing to create an empty archive\nTry \'tar --help\' or \'tar --usage\' for more information.\n', 2);
-        const { entries, err, failed } = packTar(ctx, operands);
+        // архив из -f — от текущей папки, файлы — от папки -C (как GNU tar)
+        const base = opts.C ? ctx.sh.resolve(opts.C) : ctx.sh.cwd;
+        if (opts.C) {
+          let dir = null;
+          try {
+            dir = ctx.fs.lookup(base);
+          } catch (e) {
+            if (!(e instanceof FsError)) throw e;
+            ctx.fs.writeFile(archiveAbs, '');
+            return fail(`tar: ${opts.C}: Cannot open: ${e.message}\ntar: Error is not recoverable: exiting now\n`, 2);
+          }
+          if (dir.type !== 'dir') {
+            ctx.fs.writeFile(archiveAbs, '');
+            return fail(`tar: ${opts.C}: Cannot open: Not a directory\ntar: Error is not recoverable: exiting now\n`, 2);
+          }
+        }
+        const { entries, err, failed } = packTar(ctx, operands, base);
         const content = TAR + JSON.stringify(entries);
         const stored = (entry) => Math.ceil((entry.size ?? 0) / 512) * 512;
         const size = entries.reduce((sum, entry) => sum + 512 + stored(entry), 1024);
