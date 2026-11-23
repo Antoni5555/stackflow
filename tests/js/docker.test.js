@@ -194,6 +194,16 @@ describe('docker run и жизненный цикл контейнера', () =>
     assert.equal(missing.code, 127);
   });
 
+  it('python в образах python: --version и простые -c', () => {
+    const sh = shell({ docker: { images: ['python:3.12-slim', 'python:3.12'] } });
+    assert.equal(run(sh, 'docker run --rm python:3.12-slim python --version').out, 'Python 3.12.16\n');
+    assert.equal(run(sh, 'docker run --rm python:3.12 python3 --version').out, 'Python 3.12.16\n');
+    assert.equal(run(sh, 'docker run --rm python:3.12-slim python -c "print(2490 * 2)"').out, '4980\n');
+    assert.equal(run(sh, `docker run --rm python:3.12-slim python -c "print(7 / 2, -2 ** 2, 10 // 3, 'ok')"`).out, '3.5 -4 3 ok\n');
+    assert.equal(run(sh, 'docker run --rm python:3.12-slim python -c "import os"').code, 1);
+    assert.equal(run(sh, 'docker run --rm python:3.12-slim').code, 0);
+  });
+
   it('разбор флагов: нет образа, неизвестный флаг, неверный порт и имя', () => {
     const sh = shell();
     assert.deepEqual(run(sh, 'docker run -it'), {

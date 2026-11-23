@@ -12,6 +12,7 @@ import { containerCommands, containerOfProc, startContainer, createContainer } f
 import { nginxAnswer } from './programs.js';
 import { addCatalogImage, dockerState, findImage, randomName } from './state.js';
 import { failedDockerRule } from './rules.js';
+import { python } from './python.js';
 
 COMMANDS.docker = docker;
 
@@ -22,6 +23,8 @@ if (!USERS.shop.groups.includes('docker')) USERS.shop.groups.push('docker');
 // --- программы, которые есть только внутри образов ---
 
 Object.assign(containerCommands, {
+  python,
+  python3: python,
   sleep: {
     help: 'sleep N — подождать N секунд (в тренажёре не ждёт).',
     run: ({ args }) => (args.length ? {} : { err: "sleep: missing operand\nTry 'sleep --help' for more information.\n", code: 1 }),
