@@ -24,6 +24,7 @@
 import asyncio
 import builtins
 import contextlib
+import errno
 import importlib
 import io
 import linecache
@@ -256,8 +257,33 @@ def execute(code, inputs='', override=None, guard=contextlib.nullcontext, stdin=
     return ns, error
 
 
+# В браузере (Pyodide) нет потоков и процессов: threading.Thread.start(), to_thread,
+# run_in_executor, ThreadPoolExecutor падают с «can't start new thread»,
+# ProcessPoolExecutor и Pool — без модуля _multiprocessing, Process.start() — ENOSYS.
+NO_THREADS = ('В браузере нет потоков и процессов: этот пример запускается '
+              'на настоящем Python (в терминале на своём компьютере).')
+
+
+def needs_threads(error):
+    """Ошибка из-за того, что в браузере нельзя запустить поток или процесс."""
+    if isinstance(error, ModuleNotFoundError):
+        return error.name == '_multiprocessing'
+    if isinstance(error, RuntimeError):
+        return str(error) == "can't start new thread"
+    if isinstance(error, OSError) and error.errno == errno.ENOSYS:
+        frames = traceback.extract_tb(error.__traceback__)
+        return any('multiprocessing' in frame.filename for frame in frames)
+    return False
+
+
 def format_error(error):
     """Ошибка ученика как в терминале, но только со строками его кода (main.py)."""
+    if needs_threads(error):
+        return f'{_format_error(error)}\n\n{NO_THREADS}'
+    return _format_error(error)
+
+
+def _format_error(error):
     if isinstance(error, TimeoutError):
         return TIMEOUT_MESSAGE
     if isinstance(error, SyntaxError):

@@ -5,6 +5,7 @@
 """
 import builtins
 import contextlib
+import errno
 import importlib.util
 import io
 import signal
@@ -404,3 +405,106 @@ def test_asyncio_run_in_browser_and_httpx_mock_transport(browser):
     assert result['error'].splitlines()[-2].startswith('httpx.HTTPStatusError')
     assert 'File "main.py", line 11' in result['error']
     assert asyncio.run is original          # подмена — только на время запуска
+
+
+ASYNC_TOOLS = '''\
+import asyncio, contextlib, time
+
+async def fail(n):
+    await asyncio.sleep(0.01)
+    raise ValueError(n)
+
+async def ticks(n):
+    for i in range(n):
+        await asyncio.sleep(0)
+        yield i
+
+@contextlib.asynccontextmanager
+async def opened():
+    print("open")
+    try:
+        yield "c"
+    finally:
+        print("close")
+
+async def worker(q, done):
+    while True:
+        item = await q.get()
+        await asyncio.sleep(0.01)
+        done.append(item)
+        q.task_done()
+
+async def main():
+    try:
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(fail(1))
+            tg.create_task(fail(2))
+    except* ValueError as group:
+        print(sorted(str(e) for e in group.exceptions))
+    try:
+        async with asyncio.timeout(0.02):
+            await asyncio.sleep(1)
+    except TimeoutError:
+        print("timeout")
+    try:
+        await asyncio.wait_for(asyncio.sleep(1), 0.02)
+    except TimeoutError:
+        print("wait_for")
+    task = asyncio.create_task(asyncio.sleep(10))
+    await asyncio.sleep(0)
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        print("cancelled")
+    q, done = asyncio.Queue(), []
+    workers = [asyncio.create_task(worker(q, done)) for _ in range(3)]
+    for i in range(6):
+        await q.put(i)
+    await q.join()
+    for w in workers:
+        w.cancel()
+    print(sorted(done))
+    event, lock, sem = asyncio.Event(), asyncio.Lock(), asyncio.Semaphore(2)
+    async def wait():
+        async with lock, sem:
+            await event.wait()
+    waiting = asyncio.create_task(wait())
+    await asyncio.sleep(0.01)
+    event.set()
+    await waiting
+    print([i async for i in ticks(3)])
+    async with opened() as c:
+        print(c)
+    start = asyncio.get_running_loop().time()
+    await asyncio.gather(*(asyncio.sleep(0.1) for _ in range(3)))
+    print(asyncio.get_running_loop().time() - start < 0.2)
+
+asyncio.run(main())
+'''
+
+
+def test_asyncio_tools_in_browser_loop(browser):
+    """То, что разбирает раздел «Конкурентность и async», работает на SyncLoop."""
+    result = runner.run_program(ASYNC_TOOLS)
+
+    assert result['error'] == ''
+    assert result['output'].splitlines() == [
+        "['1', '2']", 'timeout', 'wait_for', 'cancelled', '[0, 1, 2, 3, 4, 5]',
+        '[0, 1, 2]', 'open', 'c', 'close', 'True',
+    ]
+
+
+@pytest.mark.parametrize('error', [
+    RuntimeError("can't start new thread"),
+    ModuleNotFoundError("No module named '_multiprocessing'", name='_multiprocessing'),
+])
+def test_threads_and_processes_explained(error):
+    """В Pyodide нет потоков и процессов — к ошибке добавляется понятное объяснение."""
+    text = runner.format_error(error)
+
+    assert text.endswith(runner.NO_THREADS)
+    assert type(error).__name__ in text
+    assert runner.NO_THREADS not in runner.format_error(RuntimeError('другая'))
+    other = OSError(errno.ENOSYS, 'не из multiprocessing')
+    assert runner.NO_THREADS not in runner.format_error(other)
