@@ -4007,6 +4007,159 @@ def cron_fig():
     f.save(out(LX6 / "03-cron" / "img" / "cron.svg"))
 
 
+PY9 = ROOT / "python" / "09-design"
+
+
+def solid_s_o():
+    f = Figure(880, 380, "Одна причина для изменения — один класс; новый способ доставки — новый класс, а не новый elif")
+    f.box(20, 20, 330, 250, "", "err")
+    f.text(36, 46, "OrderService.checkout", "cs")
+    rows = [("сумма и скидка", "продажи"), ("if/elif доставки", "логистика"),
+            ("сохранить заказ", "база"), ("текст письма", "маркетинг")]
+    for i, (what, who) in enumerate(rows):
+        y = 62 + i * 48
+        f.box(36, y, 298, 38, "", "box", rx=8)
+        f.text(50, y + 24, what, "cs")
+        f.text(320, y + 24, who, "s", "end")
+    f.arrow("M350 145H396")
+    f.box(400, 20, 460, 46, "OrderService — только координирует", "acc", "onacc")
+    parts = ["PriceCalculator", "OrderRepository", "EmailNotifier"]
+    for i, name in enumerate(parts):
+        x = 400 + i * 156
+        f.arrow(f"M{x + 70} 66V86")
+        f.box(x, 90, 148, 40, name, "box2", "cs", rx=8)
+    f.box(400, 150, 460, 120, "", "box2")
+    f.text(416, 174, "DELIVERY = {", "cs")
+    f.text(436, 198, '"courier": Courier(),', "cs")
+    f.text(436, 220, '"pickup":  Pickup(),', "cs")
+    f.box(430, 230, 260, 28, '"post":    Post(),   ← новый', "ok", "cs", rx=6)
+    f.text(700, 250, "}", "cs")
+    f.text(20, 310, "Слева метод меняют четыре разных отдела — правка одного ломает другое.", "s")
+    f.text(20, 336, "Справа каждая часть меняется по своей причине и проверяется отдельно;", "s")
+    f.text(20, 358, "delivery_price(method, total) берёт объект из словаря и вызывает .price(total).", "s")
+    f.save(out(PY9 / "01-solid-s-o" / "img" / "solid-s-o.svg"))
+
+
+def solid_l_i_d():
+    f = Figure(880, 400, "L — наследник держит обещание родителя; I — узкие интерфейсы; D — сервис зависит от абстракции")
+    f.text(20, 30, "L", "h")
+    f.box(20, 42, 260, 40, "cart_weight(products)", "box", "cs", rx=8)
+    f.box(20, 96, 260, 40, "Product.weight() → 1.2", "ok", "cs", rx=8)
+    f.box(20, 150, 260, 54, "DigitalProduct.weight()|raise NotImplementedError", "err", "errt", rx=8)
+    f.box(20, 218, 260, 40, "исправление: weight() → 0", "ok", "cs", rx=8)
+    f.text(310, 30, "I", "h")
+    f.box(310, 42, 260, 92, "", "err")
+    f.text(326, 66, "Notifier: send_email,", "cs")
+    f.text(326, 88, "send_sms, send_push", "cs")
+    f.text(326, 116, "Telegram: 2 заглушки raise", "errt")
+    f.arrow("M440 134V158")
+    f.box(310, 162, 260, 44, "Notifier: send(text)", "ok", "cs", rx=8)
+    f.text(326, 236, "каждый класс — только то, что умеет", "s")
+    f.text(600, 30, "D", "h")
+    f.box(600, 42, 260, 44, "OrderService", "acc", "onacc", rx=8)
+    f.arrow("M730 86V108")
+    f.box(600, 112, 260, 44, "Notifier (Protocol)", "box2", "cs", rx=8)
+    for i, name in enumerate(["Email", "Telegram", "Fake"]):
+        x = 600 + i * 88
+        f.arrow(f"M{x + 40} 196V160")
+        f.box(x, 200, 84, 40, name, "box", "cs", rx=8)
+    f.text(600, 266, "детали реализуют абстракцию", "s")
+    f.text(20, 320, "L: общий код не проверяет isinstance — различия живут в методах наследников.", "s")
+    f.text(20, 346, "I: заглушка raise NotImplementedError — признак толстого интерфейса (и нарушения L).", "s")
+    f.text(20, 372, "D: смена канала или банка не трогает сервис; в тесте — заглушка.", "s")
+    f.save(out(PY9 / "02-solid-l-i-d" / "img" / "solid-l-i-d.svg"))
+
+
+def dependency_injection():
+    f = Figure(880, 330, "Сервис получает зависимости снаружи; собирают их в одном месте — по-разному для работы и для теста")
+    f.box(20, 20, 260, 190, "", "box2")
+    f.text(36, 46, "build_checkout()", "cs")
+    for i, name in enumerate(["BankGateway()", "EmailNotifier()", "clock=date.today"]):
+        f.box(36, 62 + i * 46, 228, 36, name, "box", "cs", rx=8)
+    f.box(600, 20, 260, 190, "", "ok")
+    f.text(616, 46, "тест", "cs")
+    for i, name in enumerate(["FakeGateway()", "FakeNotifier()", "clock=lambda: 31.12"]):
+        f.box(616, 62 + i * 46, 228, 36, name, "box", "cs", rx=8)
+    f.box(320, 80, 240, 70, "CheckoutService(|gateway, notifier, promo)", "acc", "onacc")
+    f.arrow("M280 115H316")
+    f.arrow("M600 115H564")
+    f.text(20, 250, "Сервис ничего не создаёт сам — ни шлюз, ни уведомитель, ни дату.", "s")
+    f.text(20, 276, "Сменить почту на Telegram — одна строка в build_checkout; тесты не меняются.", "s")
+    f.text(20, 302, "Тест передаёт заглушки в конструктор — без patch и без знания путей импорта.", "s")
+    f.save(out(PY9 / "03-dependency-injection" / "img" / "dependency-injection.svg"))
+
+
+def factory_fig():
+    f = Figure(880, 340, "Строка из настроек превращается в объект через реестр; сервис получает готовый шлюз")
+    f.box(20, 30, 180, 50, 'PAYMENT = "sbp"', "box", "cs")
+    f.arrow("M200 55H236")
+    f.box(240, 30, 260, 50, 'get_gateway("sbp", shop_id=42)', "acc", "onacc")
+    f.arrow("M370 80V106")
+    f.box(240, 110, 260, 110, "", "box2")
+    f.text(256, 134, "GATEWAYS", "cs")
+    f.text(272, 160, '"card" → CardGateway', "cs")
+    f.box(262, 172, 222, 28, '"sbp"  → SbpGateway', "ok", "cs", rx=6)
+    f.text(256, 214, "@register(\"…\") над классом", "s")
+    f.arrow("M500 186H556")
+    f.box(560, 160, 300, 50, "SbpGateway(shop_id=42)", "box", "cs")
+    f.arrow("M710 160V86")
+    f.box(560, 30, 300, 50, "CheckoutService(gateway)", "box2", "cs")
+    f.box(20, 250, 480, 40, "\"cash\" → ValueError: неизвестный шлюз 'cash', есть: card, sbp", "err", "errt", rx=8)
+    f.text(20, 320, "Новый шлюз — класс с @register в своём модуле; get_gateway и сервис не меняются.", "s")
+    f.save(out(PY9 / "04-factory" / "img" / "factory.svg"))
+
+
+def singleton_fig():
+    f = Figure(880, 360, "Три способа получить один объект — и общее состояние, за которое платят тесты")
+    f.box(20, 20, 270, 170, "", "box2")
+    f.text(36, 46, "config.py", "cs")
+    f.text(36, 72, "settings = Settings()", "cs")
+    f.text(36, 102, "import из views, services →", "s")
+    f.text(36, 124, "тот же объект (sys.modules)", "s")
+    f.text(36, 160, "выполняется один раз", "s")
+    f.box(305, 20, 270, 170, "", "box2")
+    f.text(321, 46, "@cache", "cs")
+    f.text(321, 72, "def get_settings()", "cs")
+    f.text(321, 102, "1-й вызов создаёт,", "s")
+    f.text(321, 124, "дальше — тот же объект", "s")
+    f.text(321, 160, "тесты: cache_clear()", "s")
+    f.box(590, 20, 270, 170, "", "err")
+    f.text(606, 46, "__new__ → _instance", "cs")
+    f.text(606, 72, "Settings() is Settings()", "cs")
+    f.text(606, 102, "но __init__ — каждый раз", "errt")
+    f.text(606, 124, "и перезаписывает поля", "errt")
+    f.text(606, 160, "нужна защита _ready", "s")
+    f.box(20, 220, 260, 44, "тест A: debug = True ✓", "ok", "cs", rx=8)
+    f.arrow("M280 242H316")
+    f.box(320, 220, 300, 44, "тест B ждёт debug = False ✗", "err", "errt", rx=8)
+    f.text(20, 300, "Одиночка — глобальное состояние: тесты влияют друг на друга, зависимость скрыта.", "s")
+    f.text(20, 326, "Лучше: создать один раз в точке сборки и передавать параметром.", "s")
+    f.save(out(PY9 / "05-singleton" / "img" / "singleton.svg"))
+
+
+def layers_fig():
+    f = Figure(880, 400, "Запрос идёт сверху вниз; ошибка правила поднимается исключением и становится статусом только в представлении")
+    f.box(20, 20, 560, 70, "", "box2")
+    f.text(36, 46, "представление: place_order_view(request, service)", "cs")
+    f.text(36, 72, "формат входа → 400; исключения → 404 / 409; успех → 201", "s")
+    f.arrow("M300 90V116")
+    f.box(20, 120, 560, 70, "", "acc")
+    f.text(36, 146, "сервис: OrderService.place_order(product_id, qty)", "onacc")
+    f.text(36, 172, "правило остатка, списание, заказ; raise OutOfStockError — без HTTP", "onacc")
+    f.arrow("M300 190V216")
+    f.box(20, 220, 560, 60, "", "box2")
+    f.text(36, 246, "репозитории: ProductRepository.get / save, OrderRepository.add", "cs")
+    f.text(36, 268, "только «найти» и «сохранить»", "s")
+    f.box(20, 300, 270, 40, "MemoryProductRepository — тесты", "ok", "cs", rx=8)
+    f.box(310, 300, 270, 40, "SqliteProductRepository — работа", "box", "cs", rx=8)
+    f.line("M155 280V300"); f.line("M445 280V300")
+    f.box(620, 120, 240, 40, "фоновая задача", "box", "cs", rx=8)
+    f.box(620, 170, 240, 40, "админка, команда", "box", "cs", rx=8)
+    f.arrow("M620 140H584"); f.arrow("M620 190H584")
+    f.text(20, 376, "Нижние слои не знают о верхних: один сервис — для сайта, API и задач; тесты правил — без базы и HTTP.", "s")
+    f.save(out(PY9 / "06-layers" / "img" / "layers.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -4059,6 +4212,8 @@ if __name__ == "__main__":
                   users_fig, permissions_fig, owners_fig,
                   apt_flow, disk_fig, pyenv_fig,
                   gunicorn_processes, env_fig, systemd_fig, network_fig, ssh_fig,
-                  script_fig, if_for_fig, cron_fig):
+                  script_fig, if_for_fig, cron_fig,
+                  solid_s_o, solid_l_i_d, dependency_injection, factory_fig,
+                  singleton_fig, layers_fig):
         build()
     print("ok")

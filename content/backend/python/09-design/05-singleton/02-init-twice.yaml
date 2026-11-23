@@ -1,0 +1,31 @@
+title: "Что напечатает одиночка"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "__new__ может вернуть старый объект, но __init__ всё равно вызывается при каждом создании."
+statement: |
+  ```python
+  class Pool:
+      _instance = None
+
+      def __new__(cls, size):
+          if cls._instance is None:
+              cls._instance = super().__new__(cls)
+          return cls._instance
+
+      def __init__(self, size):
+          self.size = size
+
+
+  a = Pool(10)
+  b = Pool(20)
+  print(a is b, a.size)
+  ```
+options:
+  - "`True 10`"
+  - "`True 20`"
+  - "`False 10`"
+  - "`False 20`"
+answer: [1]
+explanation: |
+  `__new__` оба раза вернул один и тот же объект — `a is b` истинно. Но после `__new__` Python вызывает `__init__`, и второй вызов `Pool(20)` перезаписал `size`. Для пула соединений это значит, что настройки «первого» создателя молча потерялись.

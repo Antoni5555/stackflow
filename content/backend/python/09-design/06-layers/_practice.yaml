@@ -1,0 +1,95 @@
+- title: Репозиторий из двух методов
+  text: |
+    Напишите репозиторий заказов в памяти: `add(total)` возвращает номер заказа (1, 2, …), `get(order_id)` — сумму.
+    ```
+    add(2490), add(990), get(2)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class MemoryOrders:
+        def __init__(self):
+            self.totals = []
+
+        def add(self, total):
+            self.totals.append(total)
+            return len(self.totals)
+
+        def get(self, order_id):
+            return self.totals[order_id - 1]
+
+
+    orders = MemoryOrders()
+    orders.add(2490)
+    print(orders.add(990), orders.get(2))
+    ```
+    Результат:
+    ```
+    2 990
+    ```
+- title: Исключение вместо статуса
+  text: |
+    Напишите функцию сервиса `reserve(stock, qty)`: возвращает новый остаток, а если товара мало — выбрасывает `OutOfStockError`. Проверьте на:
+    ```
+    reserve(3, 2), reserve(1, 2)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class OutOfStockError(Exception):
+        pass
+
+
+    def reserve(stock, qty):
+        if stock < qty:
+            raise OutOfStockError(f"есть {stock}, нужно {qty}")
+        return stock - qty
+
+
+    print(reserve(3, 2))
+    try:
+        reserve(1, 2)
+    except OutOfStockError as e:
+        print("ошибка:", e)
+    ```
+    Результат:
+    ```
+    1
+    ошибка: есть 1, нужно 2
+    ```
+    Сервис не знает про HTTP — статус выберет представление.
+- title: Исключение → статус
+  text: |
+    Напишите представление, которое вызывает `reserve` из прошлого упражнения и превращает результат в `(статус, тело)`:
+    ```
+    200 и остаток или 409 и текст ошибки
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class OutOfStockError(Exception):
+        pass
+
+
+    def reserve(stock, qty):
+        if stock < qty:
+            raise OutOfStockError(f"есть {stock}, нужно {qty}")
+        return stock - qty
+
+
+    def reserve_view(request):
+        try:
+            left = reserve(request["stock"], request["qty"])
+        except OutOfStockError as e:
+            return 409, {"error": str(e)}
+        return 200, {"left": left}
+
+
+    print(reserve_view({"stock": 3, "qty": 2}))
+    print(reserve_view({"stock": 1, "qty": 2}))
+    ```
+    Результат:
+    ```
+    (200, {'left': 1})
+    (409, {'error': 'есть 1, нужно 2'})
+    ```

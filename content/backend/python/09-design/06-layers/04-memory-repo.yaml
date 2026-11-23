@@ -1,0 +1,96 @@
+title: "Репозиторий товаров в памяти"
+type: exercise
+difficulty: 2
+pitfall: "Репозиторий только находит и сохраняет; ненайденный объект — исключение приложения, а не None и не 404."
+statement: |
+  Напишите `MemoryProductRepository(products)` — репозиторий для тестов:
+  - хранит товары в словаре по `id`;
+  - `get(product_id)` — товар или `ProductNotFoundError(product_id)`;
+  - `save(product)` — сохранить (добавить или заменить по `id`);
+  - `list_available()` — товары с `stock > 0`, по возрастанию `id`.
+starter_code: |
+  from dataclasses import dataclass
+
+
+  @dataclass
+  class Product:
+      id: int
+      name: str
+      stock: int
+
+
+  class ShopError(Exception):
+      pass
+
+
+  class ProductNotFoundError(ShopError):
+      pass
+
+
+  repo = MemoryProductRepository([Product(2, "Кружка", 0), Product(1, "Чайник", 3)])
+  print(repo.list_available())
+check:
+  type: tests
+  tests:
+    - code: |
+        r = MemoryProductRepository([Product(1, "Чайник", 3)])
+        assert r.get(1) == Product(1, "Чайник", 3)
+        try:
+            r.get(9)
+        except ProductNotFoundError as e:
+            assert e.args == (9,)
+        else:
+            raise AssertionError
+      fail: "get(id): товар или ProductNotFoundError(id)."
+    - code: |
+        r = MemoryProductRepository([Product(1, "Чайник", 3)])
+        r.save(Product(1, "Чайник", 0))
+        r.save(Product(5, "Тостер", 2))
+        assert r.get(1).stock == 0 and r.get(5).name == "Тостер"
+      fail: "save(product) добавляет новый товар или заменяет существующий по id."
+    - code: |
+        r = MemoryProductRepository([Product(3, "Ложка", 1), Product(2, "Кружка", 0), Product(1, "Чайник", 3)])
+        assert [p.id for p in r.list_available()] == [1, 3]
+      fail: "list_available() — товары с остатком больше нуля, по возрастанию id."
+solution: |
+  from dataclasses import dataclass
+
+
+  @dataclass
+  class Product:
+      id: int
+      name: str
+      stock: int
+
+
+  class ShopError(Exception):
+      pass
+
+
+  class ProductNotFoundError(ShopError):
+      pass
+
+
+  class MemoryProductRepository:
+      def __init__(self, products):
+          self.products = {p.id: p for p in products}
+
+      def get(self, product_id):
+          if product_id not in self.products:
+              raise ProductNotFoundError(product_id)
+          return self.products[product_id]
+
+      def save(self, product):
+          self.products[product.id] = product
+
+      def list_available(self):
+          return sorted((p for p in self.products.values() if p.stock > 0), key=lambda p: p.id)
+
+
+  repo = MemoryProductRepository([Product(2, "Кружка", 0), Product(1, "Чайник", 3)])
+  print(repo.list_available())
+hints:
+  - "Словарь `{p.id: p for p in products}` в `__init__`; в `get` — проверка `in` и `raise`."
+  - "`list_available`: `sorted(…, key=lambda p: p.id)` по товарам с `p.stock > 0`."
+explanation: |
+  Такой репозиторий заменяет базу в тестах сервиса: он ведёт себя так же, как настоящий (`get`, `save`, `list_available`), но работает со словарём. Ненайденный товар — исключение приложения: сервис или представление решат, что с ним делать.

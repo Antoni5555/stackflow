@@ -1,0 +1,98 @@
+- title: Наследник держит обещание
+  text: |
+    `Product.shipping_days()` обещает число дней доставки. Напишите `DigitalProduct(Product)`, который выдаётся сразу — 0 дней, и посчитайте самый долгий срок в корзине:
+    ```python
+    class Product:
+        def shipping_days(self):
+            return 3
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Product:
+        def shipping_days(self):
+            return 3
+
+
+    class DigitalProduct(Product):
+        def shipping_days(self):
+            return 0
+
+
+    cart = [DigitalProduct(), Product(), DigitalProduct()]
+    print(max(p.shipping_days() for p in cart))
+    ```
+    Результат:
+    ```
+    3
+    ```
+    `max` не знает про цифровые товары — наследник просто вернул число, как обещал родитель.
+- title: Узкий интерфейс
+  text: |
+    Опишите через `Protocol` интерфейс уведомителя с одним методом и два канала — SMS и push:
+    ```
+    send(text)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from typing import Protocol
+
+
+    class Notifier(Protocol):
+        def send(self, text): ...
+
+
+    class SmsNotifier:
+        def send(self, text):
+            print("sms:", text)
+
+
+    class PushNotifier:
+        def send(self, text):
+            print("push:", text)
+
+
+    for n in [SmsNotifier(), PushNotifier()]:
+        n.send("Заказ в пути")
+    ```
+    Результат:
+    ```
+    sms: Заказ в пути
+    push: Заказ в пути
+    ```
+    Каналы не наследуют `Notifier` — им достаточно иметь метод `send`.
+- title: Сервис и заглушка
+  text: |
+    Напишите `OrderService(notifier)` с методом `ship(order_id)`, который отправляет «Заказ №… отправлен», и проверьте его заглушкой, запоминающей сообщения:
+    ```
+    1042
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class OrderService:
+        def __init__(self, notifier):
+            self.notifier = notifier
+
+        def ship(self, order_id):
+            self.notifier.send(f"Заказ №{order_id} отправлен")
+
+
+    class FakeNotifier:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, text):
+            self.sent.append(text)
+
+
+    fake = FakeNotifier()
+    OrderService(fake).ship(1042)
+    print(fake.sent)
+    ```
+    Результат:
+    ```
+    ['Заказ №1042 отправлен']
+    ```
+    Сервис зависит только от «умеет `send`» — поэтому проверяется без почты и SMS.

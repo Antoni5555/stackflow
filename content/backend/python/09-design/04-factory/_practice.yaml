@@ -1,0 +1,103 @@
+- title: Класс из словаря
+  text: |
+    Создайте объект доставки по названию из словаря классов и посчитайте цену:
+    ```python
+    class Courier:
+        def price(self):
+            return 300
+
+
+    class Pickup:
+        def price(self):
+            return 0
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Courier:
+        def price(self):
+            return 300
+
+
+    class Pickup:
+        def price(self):
+            return 0
+
+
+    DELIVERY = {"courier": Courier, "pickup": Pickup}
+    method = "courier"
+    print(DELIVERY[method]().price())
+    ```
+    Результат:
+    ```
+    300
+    ```
+    `DELIVERY[method]` — класс, `()` создаёт объект.
+- title: Понятная ошибка
+  text: |
+    Напишите `get_delivery(name)` для словаря из прошлого упражнения: неизвестное имя — `ValueError` со списком допустимых. Проверьте на:
+    ```
+    "drone"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Courier:
+        pass
+
+
+    class Pickup:
+        pass
+
+
+    DELIVERY = {"courier": Courier, "pickup": Pickup}
+
+
+    def get_delivery(name):
+        if name not in DELIVERY:
+            known = ", ".join(sorted(DELIVERY))
+            msg = f"нет доставки {name!r}, есть: {known}"
+            raise ValueError(msg)
+        return DELIVERY[name]()
+
+
+    try:
+        get_delivery("drone")
+    except ValueError as e:
+        print(e)
+    ```
+    Результат:
+    ```
+    нет доставки 'drone', есть: courier, pickup
+    ```
+- title: Конструктор из словаря
+  text: |
+    Добавьте в `Product` альтернативный конструктор `from_dict`, который берёт имя и цену из словаря API:
+    ```python
+    {"title": "Чайник", "price": "2490.00"}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from decimal import Decimal
+
+
+    class Product:
+        def __init__(self, name, price):
+            self.name = name
+            self.price = price
+
+        @classmethod
+        def from_dict(cls, data):
+            return cls(data["title"], Decimal(data["price"]))
+
+
+    data = {"title": "Чайник", "price": "2490.00"}
+    p = Product.from_dict(data)
+    print(p.name, p.price)
+    ```
+    Результат:
+    ```
+    Чайник 2490.00
+    ```
+    Разбор чужого формата — в `from_dict`, а `__init__` принимает готовые значения.

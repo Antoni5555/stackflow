@@ -1,0 +1,30 @@
+title: "I или S"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "S — про обязанности самого класса; I — про интерфейс, который навязывают классу снаружи."
+statement: |
+  ```python
+  class Storage(ABC):
+      @abstractmethod
+      def save(self, order): ...
+      @abstractmethod
+      def export_csv(self, path): ...
+      @abstractmethod
+      def backup_to_s3(self): ...
+
+
+  class MemoryStorage(Storage):
+      def save(self, order): self.orders.append(order)
+      def export_csv(self, path): raise NotImplementedError
+      def backup_to_s3(self): raise NotImplementedError
+  ```
+  `MemoryStorage` нужен только тестам и умеет только `save`. Какой принцип нарушает **абстрактный класс `Storage`**?
+options:
+  - "S — у `MemoryStorage` три обязанности"
+  - "I — интерфейс заставляет реализовывать методы, которые классу не нужны"
+  - "O — класс нельзя расширить"
+  - "D — `MemoryStorage` зависит от S3"
+answer: [1]
+explanation: |
+  Сам `MemoryStorage` делает одно — хранит заказы в списке. Проблема в интерфейсе: `Storage` навязывает экспорт и бэкап, и класс пишет заглушки. Это нарушение I (а заглушки с `raise` — ещё и L). Выход — узкие интерфейсы: `OrderStorage.save`, отдельно `Exporter`, отдельно `Backup`.

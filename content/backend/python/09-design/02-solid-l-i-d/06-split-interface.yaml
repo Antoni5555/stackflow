@@ -1,0 +1,120 @@
+title: "Разделите толстый интерфейс"
+type: exercise
+difficulty: 2
+pitfall: "Узкие интерфейсы: класс наследует только то, что умеет, и не пишет заглушки."
+statement: |
+  Абстрактный `Storage` требует `save`, `export_csv` и `backup`, поэтому `MemoryStorage` для тестов пишет две заглушки. Разделите интерфейс на три абстрактных класса с одним методом каждый:
+  - `OrderStorage` — `save(order)`;
+  - `Exporter` — `export_csv(path)`;
+  - `Backup` — `backup()`.
+
+  `MemoryStorage` наследует только `OrderStorage` (хранит заказы в списке `orders`). `PostgresStorage` наследует все три (тела методов оставьте как есть).
+starter_code: |
+  from abc import ABC, abstractmethod
+
+
+  class Storage(ABC):
+      @abstractmethod
+      def save(self, order): ...
+
+      @abstractmethod
+      def export_csv(self, path): ...
+
+      @abstractmethod
+      def backup(self): ...
+
+
+  class MemoryStorage(Storage):
+      def __init__(self):
+          self.orders = []
+
+      def save(self, order):
+          self.orders.append(order)
+
+      def export_csv(self, path):
+          raise NotImplementedError
+
+      def backup(self):
+          raise NotImplementedError
+
+
+  class PostgresStorage(Storage):
+      def save(self, order):
+          return f"INSERT {order}"
+
+      def export_csv(self, path):
+          return f"COPY orders TO {path}"
+
+      def backup(self):
+          return "pg_dump shop"
+check:
+  type: tests
+  tests:
+    - code: |
+        for cls in (OrderStorage, Exporter, Backup):
+            assert issubclass(cls, ABC)
+            try:
+                cls()
+            except TypeError:
+                pass
+            else:
+                raise AssertionError(cls.__name__)
+      fail: "OrderStorage, Exporter и Backup — абстрактные классы (ABC + @abstractmethod): их нельзя создать напрямую."
+    - code: |
+        m = MemoryStorage()
+        m.save(1042)
+        assert m.orders == [1042] and isinstance(m, OrderStorage)
+        assert not hasattr(m, "export_csv") and not hasattr(m, "backup")
+      fail: "MemoryStorage наследует только OrderStorage — без export_csv и backup."
+    - code: |
+        p = PostgresStorage()
+        assert isinstance(p, OrderStorage) and isinstance(p, Exporter) and isinstance(p, Backup)
+        assert p.export_csv("/tmp/o.csv") == "COPY orders TO /tmp/o.csv" and p.backup() == "pg_dump shop"
+      fail: "PostgresStorage реализует все три интерфейса."
+    - code: |
+        class OnlyBackup(Backup):
+            def backup(self):
+                return "ok"
+        assert OnlyBackup().backup() == "ok"
+      fail: "Класс, реализующий только backup(), должен создаваться без заглушек."
+solution: |
+  from abc import ABC, abstractmethod
+
+
+  class OrderStorage(ABC):
+      @abstractmethod
+      def save(self, order): ...
+
+
+  class Exporter(ABC):
+      @abstractmethod
+      def export_csv(self, path): ...
+
+
+  class Backup(ABC):
+      @abstractmethod
+      def backup(self): ...
+
+
+  class MemoryStorage(OrderStorage):
+      def __init__(self):
+          self.orders = []
+
+      def save(self, order):
+          self.orders.append(order)
+
+
+  class PostgresStorage(OrderStorage, Exporter, Backup):
+      def save(self, order):
+          return f"INSERT {order}"
+
+      def export_csv(self, path):
+          return f"COPY orders TO {path}"
+
+      def backup(self):
+          return "pg_dump shop"
+hints:
+  - "Один абстрактный класс на каждый метод. Какие из них на самом деле нужны `MemoryStorage`?"
+  - "`class MemoryStorage(OrderStorage)`, `class PostgresStorage(OrderStorage, Exporter, Backup)`."
+explanation: |
+  Узкие интерфейсы освободили `MemoryStorage` от заглушек: у него нет методов, которые падают при вызове. Класс может наследовать несколько абстрактных классов сразу — `PostgresStorage` реализует все три. А код экспорта теперь может требовать `Exporter`, не заботясь о сохранении и бэкапе.

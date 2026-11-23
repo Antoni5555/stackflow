@@ -1,0 +1,90 @@
+title: "Предзаказ ломает корзину"
+type: exercise
+difficulty: 2
+pitfall: "Наследник выполняет обещание родителя; особое поведение — в его методах, а не в проверках isinstance в общем коде."
+statement: |
+  `Product.price()` обещает цену позиции числом. `PreorderProduct` (товар под заказ) вместо цены выбрасывает исключение, а `cart_total` из-за этого пришлось «научить» про предзаказ через `isinstance`.
+
+  Исправьте так, чтобы `PreorderProduct` держал обещание родителя: `price()` возвращает предоплату — 30 % цены, `Decimal` с двумя знаками (`quantize(Decimal("0.01"))`). Из `cart_total` уберите проверку типа: она должна просто складывать `price()` всех товаров.
+starter_code: |
+  from decimal import Decimal
+
+
+  class Product:
+      def __init__(self, name, price):
+          self.name = name
+          self._price = price
+
+      def price(self):
+          return self._price
+
+
+  class PreorderProduct(Product):
+      def price(self):
+          raise RuntimeError("цена станет известна при поступлении")
+
+      def prepayment(self):
+          return (self._price * Decimal("0.3")).quantize(Decimal("0.01"))
+
+
+  def cart_total(products):
+      total = Decimal("0")
+      for p in products:
+          if isinstance(p, PreorderProduct):
+              total += p.prepayment()
+          else:
+              total += p.price()
+      return total
+
+
+  cart = [Product("Чайник", Decimal("2490.00")), PreorderProduct("Кофемашина", Decimal("45990.00"))]
+  print(cart_total(cart))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert PreorderProduct("Кофемашина", Decimal("45990.00")).price() == Decimal("13797.00")
+        assert PreorderProduct("Х", Decimal("10.05")).price() == Decimal("3.02")
+      fail: "PreorderProduct.price() возвращает предоплату: 30 % цены, два знака после запятой."
+    - code: |
+        assert cart_total(cart) == Decimal("16287.00")
+      fail: "cart_total — сумма price() всех товаров: 2490.00 + 13797.00."
+    - code: |
+        class Gift(Product):
+            def price(self):
+                return Decimal("0")
+        assert cart_total([Gift("Открытка", Decimal("100")), Product("Кружка", Decimal("390"))]) == Decimal("390")
+      fail: "cart_total должна работать с любым наследником Product через price(), без проверок типа."
+    - code: |
+        import inspect
+        assert "isinstance" not in inspect.getsource(cart_total)
+      fail: "В cart_total осталась проверка isinstance — различия должны жить в price() наследника."
+solution: |
+  from decimal import Decimal
+
+
+  class Product:
+      def __init__(self, name, price):
+          self.name = name
+          self._price = price
+
+      def price(self):
+          return self._price
+
+
+  class PreorderProduct(Product):
+      def price(self):
+          return (self._price * Decimal("0.3")).quantize(Decimal("0.01"))
+
+
+  def cart_total(products):
+      return sum((p.price() for p in products), Decimal("0"))
+
+
+  cart = [Product("Чайник", Decimal("2490.00")), PreorderProduct("Кофемашина", Decimal("45990.00"))]
+  print(cart_total(cart))
+hints:
+  - "Что должен вернуть `price()` товара под заказ, чтобы корзина могла просто сложить цены?"
+  - "Перенесите формулу из `prepayment` в `price`, а в `cart_total` оставьте `sum(p.price() for p in products)`."
+explanation: |
+  Пока наследник выбрасывал исключение там, где родитель возвращал число, каждый общий код (корзина, счёт, письмо) должен был знать про предзаказ. Теперь `PreorderProduct` выполняет обещание `Product` по-своему, и `cart_total` работает с любым наследником — даже с `Gift`, о котором она ничего не знает.

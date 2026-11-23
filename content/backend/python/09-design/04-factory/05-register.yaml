@@ -1,0 +1,105 @@
+title: "Реестр с декоратором"
+type: exercise
+difficulty: 3
+pitfall: "Декоратор регистрации записывает класс и обязательно возвращает его без изменений."
+statement: |
+  Напишите реестр уведомителей:
+  - `NOTIFIERS = {}`;
+  - `register(name)` — декоратор с параметром: записывает класс в `NOTIFIERS[name]` и **возвращает класс** без изменений;
+  - повторная регистрация того же имени — `ValueError("уведомитель 'sms' уже зарегистрирован")`;
+  - `create(name, **options)` — создаёт объект зарегистрированного класса; неизвестное имя — `KeyError` (обычного `NOTIFIERS[name]` достаточно).
+
+  Классы `EmailNotifier` и `SmsNotifier` зарегистрируйте как `"email"` и `"sms"`.
+starter_code: |
+  class EmailNotifier:
+      def __init__(self, sender="shop@example.com"):
+          self.sender = sender
+
+      def send(self, text):
+          return f"email от {self.sender}: {text}"
+
+
+  class SmsNotifier:
+      def __init__(self, sender="SHOP"):
+          self.sender = sender
+
+      def send(self, text):
+          return f"sms от {self.sender}: {text}"
+
+
+  print(create("sms", sender="STACK").send("Заказ №1042 оплачен"))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert NOTIFIERS["email"] is EmailNotifier and NOTIFIERS["sms"] is SmsNotifier
+      fail: "EmailNotifier и SmsNotifier должны быть в NOTIFIERS под именами email и sms."
+    - code: |
+        assert isinstance(EmailNotifier, type) and EmailNotifier().send("x") == "email от shop@example.com: x"
+      fail: "После декоратора имя EmailNotifier должно остаться классом — декоратор возвращает cls."
+    - code: |
+        n = create("sms", sender="STACK")
+        assert isinstance(n, SmsNotifier) and n.send("ok") == "sms от STACK: ok"
+      fail: "create(name, **options) создаёт объект зарегистрированного класса с параметрами."
+    - code: |
+        @register("push")
+        class Push:
+            def send(self, text):
+                return "push"
+        try:
+            assert create("push").send("x") == "push"
+        finally:
+            del NOTIFIERS["push"]
+      fail: "Новый класс с @register(\"push\") должен сразу создаваться через create(\"push\")."
+    - code: |
+        try:
+            @register("sms")
+            class Other:
+                pass
+        except ValueError as e:
+            assert str(e) == "уведомитель 'sms' уже зарегистрирован"
+        else:
+            raise AssertionError
+        assert NOTIFIERS["sms"] is SmsNotifier
+      fail: "Повторное имя — ValueError(\"уведомитель 'sms' уже зарегистрирован\"), старая запись остаётся."
+solution: |
+  NOTIFIERS = {}
+
+
+  def register(name):
+      def decorator(cls):
+          if name in NOTIFIERS:
+              raise ValueError(f"уведомитель {name!r} уже зарегистрирован")
+          NOTIFIERS[name] = cls
+          return cls
+      return decorator
+
+
+  def create(name, **options):
+      return NOTIFIERS[name](**options)
+
+
+  @register("email")
+  class EmailNotifier:
+      def __init__(self, sender="shop@example.com"):
+          self.sender = sender
+
+      def send(self, text):
+          return f"email от {self.sender}: {text}"
+
+
+  @register("sms")
+  class SmsNotifier:
+      def __init__(self, sender="SHOP"):
+          self.sender = sender
+
+      def send(self, text):
+          return f"sms от {self.sender}: {text}"
+
+
+  print(create("sms", sender="STACK").send("Заказ №1042 оплачен"))
+hints:
+  - "`register(name)` возвращает функцию `decorator(cls)`, а та — сам `cls`. Реестр и функции должны быть определены выше классов."
+  - "Внутри `decorator`: проверить `name in NOTIFIERS`, записать `NOTIFIERS[name] = cls`, `return cls`. `create`: `NOTIFIERS[name](**options)`."
+explanation: |
+  `@register("sms")` — это `SmsNotifier = register("sms")(SmsNotifier)`: если `decorator` ничего не вернёт, имя класса станет `None`. Проверка повтора ловит частую ошибку копирования, когда два класса случайно получили одно имя и второй молча затёр первый.

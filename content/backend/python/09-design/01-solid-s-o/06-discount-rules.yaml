@@ -1,0 +1,86 @@
+title: "Правила скидок списком"
+type: exercise
+difficulty: 3
+pitfall: "Если правила добавляют часто — храните их списком объектов с общим методом, а не веткой в функции."
+statement: |
+  Маркетинг каждый месяц придумывает новую скидку, и функцию `discount` правят снова и снова. Сделайте правила объектами:
+  - `BigOrder` — 5 % от суммы, если сумма от 5000 ₽, иначе 0;
+  - `PromoCode(code, amount)` — скидка `amount` ₽, если у заказа такой промокод, иначе 0;
+  - `Calculator(rules)` — метод `total(order)`: сумма заказа минус **все** скидки правил из списка, но не меньше 0.
+
+  Заказ — словарь `{"sum": Decimal, "promo": str | None}`. У каждого правила метод `discount(order)`.
+starter_code: |
+  from decimal import Decimal
+
+
+  def total(order):
+      result = order["sum"]
+      if order["sum"] >= Decimal("5000"):
+          result -= order["sum"] * Decimal("0.05")
+      if order["promo"] == "AUTUMN":
+          result -= Decimal("500")
+      return max(result, Decimal("0"))
+
+
+  print(total({"sum": Decimal("6000"), "promo": "AUTUMN"}))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert BigOrder().discount({"sum": Decimal("6000"), "promo": None}) == Decimal("300")
+        assert BigOrder().discount({"sum": Decimal("4999"), "promo": None}) == 0
+      fail: "BigOrder.discount: 5 % от суммы от 5000 ₽, иначе 0."
+    - code: |
+        rule = PromoCode("AUTUMN", Decimal("500"))
+        assert rule.discount({"sum": Decimal("100"), "promo": "AUTUMN"}) == Decimal("500")
+        assert rule.discount({"sum": Decimal("100"), "promo": "SPRING"}) == 0
+      fail: "PromoCode(code, amount).discount: amount, если промокод совпал, иначе 0."
+    - code: |
+        calc = Calculator([BigOrder(), PromoCode("AUTUMN", Decimal("500"))])
+        assert calc.total({"sum": Decimal("6000"), "promo": "AUTUMN"}) == Decimal("5200")
+        assert calc.total({"sum": Decimal("300"), "promo": "AUTUMN"}) == Decimal("0")
+        assert Calculator([]).total({"sum": Decimal("300"), "promo": None}) == Decimal("300")
+      fail: "Calculator(rules).total: сумма минус скидки всех правил, но не меньше 0."
+    - code: |
+        class Birthday:
+            def discount(self, order):
+                return Decimal("100")
+        calc = Calculator([Birthday(), PromoCode("AUTUMN", Decimal("500"))])
+        assert calc.total({"sum": Decimal("1000"), "promo": "AUTUMN"}) == Decimal("400")
+      fail: "Новое правило в списке не сработало: Calculator должен вызывать discount у каждого правила из rules, а не знать их по именам."
+solution: |
+  from decimal import Decimal
+
+
+  class BigOrder:
+      def discount(self, order):
+          if order["sum"] >= Decimal("5000"):
+              return order["sum"] * Decimal("0.05")
+          return 0
+
+
+  class PromoCode:
+      def __init__(self, code, amount):
+          self.code = code
+          self.amount = amount
+
+      def discount(self, order):
+          return self.amount if order["promo"] == self.code else 0
+
+
+  class Calculator:
+      def __init__(self, rules):
+          self.rules = rules
+
+      def total(self, order):
+          result = order["sum"] - sum(rule.discount(order) for rule in self.rules)
+          return max(result, Decimal("0"))
+
+
+  calc = Calculator([BigOrder(), PromoCode("AUTUMN", Decimal("500"))])
+  print(calc.total({"sum": Decimal("6000"), "promo": "AUTUMN"}))
+hints:
+  - "Каждое `if` из `total` станет классом с методом `discount(order)`. Что тогда остаётся калькулятору?"
+  - "`Calculator.total`: `order[\"sum\"] - sum(rule.discount(order) for rule in self.rules)`, затем `max(…, Decimal(\"0\"))`."
+explanation: |
+  Калькулятор больше не знает, какие скидки бывают: он складывает то, что вернули правила. Новая акция — новый класс и объект в списке, как `Birthday` в последнем тесте. Набор правил к тому же можно менять без кода калькулятора: например, включать «чёрную пятницу» только на один день.

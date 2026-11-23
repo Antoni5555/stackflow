@@ -1,0 +1,60 @@
+title: "Настройки через get_settings"
+type: exercise
+difficulty: 2
+pitfall: "functools.cache делает объект одним на процесс; cache_clear() сбрасывает его в тестах."
+statement: |
+  Сделайте настройки общими без трюков с `__new__`:
+  - `get_settings()` с декоратором `functools.cache` создаёт `Settings(ENV)` при первом вызове и дальше возвращает тот же объект;
+  - `Settings(env)` берёт `debug` (`True`, только если `env["DEBUG"] == "True"`) и `shop_name` (`env.get("SHOP_NAME", "Магазин")`).
+starter_code: |
+  ENV = {"DEBUG": "False", "SHOP_NAME": "STACKFLOW"}
+
+
+  print(get_settings().shop_name, get_settings() is get_settings())
+check:
+  type: tests
+  tests:
+    - code: |
+        get_settings.cache_clear()
+        s = get_settings()
+        assert s is get_settings() and s.debug is False and s.shop_name == "STACKFLOW"
+      fail: "get_settings() возвращает один и тот же Settings, собранный из ENV."
+    - code: |
+        get_settings.cache_clear()
+        old = get_settings()
+        ENV["DEBUG"] = "True"
+        try:
+            assert get_settings() is old and old.debug is False
+            get_settings.cache_clear()
+            assert get_settings().debug is True
+        finally:
+            ENV["DEBUG"] = "False"
+            get_settings.cache_clear()
+      fail: "Пока кэш не сброшен — старый объект; после cache_clear() — новый, из текущего ENV."
+    - code: |
+        assert Settings({}).shop_name == "Магазин" and Settings({"DEBUG": "true"}).debug is False
+      fail: "Settings(env): SHOP_NAME по умолчанию «Магазин», debug — только при строке \"True\"."
+solution: |
+  from functools import cache
+
+
+  class Settings:
+      def __init__(self, env):
+          self.debug = env.get("DEBUG") == "True"
+          self.shop_name = env.get("SHOP_NAME", "Магазин")
+
+
+  ENV = {"DEBUG": "False", "SHOP_NAME": "STACKFLOW"}
+
+
+  @cache
+  def get_settings():
+      return Settings(ENV)
+
+
+  print(get_settings().shop_name, get_settings() is get_settings())
+hints:
+  - "`from functools import cache` и `@cache` над функцией без параметров — она выполнится один раз."
+  - "`Settings.__init__`: `self.debug = env.get(\"DEBUG\") == \"True\"`, `self.shop_name = env.get(\"SHOP_NAME\", \"Магазин\")`."
+explanation: |
+  `@cache` запоминает результат функции: без аргументов результат один, значит и объект один. В отличие от `__new__`, класс `Settings` остался обычным — в тестах его можно создавать напрямую с любым словарём, а глобальный объект сбрасывается `cache_clear()`.

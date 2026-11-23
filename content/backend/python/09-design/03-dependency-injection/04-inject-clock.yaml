@@ -1,0 +1,63 @@
+title: "Часы как зависимость"
+type: exercise
+difficulty: 2
+pitfall: "Функцию-часы передают без скобок: clock=date.today; со скобками дата вычислится один раз."
+statement: |
+  `DeliverySlot.can_book()` разрешает бронировать доставку не позже чем за 2 дня до даты слота, а сегодняшнюю дату берёт сам. Сделайте дату зависимостью:
+  - `DeliverySlot(day, clock=date.today)` — `clock` — функция без аргументов, возвращающая сегодняшнюю дату;
+  - `can_book()` вызывает `self.clock()`.
+starter_code: |
+  from datetime import date, timedelta
+
+
+  class DeliverySlot:
+      def __init__(self, day):
+          self.day = day
+
+      def can_book(self):
+          return date.today() <= self.day - timedelta(days=2)
+
+
+  slot = DeliverySlot(date(2026, 12, 30), clock=lambda: date(2026, 12, 28))
+  print(slot.can_book())
+check:
+  type: tests
+  tests:
+    - code: |
+        day = date(2026, 12, 30)
+        assert DeliverySlot(day, clock=lambda: date(2026, 12, 28)).can_book() is True
+        assert DeliverySlot(day, clock=lambda: date(2026, 12, 29)).can_book() is False
+      fail: "can_book() должен брать «сегодня» из clock(): за 2 дня — можно, за 1 — нельзя."
+    - code: |
+        slot = DeliverySlot(date(2026, 12, 30))
+        assert slot.clock == date.today
+      fail: "По умолчанию clock — сама функция date.today (без скобок)."
+    - code: |
+        calls = []
+        def clock():
+            calls.append(1)
+            return date(2026, 1, 1)
+        slot = DeliverySlot(date(2026, 12, 30), clock=clock)
+        slot.can_book(); slot.can_book()
+        assert len(calls) == 2
+      fail: "Дату нужно спрашивать у clock() при каждом вызове can_book(), а не один раз в __init__."
+solution: |
+  from datetime import date, timedelta
+
+
+  class DeliverySlot:
+      def __init__(self, day, clock=date.today):
+          self.day = day
+          self.clock = clock
+
+      def can_book(self):
+          return self.clock() <= self.day - timedelta(days=2)
+
+
+  slot = DeliverySlot(date(2026, 12, 30), clock=lambda: date(2026, 12, 28))
+  print(slot.can_book())
+hints:
+  - "Сохраните функцию в `self.clock` и вызывайте её в `can_book` вместо `date.today()`."
+  - "`def __init__(self, day, clock=date.today):` — без скобок у `date.today`."
+explanation: |
+  Слот спрашивает «сегодня» у переданной функции, и тест проверяет обе стороны границы, не дожидаясь нужной даты. Последний тест ловит частую ошибку: если вызвать `clock()` один раз в `__init__`, объект, созданный утром, будет думать, что сейчас утро, и вечером.

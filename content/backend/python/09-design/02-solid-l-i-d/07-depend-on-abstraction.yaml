@@ -1,0 +1,88 @@
+title: "Цены не только из базы"
+type: exercise
+difficulty: 3
+pitfall: "Сервис зависит от абстракции (Protocol), а не проверяет конкретный класс; любой объект с нужным методом подходит."
+statement: |
+  `PriceService` работает только с `PostgresPrices`: проверяет тип и падает с любым другим источником. Поэтому в тесте приходится поднимать базу.
+
+  Перепишите:
+  - `PriceSource` — `Protocol` с методом `get_price(sku)`;
+  - `PriceService(source: PriceSource)` — без проверки типа; `total(skus)` складывает цены всех артикулов;
+  - класс `DictPrices(prices)` — источник цен из словаря `{артикул: цена}` (для тестов и кэша).
+starter_code: |
+  from decimal import Decimal
+
+
+  class PostgresPrices:
+      def get_price(self, sku):
+          return {"TEA-01": Decimal("2490.00"), "MUG-02": Decimal("390.00")}[sku]
+
+
+  class PriceService:
+      def __init__(self, source):
+          if not isinstance(source, PostgresPrices):
+              raise TypeError("нужен PostgresPrices")
+          self.source = source
+
+      def total(self, skus):
+          return sum((self.source.get_price(s) for s in skus), Decimal("0"))
+
+
+  print(PriceService(PostgresPrices()).total(["TEA-01", "MUG-02", "MUG-02"]))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert PriceService(PostgresPrices()).total(["TEA-01", "MUG-02", "MUG-02"]) == Decimal("3270.00")
+      fail: "С PostgresPrices сервис должен работать как раньше."
+    - code: |
+        src = DictPrices({"A": Decimal("10"), "B": Decimal("5")})
+        assert src.get_price("B") == Decimal("5")
+        assert PriceService(src).total(["A", "B", "B"]) == Decimal("20")
+      fail: "DictPrices(prices).get_price(sku) берёт цену из словаря, и PriceService с ним работает."
+    - code: |
+        class Fixed:
+            def get_price(self, sku):
+                return Decimal("1")
+        assert PriceService(Fixed()).total(["x", "y"]) == Decimal("2")
+      fail: "PriceService не должен проверять тип источника: подходит любой объект с get_price."
+    - code: |
+        from typing import Protocol
+        assert issubclass(PriceSource, Protocol) and hasattr(PriceSource, "get_price")
+      fail: "PriceSource — Protocol с методом get_price(sku)."
+solution: |
+  from decimal import Decimal
+  from typing import Protocol
+
+
+  class PriceSource(Protocol):
+      def get_price(self, sku): ...
+
+
+  class PostgresPrices:
+      def get_price(self, sku):
+          return {"TEA-01": Decimal("2490.00"), "MUG-02": Decimal("390.00")}[sku]
+
+
+  class DictPrices:
+      def __init__(self, prices):
+          self.prices = prices
+
+      def get_price(self, sku):
+          return self.prices[sku]
+
+
+  class PriceService:
+      def __init__(self, source: PriceSource):
+          self.source = source
+
+      def total(self, skus):
+          return sum((self.source.get_price(s) for s in skus), Decimal("0"))
+
+
+  print(PriceService(PostgresPrices()).total(["TEA-01", "MUG-02", "MUG-02"]))
+hints:
+  - "Что сервису на самом деле нужно от источника? Опишите это `Protocol` и уберите проверку `isinstance`."
+  - "`class PriceSource(Protocol): def get_price(self, sku): ...`; `DictPrices` хранит словарь и возвращает `self.prices[sku]`."
+explanation: |
+  Сервис зависел от детали — от базы. Теперь он зависит от абстракции «умеет `get_price`», а база, словарь и заглушка из теста — её реализации. `PostgresPrices` и `DictPrices` не наследуют `PriceSource`: `Protocol` описывает форму, а не родителя. Аннотация `source: PriceSource` нужна редактору и mypy; сам Python тип не проверяет.

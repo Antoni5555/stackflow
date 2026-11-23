@@ -1,0 +1,72 @@
+title: "Одиночка без перезаписи"
+type: exercise
+difficulty: 3
+pitfall: "Классический Singleton: _instance в атрибуте класса и защита __init__ от повторного заполнения."
+statement: |
+  Напишите `AppSettings` — одиночку через `__new__`:
+  - `AppSettings(currency="RUB")` при первом вызове создаёт объект с полями `currency` и `debug = False`;
+  - любые следующие вызовы — с аргументами или без — возвращают **тот же** объект и **не меняют** его поля;
+  - метод класса `reset()` забывает экземпляр (для тестов): следующий вызов создаст новый.
+starter_code: |
+  class AppSettings:
+      def __init__(self, currency="RUB"):
+          self.currency = currency
+          self.debug = False
+
+
+  a = AppSettings(currency="USD")
+  a.debug = True
+  b = AppSettings()
+  print(a is b, b.currency, b.debug)
+check:
+  type: tests
+  tests:
+    - code: |
+        AppSettings.reset()
+        a = AppSettings(currency="USD")
+        a.debug = True
+        b = AppSettings(currency="EUR")
+        assert a is b and b.currency == "USD" and b.debug is True
+      fail: "Повторный AppSettings(...) возвращает тот же объект и не перезаписывает поля."
+    - code: |
+        AppSettings.reset()
+        s = AppSettings()
+        assert s.currency == "RUB" and s.debug is False
+      fail: "Первый вызов без аргументов: currency = RUB, debug = False."
+    - code: |
+        AppSettings.reset()
+        first = AppSettings(currency="USD")
+        AppSettings.reset()
+        second = AppSettings()
+        assert first is not second and second.currency == "RUB"
+      fail: "reset() — забыть экземпляр: следующий вызов создаёт новый объект."
+solution: |
+  class AppSettings:
+      _instance = None
+
+      def __new__(cls, currency="RUB"):
+          if cls._instance is None:
+              cls._instance = super().__new__(cls)
+          return cls._instance
+
+      def __init__(self, currency="RUB"):
+          if getattr(self, "_ready", False):
+              return
+          self.currency = currency
+          self.debug = False
+          self._ready = True
+
+      @classmethod
+      def reset(cls):
+          cls._instance = None
+
+
+  a = AppSettings(currency="USD")
+  a.debug = True
+  b = AppSettings()
+  print(a is b, b.currency, b.debug)
+hints:
+  - "`__new__` хранит объект в `cls._instance`. Чем отличить «первый» `__init__` от повторного? Не забудьте, что `__new__` получает те же аргументы, что и `__init__`."
+  - "В `__init__`: `if getattr(self, \"_ready\", False): return`, в конце — `self._ready = True`. `reset`: `@classmethod`, `cls._instance = None`."
+explanation: |
+  `__new__` отвечает за «один объект», а флаг `_ready` — за то, что `__init__` заполняет его только один раз. `reset()` показывает обратную сторону одиночки: тестам приходится вручную чистить общее состояние, иначе они влияют друг на друга.

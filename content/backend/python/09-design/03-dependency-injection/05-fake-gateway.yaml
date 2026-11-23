@@ -1,0 +1,92 @@
+title: "Заглушка платёжного шлюза"
+type: exercise
+difficulty: 2
+pitfall: "Заглушка (fake) — простой класс с тем же интерфейсом: запоминает вызовы и умеет изобразить ошибку."
+statement: |
+  Напишите заглушку `FakeGateway` для тестов оформления заказа:
+  - `charges` — список списанных сумм;
+  - `charge(amount)` добавляет сумму в `charges` и возвращает номер платежа `"fake_1"`, `"fake_2"`… (по порядку);
+  - `FakeGateway(fail=True)` вместо списания выбрасывает `PaymentError("банк недоступен")` и ничего не записывает.
+
+  Сервис `CheckoutService` уже написан — менять его не нужно.
+starter_code: |
+  from decimal import Decimal
+
+
+  class PaymentError(Exception):
+      pass
+
+
+  class CheckoutService:
+      def __init__(self, gateway):
+          self.gateway = gateway
+
+      def checkout(self, total):
+          try:
+              return "ok", self.gateway.charge(total)
+          except PaymentError as e:
+              return "failed", str(e)
+
+
+  # ваш FakeGateway
+check:
+  type: tests
+  tests:
+    - code: |
+        g = FakeGateway()
+        assert g.charge(Decimal("10")) == "fake_1" and g.charge(Decimal("5")) == "fake_2"
+        assert g.charges == [Decimal("10"), Decimal("5")]
+      fail: "charge(amount) запоминает сумму в charges и возвращает fake_1, fake_2…"
+    - code: |
+        a, b = FakeGateway(), FakeGateway()
+        a.charge(Decimal("1"))
+        assert b.charges == [] and b.charge(Decimal("2")) == "fake_1"
+      fail: "У каждой заглушки свой список charges и свой счёт номеров."
+    - code: |
+        g = FakeGateway(fail=True)
+        try:
+            g.charge(Decimal("10"))
+        except PaymentError as e:
+            assert str(e) == "банк недоступен"
+        else:
+            raise AssertionError
+        assert g.charges == []
+      fail: "FakeGateway(fail=True).charge выбрасывает PaymentError(\"банк недоступен\") и ничего не записывает."
+    - code: |
+        assert CheckoutService(FakeGateway()).checkout(Decimal("990")) == ("ok", "fake_1")
+        assert CheckoutService(FakeGateway(fail=True)).checkout(Decimal("990")) == ("failed", "банк недоступен")
+      fail: "С заглушкой CheckoutService должен проходить оба сценария: успех и ошибку банка."
+solution: |
+  from decimal import Decimal
+
+
+  class PaymentError(Exception):
+      pass
+
+
+  class CheckoutService:
+      def __init__(self, gateway):
+          self.gateway = gateway
+
+      def checkout(self, total):
+          try:
+              return "ok", self.gateway.charge(total)
+          except PaymentError as e:
+              return "failed", str(e)
+
+
+  class FakeGateway:
+      def __init__(self, fail=False):
+          self.fail = fail
+          self.charges = []
+
+      def charge(self, amount):
+          if self.fail:
+              raise PaymentError("банк недоступен")
+          self.charges.append(amount)
+          return f"fake_{len(self.charges)}"
+hints:
+  - "Список `charges` — в `__init__`, чтобы у каждой заглушки был свой. Номер платежа можно взять из длины списка."
+  - "`charge`: если `self.fail` — `raise PaymentError(\"банк недоступен\")`, иначе добавить сумму и вернуть `f\"fake_{len(self.charges)}\"`."
+explanation: |
+  Заглушка изображает банк настолько, насколько нужно тесту: запоминает списания и умеет «сломаться». Сценарий «банк недоступен» с настоящим банком проверить почти невозможно, а здесь это один параметр. Такие классы обычно кладут в `tests/fakes.py` и используют во многих тестах.

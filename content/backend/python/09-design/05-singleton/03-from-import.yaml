@@ -1,0 +1,30 @@
+title: "Тест заменил настройки, а сервис не заметил"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "from модуль import объект копирует ссылку; замена объекта в модуле не видна тем, кто импортировал его раньше."
+statement: |
+  ```python
+  # config.py
+  settings = Settings(debug=False)
+
+  # prices.py
+  from config import settings
+
+  def label(amount):
+      return f"{amount} ₽ [debug]" if settings.debug else f"{amount} ₽"
+
+  # тест
+  import config, prices
+  config.settings = Settings(debug=True)
+  print(prices.label(100))
+  ```
+  Что напечатает тест?
+options:
+  - "`100 ₽ [debug]`"
+  - "`100 ₽`"
+  - "`AttributeError`"
+  - "`ImportError`: циклический импорт"
+answer: [1]
+explanation: |
+  `from config import settings` создал в модуле `prices` своё имя `settings`, указывающее на старый объект. Тест перепривязал имя в `config`, но `prices.settings` по-прежнему смотрит на объект с `debug=False`. Это та же ловушка, что с `patch` (тема 8.04). Надёжнее передавать настройки параметром — `label(amount, settings)`.

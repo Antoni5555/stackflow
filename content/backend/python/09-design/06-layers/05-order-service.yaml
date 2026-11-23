@@ -1,0 +1,169 @@
+title: "Сервис оформления заказа"
+type: exercise
+difficulty: 3
+pitfall: "Сервис получает репозитории в конструкторе, проверяет правило и выбрасывает исключение приложения — без HTTP и без SQL."
+statement: |
+  Напишите `OrderService(products, orders)`:
+  - `place_order(product_id, qty)` берёт товар из `products.get`;
+  - если `qty` больше остатка — `OutOfStockError("Чайник: есть 1, нужно 2")`, остаток и заказы не меняются;
+  - иначе уменьшает `stock`, сохраняет товар через `products.save`, создаёт заказ `orders.add(product_id, qty)` и возвращает его номер.
+
+  Репозитории уже написаны.
+starter_code: |
+  from dataclasses import dataclass
+
+
+  @dataclass
+  class Product:
+      id: int
+      name: str
+      stock: int
+
+
+  class ShopError(Exception):
+      pass
+
+
+  class ProductNotFoundError(ShopError):
+      pass
+
+
+  class OutOfStockError(ShopError):
+      pass
+
+
+  class MemoryProductRepository:
+      def __init__(self, products):
+          self.products = {p.id: p for p in products}
+          self.saved = []
+
+      def get(self, product_id):
+          if product_id not in self.products:
+              raise ProductNotFoundError(product_id)
+          return self.products[product_id]
+
+      def save(self, product):
+          self.saved.append(product.id)
+          self.products[product.id] = product
+
+
+  class MemoryOrderRepository:
+      def __init__(self):
+          self.orders = []
+
+      def add(self, product_id, qty):
+          self.orders.append((product_id, qty))
+          return len(self.orders)
+
+
+  products = MemoryProductRepository([Product(1, "Чайник", 3)])
+  service = OrderService(products, MemoryOrderRepository())
+  print(service.place_order(1, 2), products.get(1).stock)
+check:
+  type: tests
+  tests:
+    - code: |
+        p, o = MemoryProductRepository([Product(1, "Чайник", 3)]), MemoryOrderRepository()
+        s = OrderService(p, o)
+        assert s.place_order(1, 2) == 1
+        assert p.get(1).stock == 1 and p.saved == [1] and o.orders == [(1, 2)]
+      fail: "place_order уменьшает остаток, сохраняет товар, создаёт заказ и возвращает его номер."
+    - code: |
+        p, o = MemoryProductRepository([Product(1, "Чайник", 1)]), MemoryOrderRepository()
+        s = OrderService(p, o)
+        try:
+            s.place_order(1, 2)
+        except OutOfStockError as e:
+            assert str(e) == "Чайник: есть 1, нужно 2"
+        else:
+            raise AssertionError
+        assert p.get(1).stock == 1 and p.saved == [] and o.orders == []
+      fail: "Не хватает товара — OutOfStockError(\"Чайник: есть 1, нужно 2\"), ничего не меняется."
+    - code: |
+        s = OrderService(MemoryProductRepository([]), MemoryOrderRepository())
+        try:
+            s.place_order(9, 1)
+        except ProductNotFoundError:
+            pass
+        else:
+            raise AssertionError
+      fail: "Ненайденный товар — ProductNotFoundError из репозитория, сервис его не глотает."
+    - code: |
+        class LoggingOrders:
+            def __init__(self):
+                self.log = []
+            def add(self, product_id, qty):
+                self.log.append(qty)
+                return 777
+        s = OrderService(MemoryProductRepository([Product(1, "Чайник", 3)]), LoggingOrders())
+        assert s.place_order(1, 1) == 777
+      fail: "Сервис должен работать с любым репозиторием заказов через add() и возвращать его результат."
+solution: |
+  from dataclasses import dataclass
+
+
+  @dataclass
+  class Product:
+      id: int
+      name: str
+      stock: int
+
+
+  class ShopError(Exception):
+      pass
+
+
+  class ProductNotFoundError(ShopError):
+      pass
+
+
+  class OutOfStockError(ShopError):
+      pass
+
+
+  class MemoryProductRepository:
+      def __init__(self, products):
+          self.products = {p.id: p for p in products}
+          self.saved = []
+
+      def get(self, product_id):
+          if product_id not in self.products:
+              raise ProductNotFoundError(product_id)
+          return self.products[product_id]
+
+      def save(self, product):
+          self.saved.append(product.id)
+          self.products[product.id] = product
+
+
+  class MemoryOrderRepository:
+      def __init__(self):
+          self.orders = []
+
+      def add(self, product_id, qty):
+          self.orders.append((product_id, qty))
+          return len(self.orders)
+
+
+  class OrderService:
+      def __init__(self, products, orders):
+          self.products = products
+          self.orders = orders
+
+      def place_order(self, product_id, qty):
+          product = self.products.get(product_id)
+          if product.stock < qty:
+              raise OutOfStockError(f"{product.name}: есть {product.stock}, нужно {qty}")
+          product.stock -= qty
+          self.products.save(product)
+          return self.orders.add(product_id, qty)
+
+
+  products = MemoryProductRepository([Product(1, "Чайник", 3)])
+  service = OrderService(products, MemoryOrderRepository())
+  print(service.place_order(1, 2), products.get(1).stock)
+hints:
+  - "Сначала проверка остатка, потом изменения — тогда при ошибке ничего не надо откатывать."
+  - "`product = self.products.get(product_id)`, `if product.stock < qty: raise OutOfStockError(...)`, затем `stock -= qty`, `save`, `return self.orders.add(...)`."
+explanation: |
+  Сервис содержит только правило и порядок действий; где лежат данные — решают репозитории, как показать ошибку — представление. Проверка стоит до изменений: если товара не хватает, хранилище остаётся нетронутым. В настоящей базе списание и создание заказа ещё оборачивают в транзакцию.

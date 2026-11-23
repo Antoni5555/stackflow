@@ -1,0 +1,89 @@
+title: "Фабрика экспортёров"
+type: exercise
+difficulty: 2
+pitfall: "Словарь «название → класс» и понятная ошибка со списком допустимых названий вместо None."
+statement: |
+  Отчёт о заказах выгружается в разные форматы. Напишите простую фабрику:
+  - словарь `EXPORTERS = {"csv": CsvExporter, "json": JsonExporter}` — классы, не объекты;
+  - `get_exporter(fmt)` возвращает **новый объект** нужного класса;
+  - неизвестный формат — `ValueError("неизвестный формат 'xml', есть: csv, json")` (названия по алфавиту через запятую).
+starter_code: |
+  import json
+
+
+  class CsvExporter:
+      def export(self, rows):
+          return "\n".join(",".join(str(v) for v in row.values()) for row in rows)
+
+
+  class JsonExporter:
+      def export(self, rows):
+          return json.dumps(rows, ensure_ascii=False)
+
+
+  rows = [{"id": 1042, "total": 2490}, {"id": 1043, "total": 990}]
+  print(get_exporter("csv").export(rows))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert EXPORTERS == {"csv": CsvExporter, "json": JsonExporter}
+      fail: "EXPORTERS — словарь «название → класс»: {\"csv\": CsvExporter, \"json\": JsonExporter}."
+    - code: |
+        e = get_exporter("json")
+        assert isinstance(e, JsonExporter) and get_exporter("json") is not e
+        assert get_exporter("csv").export(rows) == "1042,2490\n1043,990"
+      fail: "get_exporter(fmt) создаёт новый объект нужного класса при каждом вызове."
+    - code: |
+        try:
+            get_exporter("xml")
+        except ValueError as e:
+            assert str(e) == "неизвестный формат 'xml', есть: csv, json"
+        else:
+            raise AssertionError
+      fail: "Неизвестный формат — ValueError(\"неизвестный формат 'xml', есть: csv, json\")."
+    - code: |
+        class Tsv:
+            def export(self, rows):
+                return "tsv"
+        EXPORTERS["tsv"] = Tsv
+        try:
+            assert get_exporter("tsv").export([]) == "tsv"
+            try:
+                get_exporter("pdf")
+            except ValueError as e:
+                assert str(e).endswith("есть: csv, json, tsv")
+        finally:
+            del EXPORTERS["tsv"]
+      fail: "get_exporter должна брать классы из EXPORTERS — новый формат в словаре должен работать без правки функции."
+solution: |
+  import json
+
+
+  class CsvExporter:
+      def export(self, rows):
+          return "\n".join(",".join(str(v) for v in row.values()) for row in rows)
+
+
+  class JsonExporter:
+      def export(self, rows):
+          return json.dumps(rows, ensure_ascii=False)
+
+
+  EXPORTERS = {"csv": CsvExporter, "json": JsonExporter}
+
+
+  def get_exporter(fmt):
+      if fmt not in EXPORTERS:
+          known = ", ".join(sorted(EXPORTERS))
+          raise ValueError(f"неизвестный формат {fmt!r}, есть: {known}")
+      return EXPORTERS[fmt]()
+
+
+  rows = [{"id": 1042, "total": 2490}, {"id": 1043, "total": 990}]
+  print(get_exporter("csv").export(rows))
+hints:
+  - "В словаре — сами классы, без скобок. Как создать объект, если класс лежит в словаре?"
+  - "`EXPORTERS[fmt]()`; для ошибки — `\", \".join(sorted(EXPORTERS))` и `{fmt!r}` для кавычек."
+explanation: |
+  Классы в Python — обычные значения: их кладут в словарь и вызывают, как функции. Фабрика создаёт новый объект на каждый вызов и сразу объясняет ошибку в названии. Последний тест добавил формат снаружи — функция его подхватила, потому что читает список названий из словаря.

@@ -1,0 +1,103 @@
+- title: Расчёт отдельно
+  text: |
+    Вынесите расчёт суммы корзины в отдельный класс `CartCalculator` с методом `total(items)`, где позиция — `(название, цена, количество)`:
+    ```python
+    items = [("Чайник", 2490, 1), ("Кружка", 390, 4)]
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class CartCalculator:
+        def total(self, items):
+            return sum(price * qty for _, price, qty in items)
+
+
+    items = [("Чайник", 2490, 1), ("Кружка", 390, 4)]
+    print(CartCalculator().total(items))
+    ```
+    Результат:
+    ```
+    4050
+    ```
+    Расчёт проверяется сам по себе — без хранилища, писем и сервиса.
+- title: Словарь вместо elif
+  text: |
+    Перепишите функцию без `if/elif`: текст статуса берётся из словаря, неизвестный статус — `"статус неизвестен"`.
+    ```python
+    def status_text(status):
+        if status == "new":
+            return "заказ принят"
+        elif status == "paid":
+            return "заказ оплачен"
+        elif status == "shipped":
+            return "заказ в пути"
+        return "статус неизвестен"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    STATUS_TEXT = {
+        "new": "заказ принят",
+        "paid": "заказ оплачен",
+        "shipped": "заказ в пути",
+    }
+
+
+    def status_text(status):
+        return STATUS_TEXT.get(status, "статус неизвестен")
+
+
+    print(status_text("paid"))
+    print(status_text("lost"))
+    ```
+    Результат:
+    ```
+    заказ оплачен
+    статус неизвестен
+    ```
+    Новый статус — новая строка в словаре; функцию больше не правят.
+- title: Новый способ доставки
+  text: |
+    Добавьте экспресс-доставку за 700 ₽, не меняя `Courier` и `delivery_price`:
+    ```python
+    class Courier:
+        def price(self, total):
+            return 300
+
+
+    DELIVERY = {"courier": Courier()}
+
+
+    def delivery_price(method, total):
+        return DELIVERY[method].price(total)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Courier:
+        def price(self, total):
+            return 300
+
+
+    DELIVERY = {"courier": Courier()}
+
+
+    def delivery_price(method, total):
+        return DELIVERY[method].price(total)
+
+
+    class Express:
+        def price(self, total):
+            return 700
+
+
+    DELIVERY["express"] = Express()
+    print(delivery_price("courier", 1000))
+    print(delivery_price("express", 1000))
+    ```
+    Результат:
+    ```
+    300
+    700
+    ```
+    Новый класс и строка в словаре — старый код не тронут.

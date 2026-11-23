@@ -1,0 +1,89 @@
+- title: Один и тот же объект
+  text: |
+    Сделайте функцию `get_cart_rules()`, которая создаёт словарь правил корзины один раз, и проверьте, что второй вызов возвращает тот же объект:
+    ```python
+    {"max_items": 50, "min_total": 100}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from functools import cache
+
+
+    @cache
+    def get_cart_rules():
+        print("создаю правила")
+        return {"max_items": 50, "min_total": 100}
+
+
+    print(get_cart_rules() is get_cart_rules())
+    ```
+    Результат:
+    ```
+    создаю правила
+    True
+    ```
+- title: Сброс кэша
+  text: |
+    Для функции из прошлого упражнения сбросьте кэш и убедитесь, что объект создаётся заново:
+    ```
+    cache_clear()
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from functools import cache
+
+
+    @cache
+    def get_cart_rules():
+        return {"max_items": 50, "min_total": 100}
+
+
+    old = get_cart_rules()
+    get_cart_rules.cache_clear()
+    print(get_cart_rules() is old)
+    ```
+    Результат:
+    ```
+    False
+    ```
+    Так тесты получают свежий объект и не зависят друг от друга.
+- title: __init__ каждый раз
+  text: |
+    Посмотрите, сколько раз выполнится `__init__` у одиночки через `__new__`, если создать объект трижды:
+    ```python
+    class Logger:
+        _instance = None
+
+        def __new__(cls):
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+            return cls._instance
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class Logger:
+        _instance = None
+
+        def __new__(cls):
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+            return cls._instance
+
+        def __init__(self):
+            print("__init__")
+
+
+    a, b, c = Logger(), Logger(), Logger()
+    print(a is b is c)
+    ```
+    Результат:
+    ```
+    __init__
+    __init__
+    __init__
+    True
+    ```
+    Объект один, но `__init__` — при каждом вызове.

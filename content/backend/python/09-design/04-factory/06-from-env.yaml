@@ -1,0 +1,63 @@
+title: "Уведомитель из окружения"
+type: exercise
+difficulty: 2
+pitfall: "Альтернативный конструктор — @classmethod, внутри — cls(...), чтобы работать и для наследников."
+statement: |
+  Добавьте в `SmsNotifier` альтернативный конструктор `from_env(env)`:
+  - `env` — словарь переменных окружения (в работе — `os.environ`);
+  - ключ берётся из `SMS_API_KEY`; если его нет или он пустой — `ValueError("SMS_API_KEY не задан")`;
+  - имя отправителя — `SMS_SENDER`, по умолчанию `"SHOP"`;
+  - объект создаётся через `cls(...)`.
+starter_code: |
+  class SmsNotifier:
+      def __init__(self, api_key, sender="SHOP"):
+          self.api_key = api_key
+          self.sender = sender
+
+
+  sms = SmsNotifier.from_env({"SMS_API_KEY": "k-91", "SMS_SENDER": "STACK"})
+  print(sms.api_key, sms.sender)
+check:
+  type: tests
+  tests:
+    - code: |
+        s = SmsNotifier.from_env({"SMS_API_KEY": "k-91", "SMS_SENDER": "STACK"})
+        assert (s.api_key, s.sender) == ("k-91", "STACK")
+        s = SmsNotifier.from_env({"SMS_API_KEY": "k-91"})
+        assert s.sender == "SHOP"
+      fail: "from_env берёт SMS_API_KEY и SMS_SENDER (по умолчанию SHOP)."
+    - code: |
+        for env in ({}, {"SMS_API_KEY": ""}):
+            try:
+                SmsNotifier.from_env(env)
+            except ValueError as e:
+                assert str(e) == "SMS_API_KEY не задан"
+            else:
+                raise AssertionError(env)
+      fail: "Без SMS_API_KEY или с пустым значением — ValueError(\"SMS_API_KEY не задан\")."
+    - code: |
+        class TestSms(SmsNotifier):
+            pass
+        assert type(TestSms.from_env({"SMS_API_KEY": "t"})) is TestSms
+      fail: "Наследник через from_env должен получать объект своего класса — создавайте через cls(...)."
+solution: |
+  class SmsNotifier:
+      def __init__(self, api_key, sender="SHOP"):
+          self.api_key = api_key
+          self.sender = sender
+
+      @classmethod
+      def from_env(cls, env):
+          api_key = env.get("SMS_API_KEY")
+          if not api_key:
+              raise ValueError("SMS_API_KEY не задан")
+          return cls(api_key, env.get("SMS_SENDER", "SHOP"))
+
+
+  sms = SmsNotifier.from_env({"SMS_API_KEY": "k-91", "SMS_SENDER": "STACK"})
+  print(sms.api_key, sms.sender)
+hints:
+  - "Метод получает класс первым параметром — `@classmethod def from_env(cls, env)`. Как проверить сразу «нет ключа» и «пустая строка»?"
+  - "`api_key = env.get(\"SMS_API_KEY\")`, `if not api_key: raise …`, `return cls(api_key, env.get(\"SMS_SENDER\", \"SHOP\"))`."
+explanation: |
+  `__init__` остался простым — он принимает готовые значения, и в тестах объект создают напрямую. Разбор окружения и проверка ключа — в `from_env`: ошибка в настройках сервера видна сразу при запуске, а не при первой SMS. `cls(...)` делает метод полезным и для наследников.

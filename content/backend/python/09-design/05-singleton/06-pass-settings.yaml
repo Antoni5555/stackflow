@@ -1,0 +1,61 @@
+title: "Настройки параметром"
+type: exercise
+difficulty: 2
+pitfall: "Одиночка внутри логики — скрытая зависимость; настройки передают в конструктор."
+statement: |
+  `PriceFormatter` сам берёт глобальные настройки, поэтому тесты разных валют мешают друг другу. Перепишите: `PriceFormatter(settings)` получает настройки в конструкторе, `format(amount)` возвращает `"2490.00 RUB"` — сумма с двумя знаками и валюта из `settings.currency`. Глобальный `SETTINGS` удалите.
+starter_code: |
+  from decimal import Decimal
+
+
+  class Settings:
+      def __init__(self, currency="RUB"):
+          self.currency = currency
+
+
+  SETTINGS = Settings()
+
+
+  class PriceFormatter:
+      def format(self, amount):
+          return f"{amount:.2f} {SETTINGS.currency}"
+
+
+  print(PriceFormatter().format(Decimal("2490")))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert PriceFormatter(Settings("USD")).format(Decimal("19.9")) == "19.90 USD"
+        assert PriceFormatter(Settings()).format(Decimal("2490")) == "2490.00 RUB"
+      fail: "PriceFormatter(settings).format(amount): два знака и валюта из переданных настроек."
+    - code: |
+        rub, usd = PriceFormatter(Settings("RUB")), PriceFormatter(Settings("USD"))
+        assert rub.format(Decimal("1")) == "1.00 RUB" and usd.format(Decimal("1")) == "1.00 USD"
+      fail: "Два форматтера с разными настройками не должны влиять друг на друга."
+    - code: |
+        assert "SETTINGS" not in globals()
+      fail: "Глобальный SETTINGS нужно удалить — настройки приходят в конструктор."
+solution: |
+  from decimal import Decimal
+
+
+  class Settings:
+      def __init__(self, currency="RUB"):
+          self.currency = currency
+
+
+  class PriceFormatter:
+      def __init__(self, settings):
+          self.settings = settings
+
+      def format(self, amount):
+          return f"{amount:.2f} {self.settings.currency}"
+
+
+  print(PriceFormatter(Settings()).format(Decimal("2490")))
+hints:
+  - "Добавьте `__init__(self, settings)` и используйте `self.settings` вместо `SETTINGS`."
+  - "Внизу файла создайте настройки при вызове: `PriceFormatter(Settings()).format(...)`."
+explanation: |
+  Теперь в приложении настройки всё ещё могут быть одни — их создают один раз в точке сборки и передают. Но форматтер об этом не знает и работает с любыми настройками, поэтому тесты рублей и долларов не мешают друг другу.

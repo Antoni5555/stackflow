@@ -1,0 +1,109 @@
+title: "Разделите сервис заказа"
+type: exercise
+difficulty: 2
+pitfall: "Координатор вызывает части и сам не считает; каждая часть меняется по своей причине."
+statement: |
+  `OrderService.checkout` и считает сумму, и сохраняет заказ, и пишет письмо. Разделите его:
+  - `PriceCalculator.total(items)` — сумма позиций `(название, цена, количество)`, от 5000 ₽ скидка 5 %;
+  - `OrderRepository.save(order_id, total)` — добавляет `{"id": …, "total": …}` в список `orders`;
+  - `EmailNotifier.order_created(email, order_id, total)` — добавляет строку `"{email}: заказ №{order_id} на {total} ₽"` в список `outbox`;
+  - `OrderService(calc, repo, notifier)` — `checkout(order_id, items, email)` вызывает их по порядку и возвращает сумму.
+starter_code: |
+  from decimal import Decimal
+
+
+  class OrderService:
+      def __init__(self):
+          self.orders = []
+          self.outbox = []
+
+      def checkout(self, order_id, items, email):
+          total = sum(price * qty for _, price, qty in items)
+          if total >= Decimal("5000"):
+              total = total * Decimal("0.95")
+          self.orders.append({"id": order_id, "total": total})
+          self.outbox.append(f"{email}: заказ №{order_id} на {total} ₽")
+          return total
+
+
+  items = [("Монитор", Decimal("4990"), 1), ("Кабель", Decimal("490"), 2)]
+check:
+  type: tests
+  tests:
+    - code: |
+        calc = PriceCalculator()
+        assert calc.total(items) == Decimal("5671.50")
+        assert calc.total([("Кабель", Decimal("490"), 2)]) == Decimal("980")
+      fail: "PriceCalculator.total(items): сумма позиций, от 5000 ₽ — скидка 5 %."
+    - code: |
+        repo = OrderRepository()
+        repo.save(7, Decimal("100"))
+        assert repo.orders == [{"id": 7, "total": Decimal("100")}]
+      fail: "OrderRepository.save(order_id, total) добавляет словарь в список orders."
+    - code: |
+        n = EmailNotifier()
+        n.order_created("a@b.ru", 7, Decimal("100"))
+        assert n.outbox == ["a@b.ru: заказ №7 на 100 ₽"]
+      fail: "EmailNotifier.order_created пишет строку «email: заказ №id на сумма ₽» в outbox."
+    - code: |
+        repo, n = OrderRepository(), EmailNotifier()
+        s = OrderService(PriceCalculator(), repo, n)
+        assert s.checkout(1042, items, "anna@example.com") == Decimal("5671.50")
+        assert repo.orders == [{"id": 1042, "total": Decimal("5671.50")}]
+        assert n.outbox == ["anna@example.com: заказ №1042 на 5671.50 ₽"]
+      fail: "OrderService(calc, repo, notifier).checkout вызывает части по порядку и возвращает сумму."
+    - code: |
+        class FixedCalc:
+            def total(self, items):
+                return Decimal("1")
+        repo = OrderRepository()
+        s = OrderService(FixedCalc(), repo, EmailNotifier())
+        assert s.checkout(1, items, "x@y.ru") == Decimal("1") and repo.orders[0]["total"] == Decimal("1")
+      fail: "OrderService сам считает сумму? Пусть вызывает self.calc.total(items) — тогда калькулятор можно заменить."
+solution: |
+  from decimal import Decimal
+
+
+  class PriceCalculator:
+      def total(self, items):
+          total = sum(price * qty for _, price, qty in items)
+          if total >= Decimal("5000"):
+              total = total * Decimal("0.95")
+          return total
+
+
+  class OrderRepository:
+      def __init__(self):
+          self.orders = []
+
+      def save(self, order_id, total):
+          self.orders.append({"id": order_id, "total": total})
+
+
+  class EmailNotifier:
+      def __init__(self):
+          self.outbox = []
+
+      def order_created(self, email, order_id, total):
+          self.outbox.append(f"{email}: заказ №{order_id} на {total} ₽")
+
+
+  class OrderService:
+      def __init__(self, calc, repo, notifier):
+          self.calc = calc
+          self.repo = repo
+          self.notifier = notifier
+
+      def checkout(self, order_id, items, email):
+          total = self.calc.total(items)
+          self.repo.save(order_id, total)
+          self.notifier.order_created(email, order_id, total)
+          return total
+
+
+  items = [("Монитор", Decimal("4990"), 1), ("Кабель", Decimal("490"), 2)]
+hints:
+  - "Три ответственности — три класса. Перенесите в каждый свой кусок `checkout`, а списки `orders` и `outbox` — в те классы, которым они принадлежат."
+  - "`OrderService.__init__(self, calc, repo, notifier)` сохраняет части, `checkout` вызывает `self.calc.total`, `self.repo.save`, `self.notifier.order_created`."
+explanation: |
+  Теперь скидку меняют в `PriceCalculator`, формат письма — в `EmailNotifier`, хранение — в `OrderRepository`, и ни одна правка не задевает остальные. Последний тест подставил свой калькулятор: координатор, который сам ничего не считает, работает с любой частью с нужным методом.

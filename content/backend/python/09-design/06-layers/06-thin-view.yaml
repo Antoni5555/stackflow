@@ -1,0 +1,94 @@
+title: "Тонкое представление"
+type: exercise
+difficulty: 2
+pitfall: "Представление проверяет формат входа и переводит исключения приложения в HTTP-статусы; правил в нём нет."
+statement: |
+  Напишите `place_order_view(request, service)` — обработчик запроса. `request` — словарь, ответ — пара `(статус, тело)`:
+  - `qty` не целое больше нуля (в том числе строка `"2"` или `True`) — `(400, {"error": "qty — целое больше нуля"})`, сервис не вызывается;
+  - успех — `(201, {"order_id": номер})`;
+  - `ProductNotFoundError` — `(404, {"error": "товар не найден"})`;
+  - `OutOfStockError` — `(409, {"error": текст исключения})`.
+
+  Сервис передаётся параметром — в тестах это заглушка.
+starter_code: |
+  class ShopError(Exception):
+      pass
+
+
+  class ProductNotFoundError(ShopError):
+      pass
+
+
+  class OutOfStockError(ShopError):
+      pass
+
+
+  class FakeService:
+      def place_order(self, product_id, qty):
+          if product_id == 9:
+              raise ProductNotFoundError(product_id)
+          if qty > 3:
+              raise OutOfStockError(f"есть 3, нужно {qty}")
+          return 1042
+
+
+  print(place_order_view({"product_id": 1, "qty": 2}, FakeService()))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert place_order_view({"product_id": 1, "qty": 2}, FakeService()) == (201, {"order_id": 1042})
+      fail: "Успех — (201, {\"order_id\": номер})."
+    - code: |
+        assert place_order_view({"product_id": 9, "qty": 1}, FakeService()) == (404, {"error": "товар не найден"})
+        assert place_order_view({"product_id": 1, "qty": 5}, FakeService()) == (409, {"error": "есть 3, нужно 5"})
+      fail: "ProductNotFoundError → 404, OutOfStockError → 409 с текстом исключения."
+    - code: |
+        class Boom:
+            def place_order(self, product_id, qty):
+                raise AssertionError("сервис не должен вызываться")
+        for qty in ("2", 0, -1, None, True, 1.5):
+            assert place_order_view({"product_id": 1, "qty": qty}, Boom()) == (400, {"error": "qty — целое больше нуля"}), qty
+        assert place_order_view({"product_id": 1}, Boom())[0] == 400
+      fail: "Неверный qty (строка, 0, минус, None, True, дробь, нет поля) — 400, и сервис не вызывается. bool в Python — подкласс int."
+solution: |
+  class ShopError(Exception):
+      pass
+
+
+  class ProductNotFoundError(ShopError):
+      pass
+
+
+  class OutOfStockError(ShopError):
+      pass
+
+
+  class FakeService:
+      def place_order(self, product_id, qty):
+          if product_id == 9:
+              raise ProductNotFoundError(product_id)
+          if qty > 3:
+              raise OutOfStockError(f"есть 3, нужно {qty}")
+          return 1042
+
+
+  def place_order_view(request, service):
+      qty = request.get("qty")
+      if type(qty) is not int or qty <= 0:
+          return 400, {"error": "qty — целое больше нуля"}
+      try:
+          order_id = service.place_order(request["product_id"], qty)
+      except ProductNotFoundError:
+          return 404, {"error": "товар не найден"}
+      except OutOfStockError as e:
+          return 409, {"error": str(e)}
+      return 201, {"order_id": order_id}
+
+
+  print(place_order_view({"product_id": 1, "qty": 2}, FakeService()))
+hints:
+  - "Сначала формат `qty`, потом `try` вокруг вызова сервиса с двумя `except`. Почему `isinstance(True, int)` не подходит для проверки?"
+  - "`if type(qty) is not int or qty <= 0: return 400, …`; `request.get(\"qty\")` вернёт `None`, если поля нет."
+explanation: |
+  Представление не знает ни про склад, ни про базу: формат входа, вызов сервиса и перевод исключений в статусы. Поэтому его проверяют заглушкой сервиса, а сам сервис — без HTTP. `True` — ловушка: `bool` в Python — подкласс `int`, и `isinstance(True, int)` истинно, поэтому для строгой проверки берут `type(qty) is int`.

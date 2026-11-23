@@ -1,0 +1,102 @@
+title: "Отмена заказа без глобальных объектов"
+type: exercise
+difficulty: 3
+pitfall: "Функция получает хранилище и уведомитель параметрами, а не берёт глобальные объекты модуля."
+statement: |
+  `cancel_order` берёт глобальные `REPO` и `NOTIFIER`, поэтому в тесте её не проверить без настоящего хранилища. Перепишите:
+  - `cancel_order(order_id, repo, notifier)` — зависимости приходят параметрами;
+  - логика та же: если статус заказа `"shipped"` — вернуть `False` и ничего не менять; иначе поставить `"cancelled"`, сохранить через `repo.save(order)`, отправить «Заказ №… отменён» и вернуть `True`.
+
+  Глобальные `REPO` и `NOTIFIER` удалите. Классы `MemoryRepo` и `PrintNotifier` оставьте.
+starter_code: |
+  class MemoryRepo:
+      def __init__(self, orders):
+          self.orders = {o["id"]: o for o in orders}
+
+      def get(self, order_id):
+          return dict(self.orders[order_id])
+
+      def save(self, order):
+          self.orders[order["id"]] = order
+
+
+  class PrintNotifier:
+      def send(self, text):
+          print(text)
+
+
+  REPO = MemoryRepo([{"id": 1042, "status": "paid"}, {"id": 1043, "status": "shipped"}])
+  NOTIFIER = PrintNotifier()
+
+
+  def cancel_order(order_id):
+      order = REPO.get(order_id)
+      if order["status"] == "shipped":
+          return False
+      order["status"] = "cancelled"
+      REPO.save(order)
+      NOTIFIER.send(f"Заказ №{order_id} отменён")
+      return True
+
+
+  print(cancel_order(1042), cancel_order(1043))
+check:
+  type: tests
+  tests:
+    - code: |
+        class Fake:
+            def __init__(self):
+                self.sent = []
+            def send(self, text):
+                self.sent.append(text)
+        repo, fake = MemoryRepo([{"id": 7, "status": "paid"}]), Fake()
+        assert cancel_order(7, repo, fake) is True
+        assert repo.orders[7]["status"] == "cancelled" and fake.sent == ["Заказ №7 отменён"]
+      fail: "cancel_order(order_id, repo, notifier): ставит cancelled, сохраняет и отправляет сообщение."
+    - code: |
+        class Fake:
+            def __init__(self):
+                self.sent = []
+            def send(self, text):
+                self.sent.append(text)
+        repo, fake = MemoryRepo([{"id": 8, "status": "shipped"}]), Fake()
+        assert cancel_order(8, repo, fake) is False
+        assert repo.orders[8]["status"] == "shipped" and fake.sent == []
+      fail: "Отправленный заказ не отменяется: False, статус и сообщения без изменений."
+    - code: |
+        assert "REPO" not in globals() and "NOTIFIER" not in globals()
+      fail: "Глобальные REPO и NOTIFIER нужно удалить — зависимости приходят параметрами."
+solution: |
+  class MemoryRepo:
+      def __init__(self, orders):
+          self.orders = {o["id"]: o for o in orders}
+
+      def get(self, order_id):
+          return dict(self.orders[order_id])
+
+      def save(self, order):
+          self.orders[order["id"]] = order
+
+
+  class PrintNotifier:
+      def send(self, text):
+          print(text)
+
+
+  def cancel_order(order_id, repo, notifier):
+      order = repo.get(order_id)
+      if order["status"] == "shipped":
+          return False
+      order["status"] = "cancelled"
+      repo.save(order)
+      notifier.send(f"Заказ №{order_id} отменён")
+      return True
+
+
+  repo = MemoryRepo([{"id": 1042, "status": "paid"}, {"id": 1043, "status": "shipped"}])
+  print(cancel_order(1042, repo, PrintNotifier()))
+hints:
+  - "Добавьте параметры `repo` и `notifier` и замените внутри `REPO` и `NOTIFIER` на них."
+  - "Объекты для запуска создайте внизу файла обычными переменными и передайте в вызов: `cancel_order(1042, repo, PrintNotifier())`."
+explanation: |
+  Для функции внедрение зависимостей — просто параметры. Теперь тест создаёт своё хранилище с нужными заказами и заглушку уведомлений, и тесты не мешают друг другу через общий глобальный объект.

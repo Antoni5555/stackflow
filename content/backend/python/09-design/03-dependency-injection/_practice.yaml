@@ -1,0 +1,92 @@
+- title: Дата параметром
+  text: |
+    Напишите `is_weekend(today)` — выходной ли день, — и проверьте на двух фиксированных датах:
+    ```python
+    from datetime import date
+
+    date(2026, 11, 28), date(2026, 11, 30)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    from datetime import date
+
+
+    def is_weekend(today):
+        return today.weekday() >= 5
+
+
+    print(is_weekend(date(2026, 11, 28)))
+    print(is_weekend(date(2026, 11, 30)))
+    ```
+    Результат:
+    ```
+    True
+    False
+    ```
+    28 ноября 2026 — суббота, 30-е — понедельник. С датой-параметром результат не зависит от дня запуска.
+- title: Уведомитель по умолчанию
+  text: |
+    `Order(id, notifier=None)`: если уведомитель не передали, создаётся свой `PrintNotifier()`. Проверьте, что у двух заказов они разные:
+    ```python
+    class PrintNotifier:
+        def send(self, text):
+            print(text)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class PrintNotifier:
+        def send(self, text):
+            print(text)
+
+
+    class Order:
+        def __init__(self, id, notifier=None):
+            self.id = id
+            if notifier is None:
+                notifier = PrintNotifier()
+            self.notifier = notifier
+
+
+    a, b = Order(1), Order(2)
+    print(a.notifier is b.notifier)
+    ```
+    Результат:
+    ```
+    False
+    ```
+    `PrintNotifier()` создаётся внутри `__init__` при каждом вызове, а не один раз при определении функции.
+- title: Точка сборки
+  text: |
+    Напишите `build_service()`, которая создаёт `OrderService` с `PrintNotifier`, и отправьте через сервис сообщение о заказе:
+    ```
+    1042
+    ```
+  answer: |
+    Ответ:
+    ```python
+    class PrintNotifier:
+        def send(self, text):
+            print(text)
+
+
+    class OrderService:
+        def __init__(self, notifier):
+            self.notifier = notifier
+
+        def paid(self, order_id):
+            self.notifier.send(f"Заказ №{order_id} оплачен")
+
+
+    def build_service():
+        return OrderService(PrintNotifier())
+
+
+    build_service().paid(1042)
+    ```
+    Результат:
+    ```
+    Заказ №1042 оплачен
+    ```
+    Чтобы сменить канал, правят только `build_service`.

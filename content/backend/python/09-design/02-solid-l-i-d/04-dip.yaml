@@ -1,0 +1,15 @@
+title: "От чего зависит сервис"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "D: сервис зависит от абстракции, а конкретный класс выбирают снаружи; передать снаружи конкретный класс — это ещё не D."
+statement: |
+  Какой вариант `OrderService` следует принципу инверсии зависимостей?
+options:
+  - "`def __init__(self): self.notifier = SmtpNotifier(\"smtp.example.com\")`"
+  - "`def __init__(self, notifier: SmtpNotifier): self.notifier = notifier` — и внутри `if isinstance(notifier, SmtpNotifier): …`"
+  - "`def __init__(self, notifier: Notifier): self.notifier = notifier`, где `Notifier` — `Protocol` с методом `send(text)`"
+  - "`from shop.smtp import send_mail` в модуле сервиса и вызов `send_mail(text)`"
+answer: [2]
+explanation: |
+  Только в третьем варианте сервис знает лишь абстракцию «умеет `send`». В первом и четвёртом он намертво связан с SMTP. Во втором зависимость передают снаружи (это внедрение зависимостей), но сервис всё равно привязан к конкретному классу и проверяет его через `isinstance` — Telegram или заглушку туда не подставить.

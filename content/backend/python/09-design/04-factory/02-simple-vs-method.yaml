@@ -1,0 +1,29 @@
+title: "Простая фабрика или фабричный метод"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Простая фабрика выбирает класс по параметру; фабричный метод — наследник решает, какой объект создать."
+statement: |
+  ```python
+  class ReportJob:
+      def run(self, orders):
+          exporter = self.create_exporter()
+          return exporter.export(orders)
+
+      def create_exporter(self):
+          raise NotImplementedError
+
+
+  class CsvReportJob(ReportJob):
+      def create_exporter(self):
+          return CsvExporter()
+  ```
+  Какой это паттерн?
+options:
+  - "Простая фабрика"
+  - "Фабричный метод"
+  - "Абстрактная фабрика"
+  - "Singleton"
+answer: [1]
+explanation: |
+  Базовый класс задаёт сценарий (`run`) и вызывает `create_exporter()`, а наследник решает, какой объект создать, — это фабричный метод. Простая фабрика выглядела бы как одна функция `get_exporter("csv")` со словарём классов. Абстрактная фабрика создаёт целое семейство связанных объектов, а не один.

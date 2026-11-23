@@ -1,0 +1,94 @@
+title: "Доставка без elif"
+type: exercise
+difficulty: 2
+pitfall: "Словарь «название → объект» и общий метод: новый способ добавляется без правки функции выбора."
+statement: |
+  `delivery_price(method, total)` растёт с каждым способом доставки. Перепишите:
+  - классы `Courier` (300 ₽), `Pickup` (0 ₽) и `Post` (250 ₽, от 3000 ₽ — бесплатно) с методом `price(total)`;
+  - словарь `DELIVERY = {"courier": Courier(), "pickup": Pickup(), "post": Post()}`;
+  - `delivery_price(method, total)` берёт объект из `DELIVERY` и вызывает `price`; неизвестный способ — `ValueError("неизвестная доставка: <method>")`.
+starter_code: |
+  from decimal import Decimal
+
+
+  def delivery_price(method, total):
+      if method == "courier":
+          return Decimal("300")
+      elif method == "pickup":
+          return Decimal("0")
+      elif method == "post":
+          if total >= Decimal("3000"):
+              return Decimal("0")
+          return Decimal("250")
+      else:
+          raise ValueError(f"неизвестная доставка: {method}")
+
+
+  print(delivery_price("post", Decimal("980")))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert delivery_price("courier", Decimal("100")) == Decimal("300")
+        assert delivery_price("pickup", Decimal("100")) == Decimal("0")
+        assert delivery_price("post", Decimal("980")) == Decimal("250")
+        assert delivery_price("post", Decimal("3000")) == Decimal("0")
+      fail: "Цены: курьер 300, самовывоз 0, почта 250 и бесплатно от 3000 ₽."
+    - code: |
+        assert isinstance(DELIVERY["courier"], Courier) and isinstance(DELIVERY["post"], Post)
+        assert Post().price(Decimal("980")) == Decimal("250")
+      fail: "Нужны классы Courier, Pickup, Post с методом price(total) и словарь DELIVERY с их объектами."
+    - code: |
+        class Drone:
+            def price(self, total):
+                return Decimal("999")
+        DELIVERY["drone"] = Drone()
+        try:
+            assert delivery_price("drone", Decimal("1")) == Decimal("999")
+        finally:
+            del DELIVERY["drone"]
+      fail: "Новый способ, добавленный в DELIVERY, не работает: delivery_price должна брать объект из словаря, а не перечислять способы."
+    - code: |
+        try:
+            delivery_price("teleport", Decimal("1"))
+        except ValueError as e:
+            assert str(e) == "неизвестная доставка: teleport"
+        else:
+            raise AssertionError
+      fail: "Неизвестный способ — ValueError(\"неизвестная доставка: teleport\")."
+solution: |
+  from decimal import Decimal
+
+
+  class Courier:
+      def price(self, total):
+          return Decimal("300")
+
+
+  class Pickup:
+      def price(self, total):
+          return Decimal("0")
+
+
+  class Post:
+      def price(self, total):
+          if total >= Decimal("3000"):
+              return Decimal("0")
+          return Decimal("250")
+
+
+  DELIVERY = {"courier": Courier(), "pickup": Pickup(), "post": Post()}
+
+
+  def delivery_price(method, total):
+      if method not in DELIVERY:
+          raise ValueError(f"неизвестная доставка: {method}")
+      return DELIVERY[method].price(total)
+
+
+  print(delivery_price("post", Decimal("980")))
+hints:
+  - "Каждая ветка `if/elif` станет методом `price` своего класса."
+  - "`delivery_price`: проверить `method not in DELIVERY`, иначе `return DELIVERY[method].price(total)`."
+explanation: |
+  Третий тест добавил способ «дрон» снаружи — и `delivery_price` с ним справилась без единой правки. Это и есть «открыт для расширения, закрыт для изменения»: новое поведение — новый класс и строка в словаре.
