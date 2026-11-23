@@ -381,7 +381,7 @@ function prepare(ctx, name) {
     if (pulled.error) {
       return { done: result([...chunks, err(`docker: Error response from daemon: ${pulled.error}\n\nRun 'docker ${name} --help' for more information\n`)], 125) };
     }
-    chunks.push(out(`${pulled.lines.join('\n')}\n`));
+    chunks.push(err(`${pulled.lines.join('\n')}\n`));   // у docker run загрузка — в stderr
     image = findImage(state, imageRef);
   }
   if (containerName) {

@@ -94,6 +94,14 @@ describe('образы: pull, images, rmi, tag', () => {
     assert.match(run(sh, 'docker pull nginx').out, /^Using default tag: latest\nlatest: Pulling from library\/nginx\n/);
   });
 
+  it('docker run: загрузка образа — в stderr, в конвейер идёт только вывод контейнера', () => {
+    const sh = shell();
+    assert.equal(run(sh, 'docker run --rm alpine:3.20 echo hi | wc -l').out, '1\n');
+    const first = run(shell(), 'docker run --rm alpine:3.20 echo hi');
+    assert.equal(first.out, 'hi\n');
+    assert.match(first.err, /^Unable to find image 'alpine:3\.20' locally\n3\.20: Pulling from library\/alpine\n/);
+  });
+
   it('ошибки реестра: нет репозитория, нет тега', () => {
     const sh = shell();
     assert.deepEqual(run(sh, 'docker pull nosuch-image-xyz:1'), {
