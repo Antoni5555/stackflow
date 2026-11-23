@@ -1,0 +1,70 @@
+title: "Не ждать зависшую службу"
+type: exercise
+difficulty: 2
+pitfall: "asyncio.timeout ограничивает ожидание и отменяет зависшую корутину; TimeoutError превращают в запасной ответ."
+statement: |
+  Напишите `quote_or_none(name, timeout)`: возвращает `await quote(name)`, но если ответ не пришёл за `timeout` секунд — возвращает `None`. Используйте `asyncio.timeout` или `asyncio.wait_for`.
+starter_code: |
+  import asyncio
+  import time
+
+  DELAYS = {"курьер": 0.05, "почта": 5}
+
+
+  async def quote(name):
+      await asyncio.sleep(DELAYS[name])
+      return 300
+
+
+  async def main():
+      return await asyncio.gather(quote_or_none("курьер", 0.1), quote_or_none("почта", 0.1))
+
+
+  print(asyncio.run(main()))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert asyncio.run(quote_or_none("курьер", 0.1)) == 300
+      fail: "Если служба ответила вовремя — вернуть её цену."
+    - code: |
+        start = time.perf_counter()
+        assert asyncio.run(quote_or_none("почта", 0.1)) is None
+        elapsed = time.perf_counter() - start
+        assert 0.1 <= elapsed < 0.2, elapsed
+      fail: "Зависшая служба — None ровно через timeout, без ожидания её 5 секунд."
+    - code: |
+        start = time.perf_counter()
+        assert asyncio.run(main()) == [300, None]
+        assert time.perf_counter() - start < 0.2
+      fail: "Через gather: курьер — 300, почта — None, всё вместе около 0,1 с."
+solution: |
+  import asyncio
+  import time
+
+  DELAYS = {"курьер": 0.05, "почта": 5}
+
+
+  async def quote(name):
+      await asyncio.sleep(DELAYS[name])
+      return 300
+
+
+  async def quote_or_none(name, timeout):
+      try:
+          async with asyncio.timeout(timeout):
+              return await quote(name)
+      except TimeoutError:
+          return None
+
+
+  async def main():
+      return await asyncio.gather(quote_or_none("курьер", 0.1), quote_or_none("почта", 0.1))
+
+
+  print(asyncio.run(main()))
+hints:
+  - "`async with asyncio.timeout(timeout):` вокруг `await quote(name)`. Какое исключение будет, если время вышло?"
+  - "`try: … except TimeoutError: return None`."
+explanation: |
+  Тайм-аут не просто перестаёт ждать — он отменяет зависшую корутину, и она не тратит ресурсы в фоне. Страница с ценами доставки теперь ждёт не дольше 0,1 с, даже если почта не отвечает совсем.

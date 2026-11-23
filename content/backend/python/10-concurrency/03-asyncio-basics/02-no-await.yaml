@@ -1,0 +1,28 @@
+title: "Что лежит в stock"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Вызов корутины без await возвращает объект корутины, а не результат."
+statement: |
+  ```python
+  async def check_stock(product_id):
+      await asyncio.sleep(0.1)
+      return 3
+
+
+  async def main():
+      stock = check_stock(1)
+      print(stock > 0)
+
+
+  asyncio.run(main())
+  ```
+  Что произойдёт?
+options:
+  - "Напечатает `True`"
+  - "Напечатает `False`"
+  - "`TypeError`: в `stock` объект корутины, его нельзя сравнить с числом"
+  - "Программа зависнет"
+answer: [2]
+explanation: |
+  Без `await` вызов `check_stock(1)` только создаёт объект корутины, тело не выполняется. Сравнение `stock > 0` падает: `TypeError: '>' not supported between instances of 'coroutine' and 'int'`. Нужно `stock = await check_stock(1)`.

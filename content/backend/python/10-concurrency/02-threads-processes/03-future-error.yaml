@@ -1,0 +1,20 @@
+title: "Куда делась ошибка"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Исключение в задаче пула хранится в Future и выбрасывается только на result()."
+statement: |
+  ```python
+  with ThreadPoolExecutor() as pool:
+      future = pool.submit(send_receipt, 1042)   # внутри — ConnectionError
+  print("готово")
+  ```
+  Функция в потоке упала с `ConnectionError`. Что увидит программа?
+options:
+  - "Программа упадёт с `ConnectionError` ещё до «готово»"
+  - "Напечатает «готово», а ошибку никто не увидит: её не спросили у `future.result()`"
+  - "Поток будет перезапускаться, пока не получится"
+  - "Пул напечатает traceback и продолжит"
+answer: [1]
+explanation: |
+  Исключение остаётся внутри Future и выбрасывается, только когда вызывают `future.result()`. Если результат не нужен, ошибка всё равно должна быть проверена — иначе чек не ушёл, а программа считает, что всё хорошо. Пишут `future.result()` в `try` или собирают ошибки из всех Future.

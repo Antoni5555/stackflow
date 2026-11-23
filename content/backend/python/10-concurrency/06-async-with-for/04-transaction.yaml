@@ -1,0 +1,106 @@
+title: "Асинхронная транзакция"
+type: exercise
+difficulty: 2
+pitfall: "@asynccontextmanager: вход до yield, при успехе — фиксация, при ошибке — откат и ошибка дальше."
+statement: |
+  Напишите асинхронный менеджер `transaction(db)` через `@asynccontextmanager`:
+  - при входе — `await db.begin()`;
+  - если блок прошёл без ошибок — `await db.commit()`;
+  - если в блоке исключение — `await db.rollback()`, и исключение уходит дальше;
+  - внутри `async with transaction(db) as tx:` переменная `tx` — это `db`.
+
+  Класс `FakeDB` уже написан — он записывает вызовы в `log`.
+starter_code: |
+  import asyncio
+  from contextlib import asynccontextmanager
+
+
+  class FakeDB:
+      def __init__(self):
+          self.log = []
+
+      async def begin(self):
+          self.log.append("begin")
+
+      async def commit(self):
+          self.log.append("commit")
+
+      async def rollback(self):
+          self.log.append("rollback")
+
+      async def execute(self, sql):
+          self.log.append(sql)
+
+
+  async def main():
+      db = FakeDB()
+      async with transaction(db) as tx:
+          await tx.execute("UPDATE stock")
+      return db.log
+
+
+  print(asyncio.run(main()))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert asyncio.run(main()) == ["begin", "UPDATE stock", "commit"]
+      fail: "Без ошибок: begin → запросы блока → commit; tx — это db."
+    - code: |
+        async def failing():
+            db = FakeDB()
+            try:
+                async with transaction(db):
+                    await db.execute("UPDATE stock")
+                    raise ValueError("нет товара")
+            except ValueError as e:
+                return db.log, str(e)
+        assert asyncio.run(failing()) == (["begin", "UPDATE stock", "rollback"], "нет товара")
+      fail: "При ошибке: rollback вместо commit, а исключение уходит дальше (не глушите его)."
+solution: |
+  import asyncio
+  from contextlib import asynccontextmanager
+
+
+  class FakeDB:
+      def __init__(self):
+          self.log = []
+
+      async def begin(self):
+          self.log.append("begin")
+
+      async def commit(self):
+          self.log.append("commit")
+
+      async def rollback(self):
+          self.log.append("rollback")
+
+      async def execute(self, sql):
+          self.log.append(sql)
+
+
+  @asynccontextmanager
+  async def transaction(db):
+      await db.begin()
+      try:
+          yield db
+      except BaseException:
+          await db.rollback()
+          raise
+      else:
+          await db.commit()
+
+
+  async def main():
+      db = FakeDB()
+      async with transaction(db) as tx:
+          await tx.execute("UPDATE stock")
+      return db.log
+
+
+  print(asyncio.run(main()))
+hints:
+  - "До `yield` — `begin`. Как выполнить разный код после `yield` при ошибке и без неё?"
+  - "`try: yield db`, `except BaseException: await db.rollback(); raise`, `else: await db.commit()`."
+explanation: |
+  `try/except/else` вокруг `yield` различает исходы блока: без ошибки — фиксация, с ошибкой — откат. `raise` без аргумента пропускает исходное исключение дальше. `BaseException`, а не `Exception`, — чтобы откатиться и при отмене задачи (`CancelledError`). Так устроены транзакции асинхронных драйверов баз.

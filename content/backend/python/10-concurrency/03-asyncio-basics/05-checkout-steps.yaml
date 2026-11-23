@@ -1,0 +1,104 @@
+title: "Шаги оформления по порядку"
+type: exercise
+difficulty: 2
+pitfall: "Если шаг зависит от результата предыдущего — await по очереди; ошибка шага прерывает корутину, как обычную функцию."
+statement: |
+  Сервисы уже написаны: `reserve(product_id)`, `pay(amount)` и `notify(text)` — корутины, которые пишут шаг в список `LOG`. Напишите корутину `checkout(product_id, amount)`:
+  1. зарезервировать товар;
+  2. оплатить — `pay` вернёт номер платежа;
+  3. отправить уведомление с текстом `"оплачено: <номер платежа>"`;
+  4. вернуть номер платежа.
+
+  Если оплата выбросила `PaymentError`, уведомление не отправляется, а ошибка уходит наружу.
+starter_code: |
+  import asyncio
+
+  LOG = []
+
+
+  class PaymentError(Exception):
+      pass
+
+
+  async def reserve(product_id):
+      await asyncio.sleep(0.01)
+      LOG.append(f"reserve {product_id}")
+
+
+  async def pay(amount):
+      await asyncio.sleep(0.01)
+      if amount <= 0:
+          raise PaymentError("неверная сумма")
+      LOG.append(f"pay {amount}")
+      return "pay_42"
+
+
+  async def notify(text):
+      await asyncio.sleep(0.01)
+      LOG.append(f"notify {text}")
+
+
+  print(asyncio.run(checkout(1, 2490)), LOG)
+check:
+  type: tests
+  tests:
+    - code: |
+        LOG.clear()
+        assert asyncio.run(checkout(1, 2490)) == "pay_42"
+        assert LOG == ["reserve 1", "pay 2490", "notify оплачено: pay_42"]
+      fail: "checkout: reserve → pay → notify(\"оплачено: <номер>\") и вернуть номер платежа."
+    - code: |
+        LOG.clear()
+        try:
+            asyncio.run(checkout(1, 0))
+        except PaymentError:
+            pass
+        else:
+            raise AssertionError
+        assert LOG == ["reserve 1"]
+      fail: "Ошибка оплаты уходит наружу, уведомление не отправляется."
+    - code: |
+        import inspect
+        assert inspect.iscoroutinefunction(checkout)
+      fail: "checkout — корутина (async def)."
+solution: |
+  import asyncio
+
+  LOG = []
+
+
+  class PaymentError(Exception):
+      pass
+
+
+  async def reserve(product_id):
+      await asyncio.sleep(0.01)
+      LOG.append(f"reserve {product_id}")
+
+
+  async def pay(amount):
+      await asyncio.sleep(0.01)
+      if amount <= 0:
+          raise PaymentError("неверная сумма")
+      LOG.append(f"pay {amount}")
+      return "pay_42"
+
+
+  async def notify(text):
+      await asyncio.sleep(0.01)
+      LOG.append(f"notify {text}")
+
+
+  async def checkout(product_id, amount):
+      await reserve(product_id)
+      payment_id = await pay(amount)
+      await notify(f"оплачено: {payment_id}")
+      return payment_id
+
+
+  print(asyncio.run(checkout(1, 2490)), LOG)
+hints:
+  - "Каждый вызов сервиса — через `await`. Нужно ли что-то делать, чтобы ошибка оплаты ушла наружу?"
+  - "`await reserve(...)`, `payment_id = await pay(amount)`, `await notify(f\"оплачено: {payment_id}\")`, `return payment_id`."
+explanation: |
+  Шаги зависят друг от друга — уведомлению нужен номер платежа, — поэтому они идут по очереди через `await`. Исключение в корутине ведёт себя как в обычной функции: `await pay(...)` его выбрасывает, оставшиеся строки не выполняются, и ошибка доходит до `asyncio.run`.

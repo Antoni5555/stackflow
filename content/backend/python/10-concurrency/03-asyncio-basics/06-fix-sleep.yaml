@@ -1,0 +1,62 @@
+title: "Почему три проверки ждут 0,3 секунды"
+type: exercise
+difficulty: 2
+pitfall: "time.sleep в корутине блокирует весь цикл событий; в асинхронном коде ждут await asyncio.sleep."
+statement: |
+  `check_all` проверяет три склада одновременно через `gather`, но занимает 0,3 с вместо 0,1. Исправьте `check_warehouse`, чтобы склады ждали одновременно. `check_all` не меняйте.
+starter_code: |
+  import asyncio
+  import time
+
+
+  async def check_warehouse(name):
+      time.sleep(0.1)
+      return name
+
+
+  async def check_all():
+      return await asyncio.gather(
+          check_warehouse("Москва"), check_warehouse("Казань"), check_warehouse("Омск")
+      )
+
+
+  start = time.perf_counter()
+  print(asyncio.run(check_all()), round(time.perf_counter() - start, 1))
+check:
+  type: tests
+  tests:
+    - code: |
+        start = time.perf_counter()
+        result = asyncio.run(check_all())
+        elapsed = time.perf_counter() - start
+        assert result == ["Москва", "Казань", "Омск"]
+        assert 0.1 <= elapsed < 0.2, elapsed
+      fail: "Три склада должны ждать одновременно — около 0,1 с. Что внутри корутины не отдаёт управление циклу событий?"
+    - code: |
+        start = time.perf_counter()
+        assert asyncio.run(check_warehouse("Омск")) == "Омск"
+        assert time.perf_counter() - start >= 0.1
+      fail: "check_warehouse по-прежнему ждёт 0,1 с и возвращает имя склада."
+solution: |
+  import asyncio
+  import time
+
+
+  async def check_warehouse(name):
+      await asyncio.sleep(0.1)
+      return name
+
+
+  async def check_all():
+      return await asyncio.gather(
+          check_warehouse("Москва"), check_warehouse("Казань"), check_warehouse("Омск")
+      )
+
+
+  start = time.perf_counter()
+  print(asyncio.run(check_all()), round(time.perf_counter() - start, 1))
+hints:
+  - "Какая из пауз отдаёт управление циклу событий, а какая усыпляет весь поток?"
+  - "`await asyncio.sleep(0.1)` вместо `time.sleep(0.1)`."
+explanation: |
+  `time.sleep` усыплял весь поток: пока спал первый склад, цикл событий не мог даже начать второй. `await asyncio.sleep` ставит корутину в ожидание и отдаёт управление — три паузы идут одновременно. Так же нужно заменять любые блокирующие вызовы в корутинах: `requests` на `httpx.AsyncClient`, синхронный драйвер базы на асинхронный.

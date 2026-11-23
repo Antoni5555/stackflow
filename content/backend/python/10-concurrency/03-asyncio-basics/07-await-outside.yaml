@@ -1,0 +1,19 @@
+title: "await в обычном коде"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "await пишут только внутри async def; из обычного кода корутину запускают asyncio.run."
+statement: |
+  В скрипте на верхнем уровне написали:
+  ```python
+  report = await build_report(2026)
+  ```
+  Что произойдёт и как правильно?
+options:
+  - "Работает: `await` можно писать где угодно"
+  - "`SyntaxError: 'await' outside function`; правильно — `report = asyncio.run(build_report(2026))`"
+  - "`RuntimeError: no running event loop`; правильно — `loop.run(...)`"
+  - "Отчёт построится в фоне, а `report` будет `None`"
+answer: [1]
+explanation: |
+  `await` разрешён только внутри `async def` — иначе ошибка ещё при разборе файла, до запуска. Из обычного кода корутину запускает `asyncio.run(...)`: создаёт цикл событий, выполняет корутину и возвращает результат.

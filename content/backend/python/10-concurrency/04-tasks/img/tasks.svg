@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 380" width="880" height="380" class="fig" role="img" aria-labelledby="t"><title id="t">Банк упал: gather отдаёт ошибку, остальные работают впустую; TaskGroup отменяет остальных</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<text x="20" y="30" text-anchor="start" class="fig-t">gather</text>
+<text x="20" y="58" text-anchor="start" class="fig-s">склад</text>
+<rect x="140" y="40" width="160.0" height="24" rx="4" class="fig-box"/>
+<text x="220.0" y="57.0" text-anchor="middle" class="fig-cs">работает</text>
+<text x="20" y="88" text-anchor="start" class="fig-s">банк</text>
+<rect x="140" y="70" width="80.0" height="24" rx="4" class="fig-err"/>
+<text x="180.0" y="87.0" text-anchor="middle" class="fig-errt">упал</text>
+<text x="20" y="118" text-anchor="start" class="fig-s">доставка</text>
+<rect x="140" y="100" width="480.0" height="24" rx="4" class="fig-box"/>
+<text x="380.0" y="117.0" text-anchor="middle" class="fig-cs">работает впустую</text>
+<path d="M220.0 36V130" class="fig-lnd"/>
+<text x="228.0" y="140" text-anchor="start" class="fig-s">исключение вылетает из gather</text>
+<text x="20" y="180" text-anchor="start" class="fig-t">TaskGroup</text>
+<text x="20" y="208" text-anchor="start" class="fig-s">склад</text>
+<rect x="140" y="190" width="80.0" height="24" rx="4" class="fig-box"/>
+<text x="180.0" y="207.0" text-anchor="middle" class="fig-cs">отменён</text>
+<text x="20" y="238" text-anchor="start" class="fig-s">банк</text>
+<rect x="140" y="220" width="80.0" height="24" rx="4" class="fig-err"/>
+<text x="180.0" y="237.0" text-anchor="middle" class="fig-errt">упал</text>
+<text x="20" y="268" text-anchor="start" class="fig-s">доставка</text>
+<rect x="140" y="250" width="80.0" height="24" rx="4" class="fig-box"/>
+<text x="180.0" y="267.0" text-anchor="middle" class="fig-cs">отменена</text>
+<text x="232.0" y="238" text-anchor="start" class="fig-s">→ остальные отменены, ExceptionGroup → except* PaymentError</text>
+<text x="20" y="310" text-anchor="start" class="fig-t">timeout(0,15)</text>
+<text x="20" y="338" text-anchor="start" class="fig-s">доставка</text>
+<rect x="140" y="320" width="240.0" height="24" rx="4" class="fig-err"/>
+<text x="260.0" y="337.0" text-anchor="middle" class="fig-errt">ждёт… отменена</text>
+<text x="392.0" y="337" text-anchor="start" class="fig-s">TimeoutError — показываем «недоступно»</text>
+</svg>

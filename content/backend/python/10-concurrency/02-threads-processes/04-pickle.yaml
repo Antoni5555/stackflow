@@ -1,0 +1,20 @@
+title: "Lambda в пуле процессов"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "Пул процессов передаёт функцию через pickle — нужна функция верхнего уровня модуля."
+statement: |
+  ```python
+  if __name__ == "__main__":
+      with ProcessPoolExecutor() as pool:
+          sizes = list(pool.map(lambda p: compress(p).size, photos))
+  ```
+  Почему это не работает и как исправить?
+options:
+  - "Пул процессов не поддерживает `map` — нужен `submit`"
+  - "`lambda` нельзя передать в другой процесс через `pickle`; нужна обычная функция на верхнем уровне модуля"
+  - "Нужно убрать `if __name__ == \"__main__\"`"
+  - "Процессы не возвращают результат — только потоки"
+answer: [1]
+explanation: |
+  Дочерний процесс получает функцию по имени через `pickle` и импортирует её из модуля. У `lambda` и вложенных функций такого имени нет — ошибка начинается с `Can't pickle`. Пишут `def compressed_size(p): return compress(p).size` на верхнем уровне и передают её. `if __name__ == "__main__"` как раз нужен: без него дочерний процесс на Windows и macOS начнёт запускать пулы сам.

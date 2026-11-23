@@ -1,0 +1,23 @@
+title: "Нужна ли блокировка"
+type: quiz
+kind: multiple
+difficulty: 3
+pitfall: "Корутины переключаются только на await: гонка возможна, если await стоит между чтением и изменением общего состояния."
+statement: |
+  Обе функции вызываются из многих корутин одновременно (один поток, asyncio). В какой нужна `asyncio.Lock`?
+  ```python
+  async def add_view(product_id):
+      views[product_id] = views.get(product_id, 0) + 1
+
+
+  async def reserve(product_id, qty):
+      if stock[product_id] >= qty:
+          await bank.hold(qty)
+          stock[product_id] -= qty
+  ```
+options:
+  - "В `add_view`"
+  - "В `reserve`"
+answer: [1]
+explanation: |
+  В `add_view` нет `await`: строка выполняется целиком, и другая корутина не может вклиниться — в однопоточном asyncio это безопасно. В `reserve` между проверкой остатка и списанием стоит `await bank.hold(...)` — там цикл событий переключается, и другая корутина успеет пройти ту же проверку. Её проверку и списание защищают `async with lock:`.

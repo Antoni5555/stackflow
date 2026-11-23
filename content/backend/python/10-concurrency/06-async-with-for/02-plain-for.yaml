@@ -1,0 +1,29 @@
+title: "Обычный for по асинхронному генератору"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Асинхронный генератор перебирают только async for внутри корутины."
+statement: |
+  ```python
+  async def orders():
+      for page in (1, 2):
+          await asyncio.sleep(0.01)
+          yield page * 100
+
+
+  async def main():
+      for o in orders():
+          print(o)
+
+
+  asyncio.run(main())
+  ```
+  Что произойдёт?
+options:
+  - "Напечатает 100 и 200"
+  - "`TypeError: 'async_generator' object is not iterable`"
+  - "Ничего не напечатает: генератор ленивый"
+  - "`SyntaxError`: `yield` нельзя в `async def`"
+answer: [1]
+explanation: |
+  `async def` с `yield` — асинхронный генератор. У него нет обычного `__next__`, только `__anext__`, который нужно ждать через `await`. Перебирают его `async for o in orders():`. `yield` в `async def` разрешён — запрещён только `return значение`.

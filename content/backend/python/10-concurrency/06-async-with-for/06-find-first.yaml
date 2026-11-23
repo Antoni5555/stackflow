@@ -1,0 +1,73 @@
+title: "Первый крупный заказ"
+type: exercise
+difficulty: 2
+pitfall: "Ищите в async for с return/break — не собирайте все страницы в список ради одного элемента."
+statement: |
+  Напишите корутину `first_big(orders, min_total)`: перебирает асинхронный генератор `orders()` через `async for` и возвращает первый заказ с суммой `total >= min_total`, или `None`, если такого нет. Лишние страницы загружать нельзя.
+starter_code: |
+  import asyncio
+
+  PAGES = {1: [{"id": 1, "total": 900}, {"id": 2, "total": 1200}],
+           2: [{"id": 3, "total": 7400}, {"id": 4, "total": 300}],
+           3: [{"id": 5, "total": 9900}]}
+  LOADED = []
+
+
+  async def orders():
+      page = 1
+      while page in PAGES:
+          await asyncio.sleep(0.01)
+          LOADED.append(page)
+          for order in PAGES[page]:
+              yield order
+          page += 1
+
+
+  print(asyncio.run(first_big(orders, 5000)))
+check:
+  type: tests
+  tests:
+    - code: |
+        LOADED.clear()
+        assert asyncio.run(first_big(orders, 5000)) == {"id": 3, "total": 7400}
+        assert LOADED == [1, 2]
+      fail: "Первый заказ от 5000 — №3 со страницы 2; страница 3 не должна загружаться."
+    - code: |
+        LOADED.clear()
+        assert asyncio.run(first_big(orders, 1000)) == {"id": 2, "total": 1200} and LOADED == [1]
+      fail: "Заказ №2 на первой странице — дальше не загружать."
+    - code: |
+        assert asyncio.run(first_big(orders, 100_000)) is None
+      fail: "Если подходящего заказа нет — None."
+solution: |
+  import asyncio
+
+  PAGES = {1: [{"id": 1, "total": 900}, {"id": 2, "total": 1200}],
+           2: [{"id": 3, "total": 7400}, {"id": 4, "total": 300}],
+           3: [{"id": 5, "total": 9900}]}
+  LOADED = []
+
+
+  async def orders():
+      page = 1
+      while page in PAGES:
+          await asyncio.sleep(0.01)
+          LOADED.append(page)
+          for order in PAGES[page]:
+              yield order
+          page += 1
+
+
+  async def first_big(orders, min_total):
+      async for order in orders():
+          if order["total"] >= min_total:
+              return order
+      return None
+
+
+  print(asyncio.run(first_big(orders, 5000)))
+hints:
+  - "`orders` — функция-генератор: перебирайте `orders()` через `async for`."
+  - "Внутри цикла `if order[\"total\"] >= min_total: return order`, после цикла — `return None`."
+explanation: |
+  `return` внутри `async for` прекращает перебор, и генератор больше не загружает страниц. Вариант `[o async for o in orders()]` с поиском в списке дал бы тот же ответ, но прочитал бы все страницы.

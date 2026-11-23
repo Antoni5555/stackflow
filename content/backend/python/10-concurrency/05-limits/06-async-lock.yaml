@@ -1,0 +1,76 @@
+title: "Резерв без гонки"
+type: exercise
+difficulty: 2
+pitfall: "Проверка и изменение с await между ними — под одним async with lock."
+statement: |
+  `reserve` проверяет остаток, ждёт подтверждения банка и списывает. При одновременных вызовах товар уходит в минус. Исправьте с помощью `asyncio.Lock`:
+  - `reserve(product_id, qty, lock)` получает блокировку параметром;
+  - проверка, ожидание банка и списание — под `async with lock:`;
+  - `main()` создаёт одну блокировку `asyncio.Lock()` и передаёт её во все вызовы.
+starter_code: |
+  import asyncio
+
+  STOCK = {1: 2}
+
+
+  async def bank_hold(qty):
+      await asyncio.sleep(0.05)
+
+
+  async def reserve(product_id, qty):
+      if STOCK[product_id] >= qty:
+          await bank_hold(qty)
+          STOCK[product_id] -= qty
+          return True
+      return False
+
+
+  async def main():
+      return await asyncio.gather(reserve(1, 2), reserve(1, 1), reserve(1, 1))
+
+
+  print(asyncio.run(main()), STOCK)
+check:
+  type: tests
+  tests:
+    - code: |
+        STOCK[1] = 2
+        assert asyncio.run(main()) == [True, False, False] and STOCK[1] == 0
+      fail: "Остаток 2: первый резерв на 2 проходит, остальные — False, остаток 0, а не минус."
+    - code: |
+        STOCK[1] = 3
+        async def many():
+            lock = asyncio.Lock()
+            return await asyncio.gather(*(reserve(1, 1, lock) for _ in range(5)))
+        assert asyncio.run(many()).count(True) == 3 and STOCK[1] == 0
+      fail: "reserve(product_id, qty, lock): 5 резервов по 1 при остатке 3 — ровно 3 успешных."
+solution: |
+  import asyncio
+
+  STOCK = {1: 2}
+
+
+  async def bank_hold(qty):
+      await asyncio.sleep(0.05)
+
+
+  async def reserve(product_id, qty, lock):
+      async with lock:
+          if STOCK[product_id] >= qty:
+              await bank_hold(qty)
+              STOCK[product_id] -= qty
+              return True
+      return False
+
+
+  async def main():
+      lock = asyncio.Lock()
+      return await asyncio.gather(reserve(1, 2, lock), reserve(1, 1, lock), reserve(1, 1, lock))
+
+
+  print(asyncio.run(main()), STOCK)
+hints:
+  - "Где между проверкой и изменением остатка стоит `await`? Именно этот участок нужно сделать неделимым."
+  - "`async with lock:` вокруг всего тела `reserve`; в `main` — `lock = asyncio.Lock()` и передать его в каждый вызов."
+explanation: |
+  `await bank_hold` — точка, где цикл событий переключается на другие корутины. Под блокировкой следующая корутина ждёт у `async with lock`, пока первая не закончит списание, и видит уже новый остаток. Блокировку создают внутри работающей программы (в `main`) и передают: при первом использовании она привязывается к циклу событий, и глобальный `asyncio.Lock`, использованный в двух `asyncio.run`, упадёт с `RuntimeError … bound to a different event loop`.

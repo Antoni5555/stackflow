@@ -1,0 +1,104 @@
+title: "Фоновые задачи, которые не теряются"
+type: exercise
+difficulty: 3
+pitfall: "Фоновые задачи хранят во множестве, убирают по завершении и дожидаются перед выходом."
+statement: |
+  Напишите класс `Background`:
+  - `start(coro)` — запускает корутину задачей, хранит её в множестве `self.tasks` и возвращает задачу; когда задача завершается, она сама удаляется из множества (`add_done_callback`);
+  - `async drain()` — дожидается всех ещё работающих задач.
+
+  Ответ покупателю должен уходить сразу, а чеки — в фоне, но без потерь.
+starter_code: |
+  import asyncio
+
+  SENT = []
+
+
+  async def send_receipt(order_id):
+      await asyncio.sleep(0.05)
+      SENT.append(order_id)
+
+
+  async def checkout(bg, order_id):
+      bg.start(send_receipt(order_id))
+      return f"заказ {order_id} оформлен"
+
+
+  async def main():
+      bg = Background()
+      answers = [await checkout(bg, i) for i in (1, 2, 3)]
+      await bg.drain()
+      return answers
+
+
+  print(asyncio.run(main()), SENT)
+check:
+  type: tests
+  tests:
+    - code: |
+        SENT.clear()
+        assert asyncio.run(main()) == ["заказ 1 оформлен", "заказ 2 оформлен", "заказ 3 оформлен"]
+        assert sorted(SENT) == [1, 2, 3]
+      fail: "После drain() все чеки отправлены."
+    - code: |
+        async def check():
+            bg = Background()
+            t = bg.start(asyncio.sleep(0.01))
+            assert t in bg.tasks
+            await bg.drain()
+            return bg.tasks
+        assert asyncio.run(check()) == set()
+      fail: "start возвращает задачу и хранит её в bg.tasks; после завершения задача удаляется из множества."
+    - code: |
+        async def quick():
+            bg = Background()
+            bg.start(asyncio.sleep(0.2))
+            return "ответ сразу"
+        import time
+        start = time.perf_counter()
+        assert asyncio.run(asyncio.wait_for(quick(), 0.1)) == "ответ сразу"
+        assert time.perf_counter() - start < 0.1
+      fail: "start не должен ждать задачу — ответ покупателю уходит сразу."
+solution: |
+  import asyncio
+
+  SENT = []
+
+
+  async def send_receipt(order_id):
+      await asyncio.sleep(0.05)
+      SENT.append(order_id)
+
+
+  class Background:
+      def __init__(self):
+          self.tasks = set()
+
+      def start(self, coro):
+          task = asyncio.create_task(coro)
+          self.tasks.add(task)
+          task.add_done_callback(self.tasks.discard)
+          return task
+
+      async def drain(self):
+          await asyncio.gather(*self.tasks)
+
+
+  async def checkout(bg, order_id):
+      bg.start(send_receipt(order_id))
+      return f"заказ {order_id} оформлен"
+
+
+  async def main():
+      bg = Background()
+      answers = [await checkout(bg, i) for i in (1, 2, 3)]
+      await bg.drain()
+      return answers
+
+
+  print(asyncio.run(main()), SENT)
+hints:
+  - "`start` — обычный метод (не `async`): `create_task`, добавить в множество, повесить `add_done_callback`."
+  - "`task.add_done_callback(self.tasks.discard)`; `drain`: `await asyncio.gather(*self.tasks)`."
+explanation: |
+  Множество держит ссылки на задачи, чтобы их не удалил сборщик мусора, а `discard` по завершении не даёт ему расти. `drain()` перед выходом — гарантия, что `asyncio.run` не отменит недоделанные чеки. `start` не ждёт задачу, поэтому покупатель получает ответ сразу.

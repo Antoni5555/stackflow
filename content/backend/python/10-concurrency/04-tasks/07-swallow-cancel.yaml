@@ -1,0 +1,24 @@
+title: "Задача не отменяется"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "CancelledError не глушат: уборку делают в finally, а ошибку пропускают дальше."
+statement: |
+  ```python
+  async def track(order_id):
+      while True:
+          try:
+              await asyncio.sleep(1)
+              print("статус обновлён")
+          except asyncio.CancelledError:
+              print("отмена? продолжаю")
+  ```
+  Задачу `track` отменяют через `task.cancel()`, но она продолжает работать, а тайм-ауты вокруг неё не срабатывают. Почему?
+options:
+  - "`cancel()` работает только для задач из `TaskGroup`"
+  - "Корутина ловит `CancelledError` и не пропускает её дальше — отмена «проглочена»"
+  - "Отмена срабатывает только после `print`"
+  - "`while True` нельзя отменить в asyncio"
+answer: [1]
+explanation: |
+  `cancel()` доставляет в корутину `CancelledError` на ближайшем `await`. Здесь её ловят и продолжают цикл, поэтому задача живёт дальше, а `asyncio.timeout` (который тоже отменяет) не может её остановить. Правильно — убрать за собой в `finally` (или в `except` с `raise` в конце) и дать ошибке уйти.

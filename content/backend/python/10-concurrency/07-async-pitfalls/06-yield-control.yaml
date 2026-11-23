@@ -1,0 +1,82 @@
+title: "Расчёт, который не замораживает сервер"
+type: exercise
+difficulty: 3
+pitfall: "Долгий цикл без await держит цикл событий; await asyncio.sleep(0) кусками даёт поработать другим корутинам."
+statement: |
+  `recalc_prices(prices)` пересчитывает цены (каждая — 1 мс работы процессора) и всё это время не даёт работать другим корутинам: пульс сервера `heartbeat` молчит. Исправьте `recalc_prices`: после каждых 10 цен отдавайте управление циклу событий через `await asyncio.sleep(0)`. Результат (цены с наценкой 20 %) не должен измениться.
+starter_code: |
+  import asyncio
+  import time
+
+
+  async def recalc_prices(prices):
+      result = []
+      for price in prices:
+          time.sleep(0.001)
+          result.append(round(price * 1.2, 2))
+      return result
+
+
+  async def heartbeat(beats):
+      while True:
+          beats.append(1)
+          await asyncio.sleep(0.01)
+
+
+  async def main():
+      beats = []
+      hb = asyncio.create_task(heartbeat(beats))
+      await asyncio.sleep(0)
+      result = await recalc_prices([100.0] * 200)
+      hb.cancel()
+      return result[:2], len(beats)
+
+
+  print(asyncio.run(main()))
+check:
+  type: tests
+  tests:
+    - code: |
+        result, beats = asyncio.run(main())
+        assert result == [120.0, 120.0]
+        assert beats > 3, beats
+      fail: "Во время расчёта пульс должен отмечаться — отдавайте управление каждые 10 цен через await asyncio.sleep(0)."
+    - code: |
+        assert asyncio.run(recalc_prices([10.0, 2.5, 99.99])) == [12.0, 3.0, 119.99]
+      fail: "Цены с наценкой 20 %, округление до копеек — как раньше."
+solution: |
+  import asyncio
+  import time
+
+
+  async def recalc_prices(prices):
+      result = []
+      for i, price in enumerate(prices):
+          time.sleep(0.001)
+          result.append(round(price * 1.2, 2))
+          if i % 10 == 9:
+              await asyncio.sleep(0)
+      return result
+
+
+  async def heartbeat(beats):
+      while True:
+          beats.append(1)
+          await asyncio.sleep(0.01)
+
+
+  async def main():
+      beats = []
+      hb = asyncio.create_task(heartbeat(beats))
+      await asyncio.sleep(0)
+      result = await recalc_prices([100.0] * 200)
+      hb.cancel()
+      return result[:2], len(beats)
+
+
+  print(asyncio.run(main()))
+hints:
+  - "Нужен номер цены в цикле — `enumerate`. Когда номер кратен 10, отдайте управление."
+  - "`if i % 10 == 9: await asyncio.sleep(0)` внутри цикла."
+explanation: |
+  `await asyncio.sleep(0)` ничего не ждёт — он только возвращает управление циклу событий, и тот успевает запустить готовые корутины, например пульс. Расчёт целиком стал чуть дольше, зато сервер не «замирает». Для тяжёлых вычислений этого мало — их выносят в процессы.

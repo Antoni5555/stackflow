@@ -1,0 +1,100 @@
+- title: Найдите блокировку
+  text: |
+    Две корутины через `gather` занимают 0,2 с вместо 0,1. Исправьте `ask` и проверьте время:
+    ```python
+    async def ask(name):
+        time.sleep(0.1)
+        return name
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+    import time
+
+
+    async def ask(name):
+        await asyncio.sleep(0.1)
+        return name
+
+
+    async def main():
+        return await asyncio.gather(ask("a"), ask("b"))
+
+
+    start = time.perf_counter()
+    asyncio.run(main())
+    print(round(time.perf_counter() - start, 1))
+    ```
+    Результат:
+    ```
+    0.1
+    ```
+- title: Дождаться фоновую задачу
+  text: |
+    Запустите корутину записи в лог задачей, напечатайте «готово» сразу и дождитесь задачи перед выходом:
+    ```python
+    log = []
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+    log = []
+
+
+    async def write(text):
+        await asyncio.sleep(0.05)
+        log.append(text)
+
+
+    async def main():
+        task = asyncio.create_task(write("заказ 1042"))
+        print("готово")
+        await task
+
+
+    asyncio.run(main())
+    print(log)
+    ```
+    Результат:
+    ```
+    готово
+    ['заказ 1042']
+    ```
+    Без `await task` запись бы отменилась при выходе из `asyncio.run`.
+- title: sleep(0) отдаёт управление
+  text: |
+    Запустите две корутины, каждая печатает три шага и между шагами делает `await asyncio.sleep(0)`. Посмотрите порядок:
+    ```
+    A, B
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def steps(name):
+        for i in range(3):
+            print(name, i)
+            await asyncio.sleep(0)
+
+
+    async def main():
+        await asyncio.gather(steps("A"), steps("B"))
+
+
+    asyncio.run(main())
+    ```
+    Результат:
+    ```
+    A 0
+    B 0
+    A 1
+    B 1
+    A 2
+    B 2
+    ```
+    На каждом `sleep(0)` корутина уступает очередь другой.

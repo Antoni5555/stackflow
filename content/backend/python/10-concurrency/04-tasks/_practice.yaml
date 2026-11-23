@@ -1,0 +1,94 @@
+- title: Две задачи сразу
+  text: |
+    Запустите две корутины через `create_task` и дождитесь обеих. Измерьте время:
+    ```
+    склад 0,1 с, доставка 0,1 с
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+    import time
+
+
+    async def ask(name):
+        await asyncio.sleep(0.1)
+        return name
+
+
+    async def main():
+        a = asyncio.create_task(ask("склад"))
+        b = asyncio.create_task(ask("доставка"))
+        return [await a, await b]
+
+
+    start = time.perf_counter()
+    print(asyncio.run(main()))
+    print(round(time.perf_counter() - start, 1))
+    ```
+    Результат:
+    ```
+    ['склад', 'доставка']
+    0.1
+    ```
+- title: Ошибка в списке
+  text: |
+    Через `gather(…, return_exceptions=True)` запустите успешную корутину и падающую и напечатайте, что вернулось:
+    ```
+    ValueError("нет товара")
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def ok():
+        return "ok"
+
+
+    async def fail():
+        raise ValueError("нет товара")
+
+
+    async def main():
+        return await asyncio.gather(
+            ok(), fail(), return_exceptions=True
+        )
+
+
+    print(asyncio.run(main()))
+    ```
+    Результат:
+    ```
+    ['ok', ValueError('нет товара')]
+    ```
+- title: Тайм-аут через wait_for
+  text: |
+    Дождитесь корутины, которая спит 1 с, не дольше 0,1 с, и поймайте ошибку:
+    ```
+    asyncio.wait_for
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def slow():
+        await asyncio.sleep(1)
+
+
+    async def main():
+        try:
+            await asyncio.wait_for(slow(), timeout=0.1)
+        except TimeoutError:
+            print("не дождались")
+
+
+    asyncio.run(main())
+    ```
+    Результат:
+    ```
+    не дождались
+    ```

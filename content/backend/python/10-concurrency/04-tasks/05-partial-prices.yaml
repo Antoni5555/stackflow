@@ -1,0 +1,80 @@
+title: "Цены, даже если служба упала"
+type: exercise
+difficulty: 2
+pitfall: "gather с return_exceptions=True возвращает ошибки в списке — остальные результаты не теряются."
+statement: |
+  Напишите `all_prices(services)`: одновременно спрашивает `quote(name)` у всех служб из списка и возвращает словарь `{служба: цена}`. Если служба выбросила `ConnectionError`, её цена — `None`. Другие ошибки не глушите.
+starter_code: |
+  import asyncio
+
+  PRICES = {"курьер": 300, "самовывоз": 0}
+
+
+  async def quote(name):
+      await asyncio.sleep(0.05)
+      if name == "почта":
+          raise ConnectionError("почта не отвечает")
+      if name not in PRICES:
+          raise KeyError(name)
+      return PRICES[name]
+
+
+  print(asyncio.run(all_prices(["курьер", "почта", "самовывоз"])))
+check:
+  type: tests
+  tests:
+    - code: |
+        assert asyncio.run(all_prices(["курьер", "почта", "самовывоз"])) == {"курьер": 300, "почта": None, "самовывоз": 0}
+      fail: "Упавшая с ConnectionError служба — None, остальные — с ценами."
+    - code: |
+        assert asyncio.run(all_prices([])) == {}
+        assert asyncio.run(all_prices(["почта"])) == {"почта": None}
+      fail: "Пустой список — пустой словарь; одна упавшая служба — {служба: None}."
+    - code: |
+        try:
+            asyncio.run(all_prices(["курьер", "дрон"]))
+        except KeyError:
+            pass
+        else:
+            raise AssertionError
+      fail: "Другие ошибки (не ConnectionError) нужно пропустить наружу, а не превращать в None."
+    - code: |
+        import time
+        start = time.perf_counter()
+        asyncio.run(all_prices(["курьер", "почта", "самовывоз"]))
+        assert time.perf_counter() - start < 0.1
+      fail: "Службы нужно спрашивать одновременно — около 0,05 с на все."
+solution: |
+  import asyncio
+
+  PRICES = {"курьер": 300, "самовывоз": 0}
+
+
+  async def quote(name):
+      await asyncio.sleep(0.05)
+      if name == "почта":
+          raise ConnectionError("почта не отвечает")
+      if name not in PRICES:
+          raise KeyError(name)
+      return PRICES[name]
+
+
+  async def all_prices(services):
+      results = await asyncio.gather(*(quote(s) for s in services), return_exceptions=True)
+      prices = {}
+      for name, result in zip(services, results):
+          if isinstance(result, ConnectionError):
+              prices[name] = None
+          elif isinstance(result, Exception):
+              raise result
+          else:
+              prices[name] = result
+      return prices
+
+
+  print(asyncio.run(all_prices(["курьер", "почта", "самовывоз"])))
+hints:
+  - "`gather(..., return_exceptions=True)` вернёт исключения в списке. Как сопоставить результаты со службами?"
+  - "`zip(services, results)`: `ConnectionError` → `None`, другое исключение → `raise result`, иначе — цена."
+explanation: |
+  `return_exceptions=True` сохранил ответы курьера и самовывоза, хотя почта упала. Но глушить все ошибки подряд опасно: опечатка в названии службы (`KeyError`) — ошибка в коде, а не «служба недоступна», поэтому её пропускаем наружу.

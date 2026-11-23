@@ -1,0 +1,99 @@
+title: "Обработчики очереди заказов"
+type: exercise
+difficulty: 3
+pitfall: "Очередь + n обработчиков: get → работа → task_done; join ждёт всё; потом обработчиков отменяют."
+statement: |
+  Напишите `process_all(orders, workers)`:
+  - кладёт все заказы в `asyncio.Queue`;
+  - запускает `workers` обработчиков; каждый в цикле берёт заказ, вызывает `await handle(order)` и отмечает `task_done()`;
+  - ждёт, пока очередь разобрана, отменяет обработчиков и возвращает **отсортированный** список результатов `handle`.
+
+  `handle` уже написан — он считает пик одновременных обработок.
+starter_code: |
+  import asyncio
+
+  active = 0
+  peak = 0
+
+
+  async def handle(order_id):
+      global active, peak
+      active += 1
+      peak = max(peak, active)
+      await asyncio.sleep(0.05)
+      active -= 1
+      return order_id * 10
+
+
+  print(asyncio.run(process_all([3, 1, 2, 5, 4], 2)), peak)
+check:
+  type: tests
+  tests:
+    - code: |
+        g = handle.__globals__
+        g["peak"] = 0
+        assert asyncio.run(process_all([3, 1, 2, 5, 4], 2)) == [10, 20, 30, 40, 50]
+        assert g["peak"] == 2, g["peak"]
+      fail: "Все заказы обработаны (результаты отсортированы), одновременно — ровно workers обработчиков."
+    - code: |
+        import time
+        g = handle.__globals__
+        g["peak"] = 0
+        start = time.perf_counter()
+        asyncio.run(process_all(list(range(1, 10)), 3))
+        elapsed = time.perf_counter() - start
+        assert g["peak"] == 3 and 0.15 <= elapsed < 0.25, (g["peak"], elapsed)
+      fail: "9 заказов, 3 обработчика по 0,05 с — около 0,15 с."
+    - code: |
+        assert asyncio.run(process_all([], 2)) == []
+      fail: "Пустой список заказов — пустой результат, без зависания."
+    - code: |
+        async def check_no_leftovers():
+            await process_all([1, 2], 2)
+            return [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        assert asyncio.run(check_no_leftovers()) == []
+      fail: "После работы обработчики должны быть отменены и завершены — не оставляйте их висеть."
+solution: |
+  import asyncio
+
+  active = 0
+  peak = 0
+
+
+  async def handle(order_id):
+      global active, peak
+      active += 1
+      peak = max(peak, active)
+      await asyncio.sleep(0.05)
+      active -= 1
+      return order_id * 10
+
+
+  async def worker(queue, results):
+      while True:
+          order = await queue.get()
+          try:
+              results.append(await handle(order))
+          finally:
+              queue.task_done()
+
+
+  async def process_all(orders, workers):
+      queue = asyncio.Queue()
+      for order in orders:
+          queue.put_nowait(order)
+      results = []
+      tasks = [asyncio.create_task(worker(queue, results)) for _ in range(workers)]
+      await queue.join()
+      for task in tasks:
+          task.cancel()
+      await asyncio.gather(*tasks, return_exceptions=True)
+      return sorted(results)
+
+
+  print(asyncio.run(process_all([3, 1, 2, 5, 4], 2)), peak)
+hints:
+  - "Обработчик — `while True`: `get`, `handle`, `task_done`. Сколько их запустить и когда отменить?"
+  - "После `await queue.join()` — `task.cancel()` у каждого и `await asyncio.gather(*tasks, return_exceptions=True)`, чтобы дождаться их завершения."
+explanation: |
+  Предел одновременности задают обработчики: заказов может быть тысяча, а работают всегда `workers`. `task_done()` в `finally` отмечает работу даже при ошибке в `handle` — иначе `join()` завис бы. После отмены обработчиков их дожидаются через `gather(..., return_exceptions=True)`: `CancelledError` каждого вернётся в списке, и висящих задач не останется.

@@ -1,0 +1,26 @@
+title: "Порядок результатов gather"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "gather возвращает результаты в порядке аргументов, а не в порядке завершения."
+statement: |
+  ```python
+  async def ask(name, seconds):
+      await asyncio.sleep(seconds)
+      return name
+
+
+  async def main():
+      return await asyncio.gather(ask("банк", 0.3), ask("склад", 0.1), ask("доставка", 0.2))
+
+
+  print(asyncio.run(main()))
+  ```
+options:
+  - "`['склад', 'доставка', 'банк']`"
+  - "`['банк', 'склад', 'доставка']`"
+  - "`['банк']` — `gather` возвращает самый медленный"
+  - "Порядок каждый раз разный"
+answer: [1]
+explanation: |
+  `gather` раскладывает результаты по местам аргументов, как бы ни закончились корутины. Это удобно: результат легко сопоставить с запросом. Чтобы обрабатывать ответы по мере прихода, есть `asyncio.as_completed`.

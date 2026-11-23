@@ -1,0 +1,30 @@
+title: "Соединение не закрылось"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "В @asynccontextmanager выход ставят в finally — иначе ошибка блока его пропустит."
+statement: |
+  ```python
+  @asynccontextmanager
+  async def connect():
+      print("открыто")
+      yield
+      print("закрыто")
+
+
+  async def main():
+      try:
+          async with connect():
+              raise ValueError
+      except ValueError:
+          print("ошибка")
+  ```
+  Что напечатает `asyncio.run(main())`?
+options:
+  - "`открыто`, `закрыто`, `ошибка`"
+  - "`открыто`, `ошибка`"
+  - "`открыто`, `закрыто`"
+  - "`ошибка`"
+answer: [1]
+explanation: |
+  Ошибка из блока попадает в генератор на месте `yield` и прерывает его: строка после `yield` не выполняется, соединение остаётся открытым. Правильно — `try: yield` и `finally: print("закрыто")`, тогда выход выполнится при любом исходе.

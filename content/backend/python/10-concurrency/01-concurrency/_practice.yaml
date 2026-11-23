@@ -1,0 +1,102 @@
+- title: Кто начал первым
+  text: |
+    Запустите через `gather` два «запроса», которые печатают начало и конец, и посмотрите порядок:
+    ```python
+    async def ask(name, seconds):
+        print(name, "начал")
+        await asyncio.sleep(seconds)
+        print(name, "закончил")
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def ask(name, seconds):
+        print(name, "начал")
+        await asyncio.sleep(seconds)
+        print(name, "закончил")
+
+
+    async def main():
+        await asyncio.gather(
+            ask("банк", 0.2), ask("склад", 0.1)
+        )
+
+
+    asyncio.run(main())
+    ```
+    Результат:
+    ```
+    банк начал
+    склад начал
+    склад закончил
+    банк закончил
+    ```
+    Пока банк ждёт, склад успел начать и закончить: переключение — на `await`.
+- title: Await в цикле
+  text: |
+    Спросите три сервиса по 0,1 с в цикле `for` с `await` и измерьте время (округлите до десятых):
+    ```
+    склад, банк, доставка
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+    import time
+
+
+    async def ask(name):
+        await asyncio.sleep(0.1)
+        return name
+
+
+    async def main():
+        names = ["склад", "банк", "доставка"]
+        return [await ask(n) for n in names]
+
+
+    start = time.perf_counter()
+    asyncio.run(main())
+    print(round(time.perf_counter() - start, 1))
+    ```
+    Результат:
+    ```
+    0.3
+    ```
+    `await` в цикле ждёт каждый запрос до конца — снова по очереди. Чтобы ждать вместе, нужен `gather`.
+- title: Вместе
+  text: |
+    Перепишите прошлое упражнение через `gather` и сравните время:
+    ```
+    asyncio.gather
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+    import time
+
+
+    async def ask(name):
+        await asyncio.sleep(0.1)
+        return name
+
+
+    async def main():
+        names = ["склад", "банк", "доставка"]
+        return await asyncio.gather(*(ask(n) for n in names))
+
+
+    start = time.perf_counter()
+    print(asyncio.run(main()))
+    print(round(time.perf_counter() - start, 1))
+    ```
+    Результат:
+    ```
+    ['склад', 'банк', 'доставка']
+    0.1
+    ```
+    Три ожидания идут одновременно; результаты — в порядке запуска.

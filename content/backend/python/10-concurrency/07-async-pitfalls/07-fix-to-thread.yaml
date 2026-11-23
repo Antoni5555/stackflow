@@ -1,0 +1,48 @@
+title: "Старая библиотека в async-коде"
+type: fix
+difficulty: 2
+pitfall: "Блокирующую функцию без async-версии вызывают через await asyncio.to_thread(функция, аргументы)."
+statement: |
+  Курс валют берётся из старой синхронной библиотеки `legacy_bank.get_rate(currency)` — она ждёт сеть и блокирует цикл событий. Асинхронной версии нет. Исправьте `price_in`, чтобы ожидание шло в отдельном потоке: вызов через `asyncio.to_thread`. Сигнатуру `price_in` не меняйте.
+files:
+  rates.py: |
+    import asyncio
+
+    import legacy_bank
+
+
+    async def price_in(amount, currency):
+        rate = legacy_bank.get_rate(currency)
+        return round(amount / rate, 2)
+
+
+    async def prices(amount, currencies):
+        return await asyncio.gather(*(price_in(amount, c) for c in currencies))
+check:
+  type: rules
+  rules:
+    - must_match: '^    rate = await asyncio\.to_thread\(legacy_bank\.get_rate, currency\)'
+      fail: "rate = await asyncio.to_thread(legacy_bank.get_rate, currency) — функцию и её аргумент передают отдельно."
+    - must_not_match: 'to_thread\(legacy_bank\.get_rate\(currency\)\)'
+      fail: "get_rate(currency) со скобками выполнится сразу, в текущем потоке. Передайте саму функцию и аргумент отдельно."
+    - must_not_match: '^\s+rate = legacy_bank\.get_rate'
+      fail: "Прямой вызов get_rate остался — он блокирует цикл событий."
+solution:
+  rates.py: |
+    import asyncio
+
+    import legacy_bank
+
+
+    async def price_in(amount, currency):
+        rate = await asyncio.to_thread(legacy_bank.get_rate, currency)
+        return round(amount / rate, 2)
+
+
+    async def prices(amount, currencies):
+        return await asyncio.gather(*(price_in(amount, c) for c in currencies))
+hints:
+  - "`asyncio.to_thread` принимает функцию и её аргументы — и возвращает то, что нужно дождаться."
+  - "`rate = await asyncio.to_thread(legacy_bank.get_rate, currency)`."
+explanation: |
+  `to_thread` выполняет `get_rate` в пуле потоков, а цикл событий тем временем обслуживает другие корутины — курсы нескольких валют запрашиваются одновременно. Частая ошибка — `to_thread(get_rate(currency))`: скобки вызывают функцию сразу, в главном потоке, и в `to_thread` уходит уже результат. В браузерном тренажёре потоков нет, поэтому задача проверяется по тексту кода.

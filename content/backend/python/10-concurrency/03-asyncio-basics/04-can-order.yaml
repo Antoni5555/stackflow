@@ -1,0 +1,53 @@
+title: "Можно ли заказать"
+type: exercise
+difficulty: 1
+pitfall: "Корутина — async def; результат другой корутины — через await."
+statement: |
+  Напишите две корутины:
+  - `check_stock(product_id)` — ждёт `await asyncio.sleep(0.05)` (имитация запроса к складу) и возвращает остаток из словаря `STOCK`;
+  - `can_order(product_id, qty)` — дожидается `check_stock` и возвращает `True`, если остатка хватает на `qty`.
+starter_code: |
+  import asyncio
+
+  STOCK = {1: 3, 2: 0}
+
+
+  print(asyncio.run(can_order(1, 2)))
+check:
+  type: tests
+  tests:
+    - code: |
+        import inspect
+        assert inspect.iscoroutinefunction(check_stock) and inspect.iscoroutinefunction(can_order)
+      fail: "check_stock и can_order объявляются через async def."
+    - code: |
+        assert asyncio.run(check_stock(1)) == 3
+      fail: "check_stock(product_id) возвращает остаток из STOCK."
+    - code: |
+        assert asyncio.run(can_order(1, 2)) is True
+        assert asyncio.run(can_order(1, 3)) is True
+        assert asyncio.run(can_order(1, 4)) is False
+        assert asyncio.run(can_order(2, 1)) is False
+      fail: "can_order — True, если остаток не меньше qty. Не забыли await перед check_stock?"
+solution: |
+  import asyncio
+
+  STOCK = {1: 3, 2: 0}
+
+
+  async def check_stock(product_id):
+      await asyncio.sleep(0.05)
+      return STOCK[product_id]
+
+
+  async def can_order(product_id, qty):
+      stock = await check_stock(product_id)
+      return stock >= qty
+
+
+  print(asyncio.run(can_order(1, 2)))
+hints:
+  - "Обе функции — `async def`. Чем получить результат одной корутины внутри другой?"
+  - "`stock = await check_stock(product_id)`, затем `return stock >= qty`."
+explanation: |
+  `can_order` ждёт `check_stock` через `await` и получает число. Без `await` в `stock` оказался бы объект корутины, и сравнение упало бы с `TypeError`. Запускает всё один `asyncio.run` снаружи.

@@ -4160,6 +4160,168 @@ def layers_fig():
     f.save(out(PY9 / "06-layers" / "img" / "layers.svg"))
 
 
+PY10 = ROOT / "python" / "10-concurrency"
+
+
+def concurrency_fig():
+    f = Figure(880, 390, "Ожидание ускоряет конкурентность; вычисления — только параллельная работа на разных ядрах")
+    scale = 1000  # пикселей на секунду
+    x0 = 170
+    f.text(20, 30, "по очереди", "t")
+    items = [("склад", 0.0, 0.1), ("банк", 0.1, 0.2), ("доставка", 0.3, 0.1)]
+    for i, (name, start, d) in enumerate(items):
+        y = 44 + i * 30
+        f.text(20, y + 18, name, "s")
+        f.box(x0 + start * scale, y, d * scale, 24, "ждём", "box", "cs", rx=4)
+    f.text(x0 + 0.4 * scale + 10, 92, "0,4 с", "t")
+    f.text(20, 166, "конкурентно", "t")
+    for i, (name, _, d) in enumerate(items):
+        y = 180 + i * 30
+        f.text(20, y + 18, name, "s")
+        f.box(x0, y, d * scale, 24, "ждём", "ok", "cs", rx=4)
+    f.text(x0 + 0.2 * scale + 10, 228, "0,2 с — по самому медленному", "t")
+    f.text(20, 300, "вычисления в одном потоке:", "s")
+    f.box(230, 286, 150, 24, "фото 1", "err", "errt", rx=4)
+    f.box(380, 286, 150, 24, "фото 2", "err", "errt", rx=4)
+    f.text(20, 336, "в двух процессах:", "s")
+    f.box(230, 322, 150, 24, "фото 1 — ядро 1", "acc", "onacc", rx=4)
+    f.box(230, 352, 150, 24, "фото 2 — ядро 2", "acc", "onacc", rx=4)
+    f.text(540, 304, "друг за другом", "s")
+    f.text(400, 354, "одновременно — вдвое быстрее", "s")
+    f.save(out(PY10 / "01-concurrency" / "img" / "concurrency.svg"))
+
+
+def threads_processes_fig():
+    f = Figure(880, 360, "Потоки делят память и могут вместе продать последний товар; процессы изолированы")
+    f.box(20, 20, 520, 300, "", "box2")
+    f.text(36, 46, "процесс магазина", "t")
+    f.box(190, 60, 180, 40, "stock = 1", "acc", "onacc", rx=8)
+    for i, name in enumerate(["поток Анны", "поток Бориса"]):
+        x = 40 + i * 260
+        f.box(x, 130, 220, 110, "", "box", rx=8)
+        f.text(x + 14, 154, name, "cs")
+        f.text(x + 14, 178, "if stock > 0: да", "cs")
+        f.text(x + 14, 200, "sleep — банк", "cs")
+        f.text(x + 14, 222, "stock -= 1", "cs")
+        f.line(f"M{x + 110} 130L{280} 100", "lnd")
+    f.box(40, 256, 480, 26, "без блокировки: stock = -1, продано двоим", "err", "errt", rx=6)
+    f.box(40, 288, 480, 26, "with lock: второй ждёт, видит stock = 0 — продано одному", "ok", "cs", rx=6)
+    f.box(570, 20, 290, 140, "", "box")
+    f.text(586, 46, "процесс 1", "t")
+    f.text(586, 72, "своя память, свой GIL", "s")
+    f.text(586, 96, "ядро 1: часть фото", "cs")
+    f.box(570, 180, 290, 140, "", "box")
+    f.text(586, 206, "процесс 2", "t")
+    f.text(586, 232, "своя память, свой GIL", "s")
+    f.text(586, 256, "ядро 2: остальные фото", "cs")
+    f.text(20, 346, "Процессы получают функцию и данные через pickle и считают одновременно на разных ядрах.", "s")
+    f.save(out(PY10 / "02-threads-processes" / "img" / "threads-processes.svg"))
+
+
+def event_loop_fig():
+    f = Figure(880, 330, "Цикл событий выполняет корутины в одном потоке и переключается на await")
+    f.text(20, 30, "цикл событий (один поток)", "t")
+    f.text(20, 70, "склад", "s")
+    f.box(110, 52, 120, 28, "до await", "acc", "onacc", rx=6)
+    f.box(230, 52, 200, 28, "ждёт таймер 0,1 с", "box", "cs", rx=6)
+    f.box(430, 52, 120, 28, "продолжает", "acc", "onacc", rx=6)
+    f.text(20, 114, "банк", "s")
+    f.box(230, 96, 120, 28, "до await", "acc", "onacc", rx=6)
+    f.box(350, 96, 320, 28, "ждёт таймер 0,2 с", "box", "cs", rx=6)
+    f.box(670, 96, 120, 28, "продолжает", "acc", "onacc", rx=6)
+    f.text(20, 160, "Яркое — корутина работает (в каждый момент одна), серое — ждёт, поток свободен.", "s")
+    f.text(20, 214, "time.sleep внутри", "s")
+    f.box(170, 196, 260, 28, "склад: time.sleep — поток спит", "err", "errt", rx=6)
+    f.box(430, 196, 260, 28, "банк ждал своей очереди", "box", "cs", rx=6)
+    f.text(20, 270, "await asyncio.sleep отдаёт управление циклу; time.sleep усыпляет поток — никто не работает.", "s")
+    f.text(20, 296, "await одной корутины за другой — по очереди; одновременно — gather и задачи.", "s")
+    f.save(out(PY10 / "03-asyncio-basics" / "img" / "event-loop.svg"))
+
+
+def tasks_fig():
+    f = Figure(880, 380, "Банк упал: gather отдаёт ошибку, остальные работают впустую; TaskGroup отменяет остальных")
+    x0, sc = 140, 1600
+    def row(y, label, d, cls, tcls, text):
+        f.text(20, y + 18, label, "s")
+        f.box(x0, y, d * sc, 24, text, cls, tcls, rx=4)
+    f.text(20, 30, "gather", "t")
+    row(40, "склад", 0.1, "box", "cs", "работает")
+    row(70, "банк", 0.05, "err", "errt", "упал")
+    row(100, "доставка", 0.3, "box", "cs", "работает впустую")
+    f.line(f"M{x0 + 0.05 * sc} 36V130", "lnd")
+    f.text(x0 + 0.05 * sc + 8, 140, "исключение вылетает из gather", "s")
+    f.text(20, 180, "TaskGroup", "t")
+    row(190, "склад", 0.05, "box", "cs", "отменён")
+    row(220, "банк", 0.05, "err", "errt", "упал")
+    row(250, "доставка", 0.05, "box", "cs", "отменена")
+    f.text(x0 + 0.05 * sc + 12, 238, "→ остальные отменены, ExceptionGroup → except* PaymentError", "s")
+    f.text(20, 310, "timeout(0,15)", "t")
+    row(320, "доставка", 0.15, "err", "errt", "ждёт… отменена")
+    f.text(x0 + 0.15 * sc + 12, 337, "TimeoutError — показываем «недоступно»", "s")
+    f.save(out(PY10 / "04-tasks" / "img" / "tasks.svg"))
+
+
+def limits_fig():
+    f = Figure(880, 340, "Семафор пропускает по три запроса; очередь раздаёт заказы двум обработчикам")
+    f.text(20, 30, "Semaphore(3): 10 запросов по 0,1 с", "t")
+    waves = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]]
+    for w, ids in enumerate(waves):
+        for k, i in enumerate(ids):
+            f.box(20 + w * 100, 44 + k * 32, 90, 26, f"запрос {i}", "acc" if w == 0 else "box", "onacc" if w == 0 else "cs", rx=6)
+    f.text(20, 166, "4 волны × 0,1 с = 0,4 с; одновременно — не больше 3", "s")
+    f.box(460, 20, 400, 200, "", "box2")
+    f.text(476, 46, "asyncio.Queue", "cs")
+    f.text(476, 74, "производитель: put(1) … put(6)", "s")
+    for i in range(6):
+        f.box(476 + i * 40, 86, 34, 26, str(i + 1), "box", "cs", rx=4)
+    f.arrow("M560 112V140"); f.arrow("M700 112V140")
+    f.box(476, 144, 170, 30, "w1: 1, 3, 5", "ok", "cs", rx=6)
+    f.box(660, 144, 170, 30, "w2: 2, 4, 6", "ok", "cs", rx=6)
+    f.text(476, 204, "task_done() после каждого; join() ждёт все", "s")
+    f.box(20, 250, 400, 30, "без lock: Анна и Борис купили, stock = -1", "err", "errt", rx=6)
+    f.box(20, 288, 400, 30, "async with lock: Борис — нет в наличии, stock = 0", "ok", "cs", rx=6)
+    f.text(460, 270, "Гонка в asyncio — на await между", "s")
+    f.text(460, 294, "проверкой остатка и списанием.", "s")
+    f.save(out(PY10 / "05-limits" / "img" / "limits.svg"))
+
+
+def async_with_for_fig():
+    f = Figure(880, 330, "async with закрывает соединение даже при ошибке; асинхронный генератор грузит страницы по мере перебора")
+    f.box(20, 20, 380, 240, "", "box2")
+    f.text(36, 46, "async with connect() as api:", "cs")
+    f.box(36, 62, 348, 34, "await __aenter__ — открыть", "acc", "onacc", rx=6)
+    f.box(36, 106, 348, 34, "блок: запросы к api", "box", "cs", rx=6)
+    f.box(36, 150, 348, 34, "ошибка → выход всё равно", "err", "errt", rx=6)
+    f.box(36, 194, 348, 34, "await __aexit__ (finally) — закрыть", "ok", "cs", rx=6)
+    f.box(440, 20, 420, 240, "", "box2")
+    f.text(456, 46, "async for order in all_orders():", "cs")
+    rows = [("await fetch_page(1)", "acc", "onacc"), ("заказы 101, 102", "box", "cs"),
+            ("await fetch_page(2)", "acc", "onacc"), ("заказ 103 → break", "ok", "cs"),
+            ("страница 3 не загружается", "box", "s")]
+    for i, (t, cls, tcls) in enumerate(rows):
+        f.box(456, 62 + i * 38, 388, 30, t, cls, tcls, rx=6)
+    f.text(20, 296, "Вход, выход и следующий элемент — через await: цикл событий в это время выполняет другие задачи.", "s")
+    f.save(out(PY10 / "06-async-with-for" / "img" / "async-with-for.svg"))
+
+
+def async_pitfalls_fig():
+    f = Figure(880, 330, "Пять ошибок async: медленно, не сделано, не запускается")
+    rows = [
+        ("time.sleep / requests в корутине", "gather не ускоряет — время = сумма", "async-версия или to_thread"),
+        ("send_receipt(1) без await", "чек не ушёл, «never awaited»", "await send_receipt(1)"),
+        ("create_task и забыть", "отменена при выходе, ошибка потеряна", "хранить и ждать, TaskGroup"),
+        ("asyncio.run внутри корутины", "RuntimeError: running event loop", "await"),
+        ("долгий расчёт без await", "остальные корутины стоят", "процессы или sleep(0)"),
+    ]
+    f.text(20, 26, "ошибка", "s"); f.text(310, 26, "симптом", "s"); f.text(600, 26, "исправление", "s")
+    for i, (a, b, c) in enumerate(rows):
+        y = 38 + i * 56
+        f.box(20, y, 280, 44, a, "err", "errt", rx=8)
+        f.box(310, y, 280, 44, b, "box", "s", rx=8)
+        f.box(600, y, 260, 44, c, "ok", "cs", rx=8)
+    f.save(out(PY10 / "07-async-pitfalls" / "img" / "async-pitfalls.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -4214,6 +4376,8 @@ if __name__ == "__main__":
                   gunicorn_processes, env_fig, systemd_fig, network_fig, ssh_fig,
                   script_fig, if_for_fig, cron_fig,
                   solid_s_o, solid_l_i_d, dependency_injection, factory_fig,
-                  singleton_fig, layers_fig):
+                  singleton_fig, layers_fig, concurrency_fig,
+                  threads_processes_fig, event_loop_fig, tasks_fig, limits_fig,
+                  async_with_for_fig, async_pitfalls_fig):
         build()
     print("ok")

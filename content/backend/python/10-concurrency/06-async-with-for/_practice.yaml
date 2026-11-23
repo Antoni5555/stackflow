@@ -1,0 +1,94 @@
+- title: Менеджер из генератора
+  text: |
+    Напишите асинхронный менеджер `opened(name)`, который печатает «открыто» и «закрыто», и используйте его:
+    ```
+    "склад"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+    from contextlib import asynccontextmanager
+
+
+    @asynccontextmanager
+    async def opened(name):
+        print(name, "открыто")
+        try:
+            yield name
+        finally:
+            print(name, "закрыто")
+
+
+    async def main():
+        async with opened("склад") as s:
+            print("работаем с", s)
+
+
+    asyncio.run(main())
+    ```
+    Результат:
+    ```
+    склад открыто
+    работаем с склад
+    склад закрыто
+    ```
+- title: Асинхронный генератор
+  text: |
+    Напишите асинхронный генератор, который отдаёт номера заказов с паузой 0,01 с, и соберите их в список:
+    ```
+    1042, 1043, 1044
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def orders():
+        for order_id in (1042, 1043, 1044):
+            await asyncio.sleep(0.01)
+            yield order_id
+
+
+    async def main():
+        return [o async for o in orders()]
+
+
+    print(asyncio.run(main()))
+    ```
+    Результат:
+    ```
+    [1042, 1043, 1044]
+    ```
+- title: async for с условием
+  text: |
+    Переберите генератор из прошлого упражнения через `async for` и напечатайте только чётные номера:
+    ```
+    order_id % 2 == 0
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def orders():
+        for order_id in (1042, 1043, 1044):
+            await asyncio.sleep(0.01)
+            yield order_id
+
+
+    async def main():
+        async for order_id in orders():
+            if order_id % 2 == 0:
+                print(order_id)
+
+
+    asyncio.run(main())
+    ```
+    Результат:
+    ```
+    1042
+    1044
+    ```

@@ -1,0 +1,16 @@
+title: "Что блокирует цикл событий"
+type: quiz
+kind: multiple
+difficulty: 2
+pitfall: "Блокирует всё, что ждёт или считает без await: time.sleep, синхронные HTTP и база, долгие циклы."
+statement: |
+  Какие строки внутри `async def` остановят **все** корутины на время своей работы?
+options:
+  - "`time.sleep(1)`"
+  - "`requests.get(\"https://api.example/rate\")`"
+  - "`await asyncio.sleep(1)`"
+  - "`sum(i * i for i in range(50_000_000))`"
+  - "`await client.get(\"/rate\")`, где `client` — `httpx.AsyncClient`"
+answer: [0, 1, 3]
+explanation: |
+  `time.sleep` и `requests.get` ждут, не отдавая управление, а долгое вычисление не содержит `await` вовсе — цикл событий стоит. `await asyncio.sleep` и `await` асинхронного клиента на время ожидания отдают управление, и другие корутины работают.

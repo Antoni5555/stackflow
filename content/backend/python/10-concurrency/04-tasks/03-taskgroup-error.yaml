@@ -1,0 +1,24 @@
+title: "Банк упал внутри TaskGroup"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "TaskGroup при ошибке одной задачи отменяет остальные и выбрасывает ExceptionGroup — ловят except*."
+statement: |
+  ```python
+  try:
+      async with asyncio.TaskGroup() as tg:
+          tg.create_task(reserve())      # 0,1 с
+          tg.create_task(bank())         # через 0,05 с — PaymentError
+          tg.create_task(delivery())     # 0,3 с
+  except PaymentError:
+      print("оплата не прошла")
+  ```
+  Что произойдёт?
+options:
+  - "Напечатает «оплата не прошла» через 0,3 с — после доставки"
+  - "Напечатает «оплата не прошла» через 0,05 с"
+  - "`reserve` и `delivery` отменятся, а наружу вылетит `ExceptionGroup` — `except PaymentError` его не поймает"
+  - "Ошибка банка будет проигнорирована, остальные задачи закончатся"
+answer: [2]
+explanation: |
+  Группа отменяет оставшиеся задачи сразу после ошибки, но выбрасывает не сам `PaymentError`, а `ExceptionGroup` с ним внутри. Обычный `except PaymentError` его не ловит — нужен `except* PaymentError`. С `except*` программа напечатала бы «оплата не прошла» примерно через 0,05 с.

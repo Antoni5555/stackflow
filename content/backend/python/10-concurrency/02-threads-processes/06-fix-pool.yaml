@@ -1,0 +1,55 @@
+title: "Пул для отчётов"
+type: fix
+difficulty: 2
+pitfall: "Вычисления — ProcessPoolExecutor с функцией верхнего уровня и запуском под if __name__ == \"__main__\"."
+statement: |
+  Скрипт считает годовые отчёты по 12 месяцам — чистые вычисления, по секунде на месяц. Его «ускорили» потоками, но быстрее не стало. Исправьте:
+  - пул процессов вместо пула потоков;
+  - `lambda` замените функцией `build(month)` на верхнем уровне модуля, которая возвращает `month_report(month, orders)`;
+  - запуск пула — под `if __name__ == "__main__":`.
+files:
+  reports.py: |
+    from concurrent.futures import ThreadPoolExecutor
+
+    from shop.reports import month_report, load_orders
+
+    orders = load_orders(2026)
+
+    with ThreadPoolExecutor() as pool:
+        reports = list(pool.map(lambda m: month_report(m, orders), range(1, 13)))
+    print(len(reports))
+check:
+  type: rules
+  rules:
+    - must_match: '^from concurrent\.futures import ProcessPoolExecutor'
+      fail: "Для вычислений нужен ProcessPoolExecutor: потоки упираются в GIL."
+    - must_not_match: 'ThreadPoolExecutor'
+      fail: "Пул потоков не ускорит вычисления — уберите его."
+    - must_match: '^def build\(month\):\n    return month_report\(month, orders\)'
+      fail: "Функция верхнего уровня: def build(month): return month_report(month, orders)."
+    - must_not_match: 'lambda'
+      fail: "lambda не передать в другой процесс через pickle — используйте build."
+    - must_match: '^if __name__ == "__main__":\n    with ProcessPoolExecutor\(\) as pool:\n        reports = list\(pool\.map\(build, range\(1, 13\)\)\)'
+      fail: "Запуск пула — под if __name__ == \"__main__\": с pool.map(build, range(1, 13))."
+solution:
+  reports.py: |
+    from concurrent.futures import ProcessPoolExecutor
+
+    from shop.reports import month_report, load_orders
+
+    orders = load_orders(2026)
+
+
+    def build(month):
+        return month_report(month, orders)
+
+
+    if __name__ == "__main__":
+        with ProcessPoolExecutor() as pool:
+            reports = list(pool.map(build, range(1, 13)))
+        print(len(reports))
+hints:
+  - "Какой пул работает на нескольких ядрах? Что пул процессов делает с функцией, чтобы передать её в другой процесс?"
+  - "`def build(month): return month_report(month, orders)` на верхнем уровне, а `with ProcessPoolExecutor() as pool:` — внутри `if __name__ == \"__main__\":`."
+explanation: |
+  Отчёты считает процессор, поэтому потоки делили один GIL и шли по очереди. Процессы работают на разных ядрах. Функцию для них пишут на верхнем уровне модуля — её находят по имени. `orders` дочерний процесс получит при импорте модуля (а в Linux — копией памяти родителя); при больших данных их лучше читать внутри `build` по месяцу.

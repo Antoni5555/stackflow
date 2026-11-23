@@ -1,0 +1,82 @@
+- title: Первая корутина
+  text: |
+    Напишите корутину, которая ждёт 0,1 с и возвращает приветствие, и запустите её:
+    ```
+    "Заказ №1042 принят"
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def accept(order_id):
+        await asyncio.sleep(0.1)
+        return f"Заказ №{order_id} принят"
+
+
+    print(asyncio.run(accept(1042)))
+    ```
+    Результат:
+    ```
+    Заказ №1042 принят
+    ```
+- title: Объект корутины
+  text: |
+    Вызовите корутину из прошлого упражнения без `await` и посмотрите тип результата (потом закройте объект):
+    ```
+    type(...).__name__
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def accept(order_id):
+        await asyncio.sleep(0.1)
+        return f"Заказ №{order_id} принят"
+
+
+    c = accept(1042)
+    print(type(c).__name__)
+    c.close()
+    ```
+    Результат:
+    ```
+    coroutine
+    ```
+    Тело не выполнялось — это только заготовка.
+- title: Корутина вызывает корутину
+  text: |
+    Напишите `price(product_id)` (ждёт 0,05 с, возвращает цену из словаря) и `total(ids)`, которая по очереди дожидается цен и складывает их:
+    ```python
+    PRICES = {1: 2490, 2: 390}
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+    PRICES = {1: 2490, 2: 390}
+
+
+    async def price(product_id):
+        await asyncio.sleep(0.05)
+        return PRICES[product_id]
+
+
+    async def total(ids):
+        result = 0
+        for product_id in ids:
+            result += await price(product_id)
+        return result
+
+
+    print(asyncio.run(total([1, 2, 2])))
+    ```
+    Результат:
+    ```
+    3270
+    ```
+    Цены запрашиваются по очереди — одновременно научимся в следующей теме.

@@ -1,0 +1,84 @@
+title: "Все заказы постранично"
+type: exercise
+difficulty: 2
+pitfall: "Асинхронный генератор: await загрузки страницы, yield по одному элементу, конец — на пустой странице."
+statement: |
+  Напишите асинхронный генератор `all_orders(fetch_page)`: загружает страницы `await fetch_page(1)`, `fetch_page(2)`… и отдаёт заказы **по одному**. Пустая страница — конец. Следующую страницу загружайте только после того, как отданы все заказы текущей.
+starter_code: |
+  import asyncio
+
+  PAGES = {1: [101, 102], 2: [103], 3: [104, 105]}
+  LOADED = []
+
+
+  async def fetch_page(page):
+      await asyncio.sleep(0.01)
+      LOADED.append(page)
+      return PAGES.get(page, [])
+
+
+  async def main():
+      return [o async for o in all_orders(fetch_page)]
+
+
+  print(asyncio.run(main()))
+check:
+  type: tests
+  tests:
+    - code: |
+        LOADED.clear()
+        assert asyncio.run(main()) == [101, 102, 103, 104, 105]
+        assert LOADED == [1, 2, 3, 4]
+      fail: "Все заказы по порядку; страницы 1, 2, 3 и пустая 4 — по одному разу."
+    - code: |
+        LOADED.clear()
+        async def first_two():
+            got = []
+            async for o in all_orders(fetch_page):
+                got.append(o)
+                if len(got) == 2:
+                    break
+            return got
+        assert asyncio.run(first_two()) == [101, 102] and LOADED == [1]
+      fail: "Генератор должен быть ленивым: два заказа с первой страницы — загружена только страница 1."
+    - code: |
+        async def empty(page):
+            return []
+        async def collect():
+            return [o async for o in all_orders(empty)]
+        assert asyncio.run(collect()) == []
+      fail: "Если первая страница пустая — заказов нет."
+solution: |
+  import asyncio
+
+  PAGES = {1: [101, 102], 2: [103], 3: [104, 105]}
+  LOADED = []
+
+
+  async def fetch_page(page):
+      await asyncio.sleep(0.01)
+      LOADED.append(page)
+      return PAGES.get(page, [])
+
+
+  async def all_orders(fetch_page):
+      page = 1
+      while True:
+          orders = await fetch_page(page)
+          if not orders:
+              return
+          for order in orders:
+              yield order
+          page += 1
+
+
+  async def main():
+      return [o async for o in all_orders(fetch_page)]
+
+
+  print(asyncio.run(main()))
+hints:
+  - "Цикл по номерам страниц: загрузить, если пусто — `return`, иначе `yield` каждого заказа, следующая страница."
+  - "`while True:` → `orders = await fetch_page(page)` → `if not orders: return` → `for order in orders: yield order` → `page += 1`."
+explanation: |
+  Генератор загружает страницу, только когда перебор до неё дошёл: второй тест взял два заказа и остановился — вторая страница не запрашивалась. Это важно для API с тысячами страниц: найдя нужное, вы не тратите запросы на остальное.

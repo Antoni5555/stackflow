@@ -1,0 +1,58 @@
+title: "Почините продажу последнего товара"
+type: fix
+difficulty: 2
+pitfall: "Проверка и изменение общих данных — под одним with lock; работа без общих данных — снаружи."
+statement: |
+  Функция `buy` вызывается из нескольких потоков, и последний товар иногда продают дважды. Исправьте:
+  - создайте блокировку `lock = threading.Lock()` рядом с `stock`;
+  - проверку `stock > 0`, уменьшение и запись в `sold` выполняйте под `with lock:`;
+  - отправку письма покупателю (`send_mail` — медленная, общие данные не трогает) оставьте **вне** блокировки, после неё, и только если покупка состоялась.
+files:
+  shop.py: |
+    import threading
+
+    stock = 1
+    sold = []
+
+
+    def buy(name):
+        global stock
+        if stock > 0:
+            stock -= 1
+            sold.append(name)
+            send_mail(name, "Заказ оформлен")
+check:
+  type: rules
+  rules:
+    - must_match: '^lock = threading\.Lock\(\)'
+      fail: "Создайте блокировку на уровне модуля: lock = threading.Lock()."
+    - must_match: '^    with lock:\n        if stock > 0:\n            stock -= 1\n            sold\.append\(name\)'
+      fail: "Проверка stock > 0, уменьшение и sold.append — все внутри with lock:."
+    - must_not_match: '^ {12,}send_mail\('
+      fail: "send_mail внутри блокировки держит остальных покупателей в очереди, пока уходит письмо. Вынесите её из with lock."
+    - must_match: '^    if \w+:\n        send_mail\(name, "Заказ оформлен"\)'
+      fail: "После блокировки: если покупка состоялась (запомните это в переменной), отправьте письмо — if ok: send_mail(…)."
+solution:
+  shop.py: |
+    import threading
+
+    stock = 1
+    sold = []
+    lock = threading.Lock()
+
+
+    def buy(name):
+        global stock
+        ok = False
+        with lock:
+            if stock > 0:
+                stock -= 1
+                sold.append(name)
+                ok = True
+        if ok:
+            send_mail(name, "Заказ оформлен")
+hints:
+  - "Под блокировкой — только то, что читает и меняет `stock` и `sold`. Как после `with` узнать, состоялась ли покупка?"
+  - "`ok = False` перед `with lock:`, внутри `if` — `ok = True`; после блока — `if ok: send_mail(...)`."
+explanation: |
+  Блокировка делает «проверить и изменить» одним неделимым шагом: второй поток ждёт у `with lock` и видит уже `stock = 0`. Письмо — медленная работа, которой общие данные не нужны: под блокировкой оно заставило бы всех покупателей ждать очереди к почтовому серверу.

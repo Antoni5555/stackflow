@@ -1,0 +1,104 @@
+- title: Семафор на двоих
+  text: |
+    Запустите 4 корутины по 0,1 с через `gather`, пропуская одновременно не больше двух, и измерьте время:
+    ```
+    asyncio.Semaphore(2)
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+    import time
+
+
+    async def job(sem, n):
+        async with sem:
+            await asyncio.sleep(0.1)
+            return n
+
+
+    async def main():
+        sem = asyncio.Semaphore(2)
+        jobs = [job(sem, n) for n in range(4)]
+        return await asyncio.gather(*jobs)
+
+
+    start = time.perf_counter()
+    print(asyncio.run(main()))
+    print(round(time.perf_counter() - start, 1))
+    ```
+    Результат:
+    ```
+    [0, 1, 2, 3]
+    0.2
+    ```
+    Две волны по две корутины.
+- title: Очередь и один обработчик
+  text: |
+    Положите в очередь три заказа и обработайте их одним обработчиком, печатая номер каждого:
+    ```
+    1042, 1043, 1044
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+
+    async def worker(queue):
+        while True:
+            order = await queue.get()
+            print("обработан", order)
+            queue.task_done()
+
+
+    async def main():
+        queue = asyncio.Queue()
+        for order in [1042, 1043, 1044]:
+            await queue.put(order)
+        task = asyncio.create_task(worker(queue))
+        await queue.join()
+        task.cancel()
+
+
+    asyncio.run(main())
+    ```
+    Результат:
+    ```
+    обработан 1042
+    обработан 1043
+    обработан 1044
+    ```
+- title: Гонка на await
+  text: |
+    Две корутины увеличивают общий счётчик так: прочитать, подождать `sleep(0)`, записать. Посмотрите итог:
+    ```python
+    counter = 0
+    ```
+  answer: |
+    Ответ:
+    ```python
+    import asyncio
+
+    counter = 0
+
+
+    async def inc():
+        global counter
+        current = counter
+        await asyncio.sleep(0)
+        counter = current + 1
+
+
+    async def main():
+        await asyncio.gather(inc(), inc())
+
+
+    asyncio.run(main())
+    print(counter)
+    ```
+    Результат:
+    ```
+    1
+    ```
+    Обе корутины прочитали 0 до переключения на `await` — одно увеличение потерялось.

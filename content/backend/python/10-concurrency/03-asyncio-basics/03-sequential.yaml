@@ -1,0 +1,25 @@
+title: "Сколько займёт main"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "await одной корутины за другой выполняет их по очереди: время складывается."
+statement: |
+  ```python
+  async def ask(seconds):
+      await asyncio.sleep(seconds)
+
+
+  async def main():
+      await ask(0.1)
+      await ask(0.2)
+      await ask(0.1)
+  ```
+  Сколько примерно займёт `asyncio.run(main())`?
+options:
+  - "0,2 с — по самому медленному"
+  - "0,4 с — сумма"
+  - "0,1 с — по самому быстрому"
+  - "0 с — корутины запустятся в фоне"
+answer: [1]
+explanation: |
+  Каждый `await` ждёт свою корутину до конца, и только потом идёт следующая строка — это по очереди, как обычные вызовы. Пока одна ждёт, другие ещё даже не созданы. Чтобы ждать одновременно, нужен `asyncio.gather(ask(0.1), ask(0.2), ask(0.1))` — 0,2 с.

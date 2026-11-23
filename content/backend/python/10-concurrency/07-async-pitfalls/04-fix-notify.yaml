@@ -1,0 +1,73 @@
+title: "Почините рассылку уведомлений"
+type: exercise
+difficulty: 2
+pitfall: "Забытый await — работа не сделана; time.sleep в корутине — gather не ускоряет."
+statement: |
+  `notify_all` должна разослать уведомления всем покупателям одновременно за ~0,1 с. Сейчас часть не уходит, а время — сумма. Найдите и исправьте **две** ошибки в `notify`. `notify_all` не меняйте.
+starter_code: |
+  import asyncio
+  import time
+
+  SENT = []
+
+
+  async def log_sent(customer):
+      await asyncio.sleep(0)
+      SENT.append(customer)
+
+
+  async def notify(customer):
+      time.sleep(0.1)
+      log_sent(customer)
+
+
+  async def notify_all(customers):
+      await asyncio.gather(*(notify(c) for c in customers))
+
+
+  start = time.perf_counter()
+  asyncio.run(notify_all(["anna", "boris", "vera"]))
+  print(SENT, round(time.perf_counter() - start, 1))
+check:
+  type: tests
+  tests:
+    - code: |
+        SENT.clear()
+        asyncio.run(notify_all(["anna", "boris", "vera"]))
+        assert sorted(SENT) == ["anna", "boris", "vera"]
+      fail: "Не все уведомления записаны в SENT. Что происходит, когда корутину вызывают без await?"
+    - code: |
+        start = time.perf_counter()
+        asyncio.run(notify_all(["a", "b", "c"]))
+        elapsed = time.perf_counter() - start
+        assert 0.1 <= elapsed < 0.2, elapsed
+      fail: "Три уведомления должны идти одновременно — около 0,1 с. Какая пауза не отдаёт управление циклу событий?"
+solution: |
+  import asyncio
+  import time
+
+  SENT = []
+
+
+  async def log_sent(customer):
+      await asyncio.sleep(0)
+      SENT.append(customer)
+
+
+  async def notify(customer):
+      await asyncio.sleep(0.1)
+      await log_sent(customer)
+
+
+  async def notify_all(customers):
+      await asyncio.gather(*(notify(c) for c in customers))
+
+
+  start = time.perf_counter()
+  asyncio.run(notify_all(["anna", "boris", "vera"]))
+  print(SENT, round(time.perf_counter() - start, 1))
+hints:
+  - "Одна ошибка — в паузе, другая — в вызове `log_sent`."
+  - "`await asyncio.sleep(0.1)` вместо `time.sleep(0.1)` и `await log_sent(customer)`."
+explanation: |
+  Без `await` вызов `log_sent` только создавал объект корутины — запись не делалась, а Python предупреждал `never awaited`. `time.sleep` усыплял весь поток, и `gather` выполнял уведомления по очереди. Обе ошибки не роняют программу — их видно только по результату и времени.
