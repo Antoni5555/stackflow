@@ -2,13 +2,16 @@
 // run возвращает { out, err, code, action }. Сообщения об ошибках — дословно как в Ubuntu
 // (их цитируют уроки), справка --help — коротко по-русски.
 
+import { mskDate, now } from './clock.js';
 import { apt } from './apt.js';
 import {
   DAY, FsError, GROUPS, USERS, VirtualFS, basename, dirname, normalize,
 } from './fs.js';
 import { globMatch } from './glob.js';
 import { curl, hostname, ping, scp, ss, ssh } from './network.js';
+import { crontab } from './cron.js';
 import { sed } from './sed.js';
+import { bracket, testCommand } from './test.js';
 import { journalctl, kill, pgrep, pkill, ps, systemctl, top } from './system.js';
 
 // --- общие помощники ---
@@ -115,13 +118,13 @@ export function humanSize(bytes, { small = false } = {}) {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function formatDate(ms) {
-  const date = new Date(ms);
-  const day = String(date.getDate()).padStart(2, ' ');
-  const recent = Math.abs(Date.now() - ms) < 180 * DAY;
+  const date = mskDate(ms);
+  const day = String(date.getUTCDate()).padStart(2, ' ');
+  const recent = Math.abs(now() - ms) < 180 * DAY;
   const time = recent
-    ? `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-    : ` ${date.getFullYear()}`;
-  return `${MONTHS[date.getMonth()]} ${day} ${time}`;
+    ? `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`
+    : ` ${date.getUTCFullYear()}`;
+  return `${MONTHS[date.getUTCMonth()]} ${day} ${time}`;
 }
 
 /** Права в виде drwxr-xr-x. */
@@ -157,7 +160,7 @@ const cd = {
   cd -      — в предыдущую папку`,
   run({ sh, fs, args }) {
     let target = args[0] ?? sh.env.HOME;
-    if (args.length > 1) return fail('bash: cd: too many arguments\n');
+    if (args.length > 1) return fail(`${sh.errPrefix()}cd: too many arguments\n`);
     if (target === '-') target = sh.env.OLDPWD ?? sh.cwd;
     const abs = sh.resolve(target);
     try {
@@ -165,7 +168,7 @@ const cd = {
       if (node.type !== 'dir') throw new FsError('ENOTDIR');
       fs.require(node, 'x');
     } catch (e) {
-      return fail(`bash: cd: ${target}: ${e.message}\n`);
+      return fail(`${sh.errPrefix()}cd: ${target}: ${e.message}\n`);
     }
     sh.env.OLDPWD = sh.cwd;
     sh.cwd = abs;
@@ -792,13 +795,17 @@ const find = {
   -size +5M       больше 5 МБ (k, M, G; -5M — меньше)
   -mtime +7       изменены больше 7 дней назад (-7 — меньше)
   -maxdepth N     не глубже N уровней
-Пример: find /var/log -name '*.log' -size +1M`,
+  -delete         удалить найденное
+  -exec cmd {} \\;  выполнить cmd для каждого найденного ({} — путь; + вместо \\; — один раз для всех)
+Пример: find /var/log -name '*.log' -size +1M
+        find /backups -name '*.tar.gz' -mtime +7 -delete`,
   run(ctx) {
     const paths = [];
     let i = 0;
     while (i < ctx.args.length && !ctx.args[i].startsWith('-')) paths.push(ctx.args[i++]);
     if (!paths.length) paths.push('.');
     const tests = [];
+    const actions = [];
     let maxdepth = Infinity;
     while (i < ctx.args.length) {
       const test = ctx.args[i];
@@ -810,8 +817,19 @@ const find = {
           ? `find: possible unquoted pattern after predicate \`${previous}'?\n` : '';
         return fail(`find: paths must precede expression: \`${test}'\n${hint}`);
       }
-      if (test === '-print') {
+      if (test === '-print' || test === '-delete') {
+        actions.push({ type: test.slice(1) });
         i += 1;
+        continue;
+      }
+      if (test === '-exec') {
+        // слова команды до «;» (в строке пишут \; или ';') или до «{} +»
+        let end = i + 1;
+        while (end < ctx.args.length && ctx.args[end] !== ';'
+          && !(ctx.args[end] === '+' && ctx.args[end - 1] === '{}')) end += 1;
+        if (end >= ctx.args.length || end === i + 1) return fail("find: missing argument to `-exec'\n");
+        actions.push({ type: 'exec', words: ctx.args.slice(i + 1, end), batch: ctx.args[end] === '+' });
+        i = end + 1;
         continue;
       }
       if (!['-name', '-iname', '-type', '-size', '-mtime', '-maxdepth'].includes(test)) {
@@ -832,15 +850,16 @@ const find = {
         const unit = SIZE_UNITS[/[ckMG]$/.test(value) ? value.slice(-1) : ''];
         return compare(value.replace(/[ckMG]$/, ''), Math.ceil(VirtualFS.sizeOf(node) / unit));
       }
-      if (test === '-mtime') return compare(value, Math.floor((Date.now() - node.mtime) / DAY));
+      if (test === '-mtime') return compare(value, Math.floor((now() - node.mtime) / DAY));
       return true;
     });
     let out = '';
     let err = '';
     let code = 0;
+    const found = [];
     for (const start of paths) {
       const visit = (shown, abs, node, depth) => {
-        if (matches(basename(shown) || shown, node)) out += `${shown}\n`;
+        if (matches(basename(shown) || shown, node)) found.push([shown, abs]);
         if (node.type !== 'dir' || depth >= maxdepth) return;
         let entries;
         try {
@@ -861,6 +880,37 @@ const find = {
         if (!(e instanceof FsError)) throw e;
         err += `find: ‘${start}’: ${e.message}\n`;
         code = 1;
+      }
+    }
+    if (!actions.length) actions.push({ type: 'print' });
+    const run = (words) => {
+      const result = ctx.sh.exec(words, '', { tty: false });
+      out += result.out ?? '';
+      err += result.err ?? '';
+      return result.code ?? 0;
+    };
+    for (const [shown] of found) {
+      for (const action of actions) {
+        if (action.type === 'print') out += `${shown}\n`;
+        if (action.type === 'exec' && !action.batch) run(action.words.map((word) => word.replaceAll('{}', shown)));
+      }
+    }
+    for (const action of actions.filter((item) => item.type === 'exec' && item.batch)) {
+      if (!found.length) continue;
+      const words = action.words.slice(0, -1);
+      if (run([...words, ...found.map(([shown]) => shown)]) !== 0) code = 1;
+    }
+    // -delete — с самых глубоких (как -depth): сначала файлы, потом их папки
+    if (actions.some((item) => item.type === 'delete')) {
+      for (const [shown, abs] of [...found].reverse()) {
+        if (shown === '.' || abs === ctx.sh.cwd) continue;
+        try {
+          ctx.fs.remove(abs);
+        } catch (e) {
+          if (!(e instanceof FsError)) throw e;
+          err += `find: cannot delete ‘${shown}’: ${e.message}\n`;
+          code = 1;
+        }
       }
     }
     return { out, err, code };
@@ -1263,6 +1313,78 @@ const tar = {
 
 // --- оболочка ---
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** strftime для date +ФОРМАТ (время Москвы); неизвестное %Q остаётся как есть, как в GNU date. */
+export function strftime(format, ms) {
+  const d = mskDate(ms);
+  const pad = (n, width = 2) => String(n).padStart(width, '0');
+  const year = d.getUTCFullYear();
+  const start = Date.UTC(year, 0, 1);
+  const fields = {
+    Y: year, y: pad(year % 100), m: pad(d.getUTCMonth() + 1), d: pad(d.getUTCDate()),
+    e: String(d.getUTCDate()).padStart(2, ' '), H: pad(d.getUTCHours()), M: pad(d.getUTCMinutes()),
+    S: pad(d.getUTCSeconds()), I: pad(d.getUTCHours() % 12 || 12), p: d.getUTCHours() < 12 ? 'AM' : 'PM',
+    a: WEEKDAYS[d.getUTCDay()], A: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getUTCDay()],
+    b: MONTHS[d.getUTCMonth()], h: MONTHS[d.getUTCMonth()], u: d.getUTCDay() || 7, w: d.getUTCDay(),
+    j: pad(Math.floor((d.getTime() - start) / DAY) + 1, 3), s: Math.floor(ms / 1000),
+    Z: 'MSK', z: '+0300', n: '\n', t: '\t', '%': '%',
+  };
+  fields.F = `${fields.Y}-${fields.m}-${fields.d}`;
+  fields.T = `${fields.H}:${fields.M}:${fields.S}`;
+  fields.R = `${fields.H}:${fields.M}`;
+  fields.D = `${fields.m}/${fields.d}/${fields.y}`;
+  return format.replace(/%([a-zA-Z%])/g, (all, key) => (key in fields ? String(fields[key]) : all));
+}
+
+const dirnameCommand = {
+  help: `dirname путь — папка из пути: dirname /srv/shop/media/a.jpg → /srv/shop/media`,
+  run({ args }) {
+    if (!args.length) return fail("dirname: missing operand\nTry 'dirname --help' for more information.\n");
+    return ok(joinLines(args.map((path) => {
+      const trimmed = path.replace(/\/+$/, '') || (path.startsWith('/') ? '/' : '');
+      if (trimmed === '/') return '/';
+      const slash = trimmed.lastIndexOf('/');
+      if (slash === -1) return '.';
+      return trimmed.slice(0, slash).replace(/\/+$/, '') || '/';
+    })));
+  },
+};
+
+const basenameCommand = {
+  help: `basename путь [суффикс] — имя файла из пути: basename /backups/media.tar.gz .tar.gz → media`,
+  run({ args }) {
+    if (!args.length) return fail("basename: missing operand\nTry 'basename --help' for more information.\n");
+    if (args.length > 2) return fail(`basename: extra operand '${args[2]}'\nTry 'basename --help' for more information.\n`);
+    const [path, suffix] = args;
+    let name = path.replace(/\/+$/, '').split('/').pop() || (path.startsWith('/') ? '/' : '');
+    if (suffix && name !== suffix && name.endsWith(suffix)) name = name.slice(0, -suffix.length);
+    return ok(`${name}\n`);
+  },
+};
+
+const date = {
+  help: `date [+ФОРМАТ] — текущие дата и время (по Москве).
+  +%F          2026-11-23 (год-месяц-день)
+  +%Y %m %d    год, месяц, день; +%H %M %S — часы, минуты, секунды
+  +%T          03:00:00;  +%s — секунды с 1970 года
+Пример: tar -czf media-$(date +%F).tar.gz media`,
+  run({ args }) {
+    if (args[0] === '-d' && args.length === 1) {
+      return fail("date: option requires an argument -- 'd'\nTry 'date --help' for more information.\n");
+    }
+    const formats = args.filter((arg) => arg.startsWith('+'));
+    const other = args.find((arg) => !arg.startsWith('+'));
+    if (other !== undefined) {
+      if (other.startsWith('-')) return fail(`date: ключ ${other} в тренажёре не поддерживается — есть только date и date +ФОРМАТ\n`);
+      return fail(`date: invalid date '${other}'\n`);
+    }
+    if (formats.length > 1) return fail(`date: extra operand '${formats[1]}'\nTry 'date --help' for more information.\n`);
+    const format = formats.length ? formats[0].slice(1) : '%a %b %e %H:%M:%S %Z %Y';
+    return ok(`${strftime(format, now())}\n`);
+  },
+};
+
 const which = {
   help: 'which команда… — где лежит программа (путь к файлу).',
   run({ sh, fs, args }) {
@@ -1409,12 +1531,15 @@ const help = {
   поиск:      find du df
   права:      chmod chown chgrp whoami id groups sudo
   процессы:   ps pgrep kill pkill top
-  сервисы:    systemctl journalctl
+  сервисы:    systemctl journalctl crontab
   сеть:       ss curl ping hostname
   пакеты:     apt
   архивы:     tar gzip gunzip
+  время:      date
+  пути:       dirname basename
+  скрипты:    test [ ] if for exit
   оболочка:   which export unset env source bash history clear
-Конвейер |, перенаправления > >> 2> 2>&1 <, цепочки && || ;
+Конвейер |, перенаправления > >> 2> 2>&1 <, цепочки && || ;, подстановка $(команда)
 Код выхода последней команды — echo $?\n`),
 };
 
@@ -1422,11 +1547,11 @@ export const COMMANDS = {
   pwd, cd, ls, cat, echo, mkdir, touch, rm, rmdir, cp, mv, ln,
   head, tail, wc, grep, sort, uniq, cut, sed, tee, find, du, df,
   chmod, chown, chgrp, whoami, id, groups, sudo,
-  ps, kill, pkill, pgrep, top, systemctl, journalctl,
+  ps, kill, pkill, pgrep, top, systemctl, journalctl, crontab,
   ss, curl, ping, hostname, ssh, scp,
   tar, gzip, gunzip: gzip,
-  which, export: exportCommand, unset, env, bash, sh: bash, source, '.': source, history, clear, nano,
-  true: trueCommand, false: falseCommand, man, help,
+  date, dirname: dirnameCommand, basename: basenameCommand, which, export: exportCommand, unset, env, bash, sh: bash, source, '.': source, history, clear, nano,
+  true: trueCommand, false: falseCommand, test: testCommand, '[': bracket, man, help,
   python3: { ...notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'), noWhich: true },
   python: { ...notHere('Python в этом тренажёре не запускается — для кода есть тренажёр Python'), noWhich: true },
   git: notHere('Git появится в тренажёре Git'),

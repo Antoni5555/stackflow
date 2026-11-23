@@ -1,130 +1,26 @@
-// Shell Linux-симулятора: разбор строки (кавычки, переменные, *, |, >, >>, 2>, 2>&1, <,
-// &&, ||, ;) и выполнение команд над виртуальной ФС. Похож на bash, но без if/for.
+// Shell Linux-симулятора: выполнение команд bash над виртуальной ФС — конвейеры,
+// перенаправления, && || ;, $(…), if/for, ( … ), exit, скрипты. Разбор текста — syntax.js.
 // run(line) → { chunks: [{text, err}], action? } — вывод для терминала и просьба к
 // интерфейсу (clear — очистить экран, edit — открыть nano).
 
 import { COMMANDS } from './commands.js';
 import { FsError, HOME, VirtualFS, normalize } from './fs.js';
-import { globToRegExp, hasGlob } from './glob.js';
+import { globToRegExp } from './glob.js';
+import { Parser, ShellSyntaxError, parseAll, tokenize } from './syntax.js';
 
-const OPERATORS = ['&&', '||', '2>&1', '2>>', '2>', '>>', '>', '<', '|', ';'];
 const MAX_SCRIPT_DEPTH = 10;
+const MAX_LOOP = 10000;
+const VARIABLE = /\$(\?|#|@|\*|[0-9]|\{[A-Za-z_]\w*\}|[A-Za-z_]\w*)/g;
 
-// --- разбор строки ---
-
-/**
- * Строка → токены: {op} или {word: [{text, quote}]}; quote — '', "'" или '"'.
- * Части слова в кавычках не раскрываются как * и (в одинарных) как $.
- */
-export function tokenize(line) {
-  const tokens = [];
-  let word = null;
-  let i = 0;
-  const push = (text, quote) => {
-    word ??= [];
-    word.push({ text, quote });
-  };
-  const end = () => {
-    if (word) tokens.push({ word });
-    word = null;
-  };
-  while (i < line.length) {
-    const ch = line[i];
-    if (ch === '#' && !word) break;                       // комментарий до конца строки
-    if (/\s/.test(ch)) {
-      end();
-      i += 1;
-      continue;
-    }
-    // «2>» — оператор, только если 2 стоит отдельным словом
-    const op = OPERATORS.find((item) => line.startsWith(item, i)
-      && (!item.startsWith('2') || !word));
-    if (op) {
-      end();
-      tokens.push({ op });
-      i += op.length;
-      continue;
-    }
-    if (ch === "'") {
-      const close = line.indexOf("'", i + 1);
-      if (close === -1) throw new SyntaxError("unexpected EOF while looking for matching `''");
-      push(line.slice(i + 1, close), "'");
-      i = close + 1;
-      continue;
-    }
-    if (ch === '"') {
-      let j = i + 1;
-      let text = '';
-      while (j < line.length && line[j] !== '"') {
-        if (line[j] === '\\' && '"\\$`'.includes(line[j + 1])) j += 1;
-        text += line[j];
-        j += 1;
-      }
-      if (j >= line.length) throw new SyntaxError('unexpected EOF while looking for matching `"\'');
-      push(text, '"');
-      i = j + 1;
-      continue;
-    }
-    if (ch === '\\' && i + 1 < line.length) {
-      push(line[i + 1], "'");
-      i += 2;
-      continue;
-    }
-    let j = i;
-    while (j < line.length && !/[\s'"\\]/.test(line[j])
-      && !OPERATORS.some((item) => !item.startsWith('2') && line.startsWith(item, j))) {
-      j += 1;
-    }
-    push(line.slice(i, j), '');
-    i = j;
+/** exit N: прерывает скрипт, $(…), ( … ) или bash -c с кодом N. */
+export class ExitSignal {
+  constructor(code) {
+    this.code = code;
   }
-  end();
-  return tokens;
 }
 
-/**
- * Токены → список [{pipeline, next}]: next — '&&', '||', ';' или null.
- * Ступень конвейера: {words, redirects: [{op, target}]}.
- */
-export function parse(tokens) {
-  const list = [];
-  let pipeline = [];
-  let stage = { words: [], redirects: [] };
-  const finishStage = () => {
-    if (!stage.words.length && !stage.redirects.length) {
-      throw new SyntaxError('syntax error near unexpected token');
-    }
-    pipeline.push(stage);
-    stage = { words: [], redirects: [] };
-  };
-  for (let i = 0; i < tokens.length; i += 1) {
-    const token = tokens[i];
-    if (token.word) {
-      stage.words.push(token.word);
-    } else if (token.op === '2>&1') {
-      stage.redirects.push({ op: '2>&1' });
-    } else if (['>', '>>', '2>', '2>>', '<'].includes(token.op)) {
-      const target = tokens[i + 1];
-      if (!target?.word) throw new SyntaxError("syntax error near unexpected token `newline'");
-      stage.redirects.push({ op: token.op, target: target.word });
-      i += 1;
-    } else if (token.op === '|') {
-      finishStage();
-    } else {
-      finishStage();
-      list.push({ pipeline, next: token.op });
-      pipeline = [];
-    }
-  }
-  // «ls |» или «make &&» — bash ждал бы продолжения; у нас одна строка — это ошибка
-  const last = tokens[tokens.length - 1];
-  if (last?.op && ['|', '&&', '||'].includes(last.op)) {
-    throw new SyntaxError('syntax error: unexpected end of file');
-  }
-  if (stage.words.length || stage.redirects.length) finishStage();
-  if (pipeline.length) list.push({ pipeline, next: null });
-  return list;
-}
+const outText = (chunks) => chunks.filter((chunk) => !chunk.err).map((chunk) => chunk.text).join('');
+const errText = (chunks) => chunks.filter((chunk) => chunk.err).map((chunk) => chunk.text).join('');
 
 // --- shell ---
 
@@ -147,6 +43,27 @@ export class Shell {
     this.status = 0;               // код выхода последней команды — $?
     this.history = [];
     this.lastOutput = '';          // вывод последней команды — для правила output_matches
+    this.scriptName = null;        // имя скрипта и номер строки — для ошибок «./a.sh: line 3: …»
+    this.line = 0;
+    this.action = null;
+    this.substErr = '';            // ошибки команд внутри $(…) — выводятся перед ошибками команды
+    this.substStatus = null;
+  }
+
+
+
+  /** Начало сообщения bash об ошибке: «bash: » в терминале, «./backup.sh: line 3: » в скрипте. */
+  errPrefix() {
+    return this.scriptName ? `${this.scriptName}: line ${this.line}: ` : 'bash: ';
+  }
+
+  /** Оболочка-потомок: свои переменные и папка, общая ФС — для ( … ) и $(…). */
+  child({ tty = this.tty } = {}) {
+    const sub = new Shell(this.fs, {
+      cwd: this.cwd, env: { ...this.env }, args: this.args, depth: this.depth + 1, tty,
+    });
+    Object.assign(sub, { scriptName: this.scriptName, line: this.line, status: this.status });
+    return sub;
   }
 
   get user() {
@@ -224,33 +141,111 @@ export class Shell {
     return normalize(path, this.cwd);
   }
 
+
   // --- раскрытие слов ---
 
   expandVars(text) {
-    return text.replace(/\$(\?|[0-9]|\{[A-Za-z_]\w*\}|[A-Za-z_]\w*)/g, (_, name) => {
+    return text.replace(VARIABLE, (_, name) => {
       const key = name.replace(/[{}]/g, '');
       if (key === '?') return String(this.status);
+      if (key === '#') return String(Math.max(this.args.length - 1, 0));
+      if (key === '@' || key === '*') return this.args.slice(1).join(' ');
       if (/^\d$/.test(key)) return this.args[Number(key)] ?? '';
       if (key === 'PWD') return this.cwd;
       return this.env[key] ?? '';
     });
   }
 
-  /** Части слова → строка (переменные, ~) и, если есть * без кавычек, список файлов. */
-  expandWord(parts) {
-    let text = '';
-    let pattern = '';
-    parts.forEach((part, index) => {
-      let value = part.quote === "'" ? part.text : this.expandVars(part.text);
-      if (index === 0 && !part.quote && /^~(\/|$)/.test(value)) {
-        value = this.env.HOME + value.slice(1);
+  /**
+   * Части слова → список слов, как в bash: переменные и $(…) без кавычек разбиваются по
+   * пробелам и раскрывают *, "$@" — каждый аргумент отдельным словом, "" — пустое слово.
+   * split: false — всегда одно слово (NAME=значение, файл перенаправления).
+   */
+  expandWord(parts, { split = true } = {}) {
+    const fields = [];
+    let current = null;
+    const finish = () => {
+      if (current) fields.push(current);
+      current = null;
+    };
+    const add = (text, quoted) => {
+      current ??= { text: '', pattern: '', glob: false };
+      current.text += text;
+      // символ из кавычек в шаблоне помечается \u0000 — * в нём не раскрывается
+      current.pattern += quoted ? [...text].map((ch) => `\u0000${ch}`).join('') : text;
+      if (!quoted && /[*?[]/.test(text)) current.glob = true;
+    };
+    const addSplit = (value) => {
+      if (!split) {
+        add(value, true);
+        return;
       }
-      text += value;
-      pattern += part.quote ? [...value].map((ch) => `\u0000${ch}`).join('') : value;
+      value.split(/[ \t\n]+/).forEach((piece, index) => {
+        if (index > 0) finish();
+        if (piece) add(piece, false);
+      });
+    };
+    parts.forEach((part, index) => {
+      if (part.subst) {
+        const value = this.substitute(part.text);
+        if (part.quote) add(value, true);
+        else addSplit(value);
+      } else if (part.quote === "'") {
+        add(part.text, true);
+      } else if (part.quote === '"') {
+        const pieces = part.text.split('$@');
+        pieces.forEach((piece, k) => {
+          if (k > 0) {
+            this.args.slice(1).forEach((arg, n) => {
+              if (n > 0) finish();
+              add(arg, true);
+            });
+          }
+          const value = this.expandVars(piece);
+          if (value || pieces.length === 1) add(value, true);
+        });
+      } else {
+        let { text } = part;
+        if (index === 0 && /^~(\/|$)/.test(text)) {
+          add(this.env.HOME, true);
+          text = text.slice(1);
+        }
+        let last = 0;
+        for (const match of text.matchAll(VARIABLE)) {
+          if (match.index > last) add(text.slice(last, match.index), !split);
+          addSplit(this.expandVars(match[0]));
+          last = match.index + match[0].length;
+        }
+        if (last < text.length) add(text.slice(last), !split);
+      }
     });
-    if (!hasGlob(parts)) return [text];
-    const matches = this.glob(pattern);
-    return matches.length ? matches : [text];
+    finish();
+    if (!split) return [fields.map((field) => field.text).join('')];
+    return fields.flatMap((field) => {
+      if (!field.glob) return [field.text];
+      const matches = this.glob(field.pattern);
+      return matches.length ? matches : [field.text];
+    });
+  }
+
+  /** $(…): команда в оболочке-потомке; результат — её вывод без \n в конце. */
+  substitute(text) {
+    if (this.depth >= MAX_SCRIPT_DEPTH) return '';
+    const sub = this.child({ tty: false });
+    const chunks = [];
+    try {
+      sub.execList(parseAll(text), chunks);
+    } catch (e) {
+      if (e instanceof ShellSyntaxError) {
+        chunks.push({ text: `${this.errPrefix()}${e.message}\n`, err: true });
+        sub.status = 2;
+      } else if (e instanceof ExitSignal) {
+        sub.status = e.code;
+      } else throw e;
+    }
+    this.substErr += errText(chunks);
+    this.substStatus = sub.status;
+    return outText(chunks).replace(/\n+$/, '');
   }
 
   /** Раскрыть шаблон пути: каждая часть с * ищется в своей папке. */
@@ -284,121 +279,278 @@ export class Shell {
     return results.filter((path) => this.fs.exists(this.resolve(path))).sort();
   }
 
+
   // --- выполнение ---
 
-  /** Выполнить строку. Возвращает {chunks, action}. */
+  /** Строка терминала: разобрать целиком и выполнить. Возвращает {chunks, action}. */
   run(line) {
     const chunks = [];
-    let action = null;
+    this.action = null;
     if (line.trim() && this.depth === 0) this.history.push(line);
     let list;
     try {
-      list = parse(tokenize(line));
+      list = parseAll(line);
     } catch (e) {
+      if (!(e instanceof ShellSyntaxError)) throw e;
       this.status = 2;
-      return { chunks: [{ text: `bash: ${e.message}\n`, err: true }], action };
+      return { chunks: [{ text: `bash: ${e.message}\n`, err: true }], action: null };
     }
-    let output = '';
-    for (const [index, { pipeline }] of list.entries()) {
-      const previous = list[index - 1]?.next;
-      if (previous === '&&' && this.status !== 0) continue;
-      if (previous === '||' && this.status === 0) continue;
-      const result = this.runPipeline(pipeline);
-      chunks.push(...result.chunks);
-      output += result.chunks.filter((chunk) => !chunk.err).map((chunk) => chunk.text).join('');
-      action = result.action ?? action;
+    try {
+      this.execList(list, chunks);
+    } catch (e) {
+      if (!(e instanceof ExitSignal)) throw e;
+      this.status = e.code;
+      // настоящий терминал закрылся бы
+      if (this.depth === 0) chunks.push({ text: 'exit\n(в тренажёре терминал не закрывается)\n', err: false });
     }
-    this.lastOutput = output;
-    return { chunks, action };
-  }
-
-  runPipeline(stages) {
-    const chunks = [];
-    let stdin = '';
-    let action = null;
-    // команды конвейера работают одновременно: ps видит и grep из «ps aux | grep nginx»
-    this.pipeline = stages.map((stage) => stage.words.map((word) => word.map((part) => part.text).join('')));
-    stages.forEach((stage, index) => {
-      this.stageIndex = index;
-      const last = index === stages.length - 1;
-      const result = this.runStage(stage, stdin, { piped: !last });
-      action = result.action ?? action;
-      if (result.err) chunks.push({ text: result.err, err: true });
-      if (last) {
-        if (result.out) chunks.push({ text: result.out, err: false });
-      } else {
-        stdin = result.out;
-      }
-    });
-    return { chunks, action };
+    this.lastOutput = outText(chunks);
+    return { chunks, action: this.action };
   }
 
   /**
-   * Одна команда с перенаправлениями. Возвращает {out, err, action}: out — то, что
-   * не ушло в файл (в терминал или следующей команде), err — то же для ошибок.
+   * Скрипт: как bash, читает и выполняет по одной строке (if/for — целиком), поэтому
+   * строки до синтаксической ошибки успевают выполниться. Возвращает chunks.
    */
-  runStage(stage, stdin, { piped }) {
-    let words;
-    let redirects;
+  runScript(text, name) {
+    const chunks = [];
+    const savedName = this.scriptName;
+    this.scriptName = name;
     try {
-      words = stage.words.flatMap((word) => this.expandWord(word));
-      redirects = stage.redirects.map((item) => ({
-        op: item.op, target: item.target && this.expandWord(item.target).join(' '),
-      }));
+      const parser = new Parser(tokenize(text));
+      for (let list = parser.parseLine(); list; list = parser.parseLine()) this.execList(list, chunks);
     } catch (e) {
-      this.status = 1;
-      return { out: '', err: `bash: ${e.message}\n` };
+      if (e instanceof ShellSyntaxError) {
+        this.status = 2;
+        let message = `${name}: line ${e.line}: ${e.message}\n`;
+        if (e.message.startsWith('syntax error near')) {
+          message += `${name}: line ${e.line}: \`${text.split('\n')[e.line - 1].trim()}'\n`;
+        }
+        chunks.push({ text: message, err: true });
+      } else if (e instanceof ExitSignal) {
+        this.status = e.code;
+      } else throw e;
+    } finally {
+      this.scriptName = savedName;
     }
+    return chunks;
+  }
 
-    // Ввод из файла: cmd < file
-    for (const item of redirects.filter((r) => r.op === '<')) {
-      try {
-        stdin = this.fs.readFile(this.resolve(item.target));
-      } catch (e) {
-        this.status = 1;
-        return { out: '', err: `bash: ${item.target}: ${e.message}\n` };
+  execList(items, chunks) {
+    for (const item of items) this.execAndOr(item, chunks);
+    return this.status;
+  }
+
+  /** a && b || c — слева направо по коду выхода последней выполненной. */
+  execAndOr(node, chunks) {
+    this.execPipeline(node.first, chunks);
+    for (const { op, pipeline } of node.rest) {
+      if ((op === '&&') === (this.status === 0)) this.execPipeline(pipeline, chunks);
+    }
+  }
+
+  execPipeline({ negate, commands }, chunks) {
+    // команды конвейера работают одновременно: ps видит и grep из «ps aux | grep nginx»
+    this.pipeline = commands.map((command) => (command.type === 'simple'
+      ? command.words.map((word) => word.map((part) => part.text).join(''))
+      : ['bash']));
+    if (commands.length === 1) {
+      this.stageIndex = 0;
+      this.runCommand(commands[0], '', chunks, { piped: false });
+    } else {
+      let stdin = '';
+      commands.forEach((command, index) => {
+        this.stageIndex = index;
+        const last = index === commands.length - 1;
+        const own = [];
+        try {
+          this.runCommand(command, stdin, own, { piped: !last });
+        } catch (e) {
+          if (!(e instanceof ExitSignal)) throw e;   // часть конвейера — своя оболочка
+          this.status = e.code;
+        }
+        if (last) chunks.push(...own);
+        else {
+          chunks.push(...own.filter((chunk) => chunk.err));
+          stdin = outText(own);
+        }
+      });
+    }
+    if (negate) this.status = this.status === 0 ? 1 : 0;
+  }
+
+  /** Одна команда конвейера; вывод — в chunks. */
+  runCommand(command, stdin, chunks, { piped }) {
+    this.line = command.line;
+    if (command.type === 'simple') {
+      const result = this.runStage(command, stdin, { piped });
+      if (result.action) this.action = result.action;
+      chunks.push(...result.shown);
+      if (result.exit !== undefined) throw new ExitSignal(result.exit);
+      return;
+    }
+    // Составная команда (if, for, ( … )): её вывод идёт через её перенаправления
+    this.substErr = '';
+    const opened = this.openRedirects(command.redirects);
+    if (this.substErr) chunks.push({ text: this.substErr, err: true });
+    if (opened.error) {
+      this.status = 1;
+      chunks.push({ text: opened.error, err: true });
+      return;
+    }
+    const inner = [];
+    const savedTty = this.tty;
+    this.tty = this.tty && !piped && opened.fds[1].stream === 'out';
+    try {
+      this.runCompound(command, inner);
+    } finally {
+      this.tty = savedTty;
+      for (const chunk of inner) {
+        const shown = this.deliver(opened.fds, chunk.err ? 2 : 1, chunk.text);
+        if (shown) chunks.push(shown);
       }
     }
+  }
 
-    // Куда идут потоки: 1 — вывод, 2 — ошибки. Перенаправления — слева направо, как
-    // в bash: «2>&1 > f» — ошибки остаются на экране, «> f 2>&1» — оба потока в файл.
-    // Файлы bash открывает (создаёт и очищает) до запуска команды
+  runCompound(command, chunks) {
+    if (command.type === 'subshell') {
+      const sub = this.child();
+      try {
+        sub.execList(command.body, chunks);
+      } catch (e) {
+        if (!(e instanceof ExitSignal)) throw e;
+        sub.status = e.code;
+      }
+      if (sub.action) this.action = sub.action;
+      this.status = sub.status;
+    } else if (command.type === 'if') {
+      for (const { cond, body } of command.clauses) {
+        if (this.execList(cond, chunks) === 0) {
+          this.execList(body, chunks);
+          return;
+        }
+      }
+      if (command.otherwise) this.execList(command.otherwise, chunks);
+      else this.status = 0;
+    } else if (command.type === 'for') {
+      if (!/^[A-Za-z_]\w*$/.test(command.name)) {
+        chunks.push({ text: `${this.errPrefix()}\`${command.name}': not a valid identifier\n`, err: true });
+        this.status = 1;
+        return;
+      }
+      this.substErr = '';
+      // без in — аргументы скрипта; шаблон без совпадений остаётся как есть
+      const values = command.words
+        ? command.words.flatMap((word) => this.expandWord(word))
+        : this.args.slice(1);
+      if (this.substErr) chunks.push({ text: this.substErr, err: true });
+      this.status = 0;
+      for (const value of values.slice(0, MAX_LOOP)) {
+        this.env[command.name] = value;
+        this.execList(command.body, chunks);
+      }
+    }
+  }
+
+  /**
+   * Перенаправления слева направо, как в bash: «2>&1 > f» — ошибки остаются на экране,
+   * «> f 2>&1» — оба потока в файл. Файлы открываются (создаются и очищаются) до запуска
+   * команды. Возвращает {fds, stdin} или {error}.
+   */
+  openRedirects(list, stdin = '') {
     const fds = { 1: { stream: 'out' }, 2: { stream: 'err' } };
-    for (const item of redirects) {
+    for (const item of list) {
       if (item.op === '2>&1') {
         fds[2] = fds[1];
         continue;
       }
-      if (item.op === '<') continue;
-      const fd = item.op.startsWith('2') ? 2 : 1;
-      fds[fd] = { file: this.resolve(item.target) };
+      const [target] = this.expandWord(item.target, { split: false });
       try {
+        if (item.op === '<') {
+          stdin = this.fs.readFile(this.resolve(target));
+          continue;
+        }
+        const fd = item.op.startsWith('2') ? 2 : 1;
+        fds[fd] = { file: this.resolve(target) };
         this.fs.writeFile(fds[fd].file, '', { append: true });
         if (!item.op.endsWith('>>')) this.fs.writeFile(fds[fd].file, '');
       } catch (e) {
-        this.status = 1;
-        return { out: '', err: `bash: ${item.target}: ${e.message}\n` };
+        if (!(e instanceof FsError)) throw e;
+        return { error: `${this.errPrefix()}${target}: ${e.message}\n` };
       }
     }
+    return { fds, stdin };
+  }
 
+  /** Текст в поток fd: в файл (null) или на экран / дальше по конвейеру ({text, err}). */
+  deliver(fds, fd, text) {
+    const target = fds[fd];
+    if (target.file) {
+      this.fs.writeFile(target.file, text, { append: true });
+      return null;
+    }
+    return { text, err: target.stream === 'err' };
+  }
+
+  /**
+   * Простая команда с перенаправлениями. Возвращает {shown, action, exit?}: shown — то, что
+   * не ушло в файл (в терминал или следующей команде), список {text, err}.
+   */
+  runStage(stage, stdin, { piped }) {
+    this.substErr = '';
+    this.substStatus = null;
+    const first = stage.words[0]?.[0];
+    // NAME=значение — без разбиения по пробелам: NAME="media-$(date +%F).tar.gz"
+    const assignment = stage.words.length === 1 && first && !first.quote && !first.subst
+      && /^[A-Za-z_]\w*=/.test(first.text);
+    let words;
+    let opened;
+    try {
+      words = assignment
+        ? this.expandWord(stage.words[0], { split: false })
+        : stage.words.flatMap((word) => this.expandWord(word));
+      opened = this.openRedirects(stage.redirects, stdin);
+    } catch (e) {
+      if (e instanceof ExitSignal || e instanceof FsError) throw e;
+      this.status = 1;
+      return { shown: [{ text: `bash: ${e.message}\n`, err: true }] };
+    }
+    const pre = this.substErr ? [{ text: this.substErr, err: true }] : [];
+    if (opened.error) {
+      this.status = 1;
+      return { shown: [...pre, { text: opened.error, err: true }] };
+    }
+    const { fds } = opened;
     const result = words.length
-      ? this.exec(words, stdin, { tty: this.tty && !piped && fds[1].stream === 'out' })
-      : { out: '', err: '', code: 0 };
+      ? this.exec(words, opened.stdin, { tty: this.tty && !piped && fds[1].stream === 'out' })
+      : { out: '', err: '', code: this.substStatus ?? 0 };
+    // x=$(команда) — код выхода команды
+    if (assignment && this.substStatus !== null) result.code = this.substStatus;
     this.status = result.code;
 
-    // Порядок, когда оба потока идут в одно место: обычно вывод, потом ошибки;
-    // ls сначала проверяет все аргументы — его ошибки первые (errFirst)
-    const parts = result.errFirst ? [[2, result.err], [1, result.out]] : [[1, result.out], [2, result.err]];
-    let out = '';
-    let err = '';
+    // Порядок, когда оба потока идут в одно место: обычно вывод, потом ошибки; ls сначала
+    // проверяет все аргументы — его ошибки первые (errFirst); у скрипта — как печатал (chunks)
+    const parts = result.chunks?.map((chunk) => [chunk.err ? 2 : 1, chunk.text])
+      ?? (result.errFirst ? [[2, result.err], [1, result.out]] : [[1, result.out], [2, result.err]]);
+    let shown = [];
     for (const [fd, text] of parts) {
-      const target = fds[fd];
       if (!text) continue;
-      if (target.file) this.fs.writeFile(target.file, text, { append: true });
-      else if (target.stream === 'out') out += text;
-      else err += text;
+      const chunk = this.deliver(fds, fd, text);
+      if (chunk) shown.push(chunk);
     }
-    return { out, err, action: result.action };
+    // на экране ошибки команды видны раньше её вывода (кроме скриптов)
+    if (!result.chunks) shown = [...shown.filter((chunk) => chunk.err), ...shown.filter((chunk) => !chunk.err)];
+    return { shown: [...pre, ...shown], action: result.action, exit: result.exit };
+  }
+
+  /** exit [N]: код N по модулю 256, без N — код последней команды. */
+  exitCommand(args) {
+    if (!args.length) return { out: '', err: '', code: this.status, exit: this.status };
+    if (!/^[+-]?\d+$/.test(args[0])) {
+      return { out: '', err: `${this.errPrefix()}exit: ${args[0]}: numeric argument required\n`, code: 2, exit: 2 };
+    }
+    if (args.length > 1) return { out: '', err: `${this.errPrefix()}exit: too many arguments\n`, code: 1 };
+    const code = ((Number(args[0]) % 256) + 256) % 256;
+    return { out: '', err: '', code, exit: code };
   }
 
   /** Запуск команды по словам: присваивание, встроенная, скрипт или «command not found». */
@@ -412,6 +564,8 @@ export class Shell {
       return { out: '', err: '', code: 0 };
     }
 
+    if (name === 'exit') return this.exitCommand(args);
+
     // ./script.sh, /srv/shop/backup.sh — запуск файла
     if (name.includes('/')) return this.runFile(name, args, { tty });
 
@@ -420,22 +574,23 @@ export class Shell {
       // свой скрипт в папке из PATH (~/bin/deploy после export PATH="$HOME/bin:$PATH")
       const script = this.findInPath(name);
       if (script) return this.runFile(script, args, { tty });
-      return { out: '', err: `${name}: command not found\n`, code: 127 };
+      return { out: '', err: `${this.scriptName ? this.errPrefix() : ''}${name}: command not found\n`, code: 127 };
     }
-    if (args.includes('--help') && command.help) {
+    if (args.includes('--help') && command.help && !command.noHelp) {
       return { out: `${command.help.trim()}\n`, err: '', code: 0 };
     }
     try {
       const result = command.run({ sh: this, fs: this.fs, args, stdin, tty, name }) ?? {};
       return {
         out: result.out ?? '', err: result.err ?? '', code: result.code ?? 0,
-        action: result.action, errFirst: result.errFirst,
+        action: result.action, errFirst: result.errFirst, chunks: result.chunks,
       };
     } catch (e) {
       if (e instanceof FsError) return { out: '', err: `${name}: ${e.message}\n`, code: 1 };
       throw e;
     }
   }
+
 
   /** Исполняемый текстовый файл name в папках PATH (программы-заглушки apt — не скрипты). */
   findInPath(name) {
@@ -452,6 +607,7 @@ export class Shell {
     return null;
   }
 
+
   /** Выполнить файл как скрипт: нужен доступ x и (для ./) shebang bash/sh. */
   runFile(path, args, { requireExec = true, inPlace = false, tty = true } = {}) {
     const abs = this.resolve(path);
@@ -459,11 +615,11 @@ export class Shell {
     try {
       node = this.fs.lookup(abs);
     } catch (e) {
-      return { out: '', err: `bash: ${path}: ${e.message}\n`, code: 127 };
+      return { out: '', err: `${this.errPrefix()}${path}: ${e.message}\n`, code: 127 };
     }
-    if (node.type === 'dir') return { out: '', err: `bash: ${path}: Is a directory\n`, code: 126 };
+    if (node.type === 'dir') return { out: '', err: `${this.errPrefix()}${path}: Is a directory\n`, code: 126 };
     if (requireExec && !this.fs.can(node, 'x')) {
-      return { out: '', err: `bash: ${path}: Permission denied\n`, code: 126 };
+      return { out: '', err: `${this.errPrefix()}${path}: Permission denied\n`, code: 126 };
     }
     // Программа симулятора в файле (venv/bin/pip, venv/bin/python) — запуск этой команды
     if (node.program && COMMANDS[node.program]) {
@@ -476,13 +632,13 @@ export class Shell {
     try {
       text = this.fs.readFile(abs);
     } catch (e) {
-      return { out: '', err: `bash: ${path}: ${e.message}\n`, code: 126 };
+      return { out: '', err: `${this.errPrefix()}${path}: ${e.message}\n`, code: 126 };
     }
     if (node.binary || node.content === undefined || (node.size && !text)) {
-      return { out: '', err: `bash: ${path}: cannot execute binary file\n`, code: 126 };
+      return { out: '', err: `${this.errPrefix()}${path}: cannot execute binary file\n`, code: 126 };
     }
     if (this.depth >= MAX_SCRIPT_DEPTH) {
-      return { out: '', err: `bash: ${path}: слишком глубокий вызов скриптов\n`, code: 1 };
+      return { out: '', err: `${this.errPrefix()}${path}: слишком глубокий вызов скриптов\n`, code: 1 };
     }
     // Скрипт — в своей оболочке (переменные и cd не меняют текущую); source — в этой же
     const shell = inPlace ? this : new Shell(this.fs, {
@@ -490,20 +646,12 @@ export class Shell {
     });
     const savedTty = shell.tty;
     shell.tty = tty;
-    let out = '';
-    let err = '';
+    let chunks;
     try {
-      for (const line of text.split('\n')) {
-        if (!line.trim() || line.trim().startsWith('#')) continue;
-        const result = shell.run(line);
-        for (const chunk of result.chunks) {
-          if (chunk.err) err += chunk.text;
-          else out += chunk.text;
-        }
-      }
+      chunks = shell.runScript(text, path);
     } finally {
       shell.tty = savedTty;
     }
-    return { out, err, code: shell.status };
+    return { out: outText(chunks), err: errText(chunks), code: shell.status, chunks };
   }
 }

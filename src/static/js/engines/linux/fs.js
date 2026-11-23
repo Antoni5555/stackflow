@@ -3,6 +3,8 @@
 // изменения. Жёсткая ссылка — две записи в папках, указывающие на один и тот же узел.
 // Права проверяются для текущего пользователя (fs.user): root может всё.
 
+import { now, setClock } from './clock.js';
+
 export const USERS = {
   root: { uid: 0, groups: ['root'] },
   shop: { uid: 1000, groups: ['shop', 'sudo'] },
@@ -36,7 +38,7 @@ const textSize = (text) => new TextEncoder().encode(text).length;
 function makeNode(type, props = {}) {
   const node = {
     type, owner: 'root', group: 'root', mode: type === 'dir' ? 0o755 : 0o644,
-    mtime: Date.now(), nlink: 1, ...props,
+    mtime: now(), nlink: 1, ...props,
   };
   if (type === 'dir' && !node.children) node.children = new Map();
   if (type === 'file') {
@@ -114,6 +116,7 @@ export class VirtualFS {
    * dirs [путь | {путь: {owner, mode}}], cwd. Владелец по умолчанию — shop.
    */
   static fromSetup(setup = {}) {
+    setClock(setup.now ?? null);
     const fs = new VirtualFS();
     const props = (spec) => {
       const result = {};
@@ -122,7 +125,7 @@ export class VirtualFS {
         result.group = spec.group ?? spec.owner;
       }
       if (spec.mode) result.mode = parseInt(spec.mode, 8);
-      if (spec.mtime !== undefined) result.mtime = Date.now() - Number(spec.mtime) * DAY;
+      if (spec.mtime !== undefined) result.mtime = now() - Number(spec.mtime) * DAY;
       return result;
     };
     // dirs — список (путь или {путь: настройки}) или словарь {путь: настройки}
@@ -251,7 +254,7 @@ export class VirtualFS {
       node.size = textSize(node.content);
       delete node.heavy;
       delete node.binary;
-      node.mtime = Date.now();
+      node.mtime = now();
       return node;
     }
     return this.createFile(path, { content: text });
@@ -264,7 +267,7 @@ export class VirtualFS {
     this.require(parent, 'x');
     const node = makeNode('file', { owner: this.user, group: this.user, ...props });
     parent.children.set(name, node);
-    parent.mtime = Date.now();
+    parent.mtime = now();
     return node;
   }
 
@@ -272,7 +275,7 @@ export class VirtualFS {
     try {
       const node = this.lookup(path);
       if (node.owner !== this.user && this.user !== 'root') this.require(node, 'w');
-      node.mtime = Date.now();
+      node.mtime = now();
     } catch (e) {
       if (e.code !== 'ENOENT') throw e;
       this.createFile(path);
@@ -299,7 +302,7 @@ export class VirtualFS {
     this.require(parent, 'w');
     this.require(parent, 'x');
     parent.children.set(name, makeNode('dir', { owner: this.user, group: this.user }));
-    parent.mtime = Date.now();
+    parent.mtime = now();
   }
 
   /** Записи папки: [[имя, узел]] (нужно право r). */
@@ -325,7 +328,7 @@ export class VirtualFS {
     }
     parent.children.delete(name);
     node.nlink -= 1;
-    parent.mtime = Date.now();
+    parent.mtime = now();
   }
 
   /** Снять запись с места, не трогая сам узел (mv: узел переедет по attach). */
@@ -335,7 +338,7 @@ export class VirtualFS {
     this.require(parent, 'w');
     this.require(parent, 'x');
     parent.children.delete(name);
-    parent.mtime = Date.now();
+    parent.mtime = now();
   }
 
   /** Поставить существующий узел по новому пути (mv, жёсткая ссылка). */
@@ -344,7 +347,7 @@ export class VirtualFS {
     this.require(parent, 'w');
     this.require(parent, 'x');
     parent.children.set(name, node);
-    parent.mtime = Date.now();
+    parent.mtime = now();
   }
 
   /** Копия узла от текущего пользователя (cp): права сохраняются, владелец — новый. */

@@ -262,8 +262,10 @@ STATE_PATH_CHECKS = {
 # Git (курс с движком git): ключи setup и правила; «есть / нет» — через exists: false
 STATE_SETUP_KEYS = {
     'cwd', 'files', 'dirs', 'links', 'services', 'processes', 'repo', 'commits', 'head',
-    'remote', 'venv', 'gitconfig',
+    'remote', 'venv', 'gitconfig', 'now', 'crontab',
 }
+# setup.now — «сейчас» симулятора (время Москвы): от него date, ls -l, find -mtime
+SETUP_NOW = re.compile(r'^\d{4}-\d\d-\d\d( \d\d:\d\d(:\d\d)?)?$')
 GIT_RULES = {
     'branch': {'exists'}, 'tag': {'exists'},
     'tracked': {'exists'}, 'staged': {'exists'},
@@ -276,7 +278,9 @@ SYSTEM_RULES = {
     'service': {'active', 'enabled'}, 'process': {'running'}, 'port': {'listening'},
 }
 PROCESS_FIELDS = {'command', 'user', 'name', 'pid', 'cpu', 'mem', 'listen'}
-OBJECT_RULES = {**GIT_RULES, **SYSTEM_RULES}
+# crontab пользователя (js/engines/linux/cron.js): строка есть / нет, crontab есть / нет
+CRON_RULES = {'crontab': {'matches', 'not_matches', 'exists'}}
+OBJECT_RULES = {**GIT_RULES, **SYSTEM_RULES, **CRON_RULES}
 DOM_CHECKS = {'count', 'min', 'exists', 'attr', 'text', 'style'}
 SPEC_FIELDS = {
     'exercise': (['starter_code', 'solution', 'check'], ['inputs']),
@@ -335,6 +339,13 @@ def validate_state(spec, path):
         for target in links.values()
     ):
         raise ContentError(path, 'setup.links — словарь {путь ссылки: цель}')
+    if 'now' in setup and not SETUP_NOW.match(str(setup['now'])):
+        raise ContentError(path, 'setup.now — "ГГГГ-ММ-ДД ЧЧ:ММ" (время Москвы)')
+    crontabs = setup.get('crontab', {})
+    if not isinstance(crontabs, dict) or not all(
+        isinstance(text, str) for text in crontabs.values()
+    ):
+        raise ContentError(path, 'setup.crontab — {пользователь: строки расписания}')
     if not isinstance(spec['solution'], str):
         raise ContentError(path, 'solution — команды по одной на строку (текст)')
     for number, rule in enumerate(spec['check']['expect'], start=1):
@@ -348,6 +359,12 @@ def validate_state(spec, path):
                 raise ContentError(
                     path,
                     f'правило {number}: {git[0]} — без {sorted(extra or set(git[1:]))}',
+                )
+            if git[0] == 'crontab' and len(set(rule) & CRON_RULES['crontab']) != 1:
+                raise ContentError(
+                    path,
+                    f'правило {number}: crontab — с одним из '
+                    'matches, not_matches, exists',
                 )
             if git[0] == 'service' and not {'active', 'enabled'} & set(rule):
                 raise ContentError(

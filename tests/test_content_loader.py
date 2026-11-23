@@ -334,6 +334,36 @@ def test_state_services_processes_and_rules(content_dir):
         ContentLoader(content_dir).load()
 
 
+def test_state_now_crontab_and_rule(content_dir):
+    """setup.now (часы симулятора), setup.crontab и правило crontab."""
+    rules = ("    - crontab: shop\n      matches: '^0 3 \\\\* \\\\* \\\\* /x$'\n"
+             '      fail: F\n')
+    extra = ('  now: "2026-11-23 03:00"\n'
+             '  crontab:\n    www-data: "*/5 * * * * echo hi\\n"\n')
+    task = content_dir / HELLO / '06-copy.yaml'
+    task.write_text((STATE_TASK % rules).replace('check:', extra + 'check:', 1),
+                    encoding='utf-8')
+    ContentLoader(content_dir).load()
+
+    spec = Exercise.objects.get(slug='copy').spec
+    assert spec['setup']['now'] == '2026-11-23 03:00'
+    assert spec['check']['expect'][0]['crontab'] == 'shop'
+
+    for bad, message in [
+        ('  now: "23.11.2026"\n', 'setup.now'),
+        ('  crontab: "0 3 * * * x"\n', 'setup.crontab'),
+    ]:
+        task.write_text((STATE_TASK % rules).replace('check:', bad + 'check:', 1),
+                        encoding='utf-8')
+        with pytest.raises(ContentError, match=message):
+            ContentLoader(content_dir).load()
+
+    no_check = '    - crontab: shop\n      fail: F\n'
+    task.write_text(STATE_TASK % no_check, encoding='utf-8')
+    with pytest.raises(ContentError, match='crontab — с одним из'):
+        ContentLoader(content_dir).load()
+
+
 @pytest.mark.parametrize('rules, message', [
     ('    - path: /a\n      exists: true\n      mode: "644"\n      fail: F\n',
      'path \\+ одно из'),

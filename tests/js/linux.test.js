@@ -562,7 +562,7 @@ describe('терминал: Tab и сохранение', () => {
     assert.deepEqual(sh.complete('cat config/se'), { line: 'cat config/settings.ini ', options: [] });
     assert.deepEqual(sh.complete('ls '), { line: 'ls ', options: ['backup/', 'config/', 'logs/', 'orders.csv'] });
     assert.deepEqual(sh.complete('ls .e'), { line: 'ls .env ', options: [] });
-    assert.deepEqual(sh.complete('c'), { line: 'c', options: ['cat', 'cd', 'chgrp', 'chmod', 'chown', 'clear', 'cp', 'curl', 'cut'] });
+    assert.deepEqual(sh.complete('c'), { line: 'c', options: ['cat', 'cd', 'chgrp', 'chmod', 'chown', 'clear', 'cp', 'crontab', 'curl', 'cut'] });
   });
 
   it('ФС → JSON → ФС без потерь', () => {

@@ -4,6 +4,7 @@
 // в /etc/systemd/system/*.service (gunicorn и др.). Включён сервис — значит, есть ссылка
 // в /etc/systemd/system/multi-user.target.wants, как в настоящем systemd.
 
+import { mskDate, now } from './clock.js';
 import { APT, installHooks } from './apt.js';
 import { FsError, USERS, VirtualFS, basename, dirname } from './fs.js';
 
@@ -58,23 +59,23 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const pad = (n) => String(n).padStart(2, '0');
 const clock = (ms) => {
-  const d = new Date(ms);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const d = mskDate(ms);
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
 };
 const journalTime = (ms) => {
-  const d = new Date(ms);
-  return `${MONTHS[d.getMonth()]} ${pad(d.getDate())} ${clock(ms)}`;
+  const d = mskDate(ms);
+  return `${MONTHS[d.getUTCMonth()]} ${pad(d.getUTCDate())} ${clock(ms)}`;
 };
 const gunicornTime = (ms) => {
-  const d = new Date(ms);
-  return `[${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${clock(ms)} +0300]`;
+  const d = mskDate(ms);
+  return `[${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${clock(ms)} +0300]`;
 };
 
 /** Состояние системы: процессы, сервисы, журнал. Базовые процессы есть всегда. */
 export function systemState(fs) {
   fs.root.system ??= {
     nextPid: 1200,
-    boot: Date.now() - 3 * 24 * 3600 * 1000,
+    boot: now() - 3 * 24 * 3600 * 1000,
     procs: [
       { pid: 1, user: 'root', comm: 'systemd', cmd: '/sbin/init' },
       { pid: 380, user: 'systemd-resolve', comm: 'systemd-resolve', cmd: '/usr/lib/systemd/systemd-resolved', listen: ['127.0.0.53:53'] },
@@ -92,12 +93,12 @@ export function systemState(fs) {
 const spawn = (state, proc) => {
   const pid = state.nextPid;
   state.nextPid += 1 + (pid % 3);   // номера не подряд — как на живом сервере
-  const created = { pid, started: Date.now(), ...proc };
+  const created = { pid, started: now(), ...proc };
   state.procs.push(created);
   return created;
 };
 
-function log(state, unit, text, { source = 'systemd[1]', time = Date.now() } = {}) {
+function log(state, unit, text, { source = 'systemd[1]', time = now() } = {}) {
   state.journal.push({ time, unit, source, text });
 }
 
@@ -390,7 +391,7 @@ function gunicornBoot(state, unit, master, workers, time) {
 }
 
 /** Запустить сервис → {ok: true} или {ok: false, status}. Пишет в журнал, как systemd. */
-function startService(fs, service, time = Date.now()) {
+function startService(fs, service, time = now()) {
   const state = systemState(fs);
   const unit = `${service.name}.service`;
   const desc = description(service);
@@ -453,7 +454,7 @@ function stopService(fs, service, { quiet = false } = {}) {
     log(state, unit, `${unit}: Deactivated successfully.`);
     log(state, unit, `Stopped ${unit} - ${desc}.`);
   }
-  Object.assign(service.record, { active: false, failed: false, since: Date.now() });
+  Object.assign(service.record, { active: false, failed: false, since: now() });
   delete service.record.mainPid;
 }
 
@@ -469,7 +470,7 @@ function respawnWorkers(state, name) {
 const AUTH = (verb, unit) => `Failed to ${verb} ${unit}: Interactive authentication required.\nSee system logs and 'systemctl status ${unit}' for details.\n`;
 
 function ago(ms) {
-  const seconds = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  const seconds = Math.max(0, Math.round((now() - ms) / 1000));
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}min ago`;
@@ -479,8 +480,8 @@ function ago(ms) {
 }
 
 const longDate = (ms) => {
-  const d = new Date(ms);
-  return `${DAYS[d.getDay()]} ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${clock(ms)} MSK`;
+  const d = mskDate(ms);
+  return `${DAYS[d.getUTCDay()]} ${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${clock(ms)} MSK`;
 };
 
 function journalLines(state, unit, count) {
@@ -554,7 +555,7 @@ export const systemctl = {
   sudo systemctl daemon-reload    перечитать unit-файлы после правки`,
   run(ctx) {
     const args = ctx.args.filter((arg) => !['--no-pager', '-l', '--full', '-q', '--quiet'].includes(arg));
-    const now = args.includes('--now');
+    const withNow = args.includes('--now');
     const [verb, ...names] = args.filter((arg) => arg !== '--now');
     const quiet = ctx.args.includes('-q') || ctx.args.includes('--quiet');
     const { fs } = ctx;
@@ -614,8 +615,8 @@ export const systemctl = {
         if (!enabled) code = 1;
       } else if (verb === 'enable' || verb === 'disable') {
         err += verb === 'enable' ? enable(fs, service) : disable(fs, service);
-        if (now && verb === 'enable') code = Math.max(code, startAndReport(fs, service, unit, (text) => { err += text; }));
-        if (now && verb === 'disable') stopService(fs, service);
+        if (withNow && verb === 'enable') code = Math.max(code, startAndReport(fs, service, unit, (text) => { err += text; }));
+        if (withNow && verb === 'disable') stopService(fs, service);
       } else if (verb === 'stop') {
         stopService(fs, service);
       } else if (verb === 'start' || verb === 'restart') {
@@ -718,7 +719,7 @@ function selfProc(ctx, state) {
     const cmd = words[0] === 'grep' ? ['grep', '--color=auto', ...words.slice(1)] : words;
     return {
       pid: state.nextPid + index, user: ctx.fs.user, comm: words[0], cmd: cmd.join(' '),
-      tty: 'pts/0', self: index === ctx.sh.stageIndex, piped: true, started: Date.now(),
+      tty: 'pts/0', self: index === ctx.sh.stageIndex, piped: true, started: now(),
     };
   });
 }
@@ -728,9 +729,9 @@ const cpuOf = (proc) => proc.cpu ?? 0;
 /** START в ps: сегодняшние — время, старше суток — дата (Nov18), как в procps. */
 function startOf(state, proc) {
   const started = proc.started ?? state.boot;
-  if (Date.now() - started < 24 * 3600 * 1000) return clock(started).slice(0, 5);
-  const d = new Date(started);
-  return `${MONTHS[d.getMonth()]}${pad(d.getDate())}`;
+  if (now() - started < 24 * 3600 * 1000) return clock(started).slice(0, 5);
+  const d = mskDate(started);
+  return `${MONTHS[d.getUTCMonth()]}${pad(d.getUTCDate())}`;
 }
 
 export const ps = {
@@ -794,7 +795,7 @@ function signalProcess(fs, proc, signal, prefix) {
     const { pid, started, ...rest } = proc;
     const fresh = spawn(state, rest);
     if (proc.comm === 'gunicorn') {
-      const time = Date.now();
+      const time = now();
       const note = signal === 9 ? `[ERROR] Worker (pid:${proc.pid}) was sent SIGKILL! Perhaps out of memory?` : `[INFO] Worker exiting (pid: ${proc.pid})`;
       log(state, unit, `${gunicornTime(time)} [${proc.ppid}] ${note}`, { source: `gunicorn[${proc.ppid}]`, time });
       log(state, unit, `${gunicornTime(time)} [${fresh.pid}] [INFO] Booting worker with pid: ${fresh.pid}`, { source: `gunicorn[${fresh.pid}]`, time });
@@ -805,7 +806,7 @@ function signalProcess(fs, proc, signal, prefix) {
   if (signal === 1 && (service.packaged || proc.comm === 'gunicorn')) {
     const workers = respawnWorkers(state, proc.unit);
     if (proc.comm === 'gunicorn') {
-      const time = Date.now();
+      const time = now();
       log(state, unit, `${gunicornTime(time)} [${proc.pid}] [INFO] Handling signal: hup`, { source: `gunicorn[${proc.pid}]`, time });
       log(state, unit, `${gunicornTime(time)} [${proc.pid}] [INFO] Hang up: Master`, { source: `gunicorn[${proc.pid}]`, time });
       for (const worker of workers) log(state, unit, `${gunicornTime(time)} [${worker.pid}] [INFO] Booting worker with pid: ${worker.pid}`, { source: `gunicorn[${worker.pid}]`, time });
@@ -817,11 +818,11 @@ function signalProcess(fs, proc, signal, prefix) {
   if (signal === 9) {
     log(state, unit, `${unit}: Main process exited, code=killed, status=9/KILL`);
     log(state, unit, `${unit}: Failed with result 'signal'.`);
-    Object.assign(service.record, { active: false, failed: true, since: Date.now(), result: 'signal' });
+    Object.assign(service.record, { active: false, failed: true, since: now(), result: 'signal' });
     delete service.record.status;
   } else {
     log(state, unit, `${unit}: Deactivated successfully.`);
-    Object.assign(service.record, { active: false, failed: false, since: Date.now() });
+    Object.assign(service.record, { active: false, failed: false, since: now() });
   }
   delete service.record.mainPid;
   const again = restart === 'always' || (restart === 'on-failure' && signal === 9);
@@ -946,11 +947,11 @@ export const top = {
   run(ctx) {
     const state = systemState(ctx.fs);
     const procs = sortedProcs(state).sort((a, b) => cpuOf(b) - cpuOf(a) || a.pid - b.pid);
-    const now = Date.now();
+    const time = now();
     const busy = procs.reduce((sum, proc) => sum + cpuOf(proc), 0);
     const load = (busy / 100).toFixed(2);
     const head = [
-      `top - ${clock(now)} up 3 days,  2:14,  1 user,  load average: ${load}, ${load}, ${(busy / 150).toFixed(2)}`,
+      `top - ${clock(time)} up 3 days,  2:14,  1 user,  load average: ${load}, ${load}, ${(busy / 150).toFixed(2)}`,
       `Tasks: ${String(procs.length).padStart(3)} total,   ${busy ? 1 : 0} running, ${String(procs.length - (busy ? 1 : 0)).padStart(3)} sleeping,   0 stopped,   0 zombie`,
       `%Cpu(s): ${Math.min(busy / 2, 99).toFixed(1).padStart(4)} us,  0.3 sy,  0.0 ni, ${Math.max(100 - busy / 2 - 0.3, 0).toFixed(1).padStart(4)} id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st`,
       'MiB Mem :   1963.4 total,    412.8 free,    786.1 used,    764.5 buff/cache',
@@ -977,7 +978,7 @@ export const top = {
 export function buildSystem(fs, setup) {
   if (!setup.services && !setup.processes) return;
   const state = systemState(fs);
-  const time = Date.now() - 2 * 3600 * 1000;
+  const time = now() - 2 * 3600 * 1000;
   for (const [name, spec] of Object.entries(setup.services ?? {})) {
     const packaged = PACKAGED[name];
     if (packaged) {

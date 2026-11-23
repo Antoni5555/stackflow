@@ -2,6 +2,7 @@
 // git 2.43 (на английском): их цитируют уроки. Редактора нет: commit без -m — ошибка,
 // merge, revert и продолжение слияния берут сообщение по умолчанию.
 
+import { now } from '../linux/clock.js';
 import { FsError, normalize } from '../linux/fs.js';
 import { countChanges, merge3, toLines, unifiedHunks, diffLines } from './diff.js';
 import {
@@ -1136,7 +1137,7 @@ SUB.blame = (g) => {
     const id = origins[i];
     const commit = id && repo.commits[id];
     const who = commit ? commit.author : 'Not Committed Yet';
-    const when = formatDate(commit ? commit.time : Date.now(), true);
+    const when = formatDate(commit ? commit.time : now(), true);
     const mark = id && id === chain[0] ? '^' : '';
     const ref = id ? `${mark}${id.slice(0, mark ? 7 : 8)}` : '00000000';
     return `${ref} (${who} ${when} ${String(i + 1).padStart(width)}) ${line}\n`;

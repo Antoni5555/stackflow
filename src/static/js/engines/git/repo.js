@@ -4,6 +4,7 @@
 // вместе с ФС в браузере. Рабочая папка — настоящие файлы ФС.
 // Снимок файлов (tree) — {путь от корня репозитория: текст}.
 
+import { now } from '../linux/clock.js';
 import { FsError, HOME, dirname, normalize } from '../linux/fs.js';
 import { globToRegExp } from '../linux/glob.js';
 
@@ -200,7 +201,7 @@ export function resolveRev(repo, rev) {
 }
 
 /** Создать коммит и сдвинуть текущую ветку (или detached HEAD). */
-export function makeCommit(repo, { tree, message, parents, author, email, time = Date.now() }) {
+export function makeCommit(repo, { tree, message, parents, author, email, time = now() }) {
   repo.seq += 1;
   const id = makeId({ tree, message, parents, author, email, seq: repo.seq });
   repo.commits[id] = { id, parents, message, tree: { ...tree }, author, email, time, seq: repo.seq };
@@ -291,7 +292,7 @@ export function buildRepo(fs, setup) {
   fs.lookup(normalize('.git', root)).repo = repo;
 
   const identity = { ...DEFAULT_IDENTITY, ...(setup.gitconfig ?? {}) };
-  let time = Date.now() - (setup.commits?.length ?? 0) * 3600 * 1000;
+  let time = now() - (setup.commits?.length ?? 0) * 3600 * 1000;
   for (const item of setup.commits ?? []) {
     const branch = item.branch ?? DEFAULT_BRANCH;
     if (!(branch in repo.heads) && Object.keys(repo.heads).length) {

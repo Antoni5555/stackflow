@@ -4,6 +4,7 @@
 // или output_matches — вывод последней команды. Проверка идёт от root: права ученика
 // не должны мешать проверке.
 
+import { failedCronRule } from './cron.js';
 import { FsError, VirtualFS, dirname, normalize } from './fs.js';
 import { Shell } from './shell.js';
 import { failedSystemRule } from './system.js';
@@ -15,6 +16,8 @@ export function failedRule(rule, shell) {
   const { fs } = shell;
   const system = failedSystemRule(rule, fs);   // service: и process:
   if (system !== null) return system;
+  const cron = failedCronRule(rule, fs);       // crontab:
+  if (cron !== null) return cron;
   if ('output_matches' in rule) return !search(rule.output_matches, shell.lastOutput);
   return fs.as('root', () => {
     let node = null;

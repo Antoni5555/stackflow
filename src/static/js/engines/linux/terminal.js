@@ -122,18 +122,25 @@ export class Terminal {
   reset(shell) {
     this.shell = shell;
     this.nano.fs = shell.fs;
+    this.afterNano = null;
     this.nano.close();
     this.output.replaceChildren();
     this.updatePrompt();
   }
 
-  openNano({ path, name }) {
+  openNano({ path, name, onClose = null }) {
     this.inputLine.hidden = true;
+    this.afterNano = onClose;            // crontab -e: после выхода — проверка и установка
     this.nano.open(path, name);
   }
 
   closeNano() {
     this.inputLine.hidden = false;
+    const after = this.afterNano;
+    this.afterNano = null;
+    if (after) {
+      for (const chunk of after()) this.print(chunk.text, chunk.err ? 'err' : 'out');
+    }
     this.onCommand('nano', { chunks: [] });
     this.input.focus();
     this.scrollToEnd();

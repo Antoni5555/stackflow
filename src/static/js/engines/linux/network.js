@@ -4,6 +4,7 @@
 // идёт по его конфигам: proxy_pass — к gunicorn (не запущен — 502), иначе файлы из
 // root/alias с правами www-data (403, 404); каждый запрос — строка в access.log.
 
+import { mskDate, now } from './clock.js';
 import { FsError, normalize } from './fs.js';
 import { parseAddress, systemState } from './system.js';
 
@@ -105,7 +106,7 @@ function nginxPage(code) {
   return `<html>\n<head><title>${title}</title></head>\n<body>\n<center><h1>${title}</h1></center>\n<hr><center>${NGINX}</center>\n</body>\n</html>\n`;
 }
 
-const httpDate = () => new Date().toUTCString();
+const httpDate = () => new Date(now()).toUTCString();
 
 /** Ответ Django-приложения (gunicorn или runserver). */
 function appResponse(proc, path) {
@@ -143,10 +144,10 @@ function nginxLog(fs, file, line) {
 }
 
 function logTime(withZone) {
-  const d = new Date();
-  if (!withZone) return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const d = mskDate(now());
+  if (!withZone) return `${d.getUTCFullYear()}/${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${pad(d.getDate())}/${months[d.getMonth()]}/${d.getFullYear()}:${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} +0300`;
+  return `${pad(d.getUTCDate())}/${months[d.getUTCMonth()]}/${d.getUTCFullYear()}:${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} +0300`;
 }
 
 /** Ответ nginx по снимку его конфигов (master.nginx). */
