@@ -1,0 +1,51 @@
+title: "Почините скрипт бэкапа"
+type: fix
+difficulty: 2
+pitfall: "Shebang — первой строкой; переменные без пробелов у =; $(…) и $ПЕРЕМЕННАЯ подставляются только в двойных кавычках."
+statement: |
+  Коллега написал скрипт бэкапа фото, но он не работает: запуск из systemd даёт `Exec format error`, а из терминала — `DEST: command not found`, и архив называется буквально `media-$(date +%F).tar.gz`. Исправьте:
+  - `#!/bin/bash` — первой строкой файла (комментарий — после него);
+  - переменные — без пробелов вокруг `=`;
+  - имя архива — с настоящей датой;
+  - все переменные в командах — в двойных кавычках;
+  - «Готово» печатать, только если `tar` завершился успешно (`&&` в той же строке).
+files:
+  backup.sh: |
+    # Бэкап фото товаров
+
+    #!/bin/bash
+    DEST = /home/shop/backups
+    NAME='media-$(date +%F).tar.gz'
+    mkdir -p $DEST
+    tar -czf $DEST/$NAME -C /srv/shop media
+    echo "Готово: $DEST/$NAME"
+check:
+  type: rules
+  rules:
+    - must_match: '(?<![\s\S])#!/bin/bash\n'
+      fail: "Shebang #!/bin/bash должен быть самой первой строкой — без комментария и пустых строк перед ним."
+    - must_match: '^DEST=/home/shop/backups\s*$'
+      fail: "Переменная задаётся слитно: DEST=/home/shop/backups."
+    - must_not_match: "'media-\\$\\(date"
+      fail: "В одинарных кавычках $(date +%F) не выполнится — нужны двойные."
+    - must_match: '^NAME="media-\$\(date \+%F\)\.tar\.gz"\s*$'
+      fail: "Имя архива: NAME=\"media-$(date +%F).tar.gz\"."
+    - must_match: '^mkdir -p "\$DEST"\s*$'
+      fail: "mkdir -p \"$DEST\" — переменная в кавычках."
+    - must_match: '^tar -czf "\$DEST/\$NAME" -C /srv/shop media\s+&&\s+echo "Готово: \$DEST/\$NAME"\s*$'
+      fail: "tar -czf \"$DEST/$NAME\" -C /srv/shop media && echo \"Готово: $DEST/$NAME\" — кавычки и && в одной строке."
+    - must_not_match: '^echo "Готово'
+      fail: "Отдельная строка echo напечатает «Готово» даже после ошибки tar — перенесите её после &&."
+solution:
+  backup.sh: |
+    #!/bin/bash
+    # Бэкап фото товаров
+    DEST=/home/shop/backups
+    NAME="media-$(date +%F).tar.gz"
+    mkdir -p "$DEST"
+    tar -czf "$DEST/$NAME" -C /srv/shop media && echo "Готово: $DEST/$NAME"
+hints:
+  - "Какая строка должна быть первой, чтобы система знала, чем выполнять файл? Что делают пробелы вокруг `=`? Подставляет ли bash `$(…)` в одинарных кавычках?"
+  - "Первые строки: `#!/bin/bash`, комментарий, `DEST=/home/shop/backups`, `NAME=\"media-$(date +%F).tar.gz\"`. В конце — `tar … && echo …` одной строкой."
+explanation: |
+  Shebang работает только в самой первой строке: из терминала bash выполнил бы файл и так, но systemd запускает его напрямую — `Exec format error`. `DEST = …` с пробелами — команда `DEST`. В одинарных кавычках `$(date +%F)` остаётся текстом, и каждый бэкап перезаписывал бы файл с одним и тем же странным именем. Кавычки вокруг `"$DEST"` защищают от пробелов и пустых значений, а `&&` не даёт скрипту написать «Готово», когда `tar` упал.

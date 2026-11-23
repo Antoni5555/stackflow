@@ -1,0 +1,57 @@
+title: "Почините скрипт уборки"
+type: fix
+difficulty: 3
+pitfall: "Пробелы внутри [ ]; после ошибки — сообщение в >&2 и exit 1; у find -delete — последним."
+statement: |
+  Скрипт `cleanup.sh` удаляет архивы старше N дней (по умолчанию 7). Он опасен и работает неправильно. Исправьте:
+  - проверки в `[ ]` — с пробелами после `[` и перед `]`;
+  - если папки нет — сообщение в поток ошибок (`>&2`) и `exit 1`;
+  - переменные в `[ ]` — в двойных кавычках;
+  - в `find` действие `-delete` — последним, после `-name` и `-mtime`.
+files:
+  cleanup.sh: |
+    #!/bin/bash
+    # Уборка: удалить архивы старше N дней (по умолчанию 7)
+    DIR=/home/shop/backups
+    if [-z "$1"]; then
+        DAYS=7
+    else
+        DAYS=$1
+    fi
+    if [ ! -d $DIR ]; then
+        echo "Нет папки $DIR"
+    fi
+    find "$DIR" -delete -name '*.tar.gz' -mtime +$DAYS
+check:
+  type: rules
+  rules:
+    - must_match: '^if \[ -z "\$1" \]; then\s*$'
+      fail: "if [ -z \"$1\" ]; then — пробел после [ и перед ]."
+    - must_match: '^if \[ ! -d "\$DIR" \]; then\s*$'
+      fail: "if [ ! -d \"$DIR\" ]; then — переменная в кавычках."
+    - must_match: '^\s+echo "Нет папки \$DIR" >&2\s*\n\s+exit 1\s*\n\s*fi'
+      fail: "Если папки нет: echo \"Нет папки $DIR\" >&2, затем exit 1 — внутри if."
+    - must_match: '^find "\$DIR" -name ''\*\.tar\.gz'' -mtime \+"?\$DAYS"? -delete\s*$'
+      fail: "find \"$DIR\" -name '*.tar.gz' -mtime +$DAYS -delete — -delete в конце."
+    - must_not_match: '-delete\s+-'
+      fail: "-delete перед условиями удалит всё в папке — условия должны стоять раньше."
+solution:
+  cleanup.sh: |
+    #!/bin/bash
+    # Уборка: удалить архивы старше N дней (по умолчанию 7)
+    DIR=/home/shop/backups
+    if [ -z "$1" ]; then
+        DAYS=7
+    else
+        DAYS=$1
+    fi
+    if [ ! -d "$DIR" ]; then
+        echo "Нет папки $DIR" >&2
+        exit 1
+    fi
+    find "$DIR" -name '*.tar.gz' -mtime +$DAYS -delete
+hints:
+  - "`[` — это команда: что увидит bash в `[-z`? Что делает скрипт после `echo \"Нет папки…\"`? В каком порядке `find` выполняет действия?"
+  - "`if [ -z \"$1\" ]; then`, `if [ ! -d \"$DIR\" ]; then` + `echo … >&2` и `exit 1`, `find \"$DIR\" -name '*.tar.gz' -mtime +$DAYS -delete`."
+explanation: |
+  `[-z` bash ищет как команду — `[-z: command not found`, и `DAYS` не задаётся. Без `exit 1` скрипт сообщает об ошибке и всё равно идёт к `find`. Самое опасное — порядок в `find`: выражение читается слева направо, и `-delete` первым удаляет **каждый** найденный файл, ещё до проверки имени и возраста — пропадут все бэкапы вместе с самой папкой. Действие ставят последним.

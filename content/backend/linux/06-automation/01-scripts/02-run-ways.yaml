@@ -1,0 +1,19 @@
+title: "Скрипт не запускается"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Свой скрипт из текущей папки запускают через ./ — текущей папки нет в PATH; для ./ нужно право x."
+statement: |
+  В папке `~/bin` лежит новый файл `backup.sh` с `#!/bin/bash` в первой строке. Права — `-rw-rw-r--`. Что будет?
+  ```
+  cd ~/bin
+  backup.sh media
+  ```
+options:
+  - "Скрипт выполнится"
+  - "`bash: backup.sh: command not found`"
+  - "`bash: ./backup.sh: Permission denied`"
+  - "Скрипт откроется в редакторе"
+answer: [1]
+explanation: |
+  Команду без `/` bash ищет только в папках из `PATH`, а текущей папки там нет — `command not found` (код 127). `./backup.sh media` дал бы `Permission denied`: у файла нет права `x`. Рабочие варианты — `chmod +x backup.sh && ./backup.sh media` или `bash backup.sh media`.

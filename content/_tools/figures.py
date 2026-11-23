@@ -3920,6 +3920,93 @@ def ssh_fig():
     f.text(20, 262, "scp shop:~/backups/media.tar.gz ./ — копирование по тому же соединению.", "cs")
     f.save(out(LX5 / "05-ssh" / "img" / "ssh.svg"))
 
+LX6 = ROOT / "linux" / "06-automation"
+
+
+def script_fig():
+    f = Figure(880, 340, "Скрипт — файл с командами: первая строка выбирает интерпретатор")
+    f.box(20, 20, 470, 220, "", "box2")
+    f.text(36, 46, "~/bin/backup.sh", "t")
+    lines = [
+        ("#!/bin/bash", "acc"),
+        ("DEST=/home/shop/backups", None),
+        ('NAME="$1-$(date +%F).tar.gz"', None),
+        ('tar -czf "$DEST/$NAME" -C /srv/shop "$1"', None),
+        ('echo "Готово: $DEST/$NAME"', None),
+    ]
+    for i, (line, cls) in enumerate(lines):
+        if cls:
+            f.box(30, 60 + i * 34, 450, 30, line, "acc", "onacc", rx=8)
+        else:
+            f.text(40, 80 + i * 34, line, "cs")
+    f.text(510, 80, "shebang — чем выполнять", "s")
+    f.text(510, 114, "переменная: без пробелов у =", "s")
+    f.text(510, 148, "$1 — аргумент, $(…) — вывод команды", "s")
+    f.text(510, 182, "кавычки \"…\" — значение одним словом", "s")
+    f.box(20, 260, 270, 60, "./backup.sh media|нужны +x и shebang", "ok", "cs")
+    f.box(305, 260, 270, 60, "bash backup.sh media|+x не нужен", "box", "cs")
+    f.box(590, 260, 270, 60, "backup.sh media|command not found", "err", "errt")
+    f.save(out(LX6 / "01-scripts" / "img" / "script.svg"))
+
+
+def if_for_fig():
+    f = Figure(880, 400, "Скрипт проверяет и останавливается с ошибкой; find удаляет старые архивы")
+    f.text(20, 30, "./backup.sh media", "cs")
+    f.diamond(150, 84, 260, 64, '[ -z "$1" ] ?')
+    f.box(320, 64, 190, 40, "exit 1 — нет аргумента", "err", "errt")
+    f.arrow("M280 84H316")
+    f.text(290, 76, "да", "s")
+    f.arrow("M150 116V138")
+    f.diamond(150, 172, 260, 64, '[ ! -d папка ] ?')
+    f.box(320, 152, 190, 40, "exit 1 — нет папки", "err", "errt")
+    f.arrow("M280 172H316")
+    f.text(290, 164, "да", "s")
+    f.arrow("M150 204V226")
+    f.diamond(150, 260, 260, 64, "if tar … ; then")
+    f.box(320, 240, 190, 40, "exit 1 — tar упал", "err", "errt")
+    f.arrow("M280 260H316")
+    f.text(288, 252, "≠ 0", "s")
+    f.arrow("M150 292V314")
+    f.box(40, 318, 220, 40, "«Готово», код 0", "ok", "cs")
+    f.box(560, 20, 300, 340, "", "box2")
+    f.text(576, 46, "~/backups, сейчас 23.11 03:00", "t")
+    days = ["01", "05", "10", "12", "14", "16", "18", "20", "21", "22", "23"]
+    for i, d in enumerate(days):
+        old = int(d) <= 15
+        f.box(576, 60 + i * 26, 268, 22, f"media-2026-11-{d}.tar.gz", "err" if old else "box", "errt" if old else "cs", rx=6)
+    f.text(20, 390, "find ~/backups -name '*.tar.gz' -mtime +7 -delete — красные: больше 7 полных суток.", "s")
+    f.save(out(LX6 / "02-if-for" / "img" / "if-for.svg"))
+
+
+def cron_fig():
+    f = Figure(880, 330, "Строка crontab: пять полей времени и команда")
+    fields = [("0", "минута", "0–59"), ("3", "час", "0–23"), ("*", "день", "1–31"),
+              ("*", "месяц", "1–12"), ("*", "день нед.", "0–7, 0 и 7 — вс")]
+    for i, (v, name, rng) in enumerate(fields):
+        x = 20 + i * 110
+        f.box(x, 20, 96, 50, v, "acc" if i < 2 else "box", "onacc" if i < 2 else "cs")
+        f.text(x + 48, 92, name, "t", "middle")
+        f.text(x + 48, 114, rng, "s", "middle")
+    f.box(570, 20, 290, 50, "/home/shop/bin/backup.sh media", "box2", "cs")
+    f.text(715, 92, "команда — полные пути", "t", "middle")
+    f.text(715, 114, "запускает /bin/sh, PATH=/usr/bin:/bin", "s", "middle")
+    rows = [("0 3 * * *", "каждый день в 03:00"),
+            ("*/15 * * * *", "каждые 15 минут"),
+            ("0 9-18 * * 1-5", "по будням, каждый час с 9 до 18"),
+            ("30 4 1 * *", "1-го числа каждого месяца в 04:30"),
+            ("@reboot", "один раз после загрузки сервера")]
+    for i, (expr, text) in enumerate(rows):
+        y = 150 + i * 34
+        f.box(20, y, 200, 28, expr, "box", "cs", rx=6)
+        f.text(236, y + 19, text, "s")
+    f.text(560, 170, "* — любое значение", "s")
+    f.text(560, 198, "a-b — диапазон, a,b — список", "s")
+    f.text(560, 226, "*/N — каждые N", "s")
+    f.text(560, 254, "% в команде — перевод строки,", "s")
+    f.text(560, 276, "пишут \\%", "s")
+    f.save(out(LX6 / "03-cron" / "img" / "cron.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -3971,6 +4058,7 @@ if __name__ == "__main__":
                   find_filters, grep_keys, streams, pipeline_fig, tar_flow,
                   users_fig, permissions_fig, owners_fig,
                   apt_flow, disk_fig, pyenv_fig,
-                  gunicorn_processes, env_fig, systemd_fig, network_fig, ssh_fig):
+                  gunicorn_processes, env_fig, systemd_fig, network_fig, ssh_fig,
+                  script_fig, if_for_fig, cron_fig):
         build()
     print("ok")

@@ -1,0 +1,21 @@
+title: "Пробелы вокруг ="
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Переменная задаётся без пробелов: ИМЯ=значение; с пробелами bash запускает команду ИМЯ."
+statement: |
+  Скрипт начинается так:
+  ```bash
+  #!/bin/bash
+  DEST = /home/shop/backups
+  mkdir -p "$DEST"
+  ```
+  Что напишет bash на второй строке?
+options:
+  - "Ничего: пробелы вокруг `=` разрешены"
+  - "`DEST: command not found`"
+  - "`syntax error near unexpected token '='`"
+  - "`mkdir: missing operand`"
+answer: [1]
+explanation: |
+  С пробелами `DEST = /home/shop/backups` — это запуск команды `DEST` с аргументами `=` и путём: `DEST: command not found`. Переменная не задана, и дальше `mkdir -p ""` тоже упадёт: `mkdir: cannot create directory ‘’: No such file or directory`. Пишут слитно: `DEST=/home/shop/backups`.

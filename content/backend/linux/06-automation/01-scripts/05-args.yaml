@@ -1,0 +1,23 @@
+title: "Что получил скрипт"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Кавычки при вызове делают слова с пробелом одним аргументом; $# — число аргументов."
+statement: |
+  Скрипт `args.sh`:
+  ```bash
+  #!/bin/bash
+  echo "$# | $1 | $2"
+  ```
+  Что выведет вызов?
+  ```
+  ./args.sh "shop media" static
+  ```
+options:
+  - "`3 | shop | media`"
+  - "`2 | shop media | static`"
+  - "`2 | shop | media`"
+  - "`3 | shop media | static`"
+answer: [1]
+explanation: |
+  Кавычки при вызове склеили `shop media` в один аргумент: `$1` — `shop media`, `$2` — `static`, всего `$#` — 2. Без кавычек было бы три аргумента: `shop`, `media`, `static`. Поэтому внутри скриптов `$1` тоже пишут в кавычках — иначе имя с пробелом снова развалится на два.

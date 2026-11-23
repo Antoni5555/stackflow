@@ -1,0 +1,19 @@
+title: "Из терминала работает, из cron — нет"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "У cron своё окружение: /bin/sh, PATH=/usr/bin:/bin, без ~/.bashrc — в crontab пишут полные пути."
+statement: |
+  Скрипт лежит в `~/bin`, эта папка добавлена в `PATH` через `~/.bashrc`, и из терминала `backup.sh media` работает. В crontab:
+  ```
+  0 3 * * * backup.sh media >> /home/shop/backups/backup.log 2>&1
+  ```
+  Утром в логе: `/bin/sh: 1: backup.sh: not found`. Почему?
+options:
+  - "У скрипта нет права `x`"
+  - "cron не читает `~/.bashrc`: у него `PATH=/usr/bin:/bin`, папки `~/bin` там нет"
+  - "cron запускает команды только от `root`"
+  - "В crontab нельзя передавать аргументы скрипту"
+answer: [1]
+explanation: |
+  cron запускает команду через `/bin/sh` с коротким `PATH=/usr/bin:/bin` и без `~/.bashrc`, поэтому `backup.sh` по имени не находится. Нужен полный путь: `/home/shop/bin/backup.sh media`. Без права `x` ошибка была бы другой — `Permission denied`.

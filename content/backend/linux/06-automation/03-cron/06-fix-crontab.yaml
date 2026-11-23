@@ -1,0 +1,44 @@
+title: "Почините crontab"
+type: fix
+difficulty: 2
+pitfall: "В crontab — полные пути и лог >> файл 2>&1; сначала минута, потом час; % в строке crontab — перевод строки."
+statement: |
+  Расписание магазина должно быть таким:
+  - бэкап `media` — каждый день в 03:00, с выводом в `/home/shop/backups/backup.log`;
+  - уборка архивов старше 7 дней — каждый день в 03:30;
+  - бэкап `static` — по понедельникам в 04:00, тем же скриптом, с выводом в тот же лог.
+
+  Сейчас crontab не устанавливается, а первая и третья строки не сработали бы и после исправления. Исправьте:
+  - скрипт — по полному пути `/home/shop/bin/backup.sh`, вывод и ошибки — `>> /home/shop/backups/backup.log 2>&1`;
+  - время уборки — минута и час на своих местах;
+  - третья строка — вызов того же скрипта с аргументом `static` вместо `tar` с `%` в команде.
+files:
+  crontab: |
+    # m h  dom mon dow   command
+    0 3 * * * backup.sh media
+    3 30 * * * find /home/shop/backups -name '*.tar.gz' -mtime +7 -delete
+    0 4 * * 1 tar -czf /home/shop/backups/static-$(date +%F).tar.gz -C /srv/shop static
+check:
+  type: rules
+  rules:
+    - must_match: '^0 3 \* \* \* /home/shop/bin/backup\.sh media >> /home/shop/backups/backup\.log 2>&1\s*$'
+      fail: "Бэкап media: 0 3 * * * /home/shop/bin/backup.sh media >> /home/shop/backups/backup.log 2>&1."
+    - must_match: '^30 3 \* \* \* find /home/shop/backups -name ''\*\.tar\.gz'' -mtime \+7 -delete\s*$'
+      fail: "Уборка в 03:30: сначала минута 30, потом час 3."
+    - must_match: '^0 4 \* \* 1 /home/shop/bin/backup\.sh static >> /home/shop/backups/backup\.log 2>&1\s*$'
+      fail: "Бэкап static: 0 4 * * 1 /home/shop/bin/backup.sh static >> /home/shop/backups/backup.log 2>&1."
+    - must_not_match: '%'
+      fail: "% в строке crontab — перевод строки: команда обрежется. Дата уже есть внутри backup.sh."
+    - must_not_match: '^\S+ \S+ \S+ \S+ \S+ backup\.sh'
+      fail: "В cron PATH=/usr/bin:/bin — скрипт по имени не найдётся, нужен полный путь."
+solution:
+  crontab: |
+    # m h  dom mon dow   command
+    0 3 * * * /home/shop/bin/backup.sh media >> /home/shop/backups/backup.log 2>&1
+    30 3 * * * find /home/shop/backups -name '*.tar.gz' -mtime +7 -delete
+    0 4 * * 1 /home/shop/bin/backup.sh static >> /home/shop/backups/backup.log 2>&1
+hints:
+  - "Какой `PATH` у cron? Какое поле в строке первое — минута или час? Что cron делает со знаком `%`?"
+  - "Строки: `0 3 * * * /home/shop/bin/backup.sh media >> … 2>&1`, `30 3 * * * find …`, `0 4 * * 1 /home/shop/bin/backup.sh static >> … 2>&1`."
+explanation: |
+  `3 30` — час 30 не существует, и crontab отказывается устанавливаться целиком: `bad hour`, `errors in crontab file, can't install`. В `PATH` у cron нет `~/bin` — нужен полный путь к скрипту, а без `>> лог 2>&1` об ошибках никто не узнает. В третьей строке cron обрезал бы команду на `%`; скрипт `backup.sh` уже ставит дату в имя архива сам, поэтому в crontab остаётся только его вызов.
