@@ -1,0 +1,67 @@
+- title: Какие порты открыты
+  text: |
+    Посмотрите, какие программы слушают TCP-порты на учебном сервере (с процессами — через `sudo`):
+    ```
+    ss -tlnp
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    sudo ss -tlnp
+    ```
+    Результат:
+    ```
+    State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process
+    LISTEN 0      4096                 *:22 *:*               users:(("sshd",pid=520,fd=5))
+    LISTEN 0      4096           0.0.0.0:22 0.0.0.0:*         users:(("sshd",pid=520,fd=5))
+    LISTEN 0      4096     127.0.0.53%lo:53 0.0.0.0:*         users:(("systemd-resolve",pid=380,fd=5))
+    ```
+    Только SSH (22) и локальный DNS (53). Веб-сервера ещё нет.
+- title: Поставить Nginx и проверить
+  text: |
+    Проверьте, отвечает ли веб-сервер, поставьте Nginx и проверьте снова:
+    ```
+    http://localhost/
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    curl -I http://localhost/
+    sudo apt install -y nginx
+    curl -I http://localhost/
+    ```
+    Результат (без строк установки):
+    ```
+    curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+    HTTP/1.1 200 OK
+    Server: nginx/1.24.0 (Ubuntu)
+    Date: Sun, 22 Nov 2026 03:59:57 GMT
+    Content-Type: text/html
+    Content-Length: 27
+    Connection: keep-alive
+    ```
+    До установки порт 80 никто не слушал (код 7), после — отвечает сайт `default` из пакета.
+- title: Есть ли интернет
+  text: |
+    Проверьте, отвечает ли сам сервер и есть ли выход в интернет:
+    ```
+    127.0.0.1, stack-flow.ru
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    ping -c 2 127.0.0.1
+    curl -I http://stack-flow.ru/
+    ```
+    Результат:
+    ```
+    PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+    64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.033 ms
+    64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.036 ms
+
+    --- 127.0.0.1 ping statistics ---
+    2 packets transmitted, 2 received, 0% packet loss, time 1003ms
+    rtt min/avg/max/mdev = 0.033/0.041/0.052/0.007 ms
+    curl: (6) Could not resolve host: stack-flow.ru
+    ```
+    Учебный сервер отвечает сам себе, а чужие имена не разрешаются — интернета у него нет (код 6, а не 7).

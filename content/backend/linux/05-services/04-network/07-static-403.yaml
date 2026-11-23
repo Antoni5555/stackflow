@@ -1,0 +1,45 @@
+title: "403 на стили"
+type: exercise
+difficulty: 2
+pitfall: "Nginx читает статику от www-data: нужен x на всех папках пути и r на файлах."
+statement: |
+  Сайт открывается без оформления: на `/static/css/main.css` Nginx отвечает 403. Папку `/srv/shop/static` кто-то закрыл правами `700`. Верните ей права `755`, чтобы Nginx (`www-data`) снова мог читать стили. Владельца не меняйте.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/static/css/main.css: "body {}\n"
+    /etc/nginx/sites-available/shop:
+      content: |
+        server {
+            listen 80;
+            server_name shop.example localhost;
+
+            location /static/ {
+                alias /srv/shop/static/;
+            }
+        }
+      owner: root
+  dirs:
+    - /srv/shop/static: {mode: '700'}
+  links:
+    /etc/nginx/sites-enabled/shop: /etc/nginx/sites-available/shop
+  services:
+    nginx: {active: true, enabled: true}
+check:
+  type: state
+  expect:
+    - path: /srv/shop/static
+      mode: '755'
+      fail: "Права /srv/shop/static — не 755: Nginx (www-data) не может войти в папку."
+    - path: /srv/shop/static
+      owner: shop
+      fail: "Владелец static должен остаться shop."
+solution: |
+  chmod 755 /srv/shop/static
+hints:
+  - "От чьего имени Nginx читает файлы и какая тройка прав к нему относится?"
+  - "`chmod 755 /srv/shop/static`."
+explanation: |
+  `700` пускает в папку только владельца `shop`, а Nginx работает от `www-data` — для него это «остальные», и в `error.log` пишется `open() "/srv/shop/static/css/main.css" failed (13: Permission denied)`. `755` даёт остальным вход и чтение. Проверка — `curl -I http://localhost/static/css/main.css` должен вернуть 200 (сайт `default` из пакета перед этим убирают: `sudo rm /etc/nginx/sites-enabled/default` и `sudo systemctl reload nginx`).

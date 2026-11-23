@@ -1,0 +1,52 @@
+title: "Порт занят"
+type: exercise
+difficulty: 3
+pitfall: "Сервис не стартует, если его порт уже слушает другой процесс: найти его (sudo ss -tlnp), остановить и перезапустить службу."
+statement: |
+  Сайт отвечает 502, а служба `gunicorn` не запускается. Кто-то оставил `manage.py runserver` на том же порту `127.0.0.1:8000`. Остановите его и запустите Gunicorn, чтобы порт 8000 слушала служба.
+setup:
+  cwd: /home/shop
+  files:
+    /srv/shop/manage.py: |
+      import os
+    /srv/shop/venv/bin/gunicorn: {content: "#!/srv/shop/venv/bin/python3\n", mode: '755'}
+    /etc/systemd/system/gunicorn.service:
+      content: |
+        [Unit]
+        Description=Gunicorn for shop
+        After=network.target
+
+        [Service]
+        User=shop
+        Group=shop
+        WorkingDirectory=/srv/shop
+        ExecStart=/srv/shop/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 config.wsgi:application
+        Restart=always
+
+        [Install]
+        WantedBy=multi-user.target
+      owner: root
+  services:
+    gunicorn: {active: false, enabled: true}
+  processes:
+    - {command: 'python3 manage.py runserver 127.0.0.1:8000', user: shop}
+check:
+  type: state
+  expect:
+    - process: 'manage\.py runserver'
+      running: false
+      fail: "runserver всё ещё держит порт 8000. Найдите его: sudo ss -tlnp | grep 8000 — и остановите (kill PID или pkill -f runserver)."
+    - service: gunicorn
+      active: true
+      fail: "Служба gunicorn не запущена. После освобождения порта — sudo systemctl start gunicorn."
+    - port: 8000
+      listening: true
+      fail: "Порт 8000 никто не слушает — Nginx по-прежнему будет отдавать 502."
+solution: |
+  pkill -f "manage.py runserver"
+  sudo systemctl start gunicorn
+hints:
+  - "Почему служба падает? `journalctl -u gunicorn -n 5`, а кто держит порт — `sudo ss -tlnp | grep 8000`."
+  - "`pkill -f \"manage.py runserver\"`, затем `sudo systemctl start gunicorn`."
+explanation: |
+  На одном адресе и порту может слушать только один процесс. Gunicorn пишет в журнал `Can't connect to ('127.0.0.1', 8000)` и падает, а `sudo ss -tlnp` показывает на 8000 процесс `python3` — забытый `runserver`. Остановили его — порт свободен, служба стартует, и Nginx снова получает ответы.

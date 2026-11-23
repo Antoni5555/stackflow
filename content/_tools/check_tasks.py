@@ -242,6 +242,8 @@ LINUX_COMMANDS = {
     "pkill": {"-f", "-u", "-9", "-HUP", "-INT", "-TERM", "-KILL"}, "top": None,
     "systemctl": {"--now", "--no-pager", "-l", "--full", "-q", "--quiet"},
     "journalctl": {"-u", "-n", "-x", "-e", "--no-pager"},
+    "ss": {"-t", "-u", "-l", "-n", "-p"}, "ping": {"-c"}, "hostname": {"-I"},
+    "curl": {"-I", "-i", "-s", "-S", "-o", "-w", "-L", "-f", "-v", "-X", "--unix-socket"},
 }
 GIT_COMMANDS = {
     "init": None, "config": {"--global", "--list"}, "status": None, "add": {"-A"}, "rm": {"--cached", "-r"},
@@ -258,7 +260,7 @@ APT_COMMANDS = {"update": None, "upgrade": {"-y"}, "install": {"-y"}, "remove": 
 PIP_COMMANDS = {"install": {"-r"}, "freeze": None, "uninstall": {"-y"}, "list": None}
 STATE_RULES = {  # ключ, по которому узнаём правило → какие ещё ключи обязательны
     "exists": {"path"}, "contains": {"path"}, "not_contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "group": {"path"}, "link_to": {"path"},
-    "output_matches": set(), "service": set(), "process": set(),
+    "output_matches": set(), "service": set(), "process": set(), "port": set(),
     "head": set(), "commit_in": set(), "commit_count": set(), "clean": set(), "merged": set(),
     "pushed": set(), "config": set(), "stash_count": set(), "pip_package": set(),
 }
@@ -395,8 +397,8 @@ def check_state(task):
         processes = []
     for proc in processes:
         if not isinstance(proc, dict) or not isinstance(proc.get("command"), str) \
-                or set(proc) - {"command", "user", "name", "cpu", "mem", "pid"}:
-            problems.append(f"процесс в setup.processes — {{command, user?, name?, cpu?, mem?, pid?}}: {proc!r}")
+                or set(proc) - {"command", "user", "name", "cpu", "mem", "pid", "listen"}:
+            problems.append(f"процесс в setup.processes — {{command, user?, name?, cpu?, mem?, pid?, listen?}}: {proc!r}")
     remote = setup.get("remote")
     if remote is not None and (not isinstance(remote, dict) or set(remote) - {"url", "commits", "pushed"}):
         problems.append("setup.remote — словарь с url, commits, pushed")
