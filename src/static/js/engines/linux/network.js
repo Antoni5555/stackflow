@@ -152,9 +152,13 @@ function logTime(withZone) {
 /** Ответ nginx по снимку его конфигов (master.nginx). */
 function nginxResponse(fs, state, master, request) {
   const servers = (master.nginx ?? []).filter((server) => server.listen.some((address) => parseAddress(address).port === request.port));
-  const server = servers.find((item) => item.name === request.host) ?? servers.find((item) => item.isDefault) ?? servers[0];
+  // как nginx: совпадение server_name важнее default_server, без совпадений — default_server
+  // (если его нет — первый сайт на этом порту); Host — без порта
+  const host = request.hostHeader ?? request.host;
+  const server = servers.find((item) => (item.names ?? []).includes(host))
+    ?? servers.find((item) => item.isDefault) ?? servers[0];
   const worker = state.procs.find((proc) => proc.unit === 'nginx' && proc.worker) ?? master;
-  const errorLog = (text) => nginxLog(fs, 'error.log', `${logTime(false)} [error] ${worker.pid}#${worker.pid}: *1 ${text}, client: 127.0.0.1, server: ${server?.name || '_'}, request: "${request.method} ${request.path} HTTP/1.1", host: "${request.host}"`);
+  const errorLog = (text) => nginxLog(fs, 'error.log', `${logTime(false)} [error] ${worker.pid}#${worker.pid}: *1 ${text}, client: 127.0.0.1, server: ${server?.names?.[0] || '_'}, request: "${request.method} ${request.path} HTTP/1.1", host: "${request.host}"`);
   let response;
   if (!server) {
     response = { code: 404, body: nginxPage(404) };
@@ -240,6 +244,7 @@ export const curl = {
     let output = null;
     let write = null;
     let socket = null;
+    let hostHeader = null;
     const args = [...ctx.args];
     for (let i = 0; i < args.length; i += 1) {
       const arg = args[i];
@@ -251,7 +256,11 @@ export const curl = {
       else if (arg === '-o' || arg === '--output') output = args[(i += 1)];
       else if (arg === '-w' || arg === '--write-out') write = args[(i += 1)];
       else if (arg === '-X' || arg === '--request') opts.method = (args[(i += 1)] ?? 'GET').toUpperCase();
-      else if (arg === '-H' || arg === '--header' || arg === '-d' || arg === '--data' || arg === '-A') i += 1;
+      else if (arg === '-H' || arg === '--header') {
+        // Host: shop.example — для выбора сайта nginx по server_name
+        const header = /^\s*host\s*:\s*(\S+)/i.exec(args[(i += 1)] ?? '');
+        if (header) hostHeader = header[1].replace(/:\d+$/, '');
+      } else if (arg === '-d' || arg === '--data' || arg === '-A') i += 1;
       else if (arg === '--unix-socket') socket = args[(i += 1)];
       else if (/^-[sSfLiIvk]+$/.test(arg)) {
         if (arg.includes('I')) opts.head = true;
@@ -274,7 +283,7 @@ export const curl = {
       const port = Number(portText ?? (scheme === 'https' ? 443 : 80));
       const ip = LOCAL.get(host);
       if (!socket && !ip) return { out, err: `${err}curl: (6) Could not resolve host: ${host}\n`, code: 6 };
-      const target = socket ? { unix: socket, host, port } : { host, ip, port };
+      const target = socket ? { unix: socket, host, port, hostHeader } : { host, ip, port, hostHeader };
       if (opts.verbose) err += `*   Trying ${socket ?? `${ip}:${port}`}...\n`;
       if (scheme === 'https' && !socket) {
         const answer = request(ctx.fs, target, opts.method, path);
@@ -335,10 +344,12 @@ export const ping = {
     if (!host) return fail('ping: usage error: Destination address required\n', 1);
     const note = count === null ? 'ping без -c шёл бы, пока не нажмёте Ctrl+C; в тренажёре — 4 пакета (пишите ping -c 4)\n' : '';
     count ??= 4;
-    const ip = LOCAL.get(host) ?? (/^\d+(\.\d+){3}$/.test(host) ? host : null);
+    // в Ubuntu 24.04 localhost — сначала IPv6 (::1): ping идёт по нему
+    const ip = host === 'localhost' ? '::1' : LOCAL.get(host) ?? (/^\d+(\.\d+){3}$/.test(host) ? host : null);
     if (!ip) return fail(`ping: ${host}: Temporary failure in name resolution\n`, 2);
     const shown = host === ip ? ip : `${host} (${ip})`;
-    let out = `PING ${host} (${ip}) 56(84) bytes of data.\n`;
+    const size = ip.includes(':') ? '56 data bytes' : '56(84) bytes of data.';
+    let out = `PING ${host} (${ip}) ${size}\n`;
     const reachable = LOCAL.has(host) || [...LOCAL.values()].includes(ip) || ip.startsWith('127.');
     if (reachable) {
       for (let seq = 1; seq <= count; seq += 1) out += `64 bytes from ${shown}: icmp_seq=${seq} ttl=64 time=0.0${30 + seq * 3} ms\n`;

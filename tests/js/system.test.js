@@ -292,9 +292,25 @@ describe('сеть: ss, curl через nginx, ping, ssh', () => {
     assert.deepEqual(verifyTask(task), []);
   });
 
+  it('сайт выбирается по server_name раньше default_server; Host из -H; страница по умолчанию', () => {
+    const site = 'server {\n    listen 80;\n    server_name shop.example localhost;\n    root /srv/shop/public;\n}\n';
+    const sh = shell({
+      files: { '/etc/nginx/sites-available/shop': { content: site, owner: 'root' }, '/srv/shop/public/index.html': '<h1>Shop</h1>\n' },
+      links: { '/etc/nginx/sites-enabled/shop': '/etc/nginx/sites-available/shop' },
+      services: { nginx: { active: true } },
+    });
+    assert.equal(run(sh, 'curl -s localhost').out, '<h1>Shop</h1>\n');
+    assert.equal(run(sh, 'curl -s -H "Host: shop.example" 127.0.0.1').out, '<h1>Shop</h1>\n');
+    // Host: 127.0.0.1 ни с кем не совпал — отвечает default_server (сайт default из пакета)
+    assert.match(run(sh, 'curl -sI 127.0.0.1').out, /^Content-Length: 615$/m);
+    assert.match(run(sh, 'curl -s 127.0.0.1').out, /<title>Welcome to nginx!<\/title>/);
+  });
+
   it('ping, hostname, ssh — теория', () => {
     const sh = shell();
-    assert.match(run(sh, 'ping -c 2 localhost').out, /^PING localhost \(127\.0\.0\.1\) 56\(84\) bytes of data\.\n64 bytes from localhost \(127\.0\.0\.1\): icmp_seq=1 [\s\S]*2 packets transmitted, 2 received, 0% packet loss/);
+    // localhost в Ubuntu 24.04 — сначала IPv6
+    assert.match(run(sh, 'ping -c 2 localhost').out, /^PING localhost \(::1\) 56 data bytes\n64 bytes from localhost \(::1\): icmp_seq=1 [\s\S]*2 packets transmitted, 2 received, 0% packet loss/);
+    assert.match(run(sh, 'ping -c 1 127.0.0.1').out, /^PING 127\.0\.0\.1 \(127\.0\.0\.1\) 56\(84\) bytes of data\.\n64 bytes from 127\.0\.0\.1: /);
     assert.equal(run(sh, 'ping -c 1 example.com').err, 'ping: example.com: Temporary failure in name resolution\n');
     assert.equal(run(sh, 'hostname').out, 'server\n');
     assert.equal(run(sh, 'ssh deploy@1.2.3.4').code, 255);

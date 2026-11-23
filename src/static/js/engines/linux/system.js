@@ -322,7 +322,7 @@ export function nginxServers(fs) {
         file: path,
         listen: listen.length ? listen : ['0.0.0.0:80'],
         isDefault: block.children.some((item) => item.name === 'listen' && item.args.includes('default_server')),
-        name: directive(block, 'server_name')?.[0] ?? '',
+        names: directive(block, 'server_name') ?? [],
         root: directive(block, 'root')?.[0] ?? '/usr/share/nginx/html',
         index: directive(block, 'index') ?? ['index.html', 'index.htm'],
         locations: block.children.filter((item) => item.name === 'location').map((item) => ({
