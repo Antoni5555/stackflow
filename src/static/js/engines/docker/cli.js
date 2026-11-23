@@ -142,7 +142,11 @@ function pullLines(state, ref, { quietTag = false } = {}) {
   const present = findImage(state, full);
   lines.push(`${tag}: Pulling from ${path}`);
   if (!present) {
-    for (let k = 0; k < image.layers; k += 1) lines.push(`${hexHash(`layer:${image.ref}:${k}`, 12)}: Pull complete`);
+    // как containerd в Docker 29: все слои «Pulling fs layer», затем по каждому «Download complete»
+    // и «Pull complete»
+    const layers = Array.from({ length: image.layers }, (_, k) => hexHash(`layer:${image.ref}:${k}`, 12));
+    if (layers.length > 1) for (const layer of layers) lines.push(`${layer}: Pulling fs layer`);
+    for (const layer of layers) lines.push(`${layer}: Download complete`, `${layer}: Pull complete`);
   }
   lines.push(`Digest: ${digest}`);
   lines.push(present ? `Status: Image is up to date for ${full}` : `Status: Downloaded newer image for ${full}`);

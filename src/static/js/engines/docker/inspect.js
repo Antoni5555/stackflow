@@ -150,7 +150,11 @@ function lookup(data, path) {
 function show(value) {
   if (value === undefined) return '<no value>';
   if (value === null) return '<nil>';
-  if (Array.isArray(value)) return `[${value.map(show).join(' ')}]`;
+  // элемент списка — структура Go: {0.0.0.0 55432}, а не map[…]
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => (item && typeof item === 'object' && !Array.isArray(item)
+      ? `{${Object.values(item).map(show).join(' ')}}` : show(item))).join(' ')}]`;
+  }
   if (typeof value === 'object') return `map[${Object.entries(value).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, v]) => `${k}:${show(v)}`).join(' ')}]`;
   return String(value);
 }

@@ -84,7 +84,7 @@ describe('образы: pull, images, rmi, tag', () => {
   it('pull из учебного реестра, images в формате Docker 29', () => {
     const sh = shell();
     const pulled = run(sh, 'docker pull postgres:16');
-    assert.match(pulled.out, /^16: Pulling from library\/postgres\n([0-9a-f]{12}: Pull complete\n){14}Digest: sha256:[0-9a-f]{64}\nStatus: Downloaded newer image for postgres:16\ndocker\.io\/library\/postgres:16\n$/);
+    assert.match(pulled.out, /^16: Pulling from library\/postgres\n([0-9a-f]{12}: Pulling fs layer\n){14}([0-9a-f]{12}: Download complete\n[0-9a-f]{12}: Pull complete\n){14}Digest: sha256:[0-9a-f]{64}\nStatus: Downloaded newer image for postgres:16\ndocker\.io\/library\/postgres:16\n$/);
     assert.match(run(sh, 'docker pull postgres:16').out, /Status: Image is up to date for postgres:16/);
     run(sh, 'docker pull nginx:1.27-alpine');
     const lines = run(sh, 'docker images').out.split('\n');
@@ -334,6 +334,8 @@ describe('inspect', () => {
     assert.deepEqual(data[0].HostConfig.PortBindings, { '80/tcp': [{ HostIp: '', HostPort: '8080' }] });
     assert.match(run(sh, 'docker inspect web').out, /"maintainer": "NGINX Docker Maintainers \\u003cdocker-maint@nginx\.com\\u003e"/);
     assert.equal(run(sh, "docker inspect -f '{{.State.Status}}' web").out, 'running\n');
+    assert.equal(run(sh, "docker inspect --format '{{.Config.Image}} {{.NetworkSettings.Ports}}' web").out,
+      'nginx:1.27-alpine map[80/tcp:[{0.0.0.0 8080} {:: 8080}]]\n');
     assert.equal(run(sh, "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' web").out, '172.17.0.2\n');
     assert.deepEqual(run(sh, 'docker inspect nosuch'), { out: '[]\n', err: 'error: no such object: nosuch\n', code: 1 });
     assert.match(run(sh, 'docker inspect nginx:1.27-alpine').out, /"Id": "sha256:[0-9a-f]{64}"/);
