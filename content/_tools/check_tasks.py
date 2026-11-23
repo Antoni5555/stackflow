@@ -244,6 +244,7 @@ LINUX_COMMANDS = {
     "journalctl": {"-u", "-n", "-x", "-e", "--no-pager"},
     "ss": {"-t", "-u", "-l", "-n", "-p"}, "ping": {"-c"}, "hostname": {"-I"},
     "curl": {"-I", "-i", "-s", "-S", "-o", "-w", "-L", "-f", "-v", "-X", "-H", "--unix-socket"},
+    "sed": {"-n", "-e", "-E", "-s", "-i"}, "tee": {"-a"},
 }
 GIT_COMMANDS = {
     "init": None, "config": {"--global", "--list"}, "status": None, "add": {"-A"}, "rm": {"--cached", "-r"},
@@ -322,8 +323,8 @@ def check_command(line):
             letters = [flag] if flag.startswith("--") or len(flag) == 2 else [f"-{c}" for c in flag[1:]]
             if flag in (allowed or set()):
                 continue
-            if any(flag.startswith(v) and v in (allowed or set()) for v in ("-n", "-d", "-f", "-S", "-m")):
-                continue                        # значение слитно с флагом: -n20, -d, -f1, -Sdiscount
+            if any(flag.startswith(v) and v in (allowed or set()) for v in ("-n", "-d", "-f", "-S", "-m", "-i")):
+                continue                        # значение слитно с флагом: -n20, -d, -f1, -Sdiscount, sed -i.bak
             if any(f not in (allowed or set()) for f in letters):
                 problems.append(f"флаг {flag} у {' '.join(tokens[:2]) if tokens[0] in ('git', 'pip') else tokens[0]} не поддерживается симулятором: {line!r}")
     return problems

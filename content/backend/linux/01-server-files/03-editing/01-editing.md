@@ -102,7 +102,7 @@ sudo echo "client_max_body_size 10m;" >> /etc/nginx/nginx.conf
 bash: /etc/nginx/nginx.conf: Permission denied
 bash: /etc/nginx/nginx.conf: Permission denied
 ```
-Обе ошибки — от `bash`: запись `>>` делает оболочка пользователя `shop`, `sudo` достался только `echo`. Через `tee` (на настоящем Ubuntu; в тренажёре `tee` нет — там системные файлы правят `sudo nano`):
+Обе ошибки — от `bash`: запись `>>` делает оболочка пользователя `shop`, `sudo` достался только `echo`. Через `tee`:
 ```bash
 echo "client_max_body_size 10m;" | sudo tee -a /etc/nginx/nginx.conf
 ```
