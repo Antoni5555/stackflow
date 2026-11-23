@@ -1,0 +1,15 @@
+title: "Остановить на ночь"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "stop сохраняет контейнер и его файлы; rm удаляет контейнер вместе со слоем изменений."
+statement: |
+  Вечером нужно освободить память на ноутбуке, а утром продолжить работу с той же базой в контейнере `shop-db` (томов нет). Что выполнить вечером и утром?
+options:
+  - "`docker rm shop-db`, утром — `docker run …` с теми же флагами"
+  - "`docker stop shop-db`, утром — `docker start shop-db`"
+  - "`docker kill shop-db`, утром — `docker restart shop-db`"
+  - "`docker rmi postgres:16`, утром — `docker pull postgres:16`"
+answer: [1]
+explanation: |
+  `stop` штатно останавливает базу, контейнер с его слоем остаётся, `start` возвращает всё как было. `rm` удалил бы контейнер вместе с таблицами, и новый `docker run` создал бы пустую базу. `kill` не даёт PostgreSQL корректно закрыться, а `rmi` вообще про образы.

@@ -1,0 +1,15 @@
+title: "Скрипт инициализации не сработал"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Скрипты /docker-entrypoint-initdb.d выполняются только для пустой базы."
+statement: |
+  В `init/02-indexes.sql` добавили новый индекс и перезапустили базу: `docker rm -f shop-db`, затем `docker run … -v pgdata:/var/lib/postgresql/data -v ./init:/docker-entrypoint-initdb.d postgres:16`. Индекса нет. Почему?
+options:
+  - "Файлы должны называться `*.sh`, а не `*.sql`"
+  - "Скрипты инициализации выполняются только при создании новой базы, а том `pgdata` уже содержит базу"
+  - "Bind mount подключается только на чтение"
+  - "Нужно было выполнить `docker restart`"
+answer: [1]
+explanation: |
+  Образ `postgres` запускает скрипты из `/docker-entrypoint-initdb.d`, только если папка данных пуста. С существующим томом база уже инициализирована, и скрипты пропускаются. Изменения схемы в работающей базе делают миграциями (в Django — `migrate`) или вручную через `psql`.

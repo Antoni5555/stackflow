@@ -1,0 +1,18 @@
+title: "Флаги после образа"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Флаги docker run пишут до имени образа; всё после образа — команда и аргументы для контейнера."
+statement: |
+  ```bash
+  docker run postgres:16 -d --name shop-db -e POSTGRES_PASSWORD=shop
+  ```
+  Почему база не запустилась в фоне с именем `shop-db`?
+options:
+  - "`-d` и `--name` нельзя использовать вместе"
+  - "Всё, что после имени образа, Docker передал внутрь контейнера как аргументы команды, а не как свои флаги"
+  - "Нужно писать `--detach` вместо `-d`"
+  - "Имя должно начинаться со слеша: `/shop-db`"
+answer: [1]
+explanation: |
+  Docker читает свои флаги только до имени образа. Остальное — команда для контейнера: `-d --name …` ушли в программу запуска PostgreSQL, контейнер запустился не в фоне, со случайным именем и без пароля — и сразу завершился с ошибкой про `POSTGRES_PASSWORD`. Правильно: `docker run -d --name shop-db -e POSTGRES_PASSWORD=shop postgres:16`.

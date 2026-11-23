@@ -1,0 +1,37 @@
+- title: Остановить и найти
+  text: |
+    Остановите контейнер `cache` и покажите имена и статусы всех контейнеров:
+    ```
+    docker ps -a
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker stop cache
+    docker ps -a --format "{{.Names}} {{.Status}}"
+    ```
+    Результат:
+    ```
+    cache
+    cache Exited (0) Less than a second ago
+    ```
+    Без `-a` остановленный контейнер не виден.
+- title: Удалить и проверить образы
+  text: |
+    Удалите контейнер `cache` и посмотрите, остался ли образ:
+    ```
+    docker rm, docker images
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker rm cache
+    docker images
+    ```
+    Результат:
+    ```
+    cache
+    IMAGE     ID             DISK USAGE   CONTENT SIZE   EXTRA
+    redis:7   5bb133d0637d        158MB         41.6MB        
+    ```
+    Контейнер удалён, образ остался — следующий `docker run redis:7` не будет ничего скачивать.

@@ -1,0 +1,15 @@
+title: "Порт был занят"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Контейнер, который не смог запуститься, остаётся (Created/Exited) и держит имя — его удаляют."
+statement: |
+  `docker run -d --name test-db -e POSTGRES_PASSWORD=shop -p 55432:5432 postgres:16` вывел ID, а затем «port is already allocated». Исправили порт на 55433 и запустили ту же команду снова. Что будет?
+options:
+  - "Контейнер запустится на 55433"
+  - "Ошибка «name … is already in use»: созданный в первый раз `test-db` остался в статусе Created"
+  - "Docker сам выберет свободный порт"
+  - "Первый `test-db` автоматически перезапустится на новом порту"
+answer: [1]
+explanation: |
+  Первая попытка успела **создать** контейнер (поэтому напечатался ID), но не смогла его запустить. Контейнер остался со статусом `Created` и занял имя `test-db`. Сначала `docker rm test-db`, потом запуск с `-p 55433:5432`.

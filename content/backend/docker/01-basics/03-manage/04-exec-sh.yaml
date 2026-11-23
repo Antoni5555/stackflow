@@ -1,0 +1,15 @@
+title: "Зайти в контейнер Nginx"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "В alpine-образах нет bash — оболочка sh; -it нужен для интерактивной работы, в скриптах его не пишут."
+statement: |
+  `docker exec -it shop-nginx bash` выдаёт `exec: "bash": executable file not found in $PATH`. Контейнер запущен из `nginx:1.27-alpine`. Как зайти внутрь?
+options:
+  - "`docker run -it nginx:1.27-alpine bash`"
+  - "`docker exec -it shop-nginx sh`"
+  - "`docker attach shop-nginx`"
+  - "`docker exec shop-nginx` без команды"
+answer: [1]
+explanation: |
+  Образы на Alpine Linux минимальны: вместо `bash` в них `sh`. `docker run` создал бы новый контейнер, а не зашёл в работающий; `attach` подключает к главному процессу Nginx, а не к оболочке; `exec` без команды — ошибка «requires at least 2 arguments».

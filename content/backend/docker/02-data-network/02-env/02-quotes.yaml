@@ -1,0 +1,15 @@
+title: "Пароль не подходит"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "docker run --env-file не убирает кавычки: они становятся частью значения."
+statement: |
+  В `.env` записано `POSTGRES_PASSWORD="s3cr3t"`. Базу запустили `docker run -d --env-file .env -v pgdata:/var/lib/postgresql/data postgres:16`, а Django с паролем `s3cr3t` подключиться не может. Почему?
+options:
+  - "Пароль должен быть длиннее восьми символов"
+  - "`--env-file` передал значение вместе с кавычками: пароль базы — `\"s3cr3t\"`"
+  - "`--env-file` не передаёт переменные в официальные образы"
+  - "Пароль нужно передавать только через `-e`"
+answer: [1]
+explanation: |
+  `docker run --env-file` берёт всё после `=` как есть, включая кавычки. База создалась с паролем из восьми символов `"s3cr3t"`. В файле для `--env-file` кавычки не пишут. Сбивает с толку то, что compose `env_file` и `python-dotenv` кавычки убирают.

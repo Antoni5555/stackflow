@@ -1,0 +1,26 @@
+title: "Базовый образ магазина"
+type: exercise
+difficulty: 1
+pitfall: "tag даёт образу второе имя (ID тот же); версию фиксируют тегом."
+statement: |
+  Скачайте `python:3.12-slim` и дайте ему имя магазина `shop-python:base`. Посмотрите, что у обоих имён один ID: `docker images`.
+setup:
+  cwd: /home/shop
+check:
+  type: state
+  expect:
+    - docker: image
+      ref: python:3.12-slim
+      fail: "Образа python:3.12-slim нет — скачайте его: docker pull python:3.12-slim."
+    - docker: image
+      ref: shop-python:base
+      fail: "Нет образа shop-python:base — docker tag python:3.12-slim shop-python:base."
+solution: |
+  docker pull python:3.12-slim
+  docker tag python:3.12-slim shop-python:base
+  docker images
+hints:
+  - "Сначала `docker pull`, потом `docker tag источник новое_имя`."
+  - "`docker tag python:3.12-slim shop-python:base`."
+explanation: |
+  `docker images` показал две строки с одинаковым ID: это одно содержимое под двумя именами, место на диске не удвоилось. Своё имя пригодится, когда образ начнут собирать на его основе (раздел 3).

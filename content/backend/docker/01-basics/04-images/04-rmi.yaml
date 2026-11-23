@@ -1,0 +1,15 @@
+title: "Почему образ не удаляется"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Образ нельзя удалить, пока из него создан хоть один контейнер — даже остановленный."
+statement: |
+  `docker ps` пустой, но `docker rmi shop-web:1.0` отвечает `conflict: unable to delete shop-web:1.0 (must be forced) - container 5987dc07e613 is using its referenced image`. Почему?
+options:
+  - "Образ ещё скачивается"
+  - "Есть остановленный контейнер из этого образа: `docker ps` без `-a` его не показывает"
+  - "Образ используется другим образом через `docker tag`"
+  - "Нужно сначала выполнить `docker pull`"
+answer: [1]
+explanation: |
+  Остановленные контейнеры тоже держат свой образ. `docker ps -a` покажет контейнер `5987dc07e613`; после `docker rm 5987dc07e613` образ удалится. Второе имя от `docker tag` удалению не мешает — снимется только одно имя (`Untagged`).

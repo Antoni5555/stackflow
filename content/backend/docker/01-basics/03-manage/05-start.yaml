@@ -1,0 +1,37 @@
+title: "База после выходных"
+type: exercise
+difficulty: 1
+pitfall: "Остановленный контейнер запускают docker start — новый docker run с тем же именем даст ошибку."
+statement: |
+  В пятницу базу магазина `shop-db` остановили. Запустите **тот же** контейнер снова (не создавая новый) и убедитесь, что он работает: `docker ps`.
+setup:
+  cwd: /home/shop
+  docker:
+    images: [postgres:16]
+    volumes: [pgdata]
+    containers:
+      - name: shop-db
+        image: postgres:16
+        env: {POSTGRES_PASSWORD: shop}
+        volumes: ["pgdata:/var/lib/postgresql/data"]
+        ports: ["55432:5432"]
+        running: false
+check:
+  type: state
+  expect:
+    - docker: container
+      name: shop-db
+      status: running
+      fail: "shop-db не работает — запустите его: docker start shop-db."
+    - docker: volume
+      name: pgdata
+      mounted_in: shop-db
+      fail: "У работающего shop-db должен быть прежний том pgdata — запустите существующий контейнер, а не новый."
+solution: |
+  docker start shop-db
+  docker ps
+hints:
+  - "`docker ps` его не покажет — а `docker ps -a`?"
+  - "`docker start shop-db`."
+explanation: |
+  `start` запускает существующий контейнер с прежними настройками: тем же томом, портом и переменными. `docker run` создал бы новый — и упал бы на занятом имени.

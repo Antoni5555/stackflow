@@ -1,0 +1,46 @@
+title: "Уборка контейнеров"
+type: exercise
+difficulty: 2
+pitfall: "rm удаляет только остановленные; работающий — rm -f; docker ps -a показывает всё."
+statement: |
+  На ноутбуке скопились контейнеры. Оставьте только базу `shop-db`, остальные удалите — и остановленные, и работающие. Посмотрите полный список, прежде чем удалять.
+setup:
+  cwd: /home/shop
+  docker:
+    images: [postgres:16, nginx:1.27-alpine, alpine:3.20]
+    containers:
+      - name: shop-db
+        image: postgres:16
+        env: {POSTGRES_PASSWORD: shop}
+        running: true
+      - name: old-web
+        image: nginx:1.27-alpine
+        running: false
+      - name: tmp
+        image: alpine:3.20
+        command: [sleep, "3000"]
+        running: true
+check:
+  type: state
+  expect:
+    - docker: container
+      name: shop-db
+      status: running
+      fail: "Базу shop-db удалять и останавливать не нужно."
+    - docker: container
+      name: old-web
+      status: absent
+      fail: "Контейнер old-web ещё есть (docker ps -a)."
+    - docker: container
+      name: tmp
+      status: absent
+      fail: "Контейнер tmp ещё есть — он работает, поэтому docker rm -f tmp."
+solution: |
+  docker ps -a
+  docker rm old-web
+  docker rm -f tmp
+hints:
+  - "`docker ps` покажет не всё. Какой флаг показывает и остановленные?"
+  - "`docker rm old-web` и `docker rm -f tmp` (работающий)."
+explanation: |
+  `docker ps -a` показал остановленный `old-web`, которого нет в обычном `docker ps`. Работающий `tmp` обычный `rm` удалить не даст — нужен `-f`. Образы при этом остались: следующий запуск будет быстрым.

@@ -1,0 +1,15 @@
+title: "Django не видит базу"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "localhost внутри контейнера — сам контейнер; соседний контейнер ищут по имени в общей сети."
+statement: |
+  Django и PostgreSQL — в разных контейнерах в одной пользовательской сети `shop`. Контейнер базы называется `shop-db`. В `settings.py` указано `HOST = "localhost"`, `PORT = 5432`, и Django пишет `connection refused`. Как исправить?
+options:
+  - "Опубликовать порт базы: `-p 5432:5432`"
+  - "Указать `HOST = \"shop-db\"`"
+  - "Указать `HOST = \"127.0.0.1\"`"
+  - "Запустить Django с `--network bridge`"
+answer: [1]
+explanation: |
+  `localhost` и `127.0.0.1` внутри контейнера Django — сам этот контейнер, а PostgreSQL в нём не работает. В общей пользовательской сети встроенный DNS Docker находит соседа по имени: `HOST = "shop-db"`. Публикация порта нужна для доступа с сервера, а не между контейнерами; в `bridge` по умолчанию имена не работают вовсе.

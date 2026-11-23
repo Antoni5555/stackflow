@@ -1,0 +1,36 @@
+- title: Привет из контейнера
+  text: |
+    Выполните в разовом контейнере из `alpine:3.20` команду:
+    ```
+    echo привет
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker run --rm alpine:3.20 echo привет
+    ```
+    Результат (строки загрузки слоёв и Digest убраны):
+    ```
+    Unable to find image 'alpine:3.20' locally
+    3.20: Pulling from library/alpine
+    Status: Downloaded newer image for alpine:3.20
+    привет
+    ```
+    Образа не было — Docker скачал его. Второй запуск выведет только «привет».
+- title: Другая система внутри
+  text: |
+    Посмотрите, какая система внутри образа `ubuntu:24.04` (первые две строки):
+    ```
+    /etc/os-release
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker run --rm ubuntu:24.04 cat /etc/os-release | head -n 2
+    ```
+    Результат (без строк загрузки):
+    ```
+    PRETTY_NAME="Ubuntu 24.04.3 LTS"
+    NAME="Ubuntu"
+    ```
+    `head` выполнился уже на сервере: конвейер `|` обрабатывает вывод контейнера.

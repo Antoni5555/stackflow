@@ -1,0 +1,38 @@
+title: "Вторая копия сайта"
+type: exercise
+difficulty: 2
+pitfall: "Если порт занят, контейнер всё равно создаётся (Created) и держит имя — его удаляют и запускают с другим портом."
+statement: |
+  Контейнер `web` уже работает на порту 8080. Нужна вторая копия для проверки новой вёрстки: контейнер `web2` из `nginx:1.27-alpine` на порту **8081** сервера. Попробуйте сначала порт 8080 и посмотрите на ошибку, потом исправьте. В итоге работают оба контейнера, лишних нет.
+setup:
+  cwd: /home/shop
+  docker:
+    images: [nginx:1.27-alpine]
+    containers:
+      - name: web
+        image: nginx:1.27-alpine
+        ports: ["8080:80"]
+        running: true
+check:
+  type: state
+  expect:
+    - docker: container
+      name: web
+      status: running
+      fail: "Первый контейнер web должен продолжать работать."
+    - docker: container
+      name: web2
+      status: running
+      fail: "web2 не работает. После ошибки с портом он остался в статусе Created — удалите его и запустите заново на 8081."
+    - docker: port
+      container: web2
+      host: 8081
+      port: 80
+      fail: "web2 должен быть на порту 8081 сервера: -p 8081:80."
+solution: |
+  docker run -d --name web2 -p 8081:80 nginx:1.27-alpine
+hints:
+  - "Если первая попытка была с 8080 — что показывает `docker ps -a` для `web2`?"
+  - "`docker rm web2`, затем `docker run -d --name web2 -p 8081:80 nginx:1.27-alpine`."
+explanation: |
+  Порт сервера может принадлежать только одному контейнеру. Неудачный `docker run` всё же создаёт контейнер (`Created`) — с тем же именем второй раз не запуститься, пока не удалить. Порт внутри у обоих 80: у каждого контейнера своя сеть.

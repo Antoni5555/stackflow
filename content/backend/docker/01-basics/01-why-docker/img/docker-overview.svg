@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 340" width="880" height="340" class="fig" role="img" aria-labelledby="t"><title id="t">Образ — шаблон, контейнеры — запущенные из него процессы; ядро у всех общее</title>
+<style>
+.fig text{white-space:pre}
+.fig-t{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-c{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:14px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-cs{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:12px;fill:#0e0e0e;fill:var(--text,#0e0e0e)}
+.fig-h{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;letter-spacing:.04em;text-transform:uppercase;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-s{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:12px;fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-box{fill:#ffffff;fill:var(--surface,#ffffff);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-box2{fill:#ebebe8;fill:var(--surface-2,#ebebe8);stroke:#e0e0dc;stroke:var(--border,#e0e0dc);stroke-width:1.5}
+.fig-acc{fill:#dcf25c;fill:var(--accent,#dcf25c)}
+.fig-onacc{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#0e0e0e;fill:var(--on-accent,#0e0e0e)}
+.fig-ln{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none}
+.fig-lnd{stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+.fig-ah{fill:#6e6e6a;fill:var(--muted,#6e6e6a)}
+.fig-err{fill:#fdecea;fill:var(--error-bg,#fdecea);stroke:#d93025;stroke:var(--error,#d93025);stroke-width:1.5}
+.fig-errt{font-family:Manrope,sans-serif;font-family:var(--font-main,Manrope,sans-serif);font-size:13px;fill:#d93025;fill:var(--error,#d93025)}
+.fig-ok{fill:#e7f6ec;fill:var(--success-bg,#e7f6ec);stroke:#1f9d55;stroke:var(--success,#1f9d55);stroke-width:1.5}
+.fig-dash{fill:none;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5;stroke-dasharray:5 4}
+.fig-term{fill:#0d0d0f;fill:var(--term-bg,#0d0d0f)}
+.fig-tt{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#e6e6e3;fill:var(--term-text,#e6e6e3)}
+.fig-tterr{font-family:'JetBrains Mono',monospace;font-family:var(--font-code,'JetBrains Mono',monospace);font-size:13px;fill:#f87171}
+.fig-m1{fill:#dbe4ff;fill:var(--match-1,#dbe4ff)}
+.fig-m2{fill:#ffe3e3;fill:var(--match-2,#ffe3e3)}
+.fig-m3{fill:#d3f9d8;fill:var(--match-3,#d3f9d8)}
+.fig-venn{fill-opacity:.75;stroke:#6e6e6a;stroke:var(--muted,#6e6e6a);stroke-width:1.5}
+</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fig-ah"/></marker></defs>
+<rect x="20" y="20" width="200" height="150" rx="12" class="fig-box2"/>
+<text x="36" y="46" text-anchor="start" class="fig-t">Docker Hub</text>
+<rect x="36" y="60" width="168" height="28" rx="6" class="fig-box"/>
+<text x="120.0" y="79.0" text-anchor="middle" class="fig-cs">postgres:16</text>
+<rect x="36" y="94" width="168" height="28" rx="6" class="fig-box"/>
+<text x="120.0" y="113.0" text-anchor="middle" class="fig-cs">python:3.12</text>
+<rect x="36" y="128" width="168" height="28" rx="6" class="fig-box"/>
+<text x="120.0" y="147.0" text-anchor="middle" class="fig-cs">nginx:1.27</text>
+<path d="M220 80H276" class="fig-ln" marker-end="url(#a)"/>
+<text x="226" y="70" text-anchor="start" class="fig-s">pull</text>
+<rect x="280" y="20" width="360" height="260" rx="12" class="fig-box2"/>
+<text x="296" y="46" text-anchor="start" class="fig-t">сервер (Ubuntu)</text>
+<rect x="296" y="60" width="160" height="30" rx="6" class="fig-acc"/>
+<text x="376.0" y="80.0" text-anchor="middle" class="fig-onacc">образ postgres:16</text>
+<path d="M376 90V112" class="fig-ln" marker-end="url(#a)"/>
+<path d="M376 90L540 112" class="fig-ln" marker-end="url(#a)"/>
+<rect x="296" y="116" width="160" height="64" rx="6" class="fig-box"/>
+<text x="376.0" y="144.0" text-anchor="middle" class="fig-cs">shop-db</text>
+<text x="376.0" y="162.0" text-anchor="middle" class="fig-cs">свои файлы, сеть</text>
+<rect x="466" y="116" width="160" height="64" rx="6" class="fig-box"/>
+<text x="546.0" y="144.0" text-anchor="middle" class="fig-cs">test-db</text>
+<text x="546.0" y="162.0" text-anchor="middle" class="fig-cs">свои файлы, сеть</text>
+<rect x="296" y="200" width="330" height="34" rx="6" class="fig-ok"/>
+<text x="461.0" y="222.0" text-anchor="middle" class="fig-cs">общее ядро Linux сервера</text>
+<text x="296" y="264" text-anchor="start" class="fig-s">контейнер — процесс, старт за доли секунды</text>
+<rect x="660" y="20" width="200" height="260" rx="12" class="fig-box"/>
+<text x="676" y="46" text-anchor="start" class="fig-t">виртуальная машина</text>
+<rect x="676" y="60" width="168" height="30" rx="6" class="fig-box"/>
+<text x="760.0" y="80.0" text-anchor="middle" class="fig-cs">приложение</text>
+<rect x="676" y="98" width="168" height="30" rx="6" class="fig-box"/>
+<text x="760.0" y="118.0" text-anchor="middle" class="fig-cs">своя ОС целиком</text>
+<rect x="676" y="136" width="168" height="30" rx="6" class="fig-err"/>
+<text x="760.0" y="156.0" text-anchor="middle" class="fig-errt">своё ядро</text>
+<text x="676" y="200" text-anchor="start" class="fig-s">гигабайты,</text>
+<text x="676" y="222" text-anchor="start" class="fig-s">старт — десятки секунд</text>
+<text x="20" y="316" text-anchor="start" class="fig-s">Из одного образа — сколько угодно контейнеров; удалить контейнер ≠ удалить образ.</text>
+</svg>

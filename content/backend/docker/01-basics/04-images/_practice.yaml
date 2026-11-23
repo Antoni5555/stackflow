@@ -1,0 +1,39 @@
+- title: Скачать без запуска
+  text: |
+    Скачайте образ Nginx на Alpine, ничего не запуская, и посмотрите его размер:
+    ```
+    nginx:1.27-alpine
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker pull nginx:1.27-alpine
+    docker images nginx
+    ```
+    Результат (строки загрузки слоёв и Digest убраны):
+    ```
+    1.27-alpine: Pulling from library/nginx
+    Status: Downloaded newer image for nginx:1.27-alpine
+    docker.io/library/nginx:1.27-alpine
+    IMAGE               ID             DISK USAGE   CONTENT SIZE   EXTRA
+    nginx:1.27-alpine   f6974ca0a95f       74.5MB         21.9MB        
+    ```
+- title: Ещё одно имя
+  text: |
+    Дайте образу из прошлого упражнения имя `shop-nginx:1.0` и убедитесь, что ID тот же:
+    ```
+    docker tag
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker tag nginx:1.27-alpine shop-nginx:1.0
+    docker images -q nginx:1.27-alpine
+    docker images -q shop-nginx:1.0
+    ```
+    Результат:
+    ```
+    f6974ca0a95f
+    f6974ca0a95f
+    ```
+    Одно содержимое — два имени.

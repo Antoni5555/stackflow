@@ -1,0 +1,34 @@
+title: "PostgreSQL для разработки"
+type: exercise
+difficulty: 1
+pitfall: "Флаги — до имени образа; -p хост:контейнер; postgres без POSTGRES_PASSWORD не запускается."
+statement: |
+  Запустите базу для разработки магазина:
+  - в фоне, имя контейнера `shop-db`;
+  - образ `postgres:16`;
+  - пароль `shop` (`POSTGRES_PASSWORD`) и база `shop` (`POSTGRES_DB`);
+  - порт 55432 сервера ведёт на 5432 контейнера.
+
+  Проверьте, что база готова: `docker logs --tail 3 shop-db`.
+setup:
+  cwd: /home/shop
+check:
+  type: state
+  expect:
+    - docker: container
+      name: shop-db
+      status: running
+      fail: "Контейнер shop-db не работает. Не забыли -d и POSTGRES_PASSWORD? Остался ли упавший контейнер с этим именем (docker ps -a)?"
+    - docker: port
+      container: shop-db
+      host: 55432
+      port: 5432
+      fail: "Порт 55432 сервера должен вести на 5432 контейнера: -p 55432:5432 (сначала хост)."
+solution: |
+  docker run -d --name shop-db -e POSTGRES_PASSWORD=shop -e POSTGRES_DB=shop -p 55432:5432 postgres:16
+  docker logs --tail 3 shop-db
+hints:
+  - "Нужны флаги `-d`, `--name`, два `-e` и `-p` — все до имени образа."
+  - "`docker run -d --name shop-db -e POSTGRES_PASSWORD=shop -e POSTGRES_DB=shop -p 55432:5432 postgres:16`."
+explanation: |
+  `-d` вернул терминал, `--name` дал понятное имя, `-e` настроили образ, `-p 55432:5432` открыл базу на сервере: Django подключится к `localhost:55432`. Строка «database system is ready to accept connections» в логе — сигнал, что база готова.

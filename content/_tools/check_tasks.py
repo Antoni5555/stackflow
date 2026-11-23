@@ -248,6 +248,7 @@ LINUX_COMMANDS = {
     "sed": {"-n", "-e", "-E", "-s", "-i"}, "tee": {"-a"},
     "date": None, "test": ANY, "[": ANY, "exit": None, "dirname": None, "basename": None,
     "crontab": {"-l", "-e", "-r", "-u", "-n"},
+    "docker": ANY,   # подкоманды и флаги проверяет сам учебный Docker (test_state_tasks)
 }
 SHELL_KEYWORDS = {"if", "then", "elif", "else", "fi", "for", "do", "done", "!", "(", ")"}
 GIT_COMMANDS = {
@@ -265,7 +266,7 @@ APT_COMMANDS = {"update": None, "upgrade": {"-y"}, "install": {"-y"}, "remove": 
 PIP_COMMANDS = {"install": {"-r"}, "freeze": None, "uninstall": {"-y"}, "list": None}
 STATE_RULES = {  # ключ, по которому узнаём правило → какие ещё ключи обязательны
     "exists": {"path"}, "contains": {"path"}, "not_contains": {"path"}, "mode": {"path"}, "owner": {"path"}, "group": {"path"}, "link_to": {"path"},
-    "output_matches": set(), "service": set(), "process": set(), "port": set(), "crontab": set(),
+    "output_matches": set(), "service": set(), "process": set(), "port": set(), "crontab": set(), "docker": set(),
     "head": set(), "commit_in": set(), "commit_count": set(), "clean": set(), "merged": set(),
     "pushed": set(), "config": set(), "stash_count": set(), "pip_package": set(),
 }
@@ -346,7 +347,7 @@ def check_command(line):
 def check_state(task):
     problems = []
     setup, rules = task.get("setup") or {}, (task.get("check") or {}).get("expect") or []
-    unknown = set(setup) - {"cwd", "files", "dirs", "links", "services", "processes", "repo", "commits", "head", "remote", "venv", "gitconfig", "now", "crontab"}
+    unknown = set(setup) - {"cwd", "files", "dirs", "links", "services", "processes", "repo", "commits", "head", "remote", "venv", "gitconfig", "now", "crontab", "docker"}
     if unknown:
         problems.append(f"неизвестные ключи setup: {sorted(unknown)}")
     if "cwd" in setup and not str(setup["cwd"]).startswith("/"):
@@ -437,6 +438,8 @@ def check_state(task):
         problems.append("нет правил check.expect")
     for rule in rules:
         kinds = [k for k in STATE_RULES if k in rule] + [k for k in GIT_SUBJECTS if k in rule]
+        if "docker" in rule:
+            kinds = ["docker"]                  # port, exists и др. — поля правила Docker, форму проверяет content_loader
         if "exists" in kinds and set(kinds) & set(GIT_SUBJECTS):
             kinds.remove("exists")
             if not isinstance(rule["exists"], bool):

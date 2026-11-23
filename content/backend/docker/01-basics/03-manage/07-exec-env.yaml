@@ -1,0 +1,27 @@
+title: "Какая база в контейнере"
+type: exercise
+difficulty: 2
+pitfall: "docker exec выполняет команду внутри работающего контейнера — так смотрят его окружение и файлы."
+statement: |
+  Коллега запустил базу `shop-db` и забыл, какое имя базы указал. Выведите переменные окружения **внутри** контейнера и найдите `POSTGRES_DB` (последняя команда — вывод переменных контейнера).
+setup:
+  cwd: /home/shop
+  docker:
+    images: [postgres:16]
+    containers:
+      - name: shop-db
+        image: postgres:16
+        env: {POSTGRES_PASSWORD: s3cr3t, POSTGRES_DB: shop_stage}
+        running: true
+check:
+  type: state
+  expect:
+    - output_matches: '^POSTGRES_DB=shop_stage$'
+      fail: "Последней командой выведите окружение контейнера: docker exec shop-db env."
+solution: |
+  docker exec shop-db env
+hints:
+  - "Какая команда Docker выполняет программу внутри уже работающего контейнера?"
+  - "`docker exec shop-db env`."
+explanation: |
+  `exec` выполнил `env` в окружении контейнера: видны и переменные, переданные через `-e`, и те, что задал образ. Так же видна и `POSTGRES_PASSWORD` — переменные контейнера не секрет для того, у кого есть доступ к Docker. Другой путь — `docker inspect -f '{{json .Config.Env}}' shop-db`.

@@ -1,0 +1,36 @@
+title: "Почините файл настроек"
+type: fix
+difficulty: 1
+pitfall: "Формат --env-file: ИМЯ=значение без пробелов вокруг = и без кавычек; # — комментарий."
+statement: |
+  `docker run --env-file .env …` падает с `invalid env file (.env): variable 'POSTGRES_DB ' contains whitespaces`, а после исправления этой строки пароль всё равно не подходит. Приведите файл к формату `--env-file`: без пробелов вокруг `=` и без кавычек. Значения и комментарий оставьте.
+files:
+  .env: |
+    # База магазина
+    POSTGRES_PASSWORD="s3cr3t"
+    POSTGRES_DB = shop
+    DJANGO_DEBUG=False
+check:
+  type: rules
+  rules:
+    - must_match: '^POSTGRES_PASSWORD=s3cr3t$'
+      fail: "POSTGRES_PASSWORD=s3cr3t — без кавычек: --env-file оставит их в пароле."
+    - must_match: '^POSTGRES_DB=shop$'
+      fail: "POSTGRES_DB=shop — без пробелов вокруг =."
+    - must_match: '^DJANGO_DEBUG=False$'
+      fail: "Строку DJANGO_DEBUG=False не меняйте."
+    - must_match: '^# База магазина$'
+      fail: "Комментарий оставьте — строки с # Docker пропускает."
+    - must_not_match: '"'
+      fail: "В файле остались кавычки."
+solution:
+  .env: |
+    # База магазина
+    POSTGRES_PASSWORD=s3cr3t
+    POSTGRES_DB=shop
+    DJANGO_DEBUG=False
+hints:
+  - "Что `--env-file` делает с кавычками и с пробелами вокруг `=`?"
+  - "`POSTGRES_PASSWORD=s3cr3t` и `POSTGRES_DB=shop`."
+explanation: |
+  `--env-file` читает строки буквально: пробел перед `=` становится частью имени (и Docker отказывается запускать контейнер), а кавычки — частью значения. Учтите: если база уже была создана с паролем `"s3cr3t"`, исправленный файл пароль в ней не поменяет — переменная работает только при первой инициализации тома.

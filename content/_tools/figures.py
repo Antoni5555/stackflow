@@ -4322,6 +4322,167 @@ def async_pitfalls_fig():
     f.save(out(PY10 / "07-async-pitfalls" / "img" / "async-pitfalls.svg"))
 
 
+DK1 = ROOT / "docker" / "01-basics"
+
+
+def docker_overview():
+    f = Figure(880, 340, "Образ — шаблон, контейнеры — запущенные из него процессы; ядро у всех общее")
+    f.box(20, 20, 200, 150, "", "box2")
+    f.text(36, 46, "Docker Hub", "t")
+    for i, name in enumerate(["postgres:16", "python:3.12", "nginx:1.27"]):
+        f.box(36, 60 + i * 34, 168, 28, name, "box", "cs", rx=6)
+    f.arrow("M220 80H276")
+    f.text(226, 70, "pull", "s")
+    f.box(280, 20, 360, 260, "", "box2")
+    f.text(296, 46, "сервер (Ubuntu)", "t")
+    f.box(296, 60, 160, 30, "образ postgres:16", "acc", "onacc", rx=6)
+    f.arrow("M376 90V112"); f.arrow("M376 90L540 112")
+    f.box(296, 116, 160, 64, "shop-db|свои файлы, сеть", "box", "cs", rx=6)
+    f.box(466, 116, 160, 64, "test-db|свои файлы, сеть", "box", "cs", rx=6)
+    f.box(296, 200, 330, 34, "общее ядро Linux сервера", "ok", "cs", rx=6)
+    f.text(296, 264, "контейнер — процесс, старт за доли секунды", "s")
+    f.box(660, 20, 200, 260, "", "box")
+    f.text(676, 46, "виртуальная машина", "t")
+    f.box(676, 60, 168, 30, "приложение", "box", "cs", rx=6)
+    f.box(676, 98, 168, 30, "своя ОС целиком", "box", "cs", rx=6)
+    f.box(676, 136, 168, 30, "своё ядро", "err", "errt", rx=6)
+    f.text(676, 200, "гигабайты,", "s")
+    f.text(676, 222, "старт — десятки секунд", "s")
+    f.text(20, 316, "Из одного образа — сколько угодно контейнеров; удалить контейнер ≠ удалить образ.", "s")
+    f.save(out(DK1 / "01-why-docker" / "img" / "docker-overview.svg"))
+
+
+def docker_run_fig():
+    f = Figure(880, 300, "docker run: что за что отвечает")
+    parts = [("docker run", "box", "cs", 110), ("-d", "acc", "onacc", 40), ("--name shop-db", "acc", "onacc", 140),
+             ("-p 55432:5432", "acc", "onacc", 130), ("-e POSTGRES_PASSWORD=…", "acc", "onacc", 200), ("postgres:16", "ok", "cs", 120)]
+    x = 20
+    for text, cls, tcls, w in parts:
+        f.box(x, 20, w, 34, text, cls, tcls, rx=6)
+        x += w + 8
+    notes = [(158, "в фоне"), (256, "имя"), (399, "хост:контейнер"), (572, "переменная внутри"), (740, "образ")]
+    for nx, t in notes:
+        f.text(nx, 76, t, "s", "middle")
+    f.box(20, 110, 380, 150, "", "box2")
+    f.text(36, 136, "сервер", "t")
+    f.box(36, 150, 170, 34, "localhost:55432", "box", "cs", rx=6)
+    f.arrow("M206 167H246")
+    f.box(250, 140, 140, 100, "", "ok")
+    f.text(262, 164, "shop-db", "cs")
+    f.text(262, 190, "PostgreSQL", "s")
+    f.text(262, 212, "слушает 5432", "s")
+    f.text(440, 140, "Без -p порт 5432 виден только внутри Docker-сети.", "s")
+    f.text(440, 166, "Флаги Docker — до имени образа;", "s")
+    f.text(440, 190, "после образа — команда для контейнера.", "s")
+    f.text(440, 214, "Имя и порт хоста уникальны: второй shop-db", "s")
+    f.text(440, 238, "или второй -p 55432 — ошибка.", "s")
+    f.save(out(DK1 / "02-run" / "img" / "docker-run.svg"))
+
+
+def container_lifecycle():
+    f = Figure(880, 300, "Жизненный цикл контейнера")
+    f.box(20, 110, 130, 50, "docker run", "box", "cs")
+    f.arrow("M150 135H206")
+    f.box(210, 110, 130, 50, "Created", "box2", "cs")
+    f.arrow("M340 135H396")
+    f.box(400, 110, 130, 50, "Up", "acc", "onacc")
+    f.arrow("M530 125H626"); f.text(578, 116, "stop", "s", "middle")
+    f.box(630, 110, 130, 50, "Exited (код)", "box2", "cs")
+    f.arrow("M630 150H534"); f.text(582, 172, "start", "s", "middle")
+    f.line("M440 110C440 60 500 60 500 106", "ln"); f.arrow("M500 96V106")
+    f.text(470, 58, "restart", "s", "middle")
+    f.box(630, 220, 230, 44, "удалён: docker rm", "err", "errt", rx=8)
+    f.arrow("M695 160V216"); f.arrow("M275 160C275 240 500 250 626 242")
+    f.text(380, 236, "rm (Created)", "s", "middle")
+    f.text(20, 210, "Пока Up:", "s")
+    f.text(20, 234, "docker logs, docker exec", "cs")
+    f.text(20, 284, "rm -f — удалить и работающий; stop/start сохраняют контейнер и его файлы.", "s")
+    f.save(out(DK1 / "03-manage" / "img" / "container-lifecycle.svg"))
+
+
+def image_names():
+    f = Figure(880, 280, "Имя образа и опасность latest")
+    parts = [("ghcr.io/", "реестр", 90), ("shop/", "владелец", 80), ("web", "репозиторий", 100), (":1.4.2", "тег", 70)]
+    x = 20
+    for text, label, w in parts:
+        f.box(x, 20, w, 34, text, "acc", "onacc", rx=6)
+        f.text(x + w / 2, 76, label, "s", "middle")
+        x += w + 6
+    f.text(400, 42, "postgres:16 = docker.io/library/postgres:16", "cs")
+    f.text(20, 126, "postgres:latest", "cs")
+    f.box(180, 108, 160, 30, "январь → 17", "box", "cs", rx=6)
+    f.box(350, 108, 160, 30, "сентябрь → 18", "err", "errt", rx=6)
+    f.text(20, 170, "postgres:16", "cs")
+    f.box(180, 152, 330, 30, "всегда 16.x (исправления)", "ok", "cs", rx=6)
+    f.text(20, 220, "После перезапуска сервера с latest — другая мажорная версия, файлы базы не читаются.", "s")
+    f.box(560, 100, 300, 120, "", "box2")
+    f.text(576, 126, "размер на диске", "t")
+    f.box(576, 140, 268, 26, "python:3.12 — 1,62 ГБ", "box", "cs", rx=4)
+    f.box(576, 176, 30, 26, "", "ok", rx=4)
+    f.text(616, 194, "python:3.12-slim — 179 МБ", "cs")
+    f.text(20, 254, "tag — второе имя того же образа (ID один); rmi не удалит образ, из которого создан контейнер.", "s")
+    f.save(out(DK1 / "04-images" / "img" / "image-names.svg"))
+
+
+DK2 = ROOT / "docker" / "02-data-network"
+
+
+def volumes_fig():
+    f = Figure(880, 340, "Слой контейнера удаляется вместе с ним; том и bind mount — нет")
+    f.box(20, 20, 300, 200, "", "box2")
+    f.text(36, 46, "контейнер shop-db", "t")
+    f.box(36, 60, 268, 34, "слой изменений — удалится с rm", "err", "errt", rx=6)
+    f.box(36, 104, 268, 34, "/var/lib/postgresql/data", "box", "cs", rx=6)
+    f.box(36, 148, 268, 34, "/docker-entrypoint-initdb.d", "box", "cs", rx=6)
+    f.arrow("M304 121H396")
+    f.box(400, 100, 460, 44, "том pgdata — /var/lib/docker/volumes/pgdata", "ok", "cs", rx=8)
+    f.arrow("M304 165H396")
+    f.box(400, 152, 460, 44, "bind mount — /home/shop/init (папка сервера)", "acc", "onacc", rx=8)
+    f.text(400, 80, "переживают docker rm; новый контейнер с тем же томом видит те же данные", "s")
+    f.box(20, 250, 420, 60, "", "box")
+    f.text(36, 274, "-v /home/shop/empty:/usr/share/nginx/html", "cs")
+    f.text(36, 298, "пустая папка закрыла index.html образа", "errt")
+    f.text(470, 274, "postgres без -v → анонимный том", "s")
+    f.text(470, 298, "со случайным именем; docker rm -v уберёт его", "s")
+    f.save(out(DK2 / "01-volumes" / "img" / "volumes.svg"))
+
+
+def env_docker_fig():
+    f = Figure(880, 300, "Один образ — разные настройки при запуске; секреты не в образе")
+    f.box(330, 20, 220, 50, "образ shop-web:1.4", "acc", "onacc")
+    f.arrow("M400 70L200 106"); f.arrow("M480 70L680 106")
+    f.box(20, 110, 380, 100, "", "box2")
+    f.text(36, 136, "ноутбук: --env-file .env.dev", "cs")
+    f.text(36, 162, "DEBUG=True", "s"); f.text(36, 186, "DB_HOST=localhost", "s")
+    f.box(480, 110, 380, 100, "", "ok")
+    f.text(496, 136, "сервер: --env-file .env.prod (600)", "cs")
+    f.text(496, 162, "DEBUG=False, DB_HOST=db", "s"); f.text(496, 186, "SECRET_KEY=…", "s")
+    f.box(20, 232, 840, 44, "ENV SECRET_KEY=… в Dockerfile — секрет в образе и в реестре навсегда", "err", "errt", rx=8)
+    f.save(out(DK2 / "02-env" / "img" / "env.svg"))
+
+
+def networks_fig():
+    f = Figure(880, 340, "localhost внутри контейнера — он сам; соседи — по имени в своей сети")
+    f.box(20, 20, 560, 210, "", "box2")
+    f.text(36, 46, "сеть shop (docker network create shop)", "t")
+    f.box(36, 64, 220, 90, "", "box")
+    f.text(52, 88, "web (Django)", "cs")
+    f.text(52, 112, "HOST = \"db\"", "s")
+    f.text(52, 134, "слушает 8000", "s")
+    f.box(340, 64, 220, 90, "", "box")
+    f.text(356, 88, "db (PostgreSQL)", "cs")
+    f.text(356, 112, "слушает 5432", "s")
+    f.text(356, 134, "наружу не опубликован", "s")
+    f.arrow("M256 100H336"); f.text(296, 92, "db:5432 ✓", "s", "middle")
+    f.box(36, 172, 300, 40, "localhost:5432 из web → сам web ✗", "err", "errt", rx=6)
+    f.box(620, 30, 240, 44, "сервер: localhost:58000", "ok", "cs", rx=8)
+    f.arrow("M620 54H146V60")
+    f.text(620, 100, "-p 58000:8000 — только", "s")
+    f.text(620, 122, "для доступа снаружи", "s")
+    f.box(20, 260, 560, 44, "сеть bridge по умолчанию: ping db → bad address", "err", "errt", rx=8)
+    f.save(out(DK2 / "03-networks" / "img" / "networks.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -4378,6 +4539,9 @@ if __name__ == "__main__":
                   solid_s_o, solid_l_i_d, dependency_injection, factory_fig,
                   singleton_fig, layers_fig, concurrency_fig,
                   threads_processes_fig, event_loop_fig, tasks_fig, limits_fig,
-                  async_with_for_fig, async_pitfalls_fig):
+                  async_with_for_fig, async_pitfalls_fig,
+                  docker_overview, docker_run_fig,
+                  container_lifecycle, image_names, volumes_fig,
+                  env_docker_fig, networks_fig):
         build()
     print("ok")

@@ -1,0 +1,34 @@
+- title: Redis в фоне
+  text: |
+    Запустите Redis в фоне с именем `cache` и портом 6379 сервера и посмотрите на него в списке:
+    ```
+    redis:7
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker run -d --name cache -p 6379:6379 redis:7
+    docker ps --format "{{.Names}} {{.Status}} {{.Ports}}"
+    ```
+    Результат (без строк загрузки и ID):
+    ```
+    cache Up Less than a second 0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+    ```
+    `--format` выводит только нужные колонки.
+- title: Готов ли Redis
+  text: |
+    Посмотрите последние две строки журнала контейнера из прошлого упражнения:
+    ```
+    cache
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker logs --tail 2 cache
+    ```
+    Результат:
+    ```
+    1:M 23 Nov 2026 00:00:00.011 * Server initialized
+    1:M 23 Nov 2026 00:00:00.012 * Ready to accept connections tcp
+    ```
+    Время в журналах контейнеров — UTC.

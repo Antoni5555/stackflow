@@ -1,0 +1,28 @@
+title: "Первый контейнер"
+type: exercise
+difficulty: 1
+pitfall: "docker run --rm образ команда — разовый контейнер: выполнил команду и удалился."
+statement: |
+  Узнайте, какая система внутри образа `alpine:3.20`: выполните в разовом контейнере
+  ```
+  cat /etc/os-release
+  ```
+  Контейнер после выполнения должен удалиться сам.
+setup:
+  cwd: /home/shop
+check:
+  type: state
+  expect:
+    - output_matches: 'Alpine Linux'
+      fail: "Последней командой выполните cat /etc/os-release внутри контейнера из alpine:3.20."
+    - docker: container
+      image: alpine:3.20
+      status: absent
+      fail: "Контейнер остался — добавьте --rm, чтобы он удалился после выполнения команды."
+solution: |
+  docker run --rm alpine:3.20 cat /etc/os-release
+hints:
+  - "Команду для контейнера пишут после имени образа. Какой флаг удаляет контейнер после завершения?"
+  - "`docker run --rm alpine:3.20 cat /etc/os-release`."
+explanation: |
+  Docker скачал образ, создал контейнер, выполнил в нём `cat` и, благодаря `--rm`, удалил его. Внутри — файлы Alpine Linux, хотя сервер — Ubuntu: у контейнера своя файловая система, а ядро общее.

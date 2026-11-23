@@ -1,8 +1,8 @@
 # Курс: Docker — шаг 80
 
 **Контекст:** магазин работает «только у автора на ноутбуке». Ученик упаковывает его в контейнеры: сначала запускает Postgres магазина в Docker, потом пишет Dockerfile для Django и собирает весь стек (Django + Postgres + Nginx) в compose.
-**Тренажёр:** нет (`engine` пустой). Задачи — `fix` (исправить или дописать Dockerfile/compose, проверка по правилам) и `quiz` (что сделает команда, порядок шагов).
-**Источники:** `training_skills/Docker/DOCKER_basic_command.md` (**DB**), `clear_docker_imaage.md` (**CLR**), `training_skills/SQL/00_docker_container_postgres.md`, compose-файлы из `middle_course/new_admin_panel_sprint_2|3/docker_compose` (ориентир).
+**Тренажёр:** Linux-симулятор с учебным Docker (решение автора 2026-11-23, вариант А): команды `docker` и `docker compose` в браузере — образы, контейнеры, тома, сети, `build` по Dockerfile со слоями и кэшем, compose. Docker-часть подгружается лениво (только при первой команде `docker` / на страницах курса). Задачи — упражнения в терминале с проверкой состояния, `fix` (Dockerfile/compose) и `quiz`. Выводы — с настоящего Docker Engine.
+**Источники:** `training_skills/Docker/DOCKER_basic_command.md` (**DB**), `clear_docker_imaage.md` (**CLR**), `training_skills/SQL/00_docker_container_postgres.md`, compose-файлы из `middle_course/new_admin_panel_sprint_2|3/docker_compose` (ориентир), `practice/create_to_myportfolio/` (**PF**: Django в Docker, production-compose, публикация в Docker Hub).
 
 Формат — [docs/content-format.md](../../docs/content-format.md), легенда — [00-overview.md](00-overview.md).
 
@@ -29,7 +29,7 @@
 | 03 | `.dockerignore` | что исключать | в образ попали `.git`, `venv` и `.env` | ❌ |
 | 04 | Инструкции подробнее | `CMD` vs `ENTRYPOINT`, `EXPOSE`, `ARG` vs `ENV`, Gunicorn как команда запуска | запуск через `gunicorn shop.wsgi` | ❌ |
 | 05 | Оптимизация образа | `slim`-образы, multi-stage, не-root пользователь, `PYTHONDONTWRITEBYTECODE` | уменьшить образ с 1 ГБ до 200 МБ | ❌ ●●● |
-| 06 | Публикация образа | registry (Docker Hub, GHCR), `tag`, `login`, `push`, `pull` на сервере | доставить образ магазина на сервер | ❌ |
+| 06 | Публикация образа | registry (Docker Hub, GHCR), `tag`, `login`, `push`, `pull` на сервере | доставить образ магазина на сервер | 🟡 PF |
 
 ## 4. Docker Compose ●●●
 | # | Тема | Что разбираем | Задача из магазина | Сырьё |
@@ -37,8 +37,9 @@
 | 01 | compose.yaml | `services`, `image` vs `build`, `ports`, `docker compose up/down/logs` | Django + Postgres одной командой | 🟡 middle_course (код) |
 | 02 | Зависимости и healthcheck | `depends_on` + `condition: service_healthy` | Django стартует раньше БД и падает | ❌ |
 | 03 | Тома и окружение в compose | `volumes`, `env_file` | данные и настройки в compose | ❌ |
-| 04 | Стек магазина | Django + Postgres + Nginx, статика через общий том, миграции при старте | собрать прод-подобный стек | ❌ |
-| 05 | Обслуживание | `system df`, `prune` (что безопасно), логи контейнеров | на сервере кончилось место | ✅ CLR |
+| 04 | Compose для разработки | bind mount кода, автоперезагрузка, `compose.override.yaml`, профили | не пересобирать образ на каждую правку | ❌ |
+| 05 | Стек магазина | Django + Postgres + Nginx, статика через общий том, миграции отдельным шагом, `restart` | собрать прод-подобный стек | 🟡 PF |
+| 06 | Обслуживание | `system df`, `prune` (что безопасно), логи контейнеров | на сервере кончилось место | ✅ CLR |
 
 ## Итог
-4 раздела, 18 тем. Есть хорошая база по командам. Dockerfile и compose — главное содержание курса — пишутся с нуля.
+4 раздела, 19 тем. Есть хорошая база по командам. Dockerfile и compose — главное содержание курса — пишутся с нуля.

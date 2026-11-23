@@ -1,0 +1,33 @@
+title: "Стартовая страница Nginx"
+type: exercise
+difficulty: 1
+pitfall: "Без -p порт контейнера с сервера недоступен; сначала порт сервера, потом контейнера."
+statement: |
+  Запустите в фоне контейнер `web` из образа `nginx:1.27-alpine` так, чтобы его порт 80 был доступен на сервере как 8080. Затем получите страницу:
+  ```
+  curl -s localhost:8080
+  ```
+setup:
+  cwd: /home/shop
+check:
+  type: state
+  expect:
+    - docker: container
+      name: web
+      status: running
+      fail: "Контейнер web не работает — запустите его с -d."
+    - docker: port
+      container: web
+      host: 8080
+      port: 80
+      fail: "Нужен проброс -p 8080:80."
+    - output_matches: 'Welcome to nginx!'
+      fail: "Последней командой получите страницу: curl -s localhost:8080."
+solution: |
+  docker run -d --name web -p 8080:80 nginx:1.27-alpine
+  curl -s localhost:8080
+hints:
+  - "Порт задаётся как `-p порт_сервера:порт_контейнера`."
+  - "`docker run -d --name web -p 8080:80 nginx:1.27-alpine`, затем `curl -s localhost:8080`."
+explanation: |
+  Nginx внутри контейнера слушает 80, а `-p 8080:80` открыл его на сервере. Каждый запрос `curl` попал в журнал — его видно в `docker logs web`.

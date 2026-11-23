@@ -1,4 +1,4 @@
 title: Docker
 description: Контейнеры, Dockerfile и Compose — упаковываем Django, Postgres и Nginx магазина.
-engine: null  # без тренажёра — задачи quiz/fix
+engine: linux  # Linux-симулятор с учебным Docker
 order: 80

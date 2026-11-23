@@ -1,0 +1,24 @@
+title: "Какой Python в образе"
+type: exercise
+difficulty: 1
+pitfall: "Команда после имени образа заменяет команду по умолчанию; --rm убирает разовый контейнер."
+statement: |
+  Узнайте точную версию Python в образе `python:3.12-slim` разовым контейнером, который удалится после выполнения. Последняя команда — проверка версии.
+setup:
+  cwd: /home/shop
+check:
+  type: state
+  expect:
+    - output_matches: '^Python 3\.12\.\d+$'
+      fail: "Последней командой выполните python --version внутри контейнера из python:3.12-slim."
+    - docker: container
+      image: python:3.12-slim
+      status: absent
+      fail: "Контейнер остался — добавьте --rm."
+solution: |
+  docker run --rm python:3.12-slim python --version
+hints:
+  - "Команду для контейнера пишут после имени образа."
+  - "`docker run --rm python:3.12-slim python --version`."
+explanation: |
+  Тег `3.12` фиксирует мажорную и минорную версию, а исправления (третья цифра) обновляются при новых `pull`. Если важна точная версия, пишут полный тег: `python:3.12.16-slim`.
