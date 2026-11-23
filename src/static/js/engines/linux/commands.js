@@ -8,6 +8,7 @@ import {
 } from './fs.js';
 import { globMatch } from './glob.js';
 import { curl, hostname, ping, scp, ss, ssh } from './network.js';
+import { sed } from './sed.js';
 import { journalctl, kill, pgrep, pkill, ps, systemctl, top } from './system.js';
 
 // --- общие помощники ---
@@ -321,6 +322,22 @@ const echo = {
     let text = rest.join(' ');
     if (escapes) text = text.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
     return ok(newline ? `${text}\n` : text);
+  },
+};
+
+const tee = {
+  help: `tee [-a] [файл…] — вывести ввод на экран и записать в файлы.
+  -a   дописать в конец, а не перезаписать
+Пример: echo "127.0.0.1 shop.local" | sudo tee -a /etc/hosts
+(sudo echo … > файл не сработает: файл открывает оболочка, а она без sudo)`,
+  run(ctx) {
+    const parsed = options('tee', ctx.args, { flags: 'a', long: { '--append': 'a' } });
+    if (parsed.error) return { ...parsed.error, code: 1 };
+    const result = eachPath(ctx, parsed.operands, (path) => {
+      ctx.fs.writeFile(ctx.sh.resolve(path), ctx.stdin, { append: Boolean(parsed.opts.a) });
+    });
+    result.out = ctx.stdin;
+    return result;
   },
 };
 
@@ -1388,7 +1405,7 @@ const help = {
   run: () => ok(`Команды тренажёра (у каждой есть --help):
   навигация:  pwd cd ls
   файлы:      cat touch mkdir rm rmdir cp mv ln nano
-  текст:      echo head tail wc grep sort uniq cut
+  текст:      echo head tail wc grep sort uniq cut sed tee
   поиск:      find du df
   права:      chmod chown chgrp whoami id groups sudo
   процессы:   ps pgrep kill pkill top
@@ -1403,7 +1420,7 @@ const help = {
 
 export const COMMANDS = {
   pwd, cd, ls, cat, echo, mkdir, touch, rm, rmdir, cp, mv, ln,
-  head, tail, wc, grep, sort, uniq, cut, find, du, df,
+  head, tail, wc, grep, sort, uniq, cut, sed, tee, find, du, df,
   chmod, chown, chgrp, whoami, id, groups, sudo,
   ps, kill, pkill, pgrep, top, systemctl, journalctl,
   ss, curl, ping, hostname, ssh, scp,

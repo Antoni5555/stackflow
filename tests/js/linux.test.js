@@ -339,6 +339,81 @@ describe('как в Ubuntu: apt в Linux-тренажёре, df, du, sort -h', (
   });
 });
 
+describe('как в Ubuntu: sed и tee', () => {
+  const NUMS = { ...SHOP, files: { ...SHOP.files, '/srv/shop/n': '1\n2\n3\n', '/srv/shop/nn': 'a\nb' } };
+
+  it('sed: замены, адреса, диапазоны, команды', () => {
+    const sh = shell(NUMS);
+    const out = (line) => run(sh, line).out;
+    assert.equal(out("sed 's/DEBUG=False/DEBUG=True/' config/settings.ini"), 'DEBUG=True\nSECRET=abc\n');
+    assert.equal(out("sed -n '2p;$=' n"), '2\n3\n');
+    assert.equal(out("sed '2!d' n"), '2\n');
+    assert.equal(out("sed '/2/,$d' n"), '1\n');
+    assert.equal(out("sed '1i head' n"), 'head\n1\n2\n3\n');
+    assert.equal(out("sed '$a tail' n"), '1\n2\n3\ntail\n');
+    assert.equal(out("sed '1,2c X' n"), 'X\n3\n');
+    assert.equal(out("sed 's/[[:digit:]]/<&>/g' n"), '<1>\n<2>\n<3>\n');
+    assert.equal(out("echo a.b.c | sed 's/\\./-/2'"), 'a.b-c\n');
+    assert.equal(out("echo aaa | sed 's/a/b/2g'"), 'abb\n');
+    assert.equal(out("echo aaa | sed -E 's/(a+)/[\\1]/'"), '[aaa]\n');
+    assert.equal(out("echo ab | sed 's/\\(a\\)\\(b\\)/\\2\\1/'"), 'ba\n');
+    assert.equal(out("echo a+b | sed 's/a+/X/'"), 'Xb\n');            // в BRE + — обычный символ
+    assert.equal(out("echo ab | sed 's/a\\|b/X/g'"), 'XX\n');
+    assert.equal(out("echo hello | sed 's/L/X/Ig'"), 'heXXo\n');
+    assert.equal(out("echo x | sed 's|x|/y|'"), '/y\n');
+    assert.equal(out("echo x | sed 's/x/a&b\\&/'"), 'axb&\n');
+    assert.equal(out("echo -e '1\\n2\\n3\\n4' | sed -n '2,1p;/3/,2p'"), '2\n3\n');
+    assert.equal(out("sed -n '/1/,/2/p' n"), '1\n2\n');
+    assert.equal(out("sed -n '$p' n n"), '3\n');
+    assert.equal(out("sed -s -n '$p' n n"), '3\n3\n');
+    assert.equal(out("sed 's/a/X/' nn"), 'X\nb');                        // без \n в конце — как было
+    assert.equal(out("sed '$a end' nn"), 'a\nb\nend\n');
+    assert.equal(out('sed 2q n'), '1\n2\n');
+    assert.equal(run(sh, 'echo x | sed q5').code, 5);
+  });
+
+  it('sed: ошибки дословно', () => {
+    const sh = shell(NUMS);
+    const err = (line) => run(sh, line).err;
+    assert.equal(err('echo x | sed k'), "sed: -e expression #1, char 1: unknown command: `k'\n");
+    assert.equal(err("echo x | sed 's/a/b'"), "sed: -e expression #1, char 5: unterminated `s' command\n");
+    assert.equal(err("echo x | sed 's/a/b/z'"), "sed: -e expression #1, char 7: unknown option to `s'\n");
+    assert.equal(err("echo x | sed 's/x/\\1/'"), "sed: -e expression #1, char 7: invalid reference \\1 on `s' command's RHS\n");
+    assert.equal(err("echo x | sed 's/\\(/x/'"), 'sed: -e expression #1, char 7: Unmatched ( or \\(\n');
+    assert.equal(err('echo x | sed /x/'), 'sed: -e expression #1, char 3: missing command\n');
+    assert.equal(err("echo x | sed 'p x'"), 'sed: -e expression #1, char 3: extra characters after command\n');
+    assert.deepEqual([err('sed q nope'), sh.status], ["sed: can't read nope: No such file or directory\n", 2]);
+    assert.deepEqual([err('sed -i s/a/b/'), sh.status], ['sed: no input files\n', 1]);
+    assert.deepEqual([err('sed -n p config'), sh.status], ['sed: read error on config: Is a directory\n', 4]);
+    assert.match(err("echo x | sed 'y/x/X/'"), /не поддерживается/);
+  });
+
+  it('sed -i: правка на месте, копия, права', () => {
+    const sh = shell(NUMS);
+    run(sh, "sed -i 's/False/True/;s/abc/xyz/' config/settings.ini");
+    assert.equal(run(sh, 'cat config/settings.ini').out, 'DEBUG=True\nSECRET=xyz\n');
+    run(sh, "sed -i.bak '1d' n");
+    assert.equal(run(sh, 'cat n n.bak').out, '2\n3\n1\n2\n3\n');
+    const denied = run(sh, "sed -i 's/server/x/' /etc/nginx/nginx.conf");
+    assert.deepEqual([denied.err, denied.code], ["sed: couldn't open temporary file /etc/nginx/sedK3x9Qa: Permission denied\n", 4]);
+    assert.equal(run(sh, "sudo sed -i 's/server {}/server { listen 80; }/' /etc/nginx/nginx.conf").code, 0);
+    assert.equal(run(sh, 'cat /etc/nginx/nginx.conf').out, 'server { listen 80; }\n');
+    assert.match(run(sh, 'ls -l /etc/nginx/nginx.conf').out, / root root /);
+  });
+
+  it('tee: экран и файлы, -a, права, sudo tee', () => {
+    const sh = shell(NUMS);
+    assert.equal(run(sh, 'echo hi | tee a.txt b.txt').out, 'hi\n');
+    run(sh, 'echo more | tee -a a.txt > /dev/null');
+    assert.equal(run(sh, 'cat a.txt b.txt').out, 'hi\nmore\nhi\n');
+    const denied = run(sh, 'echo x | tee /etc/hosts');
+    assert.deepEqual([denied.out, denied.err, denied.code], ['x\n', 'tee: /etc/hosts: Permission denied\n', 1]);
+    run(sh, "echo '127.0.0.1 shop.local' | sudo tee -a /etc/hosts > /dev/null");
+    assert.equal(run(sh, 'cat /etc/hosts').out, '127.0.0.1 shop.local\n');
+    assert.equal(run(sh, 'which sed tee').out, '/usr/bin/sed\n/usr/bin/tee\n');
+  });
+});
+
 describe('поиск и место', () => {
   it('find: -name, -type, -size, -mtime', () => {
     const sh = shell(SHOP);
