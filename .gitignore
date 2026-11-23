@@ -26,6 +26,7 @@ media/
 # Локальные рабочие заметки — не в репозитории
 docs/roles/
 docs/handoff/
+docs/decisions/
 docs/START.md
 
 # Node (тесты JS)
