@@ -29,6 +29,7 @@ def test_course_page(client, loaded_content):
     assert f'href="{LESSON_URL}"' in html                 # «Начать курс» и тема
     assert '~10 мин чтения' in html                       # 7 + 3 минуты
     assert 'Python в браузере' in html
+    assert '<details class="module">' in html and ' open>' not in html   # все свёрнуты
 
 
 def test_soon_course_page_says_in_progress(client, loaded_content):

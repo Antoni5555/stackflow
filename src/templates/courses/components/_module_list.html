@@ -1,11 +1,11 @@
 {% load plural %}
 {% comment %} Разделы курса → темы. Статусы (✓, «1 / 3 темы», «1 / 4») — у вошедшего
-   (progress.apply_to_outline); у гостя все разделы без статуса. Открыт раздел, где остановились,
-   иначе — первый. {% endcomment %}
+   (progress.apply_to_outline); у гостя все разделы без статуса. При загрузке все разделы
+   свёрнуты (решение автора 2026-11-23); начатый раздел выделен классом module--current. {% endcomment %}
 <div class="module-list">
   {% for section in sections %}
   {% with topics=section.topics.all %}
-  <details class="module{% if section.is_done %} module--done{% elif section.is_started %} module--current{% endif %}"{% if section.is_started and not section.is_done or not progress.solved and forloop.first %} open{% endif %}>
+  <details class="module{% if section.is_done %} module--done{% elif section.is_started %} module--current{% endif %}">
     <summary class="module__head">
       <span class="module__num">{{ forloop.counter|stringformat:"02d" }}</span>
       <span class="module__info">

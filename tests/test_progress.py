@@ -119,6 +119,9 @@ def test_course_page_progress_and_continue(logged_in, user):
     # урок «Привет» ещё не открыт — продолжить с него
     assert 'Следующая: «Привет, Python»' in html
     assert 'badge badge--current">0 / 2 тем' in html
+    # начатый раздел только выделен: при загрузке все разделы свёрнуты
+    assert 'class="module module--current">' in html
+    assert ' open>' not in html
 
 
 def test_course_done(logged_in, user):
