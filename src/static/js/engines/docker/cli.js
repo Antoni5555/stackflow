@@ -683,7 +683,7 @@ function exec(ctx) {
     return result([]);
   }
   const done = runInContainer(fs, container, words, { env, workdir, tty: Boolean(parsed.opts.tty), interactive });
-  return result(done.chunks, done.code);
+  return { ...result(done.chunks, done.code, done.action), pending: done.pending };
 }
 
 // --- inspect ---
@@ -803,6 +803,6 @@ export const docker = {
       return { out: `${HELP}\n` };
     }
     const done = handler({ ...ctx, args: rest });
-    return { chunks: done.chunks, code: done.code, action: done.action, out: '', err: '' };
+    return { chunks: done.chunks, code: done.code, action: done.action, pending: done.pending, out: '', err: '' };
   },
 };

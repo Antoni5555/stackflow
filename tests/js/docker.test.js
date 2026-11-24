@@ -406,3 +406,116 @@ describe('setup и правила задач', () => {
     assert.deepEqual(verifyTask(task), []);
   });
 });
+
+describe('psql в контейнере postgres (PGlite)', async () => {
+  const { setPGliteLoader, forgetVolume } = await import('../../src/static/js/engines/docker/psql.js');
+  const { verifyTaskAsync } = await import('../../src/static/js/engines/linux/checker.js');
+  setPGliteLoader(async () => (await import('@electric-sql/pglite')).PGlite);
+
+  /** Строка с выводом, который приходит позже. */
+  async function runAsync(sh, line) {
+    const { chunks, pending, action } = sh.run(line);
+    const all = pending ? [...chunks, ...(await pending).chunks] : chunks;
+    const result = {
+      out: all.filter((c) => !c.err).map((c) => c.text).join(''),
+      err: all.filter((c) => c.err).map((c) => c.text).join(''),
+      code: sh.status,
+    };
+    if (action) result.action = action;
+    return result;
+  }
+
+  const DB = 'docker run -d --name shop-db -e POSTGRES_PASSWORD=shop -e POSTGRES_DB=shop -v pgdata:/var/lib/postgresql/data postgres:16';
+
+  it('-c: таблица результата, версия и имя базы как у настоящего сервера', async () => {
+    forgetVolume('pgdata');
+    const sh = shell({ docker: { images: ['postgres:16'] } });
+    run(sh, DB);
+    const result = await runAsync(sh, 'docker exec shop-db psql -U postgres -d shop -c "SELECT current_database(), version();"');
+    assert.equal(result.out, ` current_database |                                                       version                                                        
+------------------+----------------------------------------------------------------------------------------------------------------------
+ shop             | PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+(1 row)
+
+`);
+    assert.equal((await runAsync(sh, 'docker exec shop-db psql -U postgres -d shop -c "SELECT 1;"')).out, ' ?column? \n----------\n        1\n(1 row)\n\n');
+  });
+
+  it('команды, теги, ошибки с LINE и ^, роли и базы', async () => {
+    forgetVolume('pgdata');
+    const sh = shell({ docker: { images: ['postgres:16'] } });
+    run(sh, DB);
+    const psql = (sql, extra = '-d shop') => runAsync(sh, `docker exec shop-db psql -U postgres ${extra} -c "${sql}"`);
+    assert.equal((await psql("CREATE TABLE products (id serial PRIMARY KEY, name text); INSERT INTO products (name) VALUES ('Чайник'), ('Кружка');")).out, 'CREATE TABLE\nINSERT 0 2\n');
+    assert.equal((await psql("UPDATE products SET name = upper(name) WHERE id = 1;")).out, 'UPDATE 1\n');
+    assert.equal((await psql('SELECT * FROM products ORDER BY id;')).out, ' id |  name  \n----+--------\n  1 | ЧАЙНИК\n  2 | Кружка\n(2 rows)\n\n');
+    assert.deepEqual(await psql('select nosuch'), { out: '', err: 'ERROR:  column "nosuch" does not exist\nLINE 1: select nosuch\n               ^\n', code: 1 });
+    assert.match((await psql("INSERT INTO products VALUES (1, 'x');")).err, /^ERROR: {2}duplicate key value violates unique constraint "products_pkey"\nDETAIL: {2}Key \(id\)=\(1\) already exists\.\n$/);
+    assert.equal((await psql('\\dt')).out, '          List of relations\n Schema |   Name   | Type  |  Owner   \n--------+----------+-------+----------\n public | products | table | postgres\n(1 row)\n\n');
+    assert.match((await psql('\\l', '')).out, /^ {54}List of databases\n {3}Name {4}\| {2}Owner {3}\|/);
+    assert.deepEqual(await runAsync(sh, 'docker exec shop-db psql -U bob -c "select 1"'), {
+      out: '', err: 'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "bob" does not exist\n', code: 2,
+    });
+    assert.match((await runAsync(sh, 'docker exec shop-db psql -c "select 1"')).err, /role "root" does not exist/);
+    assert.match((await psql('select 1', '-d nosuch')).err, /FATAL: {2}database "nosuch" does not exist/);
+    assert.equal((await psql('CREATE DATABASE test;', '')).out, 'CREATE DATABASE\n');
+    assert.equal((await psql('SELECT current_database();', '-d test')).out, ' current_database \n------------------\n test\n(1 row)\n\n');
+  });
+
+  it('данные в томе переживают rm контейнера и перезагрузку страницы', async () => {
+    forgetVolume('pgdata');
+    const sh = shell({ docker: { images: ['postgres:16'] } });
+    run(sh, DB);
+    await runAsync(sh, `docker exec shop-db psql -U postgres -d shop -c "CREATE TABLE products (id serial, name text); INSERT INTO products (name) VALUES ('Чайник');"`);
+    run(sh, 'docker rm -f shop-db');
+    run(sh, 'docker run -d --name shop-db -v pgdata:/var/lib/postgresql/data postgres:16');
+    // браузер перезагрузили: ФС — из сохранения, PGlite — новый, данные — из журнала тома
+    const restored = new Shell(VirtualFS.fromJSON(JSON.parse(JSON.stringify(sh.fs))));
+    forgetVolume('pgdata');
+    assert.equal((await runAsync(restored, 'docker exec shop-db psql -U postgres -d shop -c "SELECT count(*) FROM products;"')).out, ' count \n-------\n     1\n(1 row)\n\n');
+  });
+
+  it('POSTGRES_USER=shop — суперпользователь shop, роли postgres нет', async () => {
+    forgetVolume('shopdata');
+    const sh = shell({ docker: { images: ['postgres:16'] } });
+    run(sh, 'docker run -d --name db2 -e POSTGRES_PASSWORD=x -e POSTGRES_USER=shop -v shopdata:/var/lib/postgresql/data postgres:16');
+    assert.match((await runAsync(sh, 'docker exec db2 psql -U postgres -c "select 1"')).err, /role "postgres" does not exist/);
+    assert.equal((await runAsync(sh, 'docker exec db2 psql -U shop -c "select current_user"')).out, ' current_user \n--------------\n shop\n(1 row)\n\n');
+  });
+
+  it('docker exec -it db psql — интерактивный psql: приглашение shop=#, многострочный запрос, \\q', async () => {
+    forgetVolume('pgdata');
+    const sh = shell({ docker: { images: ['postgres:16'] } });
+    run(sh, DB);
+    const entered = run(sh, 'docker exec -it shop-db psql -U postgres -d shop');
+    assert.equal(entered.action.type, 'enter');
+    assert.match(entered.out, /^psql \(16\.15 \(Debian 16\.15-1\.pgdg13\+2\)\)\nType "help" for help\.\n\n$/);
+    const session = entered.action.shell;
+    assert.equal(session.prompt(), 'shop=# ');
+    assert.deepEqual(session.run('SELECT 1 +').chunks, []);
+    assert.equal(session.prompt(), 'shop-# ');
+    const done = await session.run('1 AS two;').pending;
+    assert.equal(done.chunks[0].text, ' two \n-----\n   2\n(1 row)\n\n');
+    assert.equal(session.prompt(), 'shop=# ');
+    assert.equal(session.run('\\q').action.type, 'leave');
+  });
+
+  it('вывод psql в файл и в конвейер', async () => {
+    forgetVolume('pgdata');
+    const sh = shell({ docker: { images: ['postgres:16'] } });
+    run(sh, DB);
+    await runAsync(sh, 'docker exec shop-db psql -U postgres -c "SELECT 42 AS answer" > out.txt');
+    assert.match(run(sh, 'cat out.txt').out, /answer \n--------\n {5}42\n/);
+    assert.match((await runAsync(sh, 'docker exec shop-db psql -U postgres -c "SELECT 1" | wc -l')).err, /не передаётся по конвейеру/);
+  });
+
+  it('эталон с psql проходит verifyTaskAsync', async () => {
+    forgetVolume('pgdata');
+    const task = {
+      setup: { docker: { images: ['postgres:16'] } },
+      solution: `${DB}\ndocker exec shop-db psql -U postgres -d shop -c "CREATE TABLE t (id int); INSERT INTO t VALUES (1);"\ndocker exec shop-db psql -U postgres -d shop -c "SELECT count(*) FROM t;"`,
+      rules: [{ docker: 'container', name: 'shop-db', fail: 'нет базы' }, { output_matches: '^ +1$', fail: 'count' }],
+    };
+    assert.deepEqual(await verifyTaskAsync(task), []);
+  });
+});

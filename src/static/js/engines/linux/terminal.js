@@ -76,14 +76,32 @@ export class Terminal {
         this.input.focus();
       }
     }
-    this.execute(line);
+    await this.execute(line);
   }
 
   /** Выполнить строку (и показать её), как если бы её набрали. */
-  execute(line) {
+  async execute(line) {
     this.echo(line);
     const result = this.shell.run(line);
     for (const chunk of result.chunks) this.print(chunk.text, chunk.err ? 'err' : 'out');
+    if (result.pending) {
+      // вывод придёт позже (psql в контейнере): строка ввода ждёт, как в настоящем терминале
+      this.inputLine.hidden = true;
+      this.scrollToEnd();
+      // первый psql скачивает PostgreSQL (PGlite, ~4 МБ) — скажем, почему ждём
+      const slow = setTimeout(() => this.print('(запускается PostgreSQL в браузере — первый раз несколько секунд)', 'muted'), 700);
+      try {
+        const done = await result.pending;
+        clearTimeout(slow);
+        for (const chunk of done.chunks) this.print(chunk.text, chunk.err ? 'err' : 'out');
+      } catch (e) {
+        clearTimeout(slow);
+        this.print(`(ошибка тренажёра: ${e.message})\n`, 'err');
+      } finally {
+        this.inputLine.hidden = false;
+        this.input.focus();
+      }
+    }
     if (result.action?.type === 'clear') this.output.replaceChildren();
     this.shell.machine?.afterCommand?.();
     if (result.action?.type === 'enter') {

@@ -13,6 +13,7 @@ import { nginxAnswer } from './programs.js';
 import { addCatalogImage, dockerState, findImage, randomName } from './state.js';
 import { failedDockerRule } from './rules.js';
 import { python } from './python.js';
+import { psql } from './psql.js';
 
 COMMANDS.docker = docker;
 
@@ -25,6 +26,7 @@ if (!USERS.shop.groups.includes('docker')) USERS.shop.groups.push('docker');
 Object.assign(containerCommands, {
   python,
   python3: python,
+  psql,
   sleep: {
     help: 'sleep N — подождать N секунд (в тренажёре не ждёт).',
     run: ({ args }) => (args.length ? {} : { err: "sleep: missing operand\nTry 'sleep --help' for more information.\n", code: 1 }),
@@ -49,10 +51,6 @@ Object.assign(containerCommands, {
       if (name === 'keys') return { out: Object.keys(store).length ? `${Object.keys(store).map((key, k) => `${k + 1}) "${key}"`).join('\n')}\n` : '(empty array)\n' };
       return { out: `(error) ERR unknown command '${cmd}', with args beginning with: ${rest.map((arg) => `'${arg}' `).join('')}\n` };
     },
-  },
-  psql: {
-    help: 'psql — клиент PostgreSQL: psql -U postgres -c "SELECT 1".',
-    run: () => ({ err: 'psql: в учебном Docker появится в следующем шаге курса\n', code: 2 }),
   },
 });
 

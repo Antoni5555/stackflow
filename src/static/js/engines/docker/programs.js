@@ -6,6 +6,7 @@ import { FsError, normalize } from '../linux/fs.js';
 import { catalogImage } from './catalog.js';
 import { packNode, shortId, withContainerFs } from './state.js';
 import { utcParts } from './format.js';
+import { initDataCluster } from './psql.js';
 
 const PG_DATA = '/var/lib/postgresql/data';
 
@@ -96,6 +97,7 @@ function startPostgres(hostFs, container, log, { first }) {
         return { exit: 1 };
       }
       pgInitFiles(fs);
+      initDataCluster(hostFs, container);
       log.lines(`The files belonging to this database system will be owned by user "postgres".
 This user must also own the server process.
 

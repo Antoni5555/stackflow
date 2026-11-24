@@ -71,20 +71,44 @@ export function shellFromSetup(setup) {
  * Каждая строка solution — с кодом 0, кроме ожидаемых неудач (expectedFailure по выводу).
  * Возвращает список проблем (пустой — всё хорошо).
  */
-export function verifyTask(task, {
-  makeShell = shellFromSetup, firstFailed = firstFailedRule, expectedFailure = () => false,
-} = {}) {
-  const problems = [];
-  const shell = makeShell(task.setup);
+export function verifyTask(task, options = {}) {
+  return verifySteps(task, options, (shell, line) => shell.run(line).chunks);
+}
+
+/**
+ * То же для задач, где вывод приходит позже (psql в учебном Docker — PGlite асинхронный):
+ * каждая строка дожидается своего вывода. Возвращает Promise со списком проблем.
+ */
+export async function verifyTaskAsync(task, options = {}) {
+  const steps = [];
+  const shell = (options.makeShell ?? shellFromSetup)(task.setup);
   for (const line of task.solution.split('\n')) {
     if (!line.trim()) continue;
-    const { chunks } = shell.run(line);
+    const result = shell.run(line);
+    const later = result.pending ? (await result.pending).chunks : [];
+    steps.push([line, [...result.chunks, ...later], shell.status]);
+  }
+  return verifySteps(task, { ...options, makeShell: () => shell, fresh: options.makeShell ?? shellFromSetup },
+    null, steps);
+}
+
+function verifySteps(task, {
+  makeShell = shellFromSetup, firstFailed = firstFailedRule, expectedFailure = () => false, fresh = makeShell,
+} = {}, runLine = null, done = null) {
+  const problems = [];
+  const shell = makeShell(task.setup);
+  const steps = done ?? task.solution.split('\n').filter((line) => line.trim())
+    .map((line) => {
+      const chunks = runLine(shell, line);
+      return [line, chunks, shell.status];
+    });
+  for (const [line, chunks, code] of steps) {
     const errors = chunks.filter((chunk) => chunk.err).map((chunk) => chunk.text.trim());
-    if (shell.status !== 0 && !expectedFailure(chunks)) problems.push(`команда «${line}» завершилась с кодом ${shell.status}: ${errors.join(' ')}`);
+    if (code !== 0 && !expectedFailure(chunks)) problems.push(`команда «${line}» завершилась с кодом ${code}: ${errors.join(' ')}`);
   }
   const failed = firstFailed(task.rules, shell);
   if (failed) problems.push(`эталон не проходит правило: ${failed.fail}`);
-  if (!firstFailed(task.rules, makeShell(task.setup))) {
+  if (!firstFailed(task.rules, fresh(task.setup))) {
     problems.push('нетронутый setup проходит все правила — задачу нечего решать');
   }
   return problems;

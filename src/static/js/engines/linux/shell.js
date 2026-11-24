@@ -51,6 +51,9 @@ export class Shell {
     this.action = null;
     this.substErr = '';            // ошибки команд внутри $(…) — выводятся перед ошибками команды
     this.substStatus = null;
+    // Вывод, который придёт позже (psql в контейнере — PGlite асинхронный):
+    // Promise<{chunks, code}>; терминал дождётся и напечатает
+    this.pending = null;
   }
 
 
@@ -303,6 +306,7 @@ export class Shell {
   run(line) {
     const chunks = [];
     this.action = null;
+    this.pending = null;
     if (line.trim() && this.depth === 0) this.history.push(line);
     let list;
     try {
@@ -323,6 +327,19 @@ export class Shell {
       if (this.depth === 0) chunks.push({ text: 'exit\n(в тренажёре терминал не закрывается)\n', err: false });
     }
     this.lastOutput = outText(chunks);
+    if (this.pending) {
+      const pending = this.pending;
+      this.pending = null;
+      return {
+        chunks,
+        action: this.action,
+        pending: pending.then((done) => {
+          this.status = done.code;
+          this.lastOutput += outText(done.chunks);
+          return done;
+        }),
+      };
+    }
     return { chunks, action: this.action };
   }
 
@@ -403,6 +420,13 @@ export class Shell {
     if (command.type === 'simple') {
       const result = this.runStage(command, stdin, { piped });
       if (result.action) this.action = result.action;
+      if (result.pending) {
+        const before = this.pending ?? Promise.resolve({ chunks: [], code: 0 });
+        this.pending = before.then(async (first) => {
+          const next = await result.pending;
+          return { chunks: [...first.chunks, ...next.chunks], code: next.code };
+        });
+      }
       chunks.push(...result.shown);
       if (result.exit !== undefined) throw new ExitSignal(result.exit);
       return;
@@ -562,7 +586,25 @@ export class Shell {
     }
     // на экране ошибки команды видны раньше её вывода (кроме скриптов)
     if (!result.chunks) shown = [...shown.filter((chunk) => chunk.err), ...shown.filter((chunk) => !chunk.err)];
-    return { shown: [...pre, ...shown], action: result.action, exit: result.exit };
+    // вывод придёт позже (psql): так же через перенаправления; в конвейер — не передаётся
+    let pending = null;
+    if (result.pending) {
+      pending = result.pending.then((done) => {
+        const later = [];
+        const parts = [...(done.chunks ?? [
+          ...(done.out ? [{ text: done.out, err: false }] : []),
+          ...(done.err ? [{ text: done.err, err: true }] : []),
+        ])];
+        for (const chunk of parts) {
+          if (piped && !chunk.err) continue;
+          const delivered = this.deliver(fds, chunk.err ? 2 : 1, chunk.text);
+          if (delivered) later.push(delivered);
+        }
+        if (piped) later.push({ text: '(в тренажёре вывод psql не передаётся по конвейеру — запустите команду без |)\n', err: true });
+        return { chunks: later, code: done.code ?? 0 };
+      });
+    }
+    return { shown: [...pre, ...shown], action: result.action, exit: result.exit, pending };
   }
 
   /** exit [N]: код N по модулю 256, без N — код последней команды. */
@@ -607,7 +649,7 @@ export class Shell {
       const result = command.run({ sh: this, fs: this.fs, args, stdin, tty, name }) ?? {};
       return {
         out: result.out ?? '', err: result.err ?? '', code: result.code ?? 0,
-        action: result.action, errFirst: result.errFirst, chunks: result.chunks,
+        action: result.action, errFirst: result.errFirst, chunks: result.chunks, pending: result.pending,
       };
     } catch (e) {
       if (e instanceof FsError) return { out: '', err: `${name}: ${e.message}\n`, code: 1 };

@@ -1,6 +1,6 @@
 {% comment %} Терминал Linux-симулятора: вывод, строка ввода и nano на её месте (js/engines/linux/terminal.js).
    Тёмный в обеих темах, как настоящий терминал. {% endcomment %}
-<div class="terminal" data-terminal>
+<div class="terminal" data-terminal{% if PGLITE_URL %} data-pglite="{{ PGLITE_URL }}"{% endif %}>
   <div class="terminal__bar"><span></span><span></span><span></span><em data-terminal-title>shop@server: ~</em></div>
   <div class="terminal__body" data-terminal-body>
     <div class="terminal__output" data-terminal-output aria-live="polite"></div>

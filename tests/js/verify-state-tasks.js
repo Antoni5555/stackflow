@@ -5,22 +5,30 @@
 // когда нужен (он добавляет shop в группу docker — остальные задачи этого не видят).
 
 import { verifyGitTask } from '../../src/static/js/engines/git/checker.js';
-import { verifyTask } from '../../src/static/js/engines/linux/checker.js';
+import { verifyTask, verifyTaskAsync } from '../../src/static/js/engines/linux/checker.js';
 import { lineNeedsDocker, loadDocker, taskNeedsDocker } from '../../src/static/js/engines/linux/docker-loader.js';
 
 const needsDocker = (task) => taskNeedsDocker(task.setup, task.rules)
   || task.solution.split('\n').some((line) => lineNeedsDocker(line));
 
 let input = '';
+let dockerReady = false;
 process.stdin.on('data', (chunk) => { input += chunk; });
 process.stdin.on('end', async () => {
   const result = {};
   const tasks = JSON.parse(input);
   const ordered = [...tasks.filter((task) => !needsDocker(task)), ...tasks.filter(needsDocker)];
   for (const task of ordered) {
-    if (needsDocker(task)) await loadDocker();
+    if (needsDocker(task) && !dockerReady) {
+      await loadDocker();
+      // psql в контейнерах — PGlite из node_modules (в браузере — с CDN)
+      const { setPGliteLoader } = await import('../../src/static/js/engines/docker/psql.js');
+      setPGliteLoader(async () => (await import('@electric-sql/pglite')).PGlite);
+      dockerReady = true;
+    }
     try {
-      result[task.name] = task.engine === 'git' ? verifyGitTask(task) : verifyTask(task);
+      result[task.name] = task.engine === 'git' ? verifyGitTask(task)
+        : needsDocker(task) ? await verifyTaskAsync(task) : verifyTask(task);
     } catch (e) {
       result[task.name] = [`симулятор упал: ${e.message}`];
     }

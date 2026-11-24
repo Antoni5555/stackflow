@@ -6,6 +6,7 @@ import { FsError, normalize } from '../linux/fs.js';
 import { Shell } from '../linux/shell.js';
 import { catalogImage } from './catalog.js';
 import { programOf, startProgram, stopProgram } from './programs.js';
+import { forgetVolume } from './psql.js';
 import {
   dockerState, emptyVolumeData, freeIp, imageFs, newId, openContainerFs, shortId, syncProxies,
   withContainerFs,
@@ -95,7 +96,7 @@ export function hasExecutable(hostFs, container, word) {
 export const containerCommands = {};
 
 /** Машина для оболочки контейнера (см. Shell.machine). */
-export function containerMachine(container, { nested = false } = {}) {
+export function containerMachine(container, { nested = false, hostFs = null, interactive = false } = {}) {
   const info = catalogImage(container.base);
   const alpine = info?.os?.startsWith('alpine');
   const commands = (info?.commands ?? []).filter((name) => name in COMMANDS || name in containerCommands);
@@ -108,6 +109,8 @@ export function containerMachine(container, { nested = false } = {}) {
     extra: Object.fromEntries(Object.entries(containerCommands).filter(([name]) => (info?.commands ?? []).includes(name))),
     env: true,
     nested,
+    hostFs,                // сервер: psql ищет данные в томах
+    interactive,           // docker exec -it: psql без -c откроет свой интерактивный режим
     notFound: (sh, name) => (alpine ? `sh: ${name}: not found\n` : `bash: ${sh.scriptName ? `line ${sh.line}: ` : ''}${name}: command not found\n`),
     prompt: (sh) => {
       let where = sh.cwd;
@@ -119,7 +122,9 @@ export function containerMachine(container, { nested = false } = {}) {
 }
 
 /** Оболочка внутри контейнера: своя ФС (с томами), окружение контейнера, процессы контейнера. */
-export function containerShell(hostFs, container, { env = [], workdir = null, nested = false, tty = false } = {}) {
+export function containerShell(hostFs, container, {
+  env = [], workdir = null, nested = false, tty = false, interactive = false,
+} = {}) {
   const { fs, sync } = openContainerFs(hostFs, container);
   fs.root.system = {
     nextPid: 40 + (container.execs ?? 0) * 7, boot: container.startedAt ?? now(), services: {}, journal: [],
@@ -132,7 +137,7 @@ export function containerShell(hostFs, container, { env = [], workdir = null, ne
   }));
   let cwd = normalize(workdir || container.workdir || '/');
   if (!fs.exists(cwd)) cwd = '/';
-  const shell = new Shell(fs, { cwd, env: vars, machine: containerMachine(container, { nested }), tty });
+  const shell = new Shell(fs, { cwd, env: vars, machine: containerMachine(container, { nested, hostFs, interactive: interactive || nested }), tty });
   return {
     shell,
     sync: () => {
@@ -144,7 +149,7 @@ export function containerShell(hostFs, container, { env = [], workdir = null, ne
   };
 }
 
-/** Выполнить слова команды в контейнере (не интерактивно) → {chunks, code}. */
+/** Выполнить слова команды в контейнере → {chunks, code, action?, pending?}. */
 export function runInContainer(hostFs, container, words, options = {}) {
   const { shell, sync } = containerShell(hostFs, container, options);
   try {
@@ -153,7 +158,7 @@ export function runInContainer(hostFs, container, words, options = {}) {
       ...(result.out ? [{ text: result.out, err: false }] : []),
       ...(result.err ? [{ text: result.err, err: true }] : []),
     ];
-    return { chunks, code: result.code };
+    return { chunks, code: result.code, action: result.action, pending: result.pending };
   } finally {
     sync();
   }
@@ -273,7 +278,10 @@ export function removeContainer(hostFs, container, { volumes = false } = {}) {
   const state = dockerState(hostFs);
   state.containers = state.containers.filter((item) => item !== container);
   if (volumes) {
-    for (const mount of container.mounts.filter((item) => item.anonymous)) delete state.volumes[mount.name];
+    for (const mount of container.mounts.filter((item) => item.anonymous)) {
+      delete state.volumes[mount.name];
+      forgetVolume(mount.name);
+    }
   }
   syncProxies(hostFs);
 }
