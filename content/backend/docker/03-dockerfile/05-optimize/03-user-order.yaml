@@ -1,0 +1,21 @@
+title: "Permission denied при сборке"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "USER переключает пользователя для всех следующих инструкций — установку пакетов делают до него."
+statement: |
+  ```dockerfile
+  FROM python:3.12-slim
+  RUN useradd --create-home app
+  USER app
+  RUN apt-get update && apt-get install -y libpq5
+  ```
+  Сборка падает с `Permission denied`. Почему?
+options:
+  - "`useradd` не работает в slim-образах"
+  - "После `USER app` все `RUN` выполняются от `app`, а `apt-get` требует `root`"
+  - "Нужно `USER root:app`"
+  - "`libpq5` нельзя ставить в slim"
+answer: [1]
+explanation: |
+  `USER` действует на все инструкции ниже — и на сборку, и на запуск. Установку системных пакетов делают **до** `USER app`, а переключаются на пользователя ближе к концу Dockerfile, перед `CMD`.

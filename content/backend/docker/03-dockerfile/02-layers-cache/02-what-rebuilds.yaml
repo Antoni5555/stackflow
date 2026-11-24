@@ -1,0 +1,23 @@
+title: "Что пересоберётся"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Шаг выполняется заново, если изменился он сам или любой шаг выше; всё ниже — тоже заново."
+statement: |
+  ```dockerfile
+  FROM python:3.12-slim
+  WORKDIR /app
+  COPY requirements.txt .
+  RUN pip install --no-cache-dir -r requirements.txt
+  COPY . .
+  CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+  ```
+  В `requirements.txt` добавили одну строку `Pillow==11.0.0`, код не меняли. Какие шаги выполнятся заново при `docker build`?
+options:
+  - "Только `RUN pip install`"
+  - "`COPY requirements.txt`, `RUN pip install` и `COPY . .`"
+  - "Все, начиная с `FROM`"
+  - "Только `COPY . .` — он тоже копирует `requirements.txt`"
+answer: [1]
+explanation: |
+  Изменился файл в `COPY requirements.txt .` — этот шаг выполняется заново, а за ним все шаги ниже: `pip install` и `COPY . .` (хотя код не менялся, его слой стоит на новом родителе). `FROM` и `WORKDIR` берутся из кэша.

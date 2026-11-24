@@ -1,0 +1,15 @@
+title: "Файл не найден при сборке"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "COPY видит только файлы контекста сборки — папки, переданной в docker build."
+statement: |
+  Проект лежит в `/srv/shop/app`, а общий конфиг — в `/srv/shop/config.ini`. В Dockerfile написали `COPY ../config.ini .`, собирают из папки `app` командой `docker build -t shop-web:1.0 .`. Сборка падает с `"/config.ini": not found`. Как правильно?
+options:
+  - "Писать абсолютный путь: `COPY /srv/shop/config.ini .`"
+  - "Собирать из `/srv/shop` (контекст — родительская папка), указав файл рецепта: `docker build -f app/Dockerfile -t shop-web:1.0 .`, и копировать `COPY config.ini .`"
+  - "Добавить `sudo` перед `docker build`"
+  - "Перенести `COPY` после `CMD`"
+answer: [1]
+explanation: |
+  Сборщик получает только содержимое контекста — точки в конце `docker build`. Файлы выше контекста для него не существуют, и абсолютные пути тоже считаются от контекста. Можно расширить контекст до родительской папки и указать Dockerfile через `-f`; тогда пути в `COPY` — от `/srv/shop`.

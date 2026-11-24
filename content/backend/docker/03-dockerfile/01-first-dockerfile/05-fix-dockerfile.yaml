@@ -1,0 +1,46 @@
+title: "Почините Dockerfile магазина"
+type: fix
+difficulty: 2
+pitfall: "WORKDIR для своих файлов, RUN — установка при сборке, CMD в форме списка — запуск; сервер слушает 0.0.0.0."
+statement: |
+  Dockerfile собирается, но контейнер не работает как надо. Исправьте:
+  - рабочая папка — `/app` (`WORKDIR` сразу после `FROM`), файлы копируются туда;
+  - зависимости ставятся при сборке без кэша pip (`--no-cache-dir`);
+  - сервер запускается как `CMD` в форме списка и слушает `0.0.0.0:8000`.
+files:
+  Dockerfile: |
+    FROM python:3.12-slim
+    COPY requirements.txt /
+    CMD pip install -r requirements.txt
+    COPY . /
+    RUN gunicorn --bind 127.0.0.1:8000 shop.wsgi
+check:
+  type: rules
+  rules:
+    - must_match: '^FROM python:3\.12-slim\nWORKDIR /app\n'
+      fail: "Сразу после FROM — WORKDIR /app."
+    - must_match: '^COPY requirements\.txt \.\n'
+      fail: "COPY requirements.txt . — в рабочую папку, а не в корень /."
+    - must_match: '^RUN pip install --no-cache-dir -r requirements\.txt$'
+      fail: "Установка — при сборке: RUN pip install --no-cache-dir -r requirements.txt."
+    - must_match: '^COPY \. \.$'
+      fail: "Код — тоже в рабочую папку: COPY . ."
+    - must_match: '^CMD \["gunicorn", "--bind", "0\.0\.0\.0:8000", "shop\.wsgi"\]\s*(?![\s\S])'
+      fail: "Последняя строка — запуск: CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"shop.wsgi\"]."
+    - must_not_match: '^RUN gunicorn'
+      fail: "RUN gunicorn повесит сборку: сервер запустится и не завершится."
+    - must_not_match: '127\.0\.0\.1'
+      fail: "127.0.0.1 внутри контейнера недоступен через проброс порта — слушайте 0.0.0.0."
+solution:
+  Dockerfile: |
+    FROM python:3.12-slim
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY . .
+    CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+hints:
+  - "Какая инструкция выполняется при сборке, а какая — при запуске контейнера? Куда сейчас копируются файлы?"
+  - "`WORKDIR /app`, `COPY requirements.txt .`, `RUN pip install --no-cache-dir …`, `COPY . .`, `CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"shop.wsgi\"]`."
+explanation: |
+  Было перепутано всё: установка стояла в `CMD` (выполнялась бы при каждом запуске, а образ оставался без пакетов), запуск сервера — в `RUN` (сборка зависла бы), файлы падали в корень `/` к системным папкам, а Gunicorn слушал недоступный снаружи `127.0.0.1`. В исправленном рецепте сборка ставит зависимости один раз, а контейнер только запускает сервер.

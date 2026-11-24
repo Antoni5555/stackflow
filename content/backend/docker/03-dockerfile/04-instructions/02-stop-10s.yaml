@@ -1,0 +1,15 @@
+title: "Деплой ждёт 10 секунд"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "В shell-форме CMD главный процесс — sh, сигнал остановки до приложения не доходит."
+statement: |
+  При каждом деплое `docker stop shop-web` занимает ровно 10 секунд, а `docker ps -a` показывает `Exited (137)`. В Dockerfile: `CMD gunicorn --bind 0.0.0.0:8000 shop.wsgi`. В чём причина?
+options:
+  - "Gunicorn медленно закрывает соединения с базой"
+  - "Shell-форма: PID 1 — `/bin/sh -c`, он не передаёт TERM Gunicorn, и через 10 секунд Docker убивает контейнер KILL"
+  - "Нужно увеличить `--timeout` у `docker stop`"
+  - "Не хватает `EXPOSE 8000`"
+answer: [1]
+explanation: |
+  Строковая форма запускает команду через `sh -c`, и главным процессом становится оболочка. `docker stop` посылает TERM ей, а она его не пересылает; по истечении 10 секунд — KILL, отсюда код 137 (128 + 9). Exec-форма `CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]` делает Gunicorn PID 1 — он получает сигнал и завершается за доли секунды.

@@ -1,0 +1,23 @@
+title: "Что попадёт в итоговый образ"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "В многоэтапной сборке итоговый образ — последний этап; из ранних попадает только то, что скопировали COPY --from."
+statement: |
+  ```dockerfile
+  FROM python:3.12-slim AS build
+  RUN apt-get update && apt-get install -y gcc libc6-dev libpq-dev
+  RUN python -m venv /opt/venv && /opt/venv/bin/pip install psycopg2==2.9.13
+
+  FROM python:3.12-slim
+  COPY --from=build /opt/venv /opt/venv
+  ```
+  Есть ли `gcc` в итоговом образе?
+options:
+  - "Да: все этапы складываются в один образ"
+  - "Нет: итоговый образ — последний этап, из первого скопирован только `/opt/venv`"
+  - "Да, но только в `/opt/venv`"
+  - "Нет, потому что `gcc` удаляется автоматически после сборки"
+answer: [1]
+explanation: |
+  Каждый `FROM` начинает новый образ с нуля. Итоговый — последний этап; из первого в него попадает ровно то, что указано в `COPY --from=build`. Компилятор и заголовки остались в промежуточном этапе. Но итоговому образу нужна библиотека `libpq5` — её ставят во втором этапе, иначе `import psycopg2` упадёт.

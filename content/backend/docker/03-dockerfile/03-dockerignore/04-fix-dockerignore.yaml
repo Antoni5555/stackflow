@@ -1,0 +1,45 @@
+title: "Соберите .dockerignore для Django"
+type: fix
+difficulty: 1
+pitfall: ".dockerignore исключает из контекста историю git, секреты, venv, байткод и загрузки — всё, что не нужно образу."
+statement: |
+  В проекте магазина рядом с Dockerfile лежат `.git`, `.env`, `.env.prod`, `venv/`, `media/`, `db.sqlite3` и папки `__pycache__` на разных уровнях. Сейчас в `.dockerignore` только `.git`. Допишите строки, чтобы в образ не попали:
+  - оба файла с секретами (`.env` и `.env.*`);
+  - `venv/`;
+  - `__pycache__` на любом уровне вложенности (`**/__pycache__`);
+  - `media/`;
+  - `db.sqlite3`.
+files:
+  .dockerignore: |
+    .git
+check:
+  type: rules
+  rules:
+    - must_match: '^\.git$'
+      fail: "Строку .git оставьте."
+    - must_match: '^\.env$'
+      fail: "Нужна строка .env."
+    - must_match: '^\.env\.\*$'
+      fail: "Нужна строка .env.* — для .env.prod и других."
+    - must_match: '^venv/?$'
+      fail: "Нужна строка venv/."
+    - must_match: '^\*\*/__pycache__/?$'
+      fail: "Нужна строка **/__pycache__ — папки байткода на любом уровне."
+    - must_match: '^media/?$'
+      fail: "Нужна строка media/ — загрузки пользователей хранят в томе."
+    - must_match: '^db\.sqlite3$'
+      fail: "Нужна строка db.sqlite3."
+solution:
+  .dockerignore: |
+    .git
+    .env
+    .env.*
+    venv/
+    **/__pycache__
+    media/
+    db.sqlite3
+hints:
+  - "По строке на каждый шаблон. Как в одном шаблоне описать `__pycache__` в любой вложенной папке?"
+  - "`.env`, `.env.*`, `venv/`, `**/__pycache__`, `media/`, `db.sqlite3`."
+explanation: |
+  Теперь в контекст попадают только код, зависимости и Dockerfile. Секреты передаются при запуске, база разработчика и загрузки остаются на его компьютере, а байткод и `venv` образ создаст сам. `**/` нужен, потому что шаблон без него ищет файл только в корне контекста.

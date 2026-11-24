@@ -1,0 +1,20 @@
+title: "apt-get через месяц"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "apt-get update и install — в одном RUN; отдельный update закэшируется и устареет."
+statement: |
+  ```dockerfile
+  RUN apt-get update
+  RUN apt-get install -y libpq5
+  RUN rm -rf /var/lib/apt/lists/*
+  ```
+  Что здесь плохо?
+options:
+  - "Ничего, так читабельнее"
+  - "`apt-get update` закэшируется отдельно и со временем устареет, а `rm` в отдельном слое не уменьшит образ — всё нужно в одном `RUN` через `&&`"
+  - "`-y` не нужен"
+  - "`libpq5` нельзя ставить в образ Python"
+answer: [1]
+explanation: |
+  Слой `RUN apt-get update` будет браться из кэша, пока текст команды не изменится, — и через месяц `install` получит устаревший список пакетов (ошибки 404 или старые версии). А удаление списков третьим `RUN` создаёт новый слой с «удалением», но файлы остались во втором слое и в размере образа. Правильно: `RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*`.

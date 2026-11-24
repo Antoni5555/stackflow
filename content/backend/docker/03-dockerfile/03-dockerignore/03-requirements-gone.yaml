@@ -1,0 +1,15 @@
+title: "requirements.txt не найден"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Шаблон в .dockerignore может зацепить нужные файлы; возвращают их строкой с !."
+statement: |
+  Чтобы не тащить в образ заметки, в `.dockerignore` добавили строку `*.txt`. Теперь сборка падает на `COPY requirements.txt .` с `"/requirements.txt": not found`. Как исправить, сохранив исключение заметок?
+options:
+  - "Переименовать `requirements.txt` в `requirements.text`"
+  - "Добавить после `*.txt` строку `!requirements.txt`"
+  - "Писать `COPY ./requirements.txt .`"
+  - "Удалить `.dockerignore` целиком"
+answer: [1]
+explanation: |
+  `*.txt` исключил все текстовые файлы, включая список зависимостей, — сборщик его просто не получил. `!` делает исключение из исключения: `*.txt` и следом `!requirements.txt`. Путь в `COPY` тут ни при чём: файла нет в контексте.

@@ -1,0 +1,20 @@
+title: "Версии нет в контейнере"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "ARG существует только при сборке; в контейнер значение переносят через ENV."
+statement: |
+  ```dockerfile
+  ARG APP_VERSION=dev
+  RUN echo "собираю $APP_VERSION"
+  CMD ["python", "-c", "import os; print(os.environ['APP_VERSION'])"]
+  ```
+  Образ собрали с `--build-arg APP_VERSION=1.4.2`. Что выведет контейнер?
+options:
+  - "`1.4.2`"
+  - "`dev`"
+  - "`KeyError: 'APP_VERSION'` — после сборки переменной нет"
+  - "Пустую строку"
+answer: [2]
+explanation: |
+  `ARG` доступен инструкциям во время сборки (в `RUN` напечатается «собираю 1.4.2»), но в окружение контейнера не попадает. Нужно добавить `ENV APP_VERSION=${APP_VERSION}` после `ARG` — тогда контейнер выведет `1.4.2`.

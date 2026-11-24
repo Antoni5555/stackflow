@@ -1,0 +1,49 @@
+title: "Почините хвост Dockerfile"
+type: fix
+difficulty: 2
+pitfall: "Exec-форма для ENTRYPOINT и CMD, ARG → ENV для версии, PYTHONUNBUFFERED=1 для логов."
+statement: |
+  Контейнер магазина останавливается 10 секунд, логи приходят пачками, а приложение не видит свою версию. Исправьте хвост Dockerfile:
+  - после `ARG APP_VERSION=dev` — `ENV PYTHONUNBUFFERED=1 APP_VERSION=${APP_VERSION}`;
+  - `ENTRYPOINT` и `CMD` — в exec-форме (списками).
+
+  Скрипт входа уже заканчивается `exec "$@"`.
+files:
+  Dockerfile: |
+    FROM python:3.12-slim
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY . .
+    ARG APP_VERSION=dev
+    EXPOSE 8000
+    ENTRYPOINT /app/entrypoint.sh
+    CMD gunicorn --bind 0.0.0.0:8000 shop.wsgi
+check:
+  type: rules
+  rules:
+    - must_match: '^ARG APP_VERSION=dev\nENV PYTHONUNBUFFERED=1 APP_VERSION=\$\{APP_VERSION\}$'
+      fail: "Сразу после ARG — ENV PYTHONUNBUFFERED=1 APP_VERSION=${APP_VERSION}."
+    - must_match: '^ENTRYPOINT \["/app/entrypoint\.sh"\]$'
+      fail: "ENTRYPOINT [\"/app/entrypoint.sh\"] — списком: в строковой форме он игнорирует CMD."
+    - must_match: '^CMD \["gunicorn", "--bind", "0\.0\.0\.0:8000", "shop\.wsgi"\]$'
+      fail: "CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"shop.wsgi\"] — exec-форма."
+    - must_match: '^EXPOSE 8000$'
+      fail: "EXPOSE 8000 оставьте — это пометка о порте."
+solution:
+  Dockerfile: |
+    FROM python:3.12-slim
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY . .
+    ARG APP_VERSION=dev
+    ENV PYTHONUNBUFFERED=1 APP_VERSION=${APP_VERSION}
+    EXPOSE 8000
+    ENTRYPOINT ["/app/entrypoint.sh"]
+    CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+hints:
+  - "Строковая форма запускает команду через `sh -c`. А как `ARG` попадает в контейнер?"
+  - "`ENV PYTHONUNBUFFERED=1 APP_VERSION=${APP_VERSION}`, `ENTRYPOINT [\"/app/entrypoint.sh\"]`, `CMD [\"gunicorn\", …]`."
+explanation: |
+  Строковый `ENTRYPOINT` вдобавок игнорирует `CMD`: Gunicorn вообще не запустился бы через скрипт. В exec-форме скрипт входа получает команду из `CMD` аргументами, выполняет `exec "$@"`, и Gunicorn становится PID 1 — `docker stop` срабатывает за доли секунды. `ENV` переносит версию из параметра сборки в контейнер, а `PYTHONUNBUFFERED=1` отправляет логи в `docker logs` сразу.

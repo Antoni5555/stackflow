@@ -4483,6 +4483,138 @@ def networks_fig():
     f.save(out(DK2 / "03-networks" / "img" / "networks.svg"))
 
 
+DK3 = ROOT / "docker" / "03-dockerfile"
+
+
+def dockerfile_fig():
+    f = Figure(880, 340, "Dockerfile → образ → контейнер")
+    f.box(20, 20, 200, 150, "", "box2")
+    f.text(36, 46, "контекст сборки (.)", "t")
+    for i, name in enumerate(["Dockerfile", "requirements.txt", "shop/"]):
+        f.box(36, 60 + i * 34, 168, 28, name, "box", "cs", rx=6)
+    f.arrow("M220 95H256"); f.text(238, 86, "build", "s", "middle")
+    steps = [("FROM python:3.12-slim", "box"), ("WORKDIR /app", "box"), ("COPY requirements.txt .", "box"),
+             ("RUN pip install …", "acc"), ("COPY . .", "box"), ("CMD gunicorn …", "ok")]
+    f.box(260, 20, 300, 230, "", "box2")
+    f.text(276, 46, "образ shop-web:1.0 — слои", "t")
+    for i, (t, cls) in enumerate(steps):
+        f.box(276, 58 + i * 31, 268, 26, t, cls, "onacc" if cls == "acc" else "cs", rx=4)
+    f.arrow("M560 135H606"); f.text(583, 126, "run", "s", "middle")
+    f.box(610, 70, 250, 130, "", "ok")
+    f.text(626, 96, "контейнер shop-web", "cs")
+    f.text(626, 122, "PID 1: gunicorn", "s")
+    f.text(626, 146, "слушает 0.0.0.0:8000", "s")
+    f.text(626, 170, "-p 58000:8000", "s")
+    f.text(20, 290, "RUN — при сборке (результат в слое); CMD — при каждом запуске контейнера.", "s")
+    f.text(20, 316, "COPY видит только файлы контекста; сервер в контейнере слушает 0.0.0.0, а не 127.0.0.1.", "s")
+    f.save(out(DK3 / "01-first-dockerfile" / "img" / "dockerfile.svg"))
+
+
+def layers_cache_fig():
+    f = Figure(880, 330, "Правка кода: правильный порядок — только COPY . ., неправильный — снова pip install")
+    def col(x, title, rows):
+        f.text(x, 30, title, "t")
+        for i, (t, state) in enumerate(rows):
+            cls = {"c": "box", "r": "err", "f": "ok"}[state]
+            tcls = {"c": "cs", "r": "errt", "f": "cs"}[state]
+            f.box(x, 44 + i * 40, 300, 32, t, cls, tcls, rx=6)
+            lab = {"c": "CACHED", "r": "заново", "f": "заново, доли секунды"}[state]
+            f.text(x + 310, 65 + i * 40, lab, "s")
+    col(20, "правильно", [("FROM python:3.12-slim", "c"), ("WORKDIR /app", "c"), ("COPY requirements.txt .", "c"),
+                          ("RUN pip install …", "c"), ("COPY . .", "f")])
+    col(460, "неправильно", [("FROM python:3.12-slim", "c"), ("WORKDIR /app", "c"), ("COPY . .", "r"),
+                             ("RUN pip install … (минуты)", "r")])
+    f.text(20, 270, "Шаг выполнен заново — все шаги ниже тоже: кэш привязан к предыдущему слою.", "s")
+    f.text(20, 296, "Редкое (зависимости) — выше, частое (код) — ниже.", "s")
+    f.save(out(DK3 / "02-layers-cache" / "img" / "layers-cache.svg"))
+
+
+def dockerignore_fig():
+    f = Figure(880, 320, "Без .dockerignore в образ уходят .git, venv и .env; с ним — только код")
+    f.box(20, 20, 240, 230, "", "box2")
+    f.text(36, 46, "папка проекта", "t")
+    items = [("Dockerfile", "box"), ("requirements.txt", "box"), ("shop/", "box"), (".git (208 КБ)", "err"), ("venv (18 МБ)", "err"), (".env — пароли", "err")]
+    for i, (t, cls) in enumerate(items):
+        f.box(36, 58 + i * 30, 208, 24, t, cls, "errt" if cls == "err" else "cs", rx=4)
+    f.arrow("M260 100H316"); f.arrow("M260 190H316")
+    f.box(320, 40, 540, 110, "", "err")
+    f.text(336, 66, "без .dockerignore: контекст 15,21 МБ", "errt")
+    f.text(336, 92, "в образе /app: .git, venv, .env — 18 МБ", "s")
+    f.text(336, 118, "cat /app/.env → SECRET_KEY=…, POSTGRES_PASSWORD=…", "cs")
+    f.box(320, 170, 540, 80, "", "ok")
+    f.text(336, 196, ".dockerignore: .git  .env  venv/  __pycache__/  *.pyc", "cs")
+    f.text(336, 222, "контекст 229 байт, /app — 24 КБ, .env: No such file", "s")
+    f.text(20, 296, "Секреты передают при запуске (--env-file), а не в образе.", "s")
+    f.save(out(DK3 / "03-dockerignore" / "img" / "dockerignore.svg"))
+
+
+def instructions_fig():
+    f = Figure(880, 330, "Shell-форма: TERM не доходит, 10 секунд и KILL; exec-форма: штатная остановка")
+    f.box(20, 20, 410, 120, "", "err")
+    f.text(36, 46, "CMD gunicorn …  (строка)", "cs")
+    f.text(36, 72, "PID 1: /bin/sh -c — TERM дальше не передаёт", "errt")
+    f.text(36, 98, "docker stop: 10,2 с → KILL", "s")
+    f.text(36, 122, "Exited (137)", "errt")
+    f.box(450, 20, 410, 120, "", "ok")
+    f.text(466, 46, 'CMD ["gunicorn", …]  (список)', "cs")
+    f.text(466, 72, "PID 1: gunicorn — получает TERM", "s")
+    f.text(466, 98, "docker stop: 0,25 с", "s")
+    f.text(466, 122, "Exited (0)", "cs")
+    f.box(20, 170, 240, 40, 'ENTRYPOINT ["entrypoint.sh"]', "acc", "onacc", rx=8)
+    f.text(272, 196, "+", "t")
+    f.box(290, 170, 250, 40, 'CMD ["gunicorn", …]', "box", "cs", rx=8)
+    f.text(552, 196, "=", "t")
+    f.box(570, 170, 290, 40, "entrypoint.sh gunicorn …", "ok", "cs", rx=8)
+    f.text(20, 246, "docker run образ python manage.py migrate → entrypoint.sh python manage.py migrate", "cs")
+    f.text(20, 276, "скрипт входа заканчивают exec \"$@\" — команда становится PID 1", "s")
+    f.text(20, 304, "ARG — только при сборке; ENV — в контейнере; EXPOSE — пометка, порт открывает -p", "s")
+    f.save(out(DK3 / "04-instructions" / "img" / "instructions.svg"))
+
+
+def optimize_fig():
+    f = Figure(880, 340, "Многоэтапная сборка: компилятор остаётся в первом этапе")
+    f.box(20, 20, 300, 200, "", "box2")
+    f.text(36, 46, "этап build", "t")
+    for i, t in enumerate(["FROM python:3.12-slim AS build", "apt: gcc libc6-dev libpq-dev", "python -m venv /opt/venv", "pip install → psycopg2 собран"]):
+        f.box(36, 58 + i * 38, 268, 30, t, "err" if i == 1 else "box", "errt" if i == 1 else "cs", rx=6)
+    f.arrow("M320 170H356"); f.text(338, 160, "/opt/venv", "s", "middle")
+    f.box(360, 20, 300, 230, "", "ok")
+    f.text(376, 46, "итоговый образ", "t")
+    for i, t in enumerate(["FROM python:3.12-slim", "apt: libpq5 + useradd app", "COPY --from=build /opt/venv", "COPY --chown=app:app . .", "USER app"]):
+        f.box(376, 58 + i * 36, 268, 28, t, "box", "cs", rx=6)
+    f.box(690, 20, 170, 230, "", "box2")
+    f.text(706, 46, "размер", "t")
+    f.text(706, 80, "python:3.12", "s"); f.text(706, 100, "1,62 ГБ", "errt")
+    f.text(706, 136, "slim + gcc", "s"); f.text(706, 156, "536 МБ", "cs")
+    f.text(706, 192, "многоэтапный", "s"); f.text(706, 212, "205 МБ", "cs")
+    f.text(20, 290, "В итоговом образе нет gcc и заголовков — только готовое окружение и библиотека libpq5.", "s")
+    f.text(20, 316, "Приложение работает от app: /etc и системные файлы ему не изменить.", "s")
+    f.save(out(DK3 / "05-optimize" / "img" / "optimize.svg"))
+
+
+def publish_fig():
+    f = Figure(880, 300, "Собрать один раз, хранить в реестре, на сервере только скачать")
+    f.box(20, 20, 260, 170, "", "box2")
+    f.text(36, 46, "ноутбук или CI", "t")
+    for i, t in enumerate(["docker build …", "docker tag … ghcr.io/…", "docker push ghcr.io/…"]):
+        f.box(36, 60 + i * 40, 228, 32, t, "acc" if i == 2 else "box", "onacc" if i == 2 else "cs", rx=6)
+    f.arrow("M280 120H336")
+    f.box(340, 20, 220, 170, "", "ok")
+    f.text(356, 46, "реестр ghcr.io", "t")
+    f.text(356, 72, "shop/web", "cs")
+    for i, t in enumerate(["1.4.1", "1.4.2", "latest → 1.4.2"]):
+        f.box(356, 84 + i * 32, 188, 26, t, "box", "cs", rx=4)
+    f.arrow("M560 120H616")
+    f.box(620, 20, 240, 170, "", "box2")
+    f.text(636, 46, "сервер", "t")
+    f.box(636, 60, 208, 32, "docker pull …:1.4.2", "box", "cs", rx=6)
+    f.box(636, 100, 208, 32, "docker run …:1.4.2", "ok", "cs", rx=6)
+    f.text(636, 160, "без кода и без сборки", "s")
+    f.text(20, 240, "Отправляются и скачиваются только недостающие слои. Откат — docker run …:1.4.1.", "s")
+    f.text(20, 266, "Адрес реестра — часть имени образа; без него push идёт в Docker Hub.", "s")
+    f.save(out(DK3 / "06-publish" / "img" / "publish.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -4542,6 +4674,9 @@ if __name__ == "__main__":
                   async_with_for_fig, async_pitfalls_fig,
                   docker_overview, docker_run_fig,
                   container_lifecycle, image_names, volumes_fig,
-                  env_docker_fig, networks_fig):
+                  env_docker_fig, networks_fig, dockerfile_fig,
+                  layers_cache_fig, dockerignore_fig,
+                  instructions_fig, optimize_fig,
+                  publish_fig):
         build()
     print("ok")

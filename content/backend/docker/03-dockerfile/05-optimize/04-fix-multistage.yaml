@@ -1,0 +1,67 @@
+title: "Уменьшите образ магазина"
+type: fix
+difficulty: 3
+pitfall: "Компиляторы — в этапе build, в итоговый образ — COPY --from=build /opt/venv, libpq5 и USER app."
+statement: |
+  Образ весит 536 МБ, внутри `gcc`, а приложение работает от `root`. Допишите второй этап после комментария `# этап 2`:
+  - `FROM python:3.12-slim`;
+  - `RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/* && useradd --create-home app`;
+  - `COPY --from=build /opt/venv /opt/venv`;
+  - `ENV PATH="/opt/venv/bin:$PATH" PYTHONUNBUFFERED=1`;
+  - `WORKDIR /app`, `COPY --chown=app:app . .`, `USER app`;
+  - прежний `CMD`.
+
+  Первый этап назовите `build` (`FROM python:3.12-slim AS build`) и уберите из него `COPY . .` и `CMD` — это работа второго этапа.
+files:
+  Dockerfile: |
+    FROM python:3.12-slim
+    RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev && rm -rf /var/lib/apt/lists/*
+    RUN python -m venv /opt/venv
+    ENV PATH="/opt/venv/bin:$PATH"
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    WORKDIR /app
+    COPY . .
+    CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+
+    # этап 2
+check:
+  type: rules
+  rules:
+    - must_match: '^FROM python:3\.12-slim AS build$'
+      fail: "Первый этап: FROM python:3.12-slim AS build."
+    - must_match: 'AS build\n[\s\S]*RUN pip install --no-cache-dir -r requirements\.txt\n[\s\S]*^FROM python:3\.12-slim$'
+      fail: "После установки зависимостей в первом этапе — второй FROM python:3.12-slim."
+    - must_match: '^RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/\* && useradd --create-home app$'
+      fail: "Во втором этапе — только libpq5 и создание пользователя app одним RUN."
+    - must_match: '^COPY --from=build /opt/venv /opt/venv$'
+      fail: "COPY --from=build /opt/venv /opt/venv — готовое окружение из первого этапа."
+    - must_match: '^ENV PATH="/opt/venv/bin:\$PATH" PYTHONUNBUFFERED=1$'
+      fail: "ENV PATH=\"/opt/venv/bin:$PATH\" PYTHONUNBUFFERED=1 — во втором этапе своё окружение."
+    - must_match: '^WORKDIR /app\nCOPY --chown=app:app \. \.\nUSER app\nCMD \["gunicorn", "--bind", "0\.0\.0\.0:8000", "shop\.wsgi"\]'
+      fail: "Конец: WORKDIR /app, COPY --chown=app:app . ., USER app, CMD [\"gunicorn\", …]."
+    - must_not_match: 'AS build\n(?:(?!^FROM)[\s\S])*^(COPY \. \.|CMD )'
+      fail: "В первом этапе не должно быть COPY . . и CMD — код и запуск только во втором."
+solution:
+  Dockerfile: |
+    FROM python:3.12-slim AS build
+    RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev && rm -rf /var/lib/apt/lists/*
+    RUN python -m venv /opt/venv
+    ENV PATH="/opt/venv/bin:$PATH"
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+
+    # этап 2
+    FROM python:3.12-slim
+    RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/* && useradd --create-home app
+    COPY --from=build /opt/venv /opt/venv
+    ENV PATH="/opt/venv/bin:$PATH" PYTHONUNBUFFERED=1
+    WORKDIR /app
+    COPY --chown=app:app . .
+    USER app
+    CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+hints:
+  - "Первый этап собирает `/opt/venv`, второй начинается с чистого `slim` и берёт из первого только эту папку."
+  - "Перенесите `WORKDIR`, `COPY . .` и `CMD` во второй этап; там же — `libpq5`, `useradd`, `COPY --from=build`, `ENV`, `USER app`."
+explanation: |
+  В уроке такой Dockerfile дал 205 МБ вместо 536 и убрал `gcc` из итогового образа. `ENV PATH` повторяется во втором этапе: переменные первого этапа в итоговый образ не попадают, как и всё остальное, что не скопировали явно.

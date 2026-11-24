@@ -1,0 +1,15 @@
+title: "denied при push"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Куда отправить образ, Docker понимает по имени: без адреса реестра — Docker Hub."
+statement: |
+  Образ собран как `shop-web:1.4.2`. Команда `docker push shop-web:1.4.2` отвечает `denied: requested access to the resource is denied`. Магазин хранит образы в `ghcr.io` в организации `shop`. Что сделать?
+options:
+  - "Повторить push с `sudo`"
+  - "`docker tag shop-web:1.4.2 ghcr.io/shop/web:1.4.2`, затем `docker login ghcr.io` и `docker push ghcr.io/shop/web:1.4.2`"
+  - "Добавить `EXPOSE` в Dockerfile"
+  - "Переименовать тег в `latest`"
+answer: [1]
+explanation: |
+  Без адреса реестра в имени Docker отправляет образ в Docker Hub, в пространство `library` или чужое — прав туда нет. Реестр и владелец — часть имени, поэтому образу дают полное имя через `docker tag`, входят в нужный реестр и отправляют.

@@ -1,0 +1,46 @@
+title: "Сборка пять минут на каждую правку"
+type: fix
+difficulty: 2
+pitfall: "Зависимости копируют и ставят до кода; apt-get update и install — одним RUN с удалением списков."
+statement: |
+  Каждая правка шаблона пересобирает образ магазина пять минут. Переставьте и объедините инструкции, ничего не теряя:
+  - системный пакет `libpq5` ставится одним `RUN`: `apt-get update`, `apt-get install -y --no-install-recommends libpq5` и `rm -rf /var/lib/apt/lists/*` через `&&`;
+  - затем `COPY requirements.txt .` и `RUN pip install --no-cache-dir -r requirements.txt`;
+  - только потом `COPY . .`.
+files:
+  Dockerfile: |
+    FROM python:3.12-slim
+    WORKDIR /app
+    COPY . .
+    RUN apt-get update
+    RUN apt-get install -y --no-install-recommends libpq5
+    RUN rm -rf /var/lib/apt/lists/*
+    RUN pip install --no-cache-dir -r requirements.txt
+    CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+check:
+  type: rules
+  rules:
+    - must_match: '^RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/\*$'
+      fail: "Один RUN: apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*."
+    - must_not_match: '^RUN apt-get update\s*$'
+      fail: "Отдельный RUN apt-get update закэшируется и устареет."
+    - must_match: '^COPY requirements\.txt \.\nRUN pip install --no-cache-dir -r requirements\.txt\nCOPY \. \.$'
+      fail: "Порядок: COPY requirements.txt . → RUN pip install … → COPY . ."
+    - must_match: '^WORKDIR /app\nRUN apt-get'
+      fail: "Системные пакеты меняются реже всего — сразу после WORKDIR, до копирования файлов."
+    - must_match: '^CMD \["gunicorn", "--bind", "0\.0\.0\.0:8000", "shop\.wsgi"\]'
+      fail: "CMD оставьте прежним."
+solution:
+  Dockerfile: |
+    FROM python:3.12-slim
+    WORKDIR /app
+    RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY . .
+    CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+hints:
+  - "Что меняется реже всего — системные пакеты, зависимости или код? Расставьте шаги в этом порядке."
+  - "`RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*`, затем `COPY requirements.txt .`, `RUN pip install …`, `COPY . .`."
+explanation: |
+  Теперь правка кода трогает только последний `COPY . .` — системные пакеты и Python-зависимости берутся из кэша. Объединённый `RUN` всегда ставит пакеты по свежему списку и удаляет списки в том же слое, поэтому они не раздувают образ.
