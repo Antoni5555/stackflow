@@ -1,0 +1,35 @@
+- title: stop и start
+  text: |
+    Магазин из двух сервисов (`db`, `web`) запущен через `docker compose up -d`. Остановите проект, не удаляя контейнеры, посмотрите их статус, затем запустите снова и проверьте страницу.
+  answer: |
+    Ответ:
+    ```bash
+    docker compose stop
+    docker compose ps -a
+    docker compose start
+    curl -s localhost:58000
+    ```
+    Результат (строки хода `stop` и `start` сокращены):
+    ```
+    NAME         IMAGE         COMMAND                  SERVICE   CREATED          STATUS                     PORTS
+    shop-db-1    postgres:16   "docker-entrypoint.s…"   db        2 minutes ago    Exited (0) 3 seconds ago   
+    shop-web-1   shop-web      "gunicorn --bind 0.0…"   web       2 minutes ago    Exited (0) 3 seconds ago   
+    Магазин работает
+    ```
+    Без `-a` остановленных контейнеров в списке не было бы. `stop`/`start` сохраняют контейнеры и сеть, `down` удаляет их — тогда следующий `up` создаст всё заново.
+- title: Таблица в базе проекта
+  text: |
+    В том же проекте выполните в базе `shop` запрос `SELECT current_database(), current_user;`, обратившись к сервису по имени, а не к контейнеру.
+  answer: |
+    Ответ:
+    ```bash
+    docker compose exec db psql -U postgres -d shop -c "SELECT current_database(), current_user;"
+    ```
+    Результат:
+    ```
+     current_database | current_user 
+    ------------------+--------------
+     shop             | postgres
+    (1 row)
+    ```
+    `docker compose exec` находит контейнер по имени сервиса (`db`) в проекте текущей папки — помнить `shop-db-1` не нужно. Без `-c` откроется интерактивный `psql`: compose `exec` по умолчанию даёт терминал, флаг `-it` не нужен.

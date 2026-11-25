@@ -1,0 +1,58 @@
+title: "Инструмент по требованию"
+type: exercise
+difficulty: 2
+pitfall: "Сервис с profiles не стартует при обычном up; включают его флагом --profile."
+statement: |
+  Добавьте в `compose.yaml` сервис `tools` — образ `alpine:3`, команда `sleep 3600` (формой списка), профиль `tools`. Он не должен запускаться обычным `docker compose up -d`.
+
+  Запустите проект как обычно, а затем — вместе с профилем `tools`. Последней командой выведите список контейнеров проекта: `docker compose ps`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+    /home/shop/shop/compose.yaml: |
+      services:
+        web:
+          build: .
+          ports:
+            - "58000:8000"
+  docker:
+    images: [python:3.12-slim, alpine:3]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/compose.yaml
+      contains: 'profiles:.*tools'
+      fail: "У tools нужен ключ profiles: [\"tools\"]."
+    - docker: compose
+      service: web
+      status: running
+      fail: "Сервис web не работает."
+    - docker: compose
+      service: tools
+      status: running
+      fail: "Сервис tools не запущен — docker compose --profile tools up -d."
+    - output_matches: 'shop-tools-1'
+      fail: "Последней командой выведите docker compose ps — в списке должен быть shop-tools-1."
+solution: |
+  echo -e '  tools:\n    image: alpine:3\n    command: ["sleep", "3600"]\n    profiles: ["tools"]' >> compose.yaml
+  docker compose up -d --build
+  docker compose --profile tools up -d
+  docker compose ps
+hints:
+  - "Новый сервис — на одном уровне с `web`: `tools:` с ключами `image`, `command`, `profiles` (список)."
+  - "`profiles: [\"tools\"]`; запуск с профилем — `docker compose --profile tools up -d`."
+explanation: |
+  Обычный `up` создал только `web` — сервис с профилем пропущен. С `--profile tools` Compose увидел, что `web` уже работает (`Running`), и добавил только `tools`. Так держат pgAdmin, Mailpit или загрузку демо-данных: в файле они есть, но не запускаются у всех и не попадают на сервер случайно. Остановить — `docker compose --profile tools down`.

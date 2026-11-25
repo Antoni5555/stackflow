@@ -1,0 +1,22 @@
+- title: Что увидит сервер
+  text: |
+    Рядом с `compose.yaml` лежит `compose.override.yaml` с `--reload` и монтированием `./shop`. Как проверить, что на сервере, где запускают `docker compose -f compose.yaml up -d`, перезагрузки кода не будет?
+  answer: |
+    Ответ:
+    ```bash
+    docker compose -f compose.yaml config | grep -c reload
+    ```
+    Результат:
+    ```
+    0
+    ```
+    С `-f` Compose читает только перечисленные файлы — override не подхватывается, и `--reload` в итоговой конфигурации нет. Без `-f` та же команда нашла бы его: `docker compose config` показывает уже слитый результат.
+- title: Профиль в .env
+  text: |
+    Разработчик хочет, чтобы на его ноутбуке сервис `tools` (профиль `tools`) запускался обычным `docker compose up -d`, без флага `--profile`. Как это сделать, не меняя `compose.yaml`?
+  answer: |
+    Ответ. Задать профиль переменной `COMPOSE_PROFILES` в `.env` рядом с `compose.yaml` (этот файл в `.gitignore`):
+    ```
+    COMPOSE_PROFILES=tools
+    ```
+    Теперь `docker compose up -d` поднимет и `web`, и `tools`, а `docker compose down` остановит оба. У остальных разработчиков и на сервере профиль по-прежнему выключен. Несколько профилей — через запятую: `COMPOSE_PROFILES=tools,debug`.

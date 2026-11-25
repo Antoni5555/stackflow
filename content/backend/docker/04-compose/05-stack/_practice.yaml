@@ -1,0 +1,43 @@
+- title: Какие таблицы создал migrate
+  text: |
+    После `docker compose run --rm web python manage.py migrate` посмотрите список таблиц в базе `shop`.
+  answer: |
+    Ответ:
+    ```bash
+    docker compose exec db psql -U postgres -d shop -c "\dt"
+    ```
+    Результат:
+    ```
+                       List of relations
+     Schema |            Name            | Type  |  Owner   
+    --------+----------------------------+-------+----------
+     public | auth_group                 | table | postgres
+     public | auth_group_permissions     | table | postgres
+     public | auth_permission            | table | postgres
+     public | auth_user                  | table | postgres
+     public | auth_user_groups           | table | postgres
+     public | auth_user_user_permissions | table | postgres
+     public | django_admin_log           | table | postgres
+     public | django_content_type        | table | postgres
+     public | django_migrations          | table | postgres
+     public | django_session             | table | postgres
+    (10 rows)
+    ```
+    Это таблицы встроенных приложений Django: пользователи (`auth_user` — её считает главная страница), админка, сессии. `django_migrations` хранит, какие миграции уже применены, — повторный `migrate` ничего не сделает.
+- title: Упавший web поднимается сам
+  text: |
+    У `web` в `compose.yaml` стоит `restart: unless-stopped`. Завершите главный процесс контейнера изнутри и проверьте, что сервис снова работает и сколько раз Docker его перезапускал.
+  answer: |
+    Ответ:
+    ```bash
+    docker compose exec web sh -c "kill 1"
+    docker compose ps
+    docker inspect -f '{{.RestartCount}}' shop-web-1
+    ```
+    Результат (строки `db` и `nginx` сокращены):
+    ```
+    NAME           IMAGE               COMMAND                  SERVICE   CREATED          STATUS         PORTS
+    shop-web-1     shop-web            "gunicorn --bind 0.0…"   web       3 minutes ago    Up 2 seconds   
+    1
+    ```
+    Главный процесс завершился — Docker по политике `restart` запустил контейнер снова: тот же контейнер (`CREATED` прежний), счётчик перезапусков — 1. После `docker compose stop web` перезапуска не будет: `unless-stopped` уважает ручную остановку.

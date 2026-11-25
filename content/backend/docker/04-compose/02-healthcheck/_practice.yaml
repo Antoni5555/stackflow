@@ -1,0 +1,31 @@
+- title: Статус здоровья
+  text: |
+    В проекте у `db` есть healthcheck с `pg_isready`, а `web` ждёт его через `condition: service_healthy`. Запустите проект и посмотрите статус здоровья базы двумя способами: в списке сервисов и через `docker inspect`.
+  answer: |
+    Ответ:
+    ```bash
+    docker compose up -d --build
+    docker compose ps -a
+    docker inspect -f '{{.State.Health.Status}}' shop-db-1
+    ```
+    Результат (вывод `up` сокращён):
+    ```
+     Container shop-db-1 Waiting 
+     Container shop-db-1 Healthy 
+     Container shop-web-1 Starting 
+     Container shop-web-1 Started 
+    NAME         IMAGE         COMMAND                  SERVICE   CREATED         STATUS                     PORTS
+    shop-db-1    postgres:16   "docker-entrypoint.s…"   db        8 seconds ago   Up 8 seconds (healthy)     5432/tcp
+    shop-web-1   shop-web      "python check_db.py"     web       8 seconds ago   Exited (0) 2 seconds ago   
+    healthy
+    ```
+    `Waiting` → `Healthy` — Compose ждал, пока проверка не пройдёт. `web` здесь — разовый скрипт: он подключился, напечатал «база доступна» и завершился с кодом 0.
+- title: Healthcheck без restart
+  text: |
+    База магазина работает, но стала `unhealthy` — проверка `pg_isready` падает. Перезапустит ли Docker такой контейнер сам? Что для этого нужно?
+  answer: |
+    Ответ. Нет. Healthcheck меняет только статус: `Up 5 minutes (unhealthy)`, контейнер продолжает работать. Перезапуск делает политика `restart` — и только когда главный процесс **завершился**:
+    ```yaml
+        restart: unless-stopped
+    ```
+    Зависший, но живой процесс Docker сам не перезапустит. Статус `unhealthy` используют `depends_on` при запуске, мониторинг и оркестраторы (Docker Swarm, Kubernetes) — они умеют заменять больные контейнеры.

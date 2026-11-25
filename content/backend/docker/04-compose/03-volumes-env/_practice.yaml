@@ -1,0 +1,36 @@
+- title: Значение по умолчанию
+  text: |
+    В `compose.yaml` порт записан как `"${WEB_PORT}:8000"`, а в `.env` есть только `TAG=1.4.2`. Сделайте так, чтобы без `WEB_PORT` использовался порт 58000, и проверьте итоговый файл.
+  answer: |
+    Ответ. Строка порта в `compose.yaml`:
+    ```yaml
+          - "${WEB_PORT:-58000}:8000"
+    ```
+    Проверка:
+    ```bash
+    docker compose config | grep -E "image: shop|published"
+    ```
+    Результат:
+    ```
+        image: shop-web:1.4.2
+            published: "58000"
+    ```
+    Предупреждения «variable is not set» больше нет: `:-` подставляет значение по умолчанию. На сервере в `.env` можно задать другой порт — он заменит 58000.
+- title: Что удаляет down -v
+  text: |
+    В проекте база хранит данные в именованном томе `pgdata`. Удалите проект вместе с томами и проверьте, остались ли тома проекта.
+  answer: |
+    Ответ:
+    ```bash
+    docker compose down -v
+    docker volume ls --filter label=com.docker.compose.project=shop
+    ```
+    Результат (строки контейнеров сокращены):
+    ```
+     Volume shop_pgdata Removing 
+     Volume shop_pgdata Removed 
+     Network shop_default Removing 
+     Network shop_default Removed 
+    DRIVER    VOLUME NAME
+    ```
+    Том `shop_pgdata` удалён вместе с базой — следующий `up` начнёт с пустой. Без `-v` том остался бы. Перед `down -v` на сервере — `pg_dump`.

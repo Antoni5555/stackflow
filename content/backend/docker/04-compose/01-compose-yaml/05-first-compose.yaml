@@ -1,0 +1,60 @@
+title: "Магазин одной командой"
+type: exercise
+difficulty: 2
+pitfall: "compose.yaml: services, у базы image и environment, у приложения build: . и ports списком в кавычках."
+statement: |
+  В папке `/home/shop/shop` лежит проект магазина с `Dockerfile`. Опишите его в `compose.yaml` из двух сервисов:
+  - `db` — образ `postgres:16`, переменные `POSTGRES_PASSWORD: shop` и `POSTGRES_DB: shop`;
+  - `web` — собирается из текущей папки, порт 58000 сервера → 8000 контейнера.
+
+  Запустите всё в фоне со сборкой и последней командой получите страницу: `curl -s localhost:58000`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+  docker:
+    images: [python:3.12-slim, postgres:16]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/compose.yaml
+      contains: '^services:'
+      fail: "Файл compose.yaml начинается с раздела services:."
+    - docker: compose
+      service: db
+      project: shop
+      status: running
+      fail: "Сервис db не работает — image: postgres:16 и POSTGRES_PASSWORD в environment?"
+    - docker: compose
+      service: web
+      project: shop
+      status: running
+      fail: "Сервис web не работает — build: . и docker compose up -d --build?"
+    - docker: port
+      container: shop-web-1
+      host: 58000
+      port: 8000
+      fail: "У web нужен ports: [\"58000:8000\"]."
+    - output_matches: 'Магазин работает'
+      fail: "Последней командой получите страницу: curl -s localhost:58000."
+solution: |
+  echo -e 'services:\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_PASSWORD: shop\n      POSTGRES_DB: shop\n  web:\n    build: .\n    ports:\n      - "58000:8000"' > compose.yaml
+  docker compose up -d --build
+  curl -s localhost:58000
+hints:
+  - "Файл удобно написать в `nano compose.yaml`: раздел `services:`, в нём `db:` и `web:` с отступом в два пробела. Ошибки разметки покажет `docker compose config`."
+  - "`db`: `image: postgres:16` и `environment:` с двумя переменными; `web`: `build: .` и `ports:` со строкой `- \"58000:8000\"`. Запуск — `docker compose up -d --build`."
+explanation: |
+  Compose назвал проект по папке (`shop`), создал сеть `shop_default`, собрал образ `shop-web` и запустил контейнеры `shop-db-1` и `shop-web-1`. Две длинные команды `docker run` и `docker network create` превратились в файл, который лежит в репозитории рядом с кодом.

@@ -1,0 +1,75 @@
+title: "Приложение дожидается базы"
+type: exercise
+difficulty: 3
+pitfall: "depends_on без условия не ждёт готовности; нужен healthcheck у db и condition: service_healthy у web."
+statement: |
+  В проекте сервис `web` запускает `check_db.py` — скрипт подключается к базе и печатает «база доступна». Сейчас он падает с `Connection refused`: база ещё не готова принимать соединения. Исправьте `compose.yaml`:
+  1. у `db` — healthcheck командой `pg_isready -U postgres` (интервал 2s, 10 попыток);
+  2. у `web` — запуск только после того, как `db` станет здоровой.
+
+  Запустите проект со сборкой и последней командой посмотрите журнал: `docker compose logs web`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: |
+      gunicorn==23.0.0
+      psycopg[binary]==3.2.12
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+    /home/shop/shop/check_db.py: |
+      import os
+      import psycopg
+
+      psycopg.connect(f"host={os.environ['DB_HOST']} user=postgres password={os.environ['DB_PASSWORD']}").close()
+      print("база доступна")
+    /home/shop/shop/compose.yaml: |
+      services:
+        db:
+          image: postgres:16
+          environment:
+            POSTGRES_PASSWORD: shop
+
+        web:
+          build: .
+          command: ["python", "check_db.py"]
+          environment:
+            DB_HOST: db
+            DB_PASSWORD: shop
+          depends_on:
+            - db
+  docker:
+    images: [python:3.12-slim, postgres:16]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/compose.yaml
+      contains: 'pg_isready'
+      fail: "У db нужен healthcheck с командой pg_isready -U postgres."
+    - path: /home/shop/shop/compose.yaml
+      contains: 'condition: service_healthy'
+      fail: "У web в depends_on нужно условие condition: service_healthy."
+    - docker: compose
+      service: db
+      status: running
+      fail: "Сервис db не работает."
+    - output_matches: '^web-1\s+\| база доступна$'
+      fail: "Последней командой выведите docker compose logs web — там должно быть «база доступна». Проект пересоздан после правки (up -d --build)?"
+solution: |
+  echo -e 'services:\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_PASSWORD: shop\n    healthcheck:\n      test: ["CMD-SHELL", "pg_isready -U postgres"]\n      interval: 2s\n      retries: 10\n\n  web:\n    build: .\n    command: ["python", "check_db.py"]\n    environment:\n      DB_HOST: db\n      DB_PASSWORD: shop\n    depends_on:\n      db:\n        condition: service_healthy' > compose.yaml
+  docker compose up -d --build
+  docker compose logs web
+hints:
+  - "`healthcheck:` с ключами `test`, `interval`, `retries` — у базы. А `depends_on` у web из списка становится словарём: `db:` и под ним `condition: …`."
+  - "`test: [\"CMD-SHELL\", \"pg_isready -U postgres\"]`; у web: `depends_on:` → `db:` → `condition: service_healthy`."
+explanation: |
+  Теперь Compose запустил базу, дождался статуса `healthy` (в выводе `up` — `Waiting` и `Healthy`) и только потом стартовал `web`. Скрипт подключился с первой попытки. Без условия `depends_on` задаёт лишь порядок запуска: контейнер базы уже запущен, но PostgreSQL внутри ещё инициализируется.

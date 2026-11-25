@@ -1,0 +1,40 @@
+title: "docker run → compose.yaml"
+type: exercise
+difficulty: 2
+pitfall: "Флаги docker run переносятся в ключи сервиса: образ — image, -p — ports, -v — volumes."
+statement: |
+  Страницу акции раньше запускали так:
+  ```
+  docker run -d -p 8080:80 -v ./site:/usr/share/nginx/html nginx:1.27-alpine
+  ```
+  Перенесите это в `compose.yaml` в папке `/home/shop/promo`: один сервис `web` с тем же образом, портом и папкой. Запустите проект в фоне и последней командой получите страницу: `curl -s localhost:8080`.
+setup:
+  cwd: /home/shop/promo
+  files:
+    /home/shop/promo/site/index.html: "<h1>Скидки недели</h1>\n"
+  docker:
+    images: [nginx:1.27-alpine]
+check:
+  type: state
+  expect:
+    - docker: compose
+      service: web
+      project: promo
+      status: running
+      fail: "Сервис web проекта promo не работает — compose.yaml в /home/shop/promo и docker compose up -d?"
+    - docker: port
+      container: promo-web-1
+      host: 8080
+      port: 80
+      fail: "У web нужен ports: [\"8080:80\"]."
+    - output_matches: 'Скидки недели'
+      fail: "Последней командой получите страницу curl -s localhost:8080 — должна быть страница из site, а не Welcome to nginx (volumes)."
+solution: |
+  echo -e 'services:\n  web:\n    image: nginx:1.27-alpine\n    ports:\n      - "8080:80"\n    volumes:\n      - ./site:/usr/share/nginx/html' > compose.yaml
+  docker compose up -d
+  curl -s localhost:8080
+hints:
+  - "Каждый флаг — ключ сервиса: образ → `image`, `-p` → `ports`, `-v` → `volumes`. `ports` и `volumes` — списки."
+  - "`web:` с `image: nginx:1.27-alpine`, `ports: - \"8080:80\"`, `volumes: - ./site:/usr/share/nginx/html`."
+explanation: |
+  Проект получил имя папки — `promo`, контейнер — `promo-web-1`. Путь `./site` в compose считается от папки с `compose.yaml`, а не от текущей папки терминала. `--name` не нужен: имя даёт Compose, а обращаются к сервису по `web` (`docker compose logs web`).

@@ -1,0 +1,63 @@
+title: "Правка без пересборки"
+type: exercise
+difficulty: 3
+pitfall: "compose.override.yaml для разработки: bind mount папки с кодом и gunicorn --reload."
+statement: |
+  Каждая правка `shop/wsgi.py` сейчас требует пересборки образа. Добавьте файл `compose.override.yaml` для разработки, в котором у сервиса `web`:
+  - команда `gunicorn --bind 0.0.0.0:8000 --reload shop.wsgi` (формой списка);
+  - папка `./shop` смонтирована в `/app/shop`.
+
+  Запустите проект со сборкой, затем измените код **без** пересборки:
+  ```
+  sed -i 's/Магазин работает/Магазин работает — новая версия/' shop/wsgi.py
+  ```
+  Последней командой получите страницу: `curl -s localhost:58000`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+    /home/shop/shop/compose.yaml: |
+      services:
+        web:
+          build: .
+          ports:
+            - "58000:8000"
+  docker:
+    images: [python:3.12-slim]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/compose.override.yaml
+      contains: '--reload'
+      fail: "В compose.override.yaml у web нужна команда с --reload."
+    - path: /home/shop/shop/compose.override.yaml
+      contains: '\./shop:/app/shop'
+      fail: "В compose.override.yaml у web нужен volumes: - ./shop:/app/shop."
+    - docker: compose
+      service: web
+      status: running
+      fail: "Сервис web не работает."
+    - output_matches: 'новая версия'
+      fail: "Последней командой получите страницу curl -s localhost:58000 — там должна быть новая версия. Код смонтирован и Gunicorn с --reload?"
+solution: |
+  echo -e 'services:\n  web:\n    command: ["gunicorn", "--bind", "0.0.0.0:8000", "--reload", "shop.wsgi"]\n    volumes:\n      - ./shop:/app/shop' > compose.override.yaml
+  docker compose up -d --build
+  sed -i 's/Магазин работает/Магазин работает — новая версия/' shop/wsgi.py
+  curl -s localhost:58000
+hints:
+  - "Override повторяет структуру основного файла, но только с тем, что меняется: `services:` → `web:` → `command` и `volumes`."
+  - "`command: [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"--reload\", \"shop.wsgi\"]` и `volumes: - ./shop:/app/shop`."
+explanation: |
+  Compose сам слил `compose.yaml` и `compose.override.yaml`: `build` и `ports` из основного, `command` и `volumes` из override. Файл на диске сервера и в контейнере теперь один и тот же, а Gunicorn с `--reload` заметил изменение и перезапустил воркер (`docker compose logs web` — «Worker reloading»). На сервере override не кладут — там код только из образа.

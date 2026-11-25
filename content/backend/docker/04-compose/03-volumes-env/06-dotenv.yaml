@@ -1,0 +1,69 @@
+title: "Порт и версия из .env"
+type: exercise
+difficulty: 2
+pitfall: ".env рядом с compose.yaml читается автоматически и подставляет значения в ${…} самого файла."
+statement: |
+  В `compose.yaml` порт и тег образа заданы подстановками `${WEB_PORT}` и `${TAG}`, но значений нет — Compose подставит пустые строки. Создайте рядом файл `.env`, чтобы:
+  - порт на сервере был `58000`;
+  - образ назывался `shop-web:1.4.2`.
+
+  Запустите проект со сборкой и последней командой получите страницу: `curl -s localhost:58000`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+    /home/shop/shop/compose.yaml: |
+      services:
+        db:
+          image: postgres:16
+          env_file: db.env
+        web:
+          build: .
+          image: shop-web:${TAG}
+          ports:
+            - "${WEB_PORT}:8000"
+    /home/shop/shop/db.env: |
+      POSTGRES_PASSWORD=shop
+      POSTGRES_DB=shop
+  docker:
+    images: [python:3.12-slim, postgres:16]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/.env
+      contains: '^WEB_PORT=58000$'
+      fail: "В .env нужна строка WEB_PORT=58000."
+    - path: /home/shop/shop/.env
+      contains: '^TAG=1\.4\.2$'
+      fail: "В .env нужна строка TAG=1.4.2."
+    - docker: image
+      ref: shop-web:1.4.2
+      fail: "Образа shop-web:1.4.2 нет — docker compose up -d --build после создания .env."
+    - docker: port
+      container: shop-web-1
+      host: 58000
+      port: 8000
+      fail: "shop-web-1 должен быть опубликован на порту 58000."
+    - output_matches: 'Магазин работает'
+      fail: "Последней командой получите страницу: curl -s localhost:58000."
+solution: |
+  echo -e 'WEB_PORT=58000\nTAG=1.4.2' > .env
+  docker compose up -d --build
+  curl -s localhost:58000
+hints:
+  - "Файл называется ровно `.env` и лежит рядом с `compose.yaml`; строки — `ИМЯ=значение` без пробелов. Проверить подстановку — `docker compose config`."
+  - "`echo -e 'WEB_PORT=58000\\nTAG=1.4.2' > .env`, затем `docker compose up -d --build`."
+explanation: |
+  Compose прочитал `.env` до разбора файла и подставил значения: `image: shop-web:1.4.2`, порт `58000:8000`. На сервере тот же `compose.yaml` получит свой `.env` — например, с другим портом и версией из CI. `env_file: db.env` — другой механизм: переменные внутри контейнера, в `${…}` они не участвуют.

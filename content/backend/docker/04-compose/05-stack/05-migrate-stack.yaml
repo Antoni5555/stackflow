@@ -1,0 +1,152 @@
+title: "Стек заработал после миграций"
+type: exercise
+difficulty: 3
+pitfall: "Новая база пустая: до migrate Django отвечает 500; миграции — разовым docker compose run --rm web."
+statement: |
+  В `/home/shop/shop` — Django-магазин с `compose.yaml` из трёх сервисов: `db`, `web`, `nginx` (наружу — только Nginx на порту 58080). Главная страница считает пользователей в базе.
+  1. Запустите стек со сборкой и убедитесь, что главная отвечает ошибкой: `curl -s -o /dev/null -w '%{http_code}\n' localhost:58080/`.
+  2. Выполните миграции Django разовым контейнером сервиса `web`, который удалится после команды.
+  3. Последней командой получите главную страницу: `curl -s localhost:58080/`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: |
+      Django==5.2.8
+      gunicorn==23.0.0
+      psycopg[binary]==3.2.12
+    /home/shop/shop/manage.py: |
+      #!/usr/bin/env python
+      import os
+      import sys
+
+
+      def main():
+          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+          from django.core.management import execute_from_command_line
+          execute_from_command_line(sys.argv)
+
+
+      if __name__ == "__main__":
+          main()
+    /home/shop/shop/config/__init__.py: ""
+    /home/shop/shop/config/settings.py: |
+      import os
+      from pathlib import Path
+
+      BASE_DIR = Path(__file__).resolve().parent.parent
+      SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+      DEBUG = False
+      ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+      DATABASES = {
+          "default": {
+              "ENGINE": "django.db.backends.postgresql",
+              "NAME": os.environ.get("POSTGRES_DB", "shop"),
+              "USER": "postgres",
+              "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+              "HOST": os.environ.get("DB_HOST", "db"),
+              "PORT": "5432",
+          }
+      }
+      STATIC_URL = "static/"
+      STATIC_ROOT = BASE_DIR / "staticfiles"
+    /home/shop/shop/config/wsgi.py: |
+      import os
+      from django.core.wsgi import get_wsgi_application
+      os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+      application = get_wsgi_application()
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/views.py: |
+      from django.contrib.auth.models import User
+      from django.http import HttpResponse
+
+
+      def home(request):
+          return HttpResponse(f"Магазин работает, пользователей: {User.objects.count()}\n")
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      RUN python manage.py collectstatic --noinput
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "config.wsgi"]
+    /home/shop/shop/nginx.conf: |
+      server {
+          listen 80;
+
+          location /static/ {
+              alias /static/;
+          }
+
+          location / {
+              proxy_pass http://web:8000;
+              proxy_set_header Host $host;
+          }
+      }
+    /home/shop/shop/shop.env: |
+      POSTGRES_PASSWORD=s3cr3t
+      POSTGRES_DB=shop
+      DJANGO_SECRET_KEY=change-me-on-server
+      DJANGO_ALLOWED_HOSTS=localhost
+    /home/shop/shop/compose.yaml: |
+      services:
+        db:
+          image: postgres:16
+          env_file: shop.env
+          volumes:
+            - pgdata:/var/lib/postgresql/data
+          healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 2s
+            retries: 10
+          restart: unless-stopped
+
+        web:
+          build: .
+          env_file: shop.env
+          volumes:
+            - static:/app/staticfiles
+          depends_on:
+            db:
+              condition: service_healthy
+          restart: unless-stopped
+
+        nginx:
+          image: nginx:1.27-alpine
+          ports:
+            - "58080:80"
+          volumes:
+            - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+            - static:/static:ro
+          depends_on:
+            - web
+          restart: unless-stopped
+
+      volumes:
+        pgdata:
+        static:
+  docker:
+    images: [python:3.12-slim, postgres:16, nginx:1.27-alpine]
+check:
+  type: state
+  expect:
+    - docker: compose
+      service: nginx
+      status: running
+      fail: "Сервис nginx не работает — docker compose up -d --build."
+    - docker: compose
+      service: web
+      status: running
+      fail: "Сервис web не работает."
+    - output_matches: 'Магазин работает, пользователей: 0'
+      fail: "Последней командой получите главную curl -s localhost:58080/ — после миграций она отвечает «Магазин работает, пользователей: 0»."
+solution: |
+  docker compose up -d --build
+  curl -s -o /dev/null -w '%{http_code}\n' localhost:58080/
+  docker compose run --rm web python manage.py migrate
+  curl -s localhost:58080/
+hints:
+  - "Миграции — команда `python manage.py migrate`. Какая команда compose запускает разовый контейнер сервиса с его переменными и сетью?"
+  - "`docker compose run --rm web python manage.py migrate`."
+explanation: |
+  Ответ 500 — таблиц Django в новой базе ещё нет. `run --rm web` создал отдельный контейнер `shop-web-run-…` из того же образа, с теми же `env_file` и сетью, дождался здоровой базы, выполнил миграции и удалился. Работающий `shop-web-1` перезапускать не пришлось: таблицы появились в общей базе. При деплое этот шаг выполняют после каждого обновления образа.

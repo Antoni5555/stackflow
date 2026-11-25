@@ -1,0 +1,69 @@
+title: "Заказы переживают down"
+type: exercise
+difficulty: 3
+pitfall: "Именованный том: в сервисе pgdata:/var/lib/postgresql/data и в разделе volumes верхнего уровня."
+statement: |
+  Сейчас база магазина хранит данные в анонимном томе — после `docker compose down` и `up` она пустая. Исправьте и проверьте:
+  1. подключите к `db` именованный том `pgdata` в `/var/lib/postgresql/data` (не забудьте раздел `volumes:` внизу файла);
+  2. запустите проект и создайте заказ:
+     ```
+     docker compose exec db psql -U postgres -d shop -c "CREATE TABLE orders (id serial); INSERT INTO orders DEFAULT VALUES;"
+     ```
+  3. выполните `docker compose down`, затем снова запустите проект;
+  4. последней командой посчитайте заказы: `SELECT count(*) FROM orders;` в базе `shop`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+    /home/shop/shop/compose.yaml: |
+      services:
+        db:
+          image: postgres:16
+          environment:
+            POSTGRES_PASSWORD: shop
+            POSTGRES_DB: shop
+        web:
+          build: .
+          ports:
+            - "58000:8000"
+  docker:
+    images: [python:3.12-slim, postgres:16]
+check:
+  type: state
+  expect:
+    - docker: volume
+      name: shop_pgdata
+      mounted_in: shop-db-1
+      path: /var/lib/postgresql/data
+      fail: "Том shop_pgdata должен быть подключён к shop-db-1 в /var/lib/postgresql/data."
+    - docker: compose
+      service: db
+      status: running
+      fail: "В конце проект должен работать — снова docker compose up -d."
+    - output_matches: '^\s*1\s*$'
+      fail: "Последняя команда — SELECT count(*) FROM orders; через docker compose exec db: должна вернуть 1."
+solution: |
+  sed -i 's/^  web:/    volumes:\n      - pgdata:\/var\/lib\/postgresql\/data\n  web:/' compose.yaml
+  echo -e '\nvolumes:\n  pgdata:' >> compose.yaml
+  docker compose up -d --build
+  docker compose exec db psql -U postgres -d shop -c "CREATE TABLE orders (id serial); INSERT INTO orders DEFAULT VALUES;"
+  docker compose down
+  docker compose up -d
+  docker compose exec db psql -U postgres -d shop -c "SELECT count(*) FROM orders;"
+hints:
+  - "У `db` появляется `volumes:` со строкой `- pgdata:/var/lib/postgresql/data`, а в конце файла — раздел `volumes:` с `pgdata:`."
+  - "После правки: `up -d --build`, `exec db psql … CREATE …`, `down`, `up -d`, `exec db psql … SELECT count(*) …`."
+explanation: |
+  `down` удалил контейнеры и сеть, а том `shop_pgdata` (имя проекта + имя тома) оставил. Новый `shop-db-1` подключил его и увидел прежние файлы базы — заказ на месте. Удалить и тома может только `down -v` — на сервере это удаление базы.
