@@ -138,6 +138,19 @@ export function inspectImage(image) {
   };
 }
 
+/**
+ * Порядок ключей как у encoding/json в Go: поля структур (с заглавной буквы: Type, Config) —
+ * как объявлены, ключи map (метки, порты, max-size) — по алфавиту.
+ */
+export function goOrder(value) {
+  if (Array.isArray(value)) return value.map(goOrder);
+  if (!value || typeof value !== 'object') return value;
+  const keys = Object.keys(value);
+  const struct = keys.length && keys.every((key) => /^[A-Z]/.test(key));
+  const ordered = struct ? keys : [...keys].sort();
+  return Object.fromEntries(ordered.map((key) => [key, goOrder(value[key])]));
+}
+
 // --- шаблоны Go: {{.State.Status}}, {{json .Mounts}}, {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} ---
 
 function lookup(data, path) {
@@ -198,7 +211,7 @@ export function renderTemplate(template, data) {
       const json = /^json\s+(\S+)$/.exec(expr);
       if (json) {
         const value = lookup(scope, json[1]);
-        text += JSON.stringify(value === undefined ? null : value);
+        text += JSON.stringify(goOrder(value === undefined ? null : value));
         continue;
       }
       const index = /^index\s+(\S+)\s+"([^"]*)"$/.exec(expr);

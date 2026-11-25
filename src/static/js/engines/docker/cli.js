@@ -11,7 +11,7 @@ import {
   startContainer, stopContainer,
 } from './containers.js';
 import { humanDuration, humanSize, isoNano, table } from './format.js';
-import { inspectContainer, inspectImage, renderTemplate } from './inspect.js';
+import { goOrder, inspectContainer, inspectImage, renderTemplate } from './inspect.js';
 import { networkCommand, volumeCommand, volumeSize } from './networks.js';
 import { prune, systemDf } from './prune.js';
 import { BuildError, baseHistory, buildImage } from './build.js';
@@ -759,7 +759,7 @@ function inspect({ fs, args }) {
 /** JSON как у docker inspect: отступ 4, <>& — \u003c… (Go экранирует их для HTML). */
 function jsonText(list) {
   if (!list.length) return '[]';
-  return JSON.stringify(list, null, 4).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+  return JSON.stringify(goOrder(list), null, 4).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 }
 
 const NETWORK_HELP = `docker network — сети контейнеров.

@@ -937,7 +937,7 @@ volumes:
     assert.equal(run(sh, 'docker image prune -f --filter label=sf-lesson=1').out, 'Total reclaimed space: 0B\n');
     assert.match(run(sh, 'docker image prune -a -f --filter label=sf-lesson=1').out, /^Deleted Images:\nuntagged: junk:1\ndeleted: sha256:[0-9a-f]{64}\n(deleted: sha256:[0-9a-f]{64}\n){2}Total reclaimed space: \S+\n$/);
     run(sh, 'docker run -d --name worker --log-opt max-size=10m --log-opt max-file=3 alpine:3 sleep 30');
-    assert.equal(run(sh, "docker inspect -f '{{json .HostConfig.LogConfig}}' worker").out, '{"Type":"json-file","Config":{"max-size":"10m","max-file":"3"}}\n');
+    assert.equal(run(sh, "docker inspect -f '{{json .HostConfig.LogConfig}}' worker").out, '{"Type":"json-file","Config":{"max-file":"3","max-size":"10m"}}\n');
     assert.match(run(sh, 'docker system prune').out, /^WARNING! This will remove:\n  - all stopped containers\n  - all networks not used by at least one container\n  - all dangling images\n  - unused build cache\n\nAre you sure you want to continue\? \[y\/N\] \n$/);
     assert.match(run(sh, 'docker container prune').out, /^WARNING! This will remove all stopped containers\.\nAre you sure you want to continue\? \[y\/N\] \n$/);
     run(sh, 'docker compose down');
