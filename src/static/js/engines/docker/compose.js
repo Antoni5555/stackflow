@@ -15,6 +15,7 @@ import { humanDuration, table } from './format.js';
 import { addCatalogImage, dockerState, findImage, newId, shortId } from './state.js';
 import { forgetVolume } from './psql.js';
 import { YamlError, dumpYaml, parseYaml } from './yaml.js';
+import { renderTemplate } from './inspect.js';
 
 const out = (text) => ({ text, err: false });
 const err = (text) => ({ text, err: true });
@@ -558,7 +559,8 @@ function down(ctx, project, args) {
   const state = dockerState(sh.fs);
   const chunks = [];
   const volumes = args.includes('-v') || args.includes('--volumes');
-  const containers = ordered(project, Object.values(project.services)).reverse()
+  // только включённые сервисы: tools с профилем без --profile tools остаётся работать
+  const containers = ordered(project, active(project)).reverse()
     .map((service) => serviceContainer(state, project, service)).filter(Boolean);
   const oneoff = projectContainers(state, project).filter((c) => c.labels['com.docker.compose.oneoff']);
   const anonymous = [];
@@ -585,10 +587,14 @@ function down(ctx, project, args) {
     }
   }
   const network = networkName(project);
-  if (state.networks[network] && !state.containers.some((c) => network in c.networks && c.status === 'running')) {
+  if (state.networks[network]) {
     chunks.push(line(`Network ${network} Removing`));
-    delete state.networks[network];
-    chunks.push(line(`Network ${network} Removed`));
+    if (state.containers.some((c) => network in c.networks && c.status === 'running')) {
+      chunks.push(line(`Network ${network} Resource is still in use`));
+    } else {
+      delete state.networks[network];
+      chunks.push(line(`Network ${network} Removed`));
+    }
   }
   if (args.includes('--rmi')) {
     for (const service of Object.values(project.services).filter((item) => item.build)) {
@@ -613,6 +619,22 @@ function ps(ctx, project, argv) {
     .filter((c) => !only.length || only.includes(c.labels['com.docker.compose.service']))
     .sort((a, b) => (a.name < b.name ? -1 : 1));
   if (args.includes('-q') || args.includes('--quiet')) return { chunks: list.length ? [out(`${list.map((c) => c.id).join('\n')}\n`)] : [], code: 0 };
+  const format = argv[argv.indexOf('--format') + 1];
+  if (argv.includes('--format') && format && format !== 'table') {
+    const rowsData = list.map((c) => {
+      const health = healthStatus(ctx.fs, c) ?? '';
+      return {
+        ID: shortId(c.id), Name: c.name, Names: c.name, Image: c.image, Command: `"${commandLine(c)}"`, Project: project.name,
+        Service: c.labels['com.docker.compose.service'], CreatedAt: new Date(c.created).toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' +0000 UTC'),
+        RunningFor: `${humanDuration(now() - c.created)} ago`, State: c.status, Health: health, ExitCode: c.exitCode,
+        Status: c.status === 'running' ? `Up ${humanDuration(now() - c.startedAt)}${health ? ` (${health === 'starting' ? 'health: starting' : health})` : ''}`
+          : c.status === 'exited' ? `Exited (${c.exitCode}) ${humanDuration(now() - c.finishedAt)} ago` : 'Created',
+        Ports: c.status === 'running' ? c.ports.flatMap((port) => [`0.0.0.0:${port.hostPort}->${port.port}/tcp`, `[::]:${port.hostPort}->${port.port}/tcp`]).join(', ') : '',
+      };
+    });
+    if (format === 'json') return { chunks: rowsData.length ? [out(`${rowsData.map((item) => JSON.stringify(item)).join('\n')}\n`)] : [], code: 0 };
+    return { chunks: rowsData.length ? [out(`${rowsData.map((item) => renderTemplate(format.replace(/^table /, ''), item)).join('\n')}\n`)] : [], code: 0 };
+  }
   if (args.includes('--services')) return { chunks: list.length ? [out(`${list.map((c) => c.labels['com.docker.compose.service']).join('\n')}\n`)] : [], code: 0 };
   const rows = list.map((c) => {
     const command = commandLine(c);

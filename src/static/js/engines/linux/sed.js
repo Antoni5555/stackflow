@@ -96,6 +96,10 @@ function toJsRegex(pattern, extended, delim) {
       out += `\\${ch}`;
     } else if (!extended && ch === '*' && (out === '' || out === '^')) {
       out += '\\*';                                 // «*» в начале BRE — обычный символ
+    } else if (!extended && ch === '$' && i < pattern.length - 1 && !/^\\[)|]/.test(pattern.slice(i + 1))) {
+      out += '\\$';                                 // «$» не в конце BRE — обычный символ: s/${X}/Y/
+    } else if (!extended && ch === '^' && out !== '' && !/(^|[^\\])[(|]$/.test(out)) {
+      out += '\\^';                                 // «^» не в начале BRE — обычный символ
     } else if (ch === '/') {
       out += '\\/';
     } else {

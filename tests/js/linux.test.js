@@ -618,3 +618,17 @@ describe('задачи: правила состояния', async () => {
     assert.ok(!ok({ path: '/srv/shop/nope', not_contains: 'x' }));   // файла нет — не пройдено
   });
 });
+
+describe('sed: $ и ^ в середине BRE — обычные символы', () => {
+  it('как GNU sed', async () => {
+    const { VirtualFS: FS } = await import('../../src/static/js/engines/linux/fs.js');
+    const { Shell: Sh } = await import('../../src/static/js/engines/linux/shell.js');
+    const sh = new Sh(FS.fromSetup({}));
+    const out = (line) => sh.run(line).chunks.map((c) => c.text).join('');
+    assert.equal(out("echo 'a ${X} b' | sed 's/${X}/Y/'"), 'a Y b\n');
+    assert.equal(out("echo 'a$b' | sed 's/a$b/Z/'"), 'Z\n');
+    assert.equal(out("echo 'b^a' | sed 's/b^a/W/'"), 'W\n');
+    assert.equal(out("echo 'ab' | sed 's/b$/Z/'"), 'aZ\n');
+    assert.equal(out("echo 'ab' | sed 's/^a/W/'"), 'Wb\n');
+  });
+});

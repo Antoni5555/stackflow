@@ -900,4 +900,23 @@ volumes:
     assert.equal(migrate.code, 1);
     assert.match(migrate.err, /django\.db\.utils\.OperationalError: connection failed: connection to server at "127\.0\.0\.1", port 5432 failed: Connection refused\n/);
   });
+
+  it('down без --profile не трогает сервис профиля (сеть занята), ps --format, sed с ${…}, psql \\dt шаблон', async () => {
+    const sh = project({
+      '/home/shop/shop/compose.yaml': 'services:\n  web:\n    build: .\n    ports:\n      - "${WEB_PORT}:8000"\n  tools:\n    image: alpine:3\n    command: ["sleep", "3600"]\n    profiles: ["tools"]\n',
+      '/home/shop/shop/.env': 'WEB_PORT=58000\n',
+    });
+    run(sh, 'docker compose --profile tools up -d');
+    assert.equal(run(sh, 'docker compose ps --format "{{.Service}} {{.Status}}"').out, 'tools Up Less than a second\nweb Up Less than a second\n');
+    assert.match(run(sh, 'docker compose down').err, / Container shop-web-1 Removed \n Network shop_default Removing \n Network shop_default Resource is still in use \n$/);
+    assert.match(run(sh, 'docker compose ps').out, /shop-tools-1/);
+    assert.match(run(sh, 'docker compose --profile tools down').err, / Network shop_default Removed \n$/);
+    run(sh, "sed -i 's/${WEB_PORT}/${WEB_PORT:-58000}/' compose.yaml");
+    assert.match(run(sh, 'cat compose.yaml').out, /"\$\{WEB_PORT:-58000\}:8000"/);
+    const stack = shell(SETUP_STACK);
+    run(stack, 'docker compose up -d --build');
+    run(stack, 'docker compose run --rm web python manage.py migrate');
+    const { pending } = stack.run('docker compose exec -T db psql -U postgres -d shop -c "\\dt django_*"');
+    assert.match((await pending).chunks.map((c) => c.text).join(''), /^ {16}List of relations\n[^\n]+\n[^\n]+\n public \| django_admin_log {4}\| table \| postgres\n public \| django_content_type \| table \| postgres\n public \| django_migrations {3}\| table \| postgres\n public \| django_session {6}\| table \| postgres\n\(4 rows\)\n\n$/);
+  });
 });

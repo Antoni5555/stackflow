@@ -254,6 +254,14 @@ WHERE c.relkind IN (%KINDS%) AND n.nspname <> 'pg_catalog' AND n.nspname !~ '^pg
   AND n.nspname <> 'information_schema'
 ORDER BY 1, 2`;
 
+/** Шаблон имени psql (\\dt django_*): * — любые символы, ? — один, без кавычек — в нижнем регистре. */
+function patternRegex(text) {
+  const name = text.includes('.') ? text.split('.').pop() : text;
+  const quoted = /^".*"$/.test(name);
+  const raw = quoted ? name.slice(1, -1) : name.toLowerCase();
+  return `^(${raw.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')})$`;
+}
+
 async function describeTable(pg, name) {
   const [schema, table] = name.includes('.') ? name.split('.') : ['public', name];
   const columns = await pg.query(`SELECT a.attname AS "Column", pg_catalog.format_type(a.atttypid, a.atttypmod) AS "Type",
@@ -304,11 +312,22 @@ async function meta(session, line) {
     case '\\dv':
     case '\\di':
     case '\\ds':
-      if (command === '\\d' && args[0]) return { out: await run((pg) => describeTable(pg, args[0])) };
+      if (command === '\\d' && args[0] && !/[*?]/.test(args[0])) return { out: await run((pg) => describeTable(pg, args[0])) };
       return run(async (pg) => {
         const kinds = { '\\dt': "'r','p'", '\\dv': "'v','m'", '\\di': "'i'", '\\ds': "'S'", '\\d': "'r','p','v','m','S','f'" }[command];
-        const result = await pg.query(LIST_SQL.replace('%KINDS%', kinds));
-        if (!result.rows.length) return { out: '', err: 'Did not find any relations.\n' };
+        // шаблон psql: django_* → имя целиком по регулярному выражению ^(django_.*)$
+        const pattern = args[0] ? patternRegex(args[0]) : null;
+        const sql = LIST_SQL.replace('%KINDS%', kinds).replace('ORDER BY 1, 2', pattern ? `AND c.relname ~ $1\nORDER BY 1, 2` : 'ORDER BY 1, 2');
+        const result = await pg.query(sql, pattern ? [pattern] : []);
+        if (command === '\\d' && pattern) {
+          if (!result.rows.length) return { out: '', err: `Did not find any relation named "${args[0]}".\n` };
+          let text = '';
+          for (const row of result.rows) text += await describeTable(pg, `${row.Schema}.${row.Name}`);
+          return { out: text };
+        }
+        if (!result.rows.length) {
+          return { out: '', err: pattern ? `Did not find any relation named "${args[0]}".\n` : 'Did not find any relations.\n' };
+        }
         return { out: formatTable(result.fields, result.rows, { title: 'List of relations' }) };
       });
     case '\\du':
