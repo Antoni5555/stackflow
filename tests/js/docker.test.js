@@ -528,3 +528,69 @@ describe('psql в контейнере postgres (PGlite)', async () => {
     assert.deepEqual(await verifyTaskAsync(task), []);
   });
 });
+
+describe('сети и тома (шаг 3)', () => {
+  it('network ls/create/connect/inspect/rm и ошибки', () => {
+    const sh = shell({ docker: { images: ['postgres:16'] } });
+    assert.match(run(sh, 'docker network ls').out, /^NETWORK ID {5}NAME {6}DRIVER {4}SCOPE\n[0-9a-f]{12} {3}bridge {4}bridge {4}local\n[0-9a-f]{12} {3}host {6}host {6}local\n[0-9a-f]{12} {3}none {6}null {6}local\n$/);
+    assert.match(run(sh, 'docker network create shop').out, /^[0-9a-f]{64}\n$/);
+    assert.equal(run(sh, 'docker network create shop').err, 'Error response from daemon: network with name shop already exists\n');
+    run(sh, 'docker run -d --name shop-db -e POSTGRES_PASSWORD=shop postgres:16');
+    assert.equal(run(sh, 'docker network connect shop shop-db').code, 0);
+    assert.equal(run(sh, 'docker network connect shop shop-db').err, 'Error response from daemon: endpoint with name shop-db already exists in network shop\n');
+    assert.equal(run(sh, "docker network inspect --format '{{range .Containers}}{{.Name}} {{.IPv4Address}}{{end}}' shop").out, 'shop-db 172.18.0.2/16\n');
+    assert.match(run(sh, 'docker network rm shop').err, /^Error response from daemon: error while removing network: network shop has active endpoints \(name:"shop-db" id:"[0-9a-f]{12}"\)\nexit status 1\n$/);
+    assert.equal(run(sh, 'docker network rm bridge').err, 'Error response from daemon: bridge is a pre-defined network and cannot be removed\nexit status 1\n');
+    assert.equal(run(sh, 'docker network connect nosuch shop-db').err, 'Error response from daemon: network nosuch not found\n');
+    run(sh, 'docker rm -f shop-db');
+    assert.equal(run(sh, 'docker network rm shop').out, 'shop\n');
+  });
+
+  it('DNS по имени — только в своей сети; localhost — сам контейнер', () => {
+    const sh = shell({ docker: { images: ['postgres:16', 'alpine:3.20', 'nginx:1.27-alpine'] } });
+    run(sh, 'docker run -d --name shop-db -e POSTGRES_PASSWORD=shop postgres:16');
+    assert.deepEqual(run(sh, 'docker run --rm postgres:16 pg_isready -h shop-db'), { out: 'shop-db:5432 - no response\n', err: '', code: 2 });
+    assert.deepEqual(run(sh, 'docker run --rm alpine:3.20 ping -c 1 shop-db'), { out: '', err: "ping: bad address 'shop-db'\n", code: 1 });
+    run(sh, 'docker network create shop');
+    run(sh, 'docker network connect shop shop-db');
+    assert.deepEqual(run(sh, 'docker run --rm --network shop postgres:16 pg_isready -h shop-db'), { out: 'shop-db:5432 - accepting connections\n', err: '', code: 0 });
+    assert.deepEqual(run(sh, 'docker run --rm --network shop postgres:16 pg_isready -h localhost'), { out: 'localhost:5432 - no response\n', err: '', code: 2 });
+    assert.match(run(sh, 'docker run --rm --network shop alpine:3.20 ping -c 1 shop-db').out, /^PING shop-db \(172\.18\.0\.2\): 56 data bytes\n64 bytes from 172\.18\.0\.2: seq=0 ttl=64/);
+    assert.equal(run(sh, 'docker exec shop-db pg_isready').out, '/var/run/postgresql:5432 - accepting connections\n');
+    run(sh, 'docker run -d --name web --network shop nginx:1.27-alpine');
+    assert.match(run(sh, 'docker exec web curl -s web').out, /Welcome to nginx!/);
+    assert.equal(run(sh, 'docker exec web curl -s shop-db:5432').code, 52);
+    assert.equal(run(sh, 'docker exec web curl -s nosuch').err, 'curl: (6) Could not resolve host: nosuch\n');
+    assert.match(run(sh, 'curl -sI 172.18.0.3').out, /^HTTP\/1\.1 200 OK\nServer: nginx\/1\.27\.5/);
+  });
+
+  it('volume create/ls/inspect/rm и ошибки', () => {
+    const sh = shell({ docker: { images: ['alpine:3.20'] } });
+    assert.equal(run(sh, 'docker volume ls').out, 'DRIVER    VOLUME NAME\n');
+    assert.equal(run(sh, 'docker volume create data').out, 'data\n');
+    assert.equal(run(sh, 'docker volume create data').out, 'data\n');
+    assert.equal(run(sh, 'docker volume ls').out, 'DRIVER    VOLUME NAME\nlocal     data\n');
+    const [info] = JSON.parse(run(sh, 'docker volume inspect data').out);
+    assert.deepEqual(Object.keys(info), ['CreatedAt', 'Driver', 'Labels', 'Mountpoint', 'Name', 'Options', 'Scope']);
+    assert.equal(info.Mountpoint, '/var/lib/docker/volumes/data/_data');
+    const id = run(sh, 'docker run -d --name box -v data:/data alpine:3.20 sleep 300').out.trim();
+    assert.equal(run(sh, 'docker volume rm data').err, `Error response from daemon: remove data: volume is in use - [${id}]\n`);
+    assert.equal(run(sh, 'docker volume rm nosuch').err, 'Error response from daemon: get nosuch: no such volume\n');
+    assert.equal(JSON.parse(run(sh, "docker inspect -f '{{json .Mounts}}' box").out)[0].Mode, '');
+    run(sh, 'docker rm -f box');
+    assert.equal(run(sh, 'docker volume rm data').out, 'data\n');
+  });
+
+  it('volume prune: без -a — только анонимные, с -a — и именованные; без -f — вопрос', () => {
+    const sh = shell({ docker: { images: ['postgres:16'] } });
+    run(sh, 'docker run -d --name db -e POSTGRES_PASSWORD=x postgres:16');
+    run(sh, 'docker volume create keep');
+    assert.match(run(sh, 'docker volume prune').out, /^WARNING! This will remove anonymous local volumes not used by at least one container\.\nAre you sure you want to continue\? \[y\/N\] /);
+    assert.equal(run(sh, 'docker volume prune -f').out, 'Total reclaimed space: 0B\n');   // том базы занят
+    run(sh, 'docker rm -f db');
+    assert.match(run(sh, 'docker volume prune -f').out, /^Deleted Volumes:\n[0-9a-f]{64}\n\nTotal reclaimed space: \S+MB\n$/);
+    assert.equal(run(sh, 'docker volume ls -q').out, 'keep\n');
+    assert.match(run(sh, 'echo y | docker volume prune -a').out, /Deleted Volumes:\nkeep\n/);
+    assert.equal(run(sh, 'docker volume ls -q').out, '');
+  });
+});

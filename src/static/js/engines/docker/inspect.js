@@ -74,7 +74,7 @@ export function inspectContainer(hostFs, state, c) {
     },
     Mounts: c.mounts.map((m) => (m.type === 'bind'
       ? { Type: 'bind', Source: m.source, Destination: m.destination, Mode: m.readOnly ? 'ro' : '', RW: !m.readOnly, Propagation: 'rprivate' }
-      : { Type: 'volume', Name: m.name, Source: `/var/lib/docker/volumes/${m.name}/_data`, Destination: m.destination, Driver: 'local', Mode: m.readOnly ? 'ro' : 'z', RW: !m.readOnly, Propagation: '' })),
+      : { Type: 'volume', Name: m.name, Source: `/var/lib/docker/volumes/${m.name}/_data`, Destination: m.destination, Driver: 'local', Mode: m.readOnly ? 'ro' : '', RW: !m.readOnly, Propagation: '' })),
     Config: {
       Hostname: c.env.find((item) => item.startsWith('HOSTNAME='))?.slice(9) ?? c.id.slice(0, 12),
       Domainname: '',

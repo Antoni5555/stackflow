@@ -27,7 +27,7 @@ const BASE = [
   'tar', 'gzip', 'gunzip', 'clear', 'history', 'help', 'sleep',
 ];
 const DEBIAN = [...BASE, 'bash', 'which'];
-const ALPINE = [...BASE, 'which', 'ps', 'pgrep', 'pkill', 'top'];
+const ALPINE = [...BASE, 'which', 'ps', 'pgrep', 'pkill', 'top', 'ping'];
 
 const OS = {
   trixie: `PRETTY_NAME="Debian GNU/Linux 13 (trixie)"

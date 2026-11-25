@@ -5,7 +5,7 @@
 import { now } from '../linux/clock.js';
 import { COMMANDS } from '../linux/commands.js';
 import { GROUPS, USERS, VirtualFS } from '../linux/fs.js';
-import { requestHooks } from '../linux/network.js';
+import { connectHooks, requestHooks } from '../linux/network.js';
 import { ruleHooks } from '../linux/checker.js';
 import { docker } from './cli.js';
 import { containerCommands, containerOfProc, startContainer, createContainer } from './containers.js';
@@ -14,6 +14,7 @@ import { addCatalogImage, dockerState, findImage, randomName } from './state.js'
 import { failedDockerRule } from './rules.js';
 import { python } from './python.js';
 import { psql } from './psql.js';
+import { connectHook, networkCommands } from './networks.js';
 
 COMMANDS.docker = docker;
 
@@ -27,13 +28,10 @@ Object.assign(containerCommands, {
   python,
   python3: python,
   psql,
+  ...networkCommands(),
   sleep: {
     help: 'sleep N — подождать N секунд (в тренажёре не ждёт).',
     run: ({ args }) => (args.length ? {} : { err: "sleep: missing operand\nTry 'sleep --help' for more information.\n", code: 1 }),
-  },
-  pg_isready: {
-    help: 'pg_isready — принимает ли PostgreSQL подключения.',
-    run: () => ({ out: '/var/run/postgresql:5432 - accepting connections\n', code: 0 }),
   },
   'redis-cli': {
     help: 'redis-cli — клиент Redis: redis-cli ping, redis-cli set ключ значение, redis-cli get ключ.',
@@ -66,6 +64,8 @@ requestHooks.push((fs, proc, request) => {
   if (program === 'postgres') return { error: [52, 'Empty reply from server'] };
   return { error: [1, 'Received HTTP/0.9 when not allowed'] };
 });
+
+connectHooks.push(connectHook);
 
 // --- setup задачи ---
 

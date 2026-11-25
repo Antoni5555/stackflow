@@ -11,6 +11,7 @@ import {
 } from './containers.js';
 import { humanDuration, humanSize, isoNano, table } from './format.js';
 import { inspectContainer, inspectImage, renderTemplate } from './inspect.js';
+import { networkCommand, volumeCommand } from './networks.js';
 import {
   addCatalogImage, dockerState, findContainer, findImage, randomName, shortId,
 } from './state.js';
@@ -729,10 +730,30 @@ function inspect({ fs, args }) {
   if (format) {
     return result([...found.map((item) => out(`${renderTemplate(format, item)}\n`)), ...chunks], code);
   }
-  const json = JSON.stringify(found, null, 4)
-    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
-  return result([out(`${found.length ? json : '[]'}\n`), ...chunks], code);
+  return result([out(`${jsonText(found)}\n`), ...chunks], code);
 }
+
+/** JSON как у docker inspect: отступ 4, <>& — \u003c… (Go экранирует их для HTML). */
+function jsonText(list) {
+  if (!list.length) return '[]';
+  return JSON.stringify(list, null, 4).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+}
+
+const NETWORK_HELP = `docker network — сети контейнеров.
+  docker network ls                      сети (bridge, host, none — есть всегда)
+  docker network create ИМЯ              своя сеть: в ней контейнеры видят друг друга по имени
+  docker network connect СЕТЬ КОНТЕЙНЕР  подключить работающий контейнер
+  docker network disconnect СЕТЬ КОНТЕЙНЕР
+  docker network inspect СЕТЬ            подробности (кто подключён, адреса)
+  docker network rm СЕТЬ                 удалить (если к ней не подключены работающие контейнеры)
+  docker network prune -f                удалить неиспользуемые свои сети`;
+
+const VOLUME_HELP = `docker volume — тома: данные, которые живут дольше контейнера.
+  docker volume ls                 тома
+  docker volume create ИМЯ         создать (docker run -v ИМЯ:/путь создаёт сам)
+  docker volume inspect ИМЯ        подробности
+  docker volume rm ИМЯ             удалить (если ни один контейнер его не использует)
+  docker volume prune -f           удалить неиспользуемые анонимные тома; -a — и именованные`;
 
 // --- version, help ---
 
@@ -788,7 +809,7 @@ const GROUPS = {
   image: { ls: images, list: images, pull, rm: rmi, remove: rmi, tag, inspect },
 };
 
-const LATER = new Set(['volume', 'network', 'build', 'compose', 'system', 'login', 'logout', 'push', 'builder', 'buildx', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'port', 'diff', 'events', 'history', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
+const LATER = new Set(['build', 'compose', 'system', 'login', 'logout', 'push', 'builder', 'buildx', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'port', 'diff', 'events', 'history', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
 
 export const docker = {
   help: HELP,
@@ -798,6 +819,12 @@ export const docker = {
     if (!args.length || (args.length === 1 && ['--help', '-h', 'help'].includes(args[0]))) return { out: `${HELP}\n`, code: args.length ? 0 : 0 };
     if (args[0] === '--version' || args[0] === '-v') return { out: 'Docker version 29.10.0, build fdd4b8e\n' };
     let [name, ...rest] = args;
+    if (name === 'network' || name === 'volume') {
+      const [sub, ...more] = rest;
+      if (!sub || sub === '--help') return { out: `${name === 'network' ? NETWORK_HELP : VOLUME_HELP}\n` };
+      const done = (name === 'network' ? networkCommand : volumeCommand)(ctx, sub, more, { renderTemplate, jsonText });
+      return { chunks: done.chunks, code: done.code, out: '', err: '' };
+    }
     let handler = SUBCOMMANDS[name];
     let label = name;
     if (GROUPS[name]) {

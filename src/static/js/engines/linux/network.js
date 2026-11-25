@@ -221,6 +221,13 @@ function nginxResponse(fs, state, master, request) {
  */
 export const requestHooks = [];
 
+/**
+ * Адреса, которые знает учебный Docker: внутри контейнера — имена соседей по сети и localhost,
+ * на сервере — IP контейнеров. hook(ctx, {host, port, method, path}) → null (не его адрес) |
+ * {unresolved: true} | {ip, answer: () => ответ как у request}.
+ */
+export const connectHooks = [];
+
 /** Запрос к адресу: {code, headers, body} или {error: [номер, текст]}. */
 function request(fs, target, method, path) {
   const state = systemState(fs);
@@ -295,16 +302,21 @@ export const curl = {
       if (!match) return fail(`curl: (3) URL rejected: Malformed input to a URL function\n`, 3);
       const [, scheme = 'http', host, portText, path = '/'] = match;
       const port = Number(portText ?? (scheme === 'https' ? 443 : 80));
-      const ip = LOCAL.get(host);
+      // адрес контейнера Docker (имя в сети, 172.17.0.2, localhost внутри контейнера)
+      const hooked = socket ? null
+        : connectHooks.reduce((found, hook) => found ?? hook(ctx, { host, port, method: opts.method, path, hostHeader }), null);
+      if (hooked?.unresolved) return { out, err: `${err}curl: (6) Could not resolve host: ${host}\n`, code: 6 };
+      const ip = hooked?.ip ?? LOCAL.get(host);
       if (!socket && !ip) return { out, err: `${err}curl: (6) Could not resolve host: ${host}\n`, code: 6 };
       const target = socket ? { unix: socket, host, port, hostHeader } : { host, ip, port, hostHeader };
       if (opts.verbose) err += `*   Trying ${socket ?? `${ip}:${port}`}...\n`;
+      const ask = () => (hooked ? hooked.answer() : request(ctx.fs, target, opts.method, path));
       if (scheme === 'https' && !socket) {
-        const answer = request(ctx.fs, target, opts.method, path);
+        const answer = ask();
         if (answer.error) return { out, err: `${err}curl: (${answer.error[0]}) ${answer.error[1]}\n`, code: answer.error[0] };
         return { out, err: `${err}curl: (35) OpenSSL/3.0.13: error:0A00010B:SSL routines::wrong version number\n`, code: 35 };
       }
-      const answer = request(ctx.fs, target, opts.method, path);
+      const answer = ask();
       if (answer.error) return { out, err: `${err}curl: (${answer.error[0]}) ${answer.error[1]}\n`, code: answer.error[0] };
       const status = `HTTP/1.1 ${answer.code} ${STATUS_TEXT[answer.code] ?? ''}`.trimEnd();
       const headerText = [status, ...answer.headers.map(([name, value]) => `${name}: ${value}`)].join('\n');
