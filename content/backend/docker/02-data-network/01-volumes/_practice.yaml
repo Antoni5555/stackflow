@@ -1,0 +1,36 @@
+- title: Где лежит том
+  text: |
+    Запустите базу на именованном томе и посмотрите, куда подключён том:
+    ```
+    -v pgdata:/var/lib/postgresql/data
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker run -d --name db -e POSTGRES_PASSWORD=shop -v pgdata:/var/lib/postgresql/data postgres:16
+    docker inspect -f "{{json .Mounts}}" db
+    ```
+    Результат (без строк загрузки и ID):
+    ```
+    [{"Type":"volume","Name":"pgdata","Source":"/var/lib/docker/volumes/pgdata/_data","Destination":"/var/lib/postgresql/data","Driver":"local","Mode":"z","RW":true,"Propagation":""}]
+    ```
+    `Source` — где файлы на сервере, `Destination` — где их видит контейнер.
+- title: Инициализация пропущена
+  text: |
+    Удалите контейнер из прошлого упражнения, запустите новый с тем же томом и найдите в журнале строку про инициализацию:
+    ```
+    Skipping initialization
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker rm -f db
+    docker run -d --name db -e POSTGRES_PASSWORD=shop -v pgdata:/var/lib/postgresql/data postgres:16
+    docker logs db | grep -i skipping
+    ```
+    Результат (без ID):
+    ```
+    db
+    PostgreSQL Database directory appears to contain a database; Skipping initialization
+    ```
+    Том уже содержит базу — новый контейнер её не пересоздаёт.

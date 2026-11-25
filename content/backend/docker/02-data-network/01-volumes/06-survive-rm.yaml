@@ -1,0 +1,47 @@
+title: "Заказ пережил пересоздание"
+type: exercise
+difficulty: 2
+pitfall: "Новый контейнер с тем же именованным томом видит прежние данные; init-переменные при этом не нужны."
+statement: |
+  База `shop-db` уже работает на томе `pgdata`. Проверьте, что данные переживают пересоздание контейнера:
+  1. создайте таблицу и заказ:
+     ```
+     docker exec shop-db psql -U postgres -d shop -c "CREATE TABLE orders (id serial); INSERT INTO orders DEFAULT VALUES;"
+     ```
+  2. удалите контейнер `shop-db`;
+  3. запустите новый `shop-db` с тем же томом (пароль `shop`);
+  4. последней командой посчитайте заказы: `SELECT count(*) FROM orders;` в базе `shop`.
+setup:
+  cwd: /home/shop
+  docker:
+    images: [postgres:16]
+    volumes: [pgdata]
+    containers:
+      - name: shop-db
+        image: postgres:16
+        env: {POSTGRES_PASSWORD: shop, POSTGRES_DB: shop}
+        volumes: ["pgdata:/var/lib/postgresql/data"]
+        running: true
+check:
+  type: state
+  expect:
+    - docker: container
+      name: shop-db
+      status: running
+      fail: "В конце shop-db должен работать — запустите новый контейнер."
+    - docker: volume
+      name: pgdata
+      mounted_in: shop-db
+      fail: "Новый shop-db должен быть на томе pgdata — иначе он начнёт с пустой базы."
+    - output_matches: '^\s*1\s*$'
+      fail: "Последняя команда — SELECT count(*) FROM orders; в базе shop: должна вернуть 1."
+solution: |
+  docker exec shop-db psql -U postgres -d shop -c "CREATE TABLE orders (id serial); INSERT INTO orders DEFAULT VALUES;"
+  docker rm -f shop-db
+  docker run -d --name shop-db -e POSTGRES_PASSWORD=shop -v pgdata:/var/lib/postgresql/data postgres:16
+  docker exec shop-db psql -U postgres -d shop -c "SELECT count(*) FROM orders;"
+hints:
+  - "Удалить работающий контейнер — `docker rm -f`. С каким `-v` запустить новый, чтобы он увидел старые файлы?"
+  - "`docker run -d --name shop-db -e POSTGRES_PASSWORD=shop -v pgdata:/var/lib/postgresql/data postgres:16`, затем `SELECT count(*)`."
+explanation: |
+  Контейнер удалён, а том `pgdata` с файлами базы остался. Новый контейнер подключил его и пропустил инициализацию: база `shop` и заказ на месте. `POSTGRES_DB` при этом можно не передавать — переменные инициализации работают только на пустом томе.

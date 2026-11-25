@@ -1,0 +1,37 @@
+- title: Две переменные
+  text: |
+    Передайте в разовый контейнер две переменные и выведите его окружение:
+    ```
+    SHOP=prod, DEBUG=False
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker run --rm -e SHOP=prod -e DEBUG=False alpine:3.20 env
+    ```
+    Результат:
+    ```
+    PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    HOSTNAME=26cbc70c8583
+    SHOP=prod
+    DEBUG=False
+    HOME=/root
+    ```
+    `-e` на каждую переменную; `PATH`, `HOSTNAME` и `HOME` задал сам Docker.
+- title: Из окружения сервера
+  text: |
+    Задайте переменную на сервере и передайте её в контейнер без значения в команде:
+    ```
+    REGION=msk
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    export REGION=msk
+    docker run --rm -e REGION alpine:3.20 sh -c 'echo "регион: $REGION"'
+    ```
+    Результат:
+    ```
+    регион: msk
+    ```
+    `-e REGION` без `=` взял значение из окружения оболочки.

@@ -1,0 +1,36 @@
+title: "Своя страница в Nginx"
+type: exercise
+difficulty: 2
+pitfall: "Bind mount: -v ./папка:/путь — файлы с сервера видны в контейнере и закрывают содержимое образа."
+statement: |
+  В папке `/home/shop/site` лежит страница акции `index.html`. Отдайте её через Nginx без сборки своего образа:
+  - контейнер `promo` из `nginx:1.27-alpine` в фоне, порт 8080 сервера → 80 контейнера;
+  - папка `./site` подключена в `/usr/share/nginx/html`.
+
+  Последней командой получите страницу: `curl -s localhost:8080`.
+setup:
+  cwd: /home/shop
+  files:
+    /home/shop/site/index.html: "<h1>Скидки недели</h1>\n"
+check:
+  type: state
+  expect:
+    - docker: container
+      name: promo
+      status: running
+      fail: "Контейнер promo не работает."
+    - docker: port
+      container: promo
+      host: 8080
+      port: 80
+      fail: "Нужен проброс -p 8080:80."
+    - output_matches: 'Скидки недели'
+      fail: "Последней командой получите страницу curl -s localhost:8080 — там должна быть ваша страница, а не Welcome to nginx."
+solution: |
+  docker run -d --name promo -p 8080:80 -v ./site:/usr/share/nginx/html nginx:1.27-alpine
+  curl -s localhost:8080
+hints:
+  - "Папку сервера подключают так же, как том, но путь начинается с `./` или `/`."
+  - "`docker run -d --name promo -p 8080:80 -v ./site:/usr/share/nginx/html nginx:1.27-alpine`."
+explanation: |
+  Папка сервера закрыла стартовую страницу из образа, и Nginx отдаёт ваш `index.html`. Правки файла на сервере видны сразу, без перезапуска контейнера: так удобно в разработке. В бою статику обычно кладут в образ или в том.

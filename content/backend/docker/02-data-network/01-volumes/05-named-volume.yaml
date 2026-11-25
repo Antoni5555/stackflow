@@ -1,0 +1,30 @@
+title: "База на именованном томе"
+type: exercise
+difficulty: 2
+pitfall: "Данные базы — в именованном томе -v pgdata:/var/lib/postgresql/data; иначе они живут и умирают с контейнером."
+statement: |
+  Запустите базу магазина так, чтобы данные хранились в именованном томе:
+  - контейнер `shop-db` из `postgres:16`, в фоне;
+  - пароль `shop`, база `shop`;
+  - том `pgdata` подключён в `/var/lib/postgresql/data`.
+setup:
+  cwd: /home/shop
+check:
+  type: state
+  expect:
+    - docker: container
+      name: shop-db
+      status: running
+      fail: "Контейнер shop-db не работает — -d и POSTGRES_PASSWORD на месте?"
+    - docker: volume
+      name: pgdata
+      mounted_in: shop-db
+      path: /var/lib/postgresql/data
+      fail: "Том pgdata должен быть подключён к shop-db в /var/lib/postgresql/data: -v pgdata:/var/lib/postgresql/data."
+solution: |
+  docker run -d --name shop-db -e POSTGRES_PASSWORD=shop -e POSTGRES_DB=shop -v pgdata:/var/lib/postgresql/data postgres:16
+hints:
+  - "Именованный том подключают флагом `-v имя:путь_в_контейнере`."
+  - "`docker run -d --name shop-db -e POSTGRES_PASSWORD=shop -e POSTGRES_DB=shop -v pgdata:/var/lib/postgresql/data postgres:16`."
+explanation: |
+  Docker создал том `pgdata` при первом упоминании. Теперь база переживёт `docker rm` — следующий контейнер с тем же `-v` увидит прежние таблицы. Без `-v` образ создал бы анонимный том со случайным именем.

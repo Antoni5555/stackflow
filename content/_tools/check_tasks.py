@@ -238,7 +238,7 @@ LINUX_COMMANDS = {
     "chmod": None, "chown": {"-R"},
     "whoami": None, "id": None, "chgrp": {"-R"}, "which": None, "df": {"-h"}, "du": {"-s", "-h"},
     "gzip": None, "gunzip": None, "true": None, "groups": None,
-    "unset": None, "env": None, "bash": {"-c"}, "ps": {"-e", "-f"}, "pgrep": {"-a", "-f", "-l", "-u"},
+    "unset": None, "export": None, "env": None, "bash": {"-c"}, "ps": {"-e", "-f"}, "pgrep": {"-a", "-f", "-l", "-u"},
     "kill": {"-9", "-15", "-1", "-2", "-HUP", "-INT", "-TERM", "-KILL", "-s", "-l"},
     "pkill": {"-f", "-u", "-9", "-HUP", "-INT", "-TERM", "-KILL"}, "top": None,
     "systemctl": {"--now", "--no-pager", "-l", "--full", "-q", "--quiet"},

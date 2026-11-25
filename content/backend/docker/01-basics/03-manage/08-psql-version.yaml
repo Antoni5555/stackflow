@@ -1,0 +1,30 @@
+title: "Версия PostgreSQL внутри"
+type: exercise
+difficulty: 1
+pitfall: "psql есть внутри образа postgres: docker exec контейнер psql … — на сервер его ставить не нужно."
+statement: |
+  База магазина `shop-db` работает. Не устанавливая ничего на сервер, узнайте версию PostgreSQL: выполните внутри контейнера
+  ```
+  psql -U postgres -c "SELECT version();"
+  ```
+setup:
+  cwd: /home/shop
+  docker:
+    images: [postgres:16]
+    containers:
+      - name: shop-db
+        image: postgres:16
+        env: {POSTGRES_PASSWORD: shop}
+        running: true
+check:
+  type: state
+  expect:
+    - output_matches: 'PostgreSQL 16\.'
+      fail: "Последней командой выполните запрос версии внутри контейнера: docker exec shop-db psql -U postgres -c \"SELECT version();\"."
+solution: |
+  docker exec shop-db psql -U postgres -c "SELECT version();"
+hints:
+  - "Какая команда Docker выполняет программу внутри работающего контейнера?"
+  - "`docker exec shop-db psql -U postgres -c \"SELECT version();\"`."
+explanation: |
+  `psql` приходит вместе с образом `postgres`, поэтому `docker exec` выполняет его внутри контейнера, рядом с сервером. Без `-U postgres` клиент подключился бы ролью `root`, которой в базе нет. Для интерактивной работы — `docker exec -it shop-db psql -U postgres`.

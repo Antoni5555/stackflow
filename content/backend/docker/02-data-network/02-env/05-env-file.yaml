@@ -1,0 +1,36 @@
+title: "Настройки базы из файла"
+type: exercise
+difficulty: 2
+pitfall: "--env-file передаёт переменные из файла; кавычки в значениях docker run оставляет как есть."
+statement: |
+  Настройки базы лежат в файле `/home/shop/shop.env`, но в нём ошибка: пароль записан в кавычках, и `docker run --env-file` передаст их в пароль. Исправьте файл (без кавычек) и запустите базу:
+  - контейнер `shop-db` из `postgres:16` в фоне, переменные — `--env-file shop.env`.
+
+  Последней командой выведите окружение контейнера: `docker exec shop-db env`.
+setup:
+  cwd: /home/shop
+  files:
+    /home/shop/shop.env: |
+      POSTGRES_PASSWORD="s3cr3t"
+      POSTGRES_DB=shop
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop.env
+      contains: '^POSTGRES_PASSWORD=s3cr3t$'
+      fail: "В shop.env должно быть POSTGRES_PASSWORD=s3cr3t — без кавычек."
+    - docker: container
+      name: shop-db
+      status: running
+      fail: "Контейнер shop-db не работает — запустите его с --env-file shop.env."
+    - output_matches: '^POSTGRES_PASSWORD=s3cr3t$'
+      fail: "Последней командой выведите окружение контейнера (docker exec shop-db env): пароль должен быть без кавычек."
+solution: |
+  sed -i 's/"//g' shop.env
+  docker run -d --name shop-db --env-file shop.env postgres:16
+  docker exec shop-db env
+hints:
+  - "Уберите кавычки в файле: `nano shop.env` или `sed`. Каким флагом передать файл в `docker run`?"
+  - "`sed -i 's/\"//g' shop.env`, затем `docker run -d --name shop-db --env-file shop.env postgres:16`."
+explanation: |
+  `docker run --env-file` берёт значение после `=` буквально — с кавычками пароль стал бы `"s3cr3t"` из восьми символов. В выводе `env` видно, что теперь пароль чистый. Compose `env_file`, в отличие от этого, кавычки убирает.

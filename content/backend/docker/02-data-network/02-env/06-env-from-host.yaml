@@ -1,0 +1,30 @@
+title: "Переменная из окружения сервера"
+type: exercise
+difficulty: 2
+pitfall: "-e ИМЯ без значения берёт переменную из окружения, где запущен docker run."
+statement: |
+  Скрипт деплоя задаёт переменную `SHOP_ENV=prod` в окружении сервера и передаёт её в контейнер, не повторяя значение в команде. Сделайте так же:
+  1. задайте в оболочке переменную окружения `SHOP_ENV` со значением `prod`;
+  2. разовым контейнером из `alpine:3.20` выведите её, передав флагом `-e SHOP_ENV` (без `=`):
+     ```
+     sh -c 'echo "SHOP_ENV=[$SHOP_ENV]"'
+     ```
+setup:
+  cwd: /home/shop
+check:
+  type: state
+  expect:
+    - output_matches: '^SHOP_ENV=\[prod\]$'
+      fail: "Контейнер должен напечатать SHOP_ENV=[prod]. Переменная экспортирована (export) и передана как -e SHOP_ENV?"
+    - docker: container
+      image: alpine:3.20
+      status: absent
+      fail: "Контейнер остался — добавьте --rm."
+solution: |
+  export SHOP_ENV=prod
+  docker run --rm -e SHOP_ENV alpine:3.20 sh -c 'echo "SHOP_ENV=[$SHOP_ENV]"'
+hints:
+  - "Переменная должна быть в окружении оболочки — какая команда это делает (курс Linux)? `-e ИМЯ` без значения берёт её оттуда."
+  - "`export SHOP_ENV=prod`, затем `docker run --rm -e SHOP_ENV alpine:3.20 sh -c 'echo \"SHOP_ENV=[$SHOP_ENV]\"'`."
+explanation: |
+  `-e SHOP_ENV` без значения копирует переменную из окружения оболочки, в которой выполнен `docker run`. Так секреты из CI попадают в контейнер, не появляясь в тексте команды. Без `export` переменная была бы только в оболочке, и контейнер получил бы пустую строку. Одинарные кавычки вокруг команды не дают оболочке сервера подставить `$SHOP_ENV` раньше времени — подставляет `sh` внутри контейнера.
