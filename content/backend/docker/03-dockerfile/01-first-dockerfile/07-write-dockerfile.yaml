@@ -1,0 +1,55 @@
+title: "Dockerfile с нуля"
+type: exercise
+difficulty: 3
+pitfall: "Dockerfile: FROM, WORKDIR, COPY зависимостей, RUN pip install, COPY кода, CMD списком."
+statement: |
+  В проекте `/home/shop/shop` есть код (`shop/wsgi.py`) и `requirements.txt`, а `Dockerfile` нет. Напишите его сами:
+  - основа — `python:3.12-slim`, рабочая папка `/app`;
+  - зависимости из `requirements.txt` ставятся через `pip install --no-cache-dir`;
+  - код копируется в образ;
+  - команда по умолчанию — Gunicorn в форме списка: `gunicorn --bind 0.0.0.0:8000 shop.wsgi`.
+
+  Соберите образ `shop-web:1.0`, запустите контейнер `shop-web` в фоне с портом 58000 → 8000 и последней командой получите страницу: `curl -s localhost:58000`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/Dockerfile
+      contains: '^FROM python:3\.12-slim'
+      fail: "Dockerfile должен начинаться с FROM python:3.12-slim."
+    - path: /home/shop/shop/Dockerfile
+      contains: '^CMD \['
+      fail: "CMD — в форме списка: CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"shop.wsgi\"]."
+    - docker: image
+      ref: shop-web:1.0
+      max_size_mb: 200
+      fail: "Образа shop-web:1.0 нет или он больше 200 МБ — основа python:3.12-slim и pip install --no-cache-dir?"
+    - docker: container
+      name: shop-web
+      status: running
+      fail: "Контейнер shop-web не работает. Посмотрите docker logs shop-web — запускается ли Gunicorn?"
+    - docker: port
+      container: shop-web
+      host: 58000
+      port: 8000
+      fail: "Нужен проброс -p 58000:8000."
+    - output_matches: 'Магазин работает'
+      fail: "Последней командой получите страницу: curl -s localhost:58000."
+solution: |
+  echo -e 'FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nCMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]' > Dockerfile
+  docker build -t shop-web:1.0 .
+  docker run -d --name shop-web -p 58000:8000 shop-web:1.0
+  curl -s localhost:58000
+hints:
+  - "Файл удобно написать в `nano Dockerfile`. Порядок: `FROM`, `WORKDIR`, `COPY requirements.txt .`, `RUN pip install …`, `COPY . .`, `CMD [...]`."
+  - "Шесть строк: `FROM python:3.12-slim`, `WORKDIR /app`, `COPY requirements.txt .`, `RUN pip install --no-cache-dir -r requirements.txt`, `COPY . .`, `CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"shop.wsgi\"]`."
+explanation: |
+  Это тот же Dockerfile, что в уроке. `requirements.txt` копируется отдельно и раньше кода — чтобы шаг `pip install` попадал в кэш при правке кода (тема 3.02). `--bind 0.0.0.0` нужен, чтобы Gunicorn принимал соединения не только изнутри контейнера: с `127.0.0.1` проброс `-p` не помог бы.

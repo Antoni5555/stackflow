@@ -1,0 +1,49 @@
+title: "Секрет не попадает в образ"
+type: exercise
+difficulty: 2
+pitfall: "COPY . . копирует всё из контекста, включая .env; исключения — в .dockerignore."
+statement: |
+  В проекте магазина рядом с кодом лежит `.env` с секретным ключом, и `COPY . .` кладёт его в образ. Исправьте это:
+  1. создайте `.dockerignore`, в котором исключены `.env`, `.git` и `__pycache__/`;
+  2. соберите образ `shop-web:1.0`;
+  3. последней командой посмотрите, что попало в `/app`:
+     ```
+     docker run --rm shop-web:1.0 ls -a /app
+     ```
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+    /home/shop/shop/.env: "SECRET_KEY=prod-9f2c41\n"
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/.dockerignore
+      contains: '^\.env$'
+      fail: "В .dockerignore должна быть строка .env."
+    - docker: image
+      ref: shop-web:1.0
+      fail: "Образа shop-web:1.0 нет — соберите его после создания .dockerignore."
+    - output_matches: '(?<![\s\S])(?![\s\S]*^\.env$)[\s\S]*requirements\.txt'
+      fail: "Последней командой выведите ls -a /app из образа: requirements.txt на месте, а .env быть не должно. Образ пересобран после .dockerignore?"
+solution: |
+  echo -e '.env\n.git\n__pycache__/' > .dockerignore
+  docker build -t shop-web:1.0 .
+  docker run --rm shop-web:1.0 ls -a /app
+hints:
+  - "`.dockerignore` лежит рядом с Dockerfile, по одному шаблону на строку — как `.gitignore`."
+  - "`echo -e '.env\\n.git\\n__pycache__/' > .dockerignore`, затем `docker build -t shop-web:1.0 .`."
+explanation: |
+  Docker отправляет на сборку контекст — папку с файлами — и перед этим отбрасывает всё, что подходит под шаблоны `.dockerignore`. `.env` больше не попадает ни в контекст, ни в образ: секрет не утечёт вместе с образом в реестр. Сам `.dockerignore` при этом в образе есть — он ничего секретного не содержит.

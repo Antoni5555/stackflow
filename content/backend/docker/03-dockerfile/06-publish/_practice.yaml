@@ -1,0 +1,33 @@
+- title: Сервер берёт образ из реестра
+  text: |
+    Образ `localhost:55000/shop/web:1.0` уже в реестре. Удалите оба локальных имени (`shop-web:1.0` и `localhost:55000/shop/web:1.0`), как будто вы на новом сервере, и запустите магазин прямо из реестра с портом 58000 → 8000.
+  answer: |
+    Ответ:
+    ```bash
+    docker rmi shop-web:1.0 localhost:55000/shop/web:1.0
+    docker run -d --name shop-web -p 58000:8000 localhost:55000/shop/web:1.0
+    curl -s localhost:58000
+    ```
+    Результат (без строк загрузки и ID):
+    ```
+    Untagged: shop-web:1.0
+    Untagged: localhost:55000/shop/web:1.0
+    Deleted: sha256:06f90107248e1a469f651fc658a5ffe5cf2d72c58f05d5b7c802266d8c581011
+    Магазин работает
+    ```
+    Локального образа нет, и `docker run` сам скачал его из реестра по адресу в имени. Так и выглядит деплой: сервер не собирает образ, а скачивает готовый.
+- title: Тега нет в реестре
+  text: |
+    Попробуйте скачать версию `2.0`, которую никто не публиковал, и посмотрите список репозиториев реестра.
+  answer: |
+    Ответ:
+    ```bash
+    docker pull localhost:55000/shop/web:2.0
+    curl -s localhost:55000/v2/_catalog
+    ```
+    Результат:
+    ```
+    Error response from daemon: failed to resolve reference "localhost:55000/shop/web:2.0": localhost:55000/shop/web:2.0: not found
+    {"repositories":["shop/web"]}
+    ```
+    Репозиторий `shop/web` есть, а тега `2.0` в нём нет. Такая ошибка при деплое обычно значит, что CI не успел или не смог отправить образ.

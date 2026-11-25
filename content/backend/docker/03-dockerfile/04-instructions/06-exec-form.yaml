@@ -1,0 +1,50 @@
+title: "Gunicorn — главный процесс"
+type: exercise
+difficulty: 2
+pitfall: "CMD строкой запускает sh -c: сигнал SIGTERM получает sh, а не приложение; нужна форма списка."
+statement: |
+  В `Dockerfile` магазина `CMD` записан строкой — главным процессом контейнера становится `/bin/sh`, а не Gunicorn, и `docker stop` ждёт 10 секунд. Исправьте:
+  1. перепишите `CMD` в форме списка (та же команда `gunicorn --bind 0.0.0.0:8000 shop.wsgi`);
+  2. соберите образ `shop-web:1.0` и запустите в фоне контейнер `shop-web`;
+  3. последней командой посмотрите главный процесс:
+     ```
+     docker inspect -f '{{.Path}}' shop-web
+     ```
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD gunicorn --bind 0.0.0.0:8000 shop.wsgi
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/Dockerfile
+      contains: '^CMD \["gunicorn"'
+      fail: "CMD — в форме списка: CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"shop.wsgi\"]."
+    - docker: container
+      name: shop-web
+      status: running
+      fail: "Контейнер shop-web не работает — пересоберите образ и запустите с -d."
+    - output_matches: '^gunicorn$'
+      fail: "Последней командой выведите docker inspect -f '{{.Path}}' shop-web — должно быть gunicorn. Образ пересобран?"
+solution: |
+  sed -i 's/^CMD.*/CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]/' Dockerfile
+  docker build -t shop-web:1.0 .
+  docker run -d --name shop-web shop-web:1.0
+  docker inspect -f '{{.Path}}' shop-web
+hints:
+  - "Форма списка — JSON: каждое слово команды в двойных кавычках, через запятую, в квадратных скобках."
+  - "`CMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"shop.wsgi\"]`, затем `docker build` и `docker run -d --name shop-web shop-web:1.0`."
+explanation: |
+  В форме списка Docker запускает `gunicorn` напрямую — он PID 1 и сам получает SIGTERM от `docker stop`: штатно завершает воркеры за доли секунды. Со строкой главным был бы `/bin/sh`, который сигнал не передаёт, и через 10 секунд Docker убил бы всё по KILL (код 137).

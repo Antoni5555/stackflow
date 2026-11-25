@@ -1,0 +1,49 @@
+title: "Версия сборки внутри контейнера"
+type: exercise
+difficulty: 2
+pitfall: "ARG существует только во время сборки; чтобы значение было в контейнере, его перекладывают в ENV."
+statement: |
+  В `Dockerfile` объявлен аргумент сборки `ARG APP_VERSION=dev`, но в работающем контейнере переменной `APP_VERSION` нет. Сделайте так, чтобы версия, переданная при сборке, была видна приложению:
+  1. добавьте после `ARG` инструкцию, которая сохраняет значение в окружении образа;
+  2. соберите образ `shop-web:1.4.2`, передав `APP_VERSION=1.4.2` флагом `--build-arg`;
+  3. последней командой выведите переменную из разового контейнера:
+     ```
+     docker run --rm shop-web:1.4.2 sh -c 'echo "APP_VERSION=[$APP_VERSION]"'
+     ```
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      ARG APP_VERSION=dev
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/Dockerfile
+      contains: '^ENV .*APP_VERSION=\$\{?APP_VERSION'
+      fail: "Нужна строка ENV APP_VERSION=${APP_VERSION} после ARG."
+    - docker: image
+      ref: shop-web:1.4.2
+      fail: "Образа shop-web:1.4.2 нет — docker build --build-arg APP_VERSION=1.4.2 -t shop-web:1.4.2 ."
+    - output_matches: '^APP_VERSION=\[1\.4\.2\]$'
+      fail: "Контейнер должен напечатать APP_VERSION=[1.4.2]. Значение передано через --build-arg, а образ пересобран после правки?"
+solution: |
+  sed -i 's/^ARG APP_VERSION=dev/&\nENV APP_VERSION=${APP_VERSION}/' Dockerfile
+  docker build --build-arg APP_VERSION=1.4.2 -t shop-web:1.4.2 .
+  docker run --rm shop-web:1.4.2 sh -c 'echo "APP_VERSION=[$APP_VERSION]"'
+hints:
+  - "`ARG` живёт только во время сборки. Какая инструкция записывает переменную в образ, чтобы её видели контейнеры?"
+  - "`ENV APP_VERSION=${APP_VERSION}` после строки `ARG`, затем `docker build --build-arg APP_VERSION=1.4.2 -t shop-web:1.4.2 .`."
+explanation: |
+  `--build-arg` подставил `1.4.2` вместо `dev` в `ARG`, а `ENV` сохранил значение в настройках образа — его получит каждый контейнер. Без `ENV` контейнер напечатал бы `APP_VERSION=[]`. Так в образ кладут версию или хэш коммита из CI; секреты так не передают — `ENV` виден в `docker inspect` и `docker history`.

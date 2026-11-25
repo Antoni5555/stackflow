@@ -1,0 +1,54 @@
+title: "Образ в своём реестре"
+type: exercise
+difficulty: 3
+pitfall: "Адрес реестра — часть имени образа: docker tag образ localhost:55000/shop/web:1.0, затем push."
+statement: |
+  На сервере работает свой реестр — контейнер `registry` из `registry:2` на порту 55000. Опубликуйте в нём магазин:
+  1. соберите образ `shop-web:1.0` из проекта в текущей папке;
+  2. дайте ему полное имя `localhost:55000/shop/web:1.0`;
+  3. отправьте его в реестр;
+  4. последней командой спросите у реестра список тегов:
+     ```
+     curl -s localhost:55000/v2/shop/web/tags/list
+     ```
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+  docker:
+    images: [registry:2]
+    containers:
+      - name: registry
+        image: registry:2
+        ports: ["55000:5000"]
+        running: true
+check:
+  type: state
+  expect:
+    - docker: image
+      ref: localhost:55000/shop/web:1.0
+      fail: "Нет образа localhost:55000/shop/web:1.0 — docker tag shop-web:1.0 localhost:55000/shop/web:1.0."
+    - output_matches: '"tags":\["1\.0"\]'
+      fail: "Реестр должен ответить {\"name\":\"shop/web\",\"tags\":[\"1.0\"]}. Образ отправлен (docker push), а curl — последняя команда?"
+solution: |
+  docker build -t shop-web:1.0 .
+  docker tag shop-web:1.0 localhost:55000/shop/web:1.0
+  docker push localhost:55000/shop/web:1.0
+  curl -s localhost:55000/v2/shop/web/tags/list
+hints:
+  - "`docker push` отправляет образ туда, куда указывает начало его имени. Как дать образу второе имя?"
+  - "`docker tag shop-web:1.0 localhost:55000/shop/web:1.0`, затем `docker push localhost:55000/shop/web:1.0`."
+explanation: |
+  `docker tag` не копирует образ — добавляет ему второе имя с адресом реестра. По этому адресу `push` и отправил слои. Реестр ответил по своему HTTP API: в репозитории `shop/web` есть тег `1.0`. Теперь любой сервер с доступом к реестру скачает образ командой `docker pull localhost:55000/shop/web:1.0` (в бою вместо `localhost:55000` — адрес Docker Hub, GHCR или облачного реестра).

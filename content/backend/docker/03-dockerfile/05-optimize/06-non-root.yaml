@@ -1,0 +1,46 @@
+title: "Магазин не от root"
+type: exercise
+difficulty: 3
+pitfall: "По умолчанию процесс в контейнере работает от root; useradd + USER app в Dockerfile это меняет."
+statement: |
+  Gunicorn в образе магазина работает от `root`. Сделайте так, чтобы приложение запускалось от обычного пользователя:
+  1. в `Dockerfile` перед `CMD` создайте пользователя `app` (`useradd --create-home app`) и переключитесь на него;
+  2. соберите образ `shop-web:1.0`;
+  3. последней командой проверьте пользователя: `docker run --rm shop-web:1.0 whoami`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/Dockerfile
+      contains: '^USER app$'
+      fail: "В Dockerfile нужна строка USER app."
+    - docker: image
+      ref: shop-web:1.0
+      user_not_root: true
+      fail: "Образ shop-web:1.0 всё ещё запускается от root — пересоберите его после USER app."
+    - output_matches: '^app$'
+      fail: "Последней командой выполните docker run --rm shop-web:1.0 whoami — должно быть app."
+solution: |
+  sed -i 's/^CMD/RUN useradd --create-home app\nUSER app\nCMD/' Dockerfile
+  docker build -t shop-web:1.0 .
+  docker run --rm shop-web:1.0 whoami
+hints:
+  - "Пользователя создают командой `RUN useradd …`, а инструкция `USER` меняет его для всех следующих шагов и для контейнера."
+  - "Перед `CMD`: `RUN useradd --create-home app` и `USER app`."
+explanation: |
+  `USER app` записан в настройки образа: и `CMD`, и `docker exec`, и разовые команды выполняются от `app`. Найди кто-то уязвимость в приложении — он получит права обычного пользователя, а не `root` контейнера. Строки стоят в конце: `pip install` до них по-прежнему работает от `root` и ставит пакеты в систему.

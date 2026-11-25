@@ -1,0 +1,57 @@
+title: "pip install из кэша"
+type: exercise
+difficulty: 2
+pitfall: "COPY . . до pip install: любая правка кода сбрасывает кэш и переустанавливает зависимости."
+statement: |
+  В `Dockerfile` магазина код копируется до установки зависимостей — после каждой правки кода `pip install` выполняется заново. Исправьте порядок и проверьте кэш:
+  1. сделайте так, чтобы сначала копировался только `requirements.txt`, затем шёл `pip install`, и лишь потом — весь код;
+  2. соберите образ `shop-web:1.0`;
+  3. измените код:
+     ```
+     sed -i 's/работает/открыт/' shop/wsgi.py
+     ```
+  4. последней командой соберите `shop-web:1.0` снова и оставьте в выводе только нужные строки — шаг `pip install` должен взяться из кэша (`CACHED`):
+     ```
+     docker build -t shop-web:1.0 . 2>&1 | grep -E 'pip install|CACHED'
+     ```
+     Ход сборки `docker build` пишет в поток ошибок — поэтому `2>&1` перед `grep`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY . .
+      RUN pip install --no-cache-dir -r requirements.txt
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/Dockerfile
+      contains: '^COPY requirements\.txt[^\n]*\nRUN pip install[^\n]*\nCOPY \. '
+      fail: "Порядок: COPY requirements.txt . → RUN pip install … → COPY . ."
+    - path: /home/shop/shop/shop/wsgi.py
+      contains: 'Магазин открыт'
+      fail: "Измените код командой sed из условия — иначе кэш нечем проверить."
+    - docker: image
+      ref: shop-web:1.0
+      fail: "Образа shop-web:1.0 нет — docker build -t shop-web:1.0 ."
+    - output_matches: 'RUN pip install[^\n]*\n#\d+ CACHED'
+      fail: "В выводе последней сборки шаг RUN pip install должен быть CACHED. Порядок исправлен, и последняя команда — сборка с grep из условия?"
+solution: |
+  sed -i 's/^COPY \. \./COPY requirements.txt ./' Dockerfile
+  sed -i 's/^CMD/COPY . .\nCMD/' Dockerfile
+  docker build -t shop-web:1.0 .
+  sed -i 's/работает/открыт/' shop/wsgi.py
+  docker build -t shop-web:1.0 . 2>&1 | grep -E 'pip install|CACHED'
+hints:
+  - "Кэш шага сбрасывается, если изменились его инструкция или скопированные файлы — и все шаги после него. Что должно быть скопировано до `pip install`, а что — после?"
+  - "Dockerfile: `FROM`, `WORKDIR /app`, `COPY requirements.txt .`, `RUN pip install …`, `COPY . .`, `CMD …`."
+explanation: |
+  Шаг `COPY . .` теперь стоит после установки зависимостей. Правка `wsgi.py` изменила только его файлы — пересобрался последний `COPY`, а `COPY requirements.txt` и `pip install` взяты из кэша. В большом проекте это разница между секундой и минутами на каждую сборку.

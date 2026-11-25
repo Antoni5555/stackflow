@@ -1,0 +1,46 @@
+title: "Образ в восемь раз меньше"
+type: exercise
+difficulty: 2
+pitfall: "python:3.12 весит 1,6 ГБ; для приложения без компиляции достаточно python:3.12-slim."
+statement: |
+  Образ магазина собирается на полном `python:3.12` и весит больше полутора гигабайт. Уменьшите его:
+  1. замените основу в `Dockerfile` на `python:3.12-slim`;
+  2. соберите образ `shop-web:1.0` заново;
+  3. последней командой выведите размер: `docker images shop-web`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/Dockerfile
+      contains: '^FROM python:3\.12-slim'
+      fail: "Основа должна быть FROM python:3.12-slim."
+    - docker: image
+      ref: shop-web:1.0
+      max_size_mb: 200
+      fail: "Образ shop-web:1.0 должен весить меньше 200 МБ — пересоберите его после замены FROM."
+    - output_matches: 'shop-web:1\.0\s+\w+\s+19\dMB'
+      fail: "Последней командой выведите docker images shop-web — у shop-web:1.0 должно быть около 193MB."
+solution: |
+  sed -i 's/^FROM python:3.12$/FROM python:3.12-slim/' Dockerfile
+  docker build -t shop-web:1.0 .
+  docker images shop-web
+hints:
+  - "Меняется одна строка — `FROM`. Тег `-slim` у официального образа Python — версия без компиляторов и документации."
+  - "`sed -i 's/^FROM python:3.12$/FROM python:3.12-slim/' Dockerfile` (или `nano`), затем `docker build -t shop-web:1.0 .`."
+explanation: |
+  Слои основы — большая часть образа: в полном `python:3.12` есть компиляторы, заголовки и утилиты сборки, которые Gunicorn не нужны. На `slim` образ магазина весит 193 МБ вместо 1,6 ГБ: быстрее скачивается на сервер и меньше уязвимых пакетов. Если зависимостям нужен компилятор (как `psycopg2`), его ставят в отдельном этапе сборки — многоэтапный Dockerfile из урока.

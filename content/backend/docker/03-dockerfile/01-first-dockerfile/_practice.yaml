@@ -1,0 +1,42 @@
+- title: Своя страница в образе Nginx
+  text: |
+    В папке `/home/shop/promo` лежит страница акции `index.html`. Соберите образ `promo:1.0` на основе `nginx:1.27-alpine`, в котором страница лежит в `/usr/share/nginx/html/`, запустите его с портом 8080 → 80 и получите страницу через `curl`.
+  answer: |
+    Ответ. Файл `Dockerfile`:
+    ```dockerfile
+    FROM nginx:1.27-alpine
+    COPY index.html /usr/share/nginx/html/
+    ```
+    Команды:
+    ```bash
+    docker build -t promo:1.0 .
+    docker run -d --name promo -p 8080:80 promo:1.0
+    curl -s localhost:8080
+    ```
+    Результат (без вывода сборки и ID контейнера):
+    ```
+    <h1>Скидки недели</h1>
+    ```
+    В отличие от bind mount (тема 2.01), страница теперь внутри образа: его можно отправить на любой сервер без папки `promo`. `CMD` писать не нужно — он унаследован от `nginx:1.27-alpine`.
+- title: Опечатка в имени файла
+  text: |
+    В Dockerfile магазина третья строка — `COPY requirement.txt .` (без `s`). Что выведет `docker build -t shop-web:1.0 .` и на каком шаге остановится сборка?
+  answer: |
+    Ответ. Сборка останавливается на шаге `COPY` — файла с таким именем в контексте нет.
+
+    Результат (первые шаги сокращены):
+    ```
+    #7 [3/5] COPY requirement.txt .
+    #7 ERROR: failed to calculate checksum of ref …: "/requirement.txt": not found
+    ------
+    Dockerfile:3
+    --------------------
+       1 |     FROM python:3.12-slim
+       2 |     WORKDIR /app
+       3 | >>> COPY requirement.txt .
+       4 |     RUN pip install --no-cache-dir -r requirements.txt
+       5 |     COPY . .
+    --------------------
+    ERROR: failed to build: failed to solve: failed to compute cache key: …: "/requirement.txt": not found
+    ```
+    Docker показывает строку Dockerfile со стрелкой `>>>`. Путь `/requirement.txt` — относительно контекста сборки (папки `.`), а не корня сервера. Образ не создан.

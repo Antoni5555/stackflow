@@ -1,0 +1,51 @@
+title: "Собрать и запустить магазин"
+type: exercise
+difficulty: 2
+pitfall: "docker build -t имя:тег . собирает образ из Dockerfile в текущей папке; без -p приложение снаружи не видно."
+statement: |
+  В папке `/home/shop/shop` лежит проект магазина с готовым `Dockerfile`. Соберите и запустите его:
+  1. соберите образ `shop-web:1.0` из текущей папки;
+  2. запустите в фоне контейнер `shop-web` из этого образа, порт 58000 сервера → 8000 контейнера;
+  3. последней командой получите страницу: `curl -s localhost:58000`.
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+check:
+  type: state
+  expect:
+    - docker: image
+      ref: shop-web:1.0
+      fail: "Образа shop-web:1.0 нет — docker build -t shop-web:1.0 . (точка в конце — папка с Dockerfile)."
+    - docker: container
+      name: shop-web
+      status: running
+      fail: "Контейнер shop-web не работает — запустите его с -d."
+    - docker: port
+      container: shop-web
+      host: 58000
+      port: 8000
+      fail: "Нужен проброс -p 58000:8000."
+    - output_matches: 'Магазин работает'
+      fail: "Последней командой получите страницу: curl -s localhost:58000."
+solution: |
+  docker build -t shop-web:1.0 .
+  docker run -d --name shop-web -p 58000:8000 shop-web:1.0
+  curl -s localhost:58000
+hints:
+  - "Сборка — `docker build` с именем через `-t` и папкой контекста в конце. Запуск — как в разделе 1."
+  - "`docker build -t shop-web:1.0 .`, затем `docker run -d --name shop-web -p 58000:8000 shop-web:1.0`."
+explanation: |
+  `docker build` прочитал `Dockerfile`, выполнил инструкции по шагам и сохранил результат как образ `shop-web:1.0` — он появился в `docker images` рядом со скачанными. Дальше это обычный образ: `docker run` с портом, как с `nginx` в разделе 1. Gunicorn слушает `0.0.0.0:8000` внутри контейнера, `-p` открывает его на сервере.

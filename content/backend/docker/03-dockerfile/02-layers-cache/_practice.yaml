@@ -1,0 +1,31 @@
+- title: Сборка без кэша
+  text: |
+    Образ `shop-web:1.0` уже собран, ничего не менялось. Пересоберите его так, чтобы ни один шаг не взялся из кэша, и проверьте это по выводу.
+  answer: |
+    Ответ:
+    ```bash
+    docker build --no-cache -t shop-web:1.0 . 2>&1 | grep -c CACHED
+    ```
+    Результат:
+    ```
+    0
+    ```
+    С `--no-cache` все шаги выполняются заново, включая `pip install`. Так делают, когда нужно подтянуть свежие пакеты: инструкция `RUN pip install …` не менялась, и без флага Docker взял бы старый слой из кэша.
+- title: Какой слой самый тяжёлый
+  text: |
+    Посмотрите слои образа `shop-web:1.0` и найдите среди своих шагов (не из основы `python:3.12-slim`) самый большой.
+  answer: |
+    Ответ:
+    ```bash
+    docker history shop-web:1.0
+    ```
+    Результат (первые пять строк — шаги из нашего Dockerfile):
+    ```
+    IMAGE          CREATED          CREATED BY                                      SIZE      COMMENT
+    06f90107248e   1 minute ago     CMD ["gunicorn" "--bind" "0.0.0.0:8000" "sho…   0B        buildkit.dockerfile.v0
+    <missing>      1 minute ago     COPY . . # buildkit                             28.7kB    buildkit.dockerfile.v0
+    <missing>      1 minute ago     RUN /bin/sh -c pip install --no-cache-dir -r…   11.7MB    buildkit.dockerfile.v0
+    <missing>      1 minute ago     COPY requirements.txt . # buildkit              12.3kB    buildkit.dockerfile.v0
+    <missing>      1 minute ago     WORKDIR /app                                    8.19kB    buildkit.dockerfile.v0
+    ```
+    Самый большой — `pip install` (11,7 МБ): Gunicorn с зависимостями. Код (`COPY . .`) — десятки килобайт. Поэтому тяжёлый шаг ставят раньше кода: при правке кода пересобирается только лёгкий слой.

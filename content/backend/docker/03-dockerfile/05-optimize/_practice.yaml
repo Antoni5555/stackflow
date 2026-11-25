@@ -1,0 +1,31 @@
+- title: Права пользователя app
+  text: |
+    В образ магазина добавлены `RUN useradd --create-home app` и `USER app`. Выведите идентификаторы пользователя в контейнере и попробуйте создать файл `/etc/shop.conf`.
+  answer: |
+    Ответ:
+    ```bash
+    docker run --rm shop-web:1.0 id
+    docker run --rm shop-web:1.0 touch /etc/shop.conf
+    ```
+    Результат:
+    ```
+    uid=1000(app) gid=1000(app) groups=1000(app)
+    touch: cannot touch '/etc/shop.conf': Permission denied
+    ```
+    Процесс работает от `app` с UID 1000, и права Linux действуют как на обычном сервере: в `/etc` писать нельзя. Взломщик в таком контейнере ограничен тем, что разрешено `app`.
+- title: Чьи файлы в /app
+  text: |
+    В том же образе посмотрите владельцев файлов в `/app`. Сможет ли приложение, работающее от `app`, изменить `requirements.txt`? Как сделать файлы его собственными?
+  answer: |
+    Ответ:
+    ```bash
+    docker run --rm shop-web:1.0 ls -l /app
+    ```
+    Результат:
+    ```
+    total 12
+    -rw-r--r-- 1 root root  214 Nov 25 12:55 Dockerfile
+    -rw-r--r-- 1 root root   17 Nov 25 12:55 requirements.txt
+    drwxr-xr-x 2 root root 4096 Nov 25 12:55 shop
+    ```
+    `COPY` создаёт файлы от `root`, а `app` может их только читать — для кода это даже хорошо. Если приложению нужно писать в свои файлы (например, в `media/`), копируют с владельцем: `COPY --chown=app:app . .`.
