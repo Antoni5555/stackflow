@@ -9,6 +9,7 @@ import { nginxAnswer } from './programs.js';
 import { appAnswer } from './apps.js';
 import { registryAnswer } from './registry.js';
 import { dockerState, findContainer, newId, shortId } from './state.js';
+import { resolve } from './dns.js';
 import { hexHash } from './catalog.js';
 
 const out = (text) => ({ text, err: false });
@@ -16,34 +17,6 @@ const err = (text) => ({ text, err: true });
 const result = (chunks, code = 0) => ({ chunks, code });
 
 // --- адреса: кто есть кто ---
-
-const LOCALHOST = new Set(['localhost', '127.0.0.1', '::1']);
-
-/** Сети с встроенным DNS — все, кроме bridge по умолчанию (и host/none). */
-const hasDns = (state, name) => !state.networks[name]?.builtin;
-
-/**
- * Найти адрес host из контейнера self (или с сервера, self = null):
- * {container, ip} — нашли; {self: true} — localhost; null — имя не разрешается.
- */
-export function resolve(state, self, host) {
-  if (self && LOCALHOST.has(host)) return { container: self, ip: '127.0.0.1', self: true };
-  const running = state.containers.filter((c) => c.status === 'running');
-  // IP — доступен из любой общей сети (с сервера — любой контейнер на мосту)
-  for (const c of running) {
-    for (const [name, info] of Object.entries(c.networks)) {
-      if (info.ip !== host) continue;
-      if (!self || name in self.networks) return { container: c, ip: info.ip };
-    }
-  }
-  if (!self) return null;
-  for (const [name] of Object.entries(self.networks).filter(([net]) => hasDns(state, net))) {
-    const found = running.find((c) => name in c.networks
-      && (c.name === host || c.id.startsWith(host) && host.length >= 12 || (c.networks[name].aliases ?? []).includes(host)));
-    if (found) return { container: found, ip: found.networks[name].ip };
-  }
-  return null;
-}
 
 /** HTTP к процессу контейнера (не через опубликованный порт): ответ или ошибка curl. */
 export function containerAnswer(hostFs, container, port, request, host, { self = false } = {}) {
@@ -53,10 +26,22 @@ export function containerAnswer(hostFs, container, port, request, host, { self =
   if (!self && container.bind?.[port] === '127.0.0.1') return refused;
   if (container.app) return appAnswer(hostFs, container, request);
   const program = container.procs[0]?.comm;
-  if (program === 'nginx') return nginxAnswer(hostFs, container, { ...request, client: request.client });
+  if (program === 'nginx') return nginxAnswer(hostFs, container, { ...request, port }, proxyFrom(hostFs, container));
   if (program === 'registry') return registryAnswer(hostFs, container, request);
   if (program === 'postgres') return { error: [52, 'Empty reply from server'] };
   return { error: [1, 'Received HTTP/0.9 when not allowed'] };
+}
+
+/** proxy_pass nginx-контейнера: «http://web:8000» → ответ соседа по сети (или ошибка). */
+export function proxyFrom(hostFs, container) {
+  return (url, request) => {
+    const target = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const [host, port = '80'] = target.split(':');
+    const found = resolve(dockerState(hostFs), container, host);
+    if (!found) return { error: [6, `Could not resolve host: ${host}`] };
+    const client = Object.values(container.networks)[0]?.ip;
+    return containerAnswer(hostFs, found.container, Number(port), { ...request, port: Number(port), client }, host, { self: Boolean(found.self) });
+  };
 }
 
 /** Хук curl (engines/linux/network.js): контейнеры по имени, IP, localhost. */
@@ -113,7 +98,7 @@ export function networkCommands() {
         const where = `${host ?? '/var/run/postgresql'}:${port}`;
         const target = host ? resolve(state, self, host)?.container : self;
         const ready = target?.status === 'running' && target.procs[0]?.comm === 'postgres'
-          && (target.listen ?? []).includes(port);
+          && (target.listen ?? []).includes(port) && (target.readyAt ?? 0) <= now();
         return ready ? { out: `${where} - accepting connections\n` } : { out: `${where} - no response\n`, code: 2 };
       },
     },
@@ -356,6 +341,11 @@ function volumeCommand(ctx, sub, args, { renderTemplate, jsonText }) {
         const [key, value = ''] = filter.split('=');
         if (key === 'name') list = list.filter((volume) => volume.name.includes(value));
         else if (key === 'dangling') list = list.filter((volume) => (users(state, volume.name).length === 0) === (value === 'true'));
+        else if (key === 'label') {
+          const [labelKey, ...labelValue] = filter.slice(6).split('=');
+          list = list.filter((volume) => volume.labels && labelKey in volume.labels
+            && (!labelValue.length || volume.labels[labelKey] === labelValue.join('=')));
+        }
       }
       if (flags.includes('-q') || flags.includes('--quiet')) return result(list.length ? [out(`${list.map((v) => v.name).join('\n')}\n`)] : []);
       return result([out(table(['DRIVER', 'VOLUME NAME'], list.map((volume) => ['local', volume.name])))]);
@@ -434,4 +424,4 @@ function volumeCommand(ctx, sub, args, { renderTemplate, jsonText }) {
   }
 }
 
-export { networkCommand, volumeCommand, volumeSize };
+export { networkCommand, volumeCommand, volumeSize, resolve };

@@ -759,3 +759,145 @@ CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
     assert.equal(run(sh, 'docker exec web2 gunicorn --version').out, 'gunicorn (version 23.0.0)\n');
   });
 });
+
+const SETUP_CHECK = {"cwd": "/home/shop/shop", "docker": {"images": ["python:3.12-slim", "postgres:16"]}, "files": {"/home/shop/shop/requirements.txt": "gunicorn==23.0.0\npsycopg[binary]==3.2.12\n", "/home/shop/shop/shop/__init__.py": "", "/home/shop/shop/shop/wsgi.py": "def application(environ, start_response):\n    start_response(\"200 OK\", [(\"Content-Type\", \"text/plain; charset=utf-8\")])\n    return [\"Магазин работает\\n\".encode()]\n", "/home/shop/shop/Dockerfile": "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nCMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"shop.wsgi\"]\n", "/home/shop/shop/check_db.py": "import os\nimport psycopg\n\npsycopg.connect(f\"host={os.environ['DB_HOST']} user=postgres password={os.environ['DB_PASSWORD']}\").close()\nprint(\"база доступна\")\n", "/home/shop/shop/compose.yaml": "services:\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_PASSWORD: shop\n  web:\n    build: .\n    command: [\"python\", \"check_db.py\"]\n    environment:\n      DB_HOST: db\n      DB_PASSWORD: shop\n    depends_on:\n      - db\n", "/home/shop/shop/compose2.yaml": "services:\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_PASSWORD: shop\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U postgres\"]\n      interval: 2s\n      timeout: 3s\n      retries: 10\n  web:\n    build: .\n    command: [\"python\", \"check_db.py\"]\n    environment:\n      DB_HOST: db\n      DB_PASSWORD: shop\n    depends_on:\n      db:\n        condition: service_healthy\n"}};
+const SETUP_STACK = {"cwd": "/home/shop/shop", "docker": {"images": ["python:3.12-slim", "postgres:16", "nginx:1.27-alpine"]}, "files": {"/home/shop/shop/requirements.txt": "Django==5.2.8\ngunicorn==23.0.0\npsycopg[binary]==3.2.12\n", "/home/shop/shop/manage.py": "#!/usr/bin/env python\nimport os\nimport sys\n\n\ndef main():\n    os.environ.setdefault(\"DJANGO_SETTINGS_MODULE\", \"config.settings\")\n    from django.core.management import execute_from_command_line\n    execute_from_command_line(sys.argv)\n\n\nif __name__ == \"__main__\":\n    main()\n", "/home/shop/shop/config/__init__.py": "", "/home/shop/shop/config/settings.py": "import os\nfrom pathlib import Path\n\nBASE_DIR = Path(__file__).resolve().parent.parent\nSECRET_KEY = os.environ[\"DJANGO_SECRET_KEY\"]\nDEBUG = False\nALLOWED_HOSTS = os.environ.get(\"DJANGO_ALLOWED_HOSTS\", \"\").split(\",\")\nDATABASES = {\n    \"default\": {\n        \"ENGINE\": \"django.db.backends.postgresql\",\n        \"NAME\": os.environ.get(\"POSTGRES_DB\", \"shop\"),\n        \"USER\": \"postgres\",\n        \"PASSWORD\": os.environ[\"POSTGRES_PASSWORD\"],\n        \"HOST\": os.environ.get(\"DB_HOST\", \"db\"),\n        \"PORT\": \"5432\",\n    }\n}\nSTATIC_URL = \"static/\"\nSTATIC_ROOT = BASE_DIR / \"staticfiles\"\n", "/home/shop/shop/config/wsgi.py": "import os\nfrom django.core.wsgi import get_wsgi_application\nos.environ.setdefault(\"DJANGO_SETTINGS_MODULE\", \"config.settings\")\napplication = get_wsgi_application()\n", "/home/shop/shop/shop/__init__.py": "", "/home/shop/shop/shop/views.py": "from django.contrib.auth.models import User\nfrom django.http import HttpResponse\n\n\ndef home(request):\n    return HttpResponse(f\"Магазин работает, пользователей: {User.objects.count()}\\n\")\n", "/home/shop/shop/Dockerfile": "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nRUN python manage.py collectstatic --noinput\nCMD [\"gunicorn\", \"--bind\", \"0.0.0.0:8000\", \"--workers\", \"2\", \"config.wsgi\"]\n", "/home/shop/shop/nginx.conf": "server {\n    listen 80;\n\n    location /static/ {\n        alias /static/;\n    }\n\n    location / {\n        proxy_pass http://web:8000;\n        proxy_set_header Host $host;\n    }\n}\n", "/home/shop/shop/shop.env": "POSTGRES_PASSWORD=s3cr3t\nPOSTGRES_DB=shop\nDJANGO_SECRET_KEY=change-me-on-server\nDJANGO_ALLOWED_HOSTS=localhost\n", "/home/shop/shop/compose.yaml": "services:\n  db:\n    image: postgres:16\n    env_file: shop.env\n    volumes:\n      - pgdata:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U postgres\"]\n      interval: 2s\n      retries: 10\n    restart: unless-stopped\n\n  web:\n    build: .\n    env_file: shop.env\n    volumes:\n      - static:/app/staticfiles\n    depends_on:\n      db:\n        condition: service_healthy\n    restart: unless-stopped\n\n  nginx:\n    image: nginx:1.27-alpine\n    ports:\n      - \"58080:80\"\n    volumes:\n      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro\n      - static:/static:ro\n    depends_on:\n      - web\n    restart: unless-stopped\n\nvolumes:\n  pgdata:\n  static:\n"}};
+
+describe('docker compose (шаг 5)', async () => {
+  const { setPGliteLoader } = await import('../../src/static/js/engines/docker/psql.js');
+  setPGliteLoader(async () => (await import('@electric-sql/pglite')).PGlite);
+  const WSGI = 'def application(environ, start_response):\n    start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])\n    return ["Магазин работает\\n".encode()]\n';
+  const BASE = {
+    '/home/shop/shop/requirements.txt': 'gunicorn==23.0.0\n',
+    '/home/shop/shop/shop/__init__.py': '',
+    '/home/shop/shop/shop/wsgi.py': WSGI,
+    '/home/shop/shop/Dockerfile': 'FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nCMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]\n',
+  };
+  const project = (files) => shell({ cwd: '/home/shop/shop', docker: { images: ['python:3.12-slim', 'postgres:16', 'nginx:1.27-alpine'] }, files: { ...BASE, ...files } });
+  const COMPOSE = `services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: shop
+      POSTGRES_DB: shop
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      retries: 10
+  web:
+    build: .
+    ports:
+      - "58000:8000"
+    environment:
+      DB_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  pgdata:
+`;
+
+  it('up -d: сборка, сеть, том, Waiting/Healthy; ps, logs, exec psql, config', async () => {
+    const sh = project({ '/home/shop/shop/compose.yaml': COMPOSE });
+    const up = run(sh, 'docker compose up -d');
+    assert.equal(up.code, 0);
+    const steps = up.err.split('\n').filter((item) => item.startsWith(' ')).join('\n');
+    assert.equal(steps, [' Image shop-web Building ', ' Image shop-web Built ', ' Network shop_default Creating ', ' Network shop_default Created ',
+      ' Volume shop_pgdata Creating ', ' Volume shop_pgdata Created ', ' Container shop-db-1 Creating ', ' Container shop-db-1 Created ',
+      ' Container shop-web-1 Creating ', ' Container shop-web-1 Created ', ' Container shop-db-1 Starting ', ' Container shop-db-1 Started ',
+      ' Container shop-db-1 Waiting ', ' Container shop-db-1 Healthy ', ' Container shop-web-1 Starting ', ' Container shop-web-1 Started '].join('\n'));
+    assert.match(up.err, /^#1 \[internal\] load local bake definitions\n/m);
+    assert.match(up.err, /resolving provenance for metadata file/);
+    const ps = run(sh, 'docker compose ps').out.split('\n');
+    assert.equal(ps[0], 'NAME         IMAGE         COMMAND                  SERVICE   CREATED                  STATUS                            PORTS');
+    assert.match(ps[1], /^shop-db-1 {4}postgres:16 {3}"docker-entrypoint\.s…" {3}db {7}.*Up Less than a second \(healthy\) {3}5432\/tcp$/);
+    assert.match(ps[2], /^shop-web-1 {3}shop-web {6}"gunicorn --bind 0\.0…" {3}web .*0\.0\.0\.0:58000->8000\/tcp, \[::\]:58000->8000\/tcp$/);
+    assert.equal(run(sh, 'curl -s localhost:58000').out, 'Магазин работает\n');
+    assert.match(run(sh, 'docker compose logs web').out, /^web-1 {2}\| \[[^\]]+\] \[1\] \[INFO\] Starting gunicorn 23\.0\.0\n/);
+    const { pending } = sh.run('docker compose exec db psql -U postgres -d shop -c "SELECT 1;"');
+    assert.equal((await pending).chunks.map((c) => c.text).join(''), ' ?column? \n----------\n        1\n(1 row)\n\n');
+    assert.match(run(sh, 'docker network ls --filter name=shop').out, /shop_default {3}bridge {4}local/);
+    const config = run(sh, 'docker compose config').out;
+    assert.match(config, /^name: shop\nservices:\n  db:\n    environment:\n      POSTGRES_DB: shop\n      POSTGRES_PASSWORD: shop\n    image: postgres:16\n    networks:\n      default: null\n    volumes:\n      - type: volume\n        source: pgdata\n        target: \/var\/lib\/postgresql\/data\n        volume: \{\}\n    healthcheck:\n      test:\n        - CMD-SHELL\n        - pg_isready -U postgres\n      interval: 2s\n      retries: 10\n/);
+    assert.match(config, /    depends_on:\n      db:\n        condition: service_healthy\n        required: true\n    ports:\n      - mode: ingress\n        target: 8000\n        published: "58000"\n        protocol: tcp\nnetworks:\n  default:\n    name: shop_default\nvolumes:\n  pgdata:\n    name: shop_pgdata\n$/);
+  });
+
+  it('down — контейнеры и сеть; том остаётся; down -v — и том', () => {
+    const sh = project({ '/home/shop/shop/compose.yaml': COMPOSE });
+    run(sh, 'docker compose up -d');
+    assert.equal(run(sh, 'docker compose down').err, [' Container shop-web-1 Stopping ', ' Container shop-web-1 Stopped ', ' Container shop-web-1 Removing ',
+      ' Container shop-web-1 Removed ', ' Container shop-db-1 Stopping ', ' Container shop-db-1 Stopped ', ' Container shop-db-1 Removing ',
+      ' Container shop-db-1 Removed ', ' Network shop_default Removing ', ' Network shop_default Removed ', ''].join('\n'));
+    assert.equal(run(sh, 'docker volume ls --filter label=com.docker.compose.project=shop').out, 'DRIVER    VOLUME NAME\nlocal     shop_pgdata\n');
+    assert.equal(run(sh, 'docker compose down -v').err, ' Volume shop_pgdata Removing \n Volume shop_pgdata Removed \n');
+  });
+
+  it('depends_on без healthcheck — web падает на неготовой базе; с healthcheck — ждёт', () => {
+    const sh = shell(SETUP_CHECK);
+    const up = run(sh, 'docker compose up');
+    assert.match(up.out, /^Attaching to db-1, web-1\n/);
+    assert.match(up.out, /web-1 {2}\| psycopg\.OperationalError: connection failed: connection to server at "172\.18\.0\.2", port 5432 failed: Connection refused\n/);
+    assert.match(up.out, /web-1 {2}\| \tIs the server running on that host/);
+    assert.match(up.out, /web-1 exited with code 1\n/);
+    run(sh, 'docker compose down -v');
+    run(sh, 'docker compose -f compose2.yaml up -d');
+    assert.match(run(sh, 'docker compose -f compose2.yaml ps -a').out, /\(healthy\)[\s\S]*Exited \(0\)/);
+    assert.equal(run(sh, "docker inspect --format '{{.State.Health.Status}}' shop-db-1").out, 'healthy\n');
+    assert.equal(run(sh, 'docker compose -f compose2.yaml logs web').out, 'web-1  | база доступна\n');
+  });
+
+  it('.env, env_file, предупреждения, ошибки файла, override и профиль', () => {
+    const sh = project({
+      '/home/shop/shop/db.env': 'POSTGRES_PASSWORD="s3cr3t"\nPOSTGRES_DB=shop\n',
+      '/home/shop/shop/.env': 'WEB_PORT=58000\nTAG=1.4.2\n',
+      '/home/shop/shop/compose.yaml': 'services:\n  db:\n    image: postgres:16\n    env_file: db.env\n  web:\n    build: .\n    image: shop-web:${TAG}\n    ports:\n      - "${WEB_PORT}:8000"\n  tools:\n    image: alpine:3\n    command: ["sleep", "3600"]\n    profiles: ["tools"]\n',
+      '/home/shop/shop/compose.override.yaml': 'services:\n  web:\n    command: ["gunicorn", "--bind", "0.0.0.0:8000", "--reload", "shop.wsgi"]\n    volumes:\n      - ./shop:/app/shop\n',
+      '/home/shop/shop/bad.yaml': 'services:\n  web:\n    image: nginx\n     ports:\n      - "80:80"\n',
+      '/home/shop/shop/bad2.yaml': 'services:\n  web:\n    image: nginx\n    ports: "58000:80"\n',
+    });
+    const config = run(sh, 'docker compose config').out;
+    assert.match(config, /POSTGRES_PASSWORD: s3cr3t\n/);
+    assert.match(config, /image: shop-web:1\.4\.2\n/);
+    assert.match(config, /  web:\n    command:\n      - gunicorn\n      - --bind\n      - 0\.0\.0\.0:8000\n      - --reload\n      - shop\.wsgi\n/);
+    assert.doesNotMatch(config, /tools/);
+    assert.doesNotMatch(run(sh, 'docker compose -f compose.yaml config').out, /--reload/);
+    assert.equal(run(sh, 'docker compose --env-file /dev/null config').err, 'WARN[0000] The "TAG" variable is not set. Defaulting to a blank string. \nWARN[0000] The "WEB_PORT" variable is not set. Defaulting to a blank string. \n');
+    assert.equal(run(sh, 'docker compose -f bad.yaml config').err, 'yaml: line 4: mapping values are not allowed in this context\n');
+    assert.equal(run(sh, 'docker compose -f bad2.yaml config').err, 'validating /home/shop/shop/bad2.yaml: services.web.ports must be a array\n');
+    run(sh, 'docker compose up -d --build');
+    run(sh, "sed -i 's/Магазин работает/Магазин работает — новая версия/' shop/wsgi.py");
+    assert.equal(run(sh, 'curl -s localhost:58000').out, 'Магазин работает — новая версия\n');
+    assert.match(run(sh, 'docker compose logs web').out, /Worker reloading: \/app\/shop\/wsgi\.py modified/);
+    assert.match(run(sh, 'docker compose --profile tools up -d').err, / Container shop-web-1 Running \n[\s\S]* Container shop-tools-1 Started /);
+  });
+
+  it('стек: nginx → Django, 500 до миграций, run --rm migrate, статика из тома, restart после kill 1', () => {
+    const sh = shell(SETUP_STACK);
+    assert.equal(run(sh, 'docker compose up -d --build').code, 0);
+    assert.equal(run(sh, "curl -s -o /dev/null -w '%{http_code}\\n' localhost:58080/").out, '500\n');
+    const migrate = run(sh, 'docker compose run --rm web python manage.py migrate');
+    assert.match(migrate.err, /^ Container shop-db-1 Running \n Container shop-db-1 Waiting \n Container shop-db-1 Healthy \n Container shop-web-run-[0-9a-f]{12} Creating \n/);
+    assert.match(migrate.out, /^Operations to perform:\n  Apply all migrations: admin, auth, contenttypes, sessions\nRunning migrations:\n  Applying contenttypes\.0001_initial\.\.\. OK\n/);
+    assert.equal(run(sh, 'curl -s localhost:58080/').out, 'Магазин работает, пользователей: 0\n');
+    assert.match(run(sh, 'curl -sI localhost:58080/static/admin/css/base.css').out, /^HTTP\/1\.1 200 OK\nServer: nginx\/1\.27\.5\nDate: [^\n]+\nContent-Type: text\/css\nContent-Length: 22120\nLast-Modified: /);
+    run(sh, 'docker compose exec web sh -c "kill 1"');
+    assert.equal(run(sh, "docker inspect -f '{{.RestartCount}}' shop-web-1").out, '1\n');
+    assert.match(run(sh, 'docker compose ps').out, /shop-web-1 .* Up /);
+    assert.equal(run(sh, 'docker compose stop web').err, ' Container shop-web-1 Stopping \n Container shop-web-1 Stopped \n');
+    assert.equal(run(sh, "curl -s -o /dev/null -w '%{http_code}\\n' localhost:58080/").out, '502\n');
+    assert.equal(firstFailedRule([{ docker: 'compose', service: 'web', fail: 'web' }], sh).fail, 'web');
+    assert.equal(firstFailedRule([{ docker: 'compose', service: 'nginx', project: 'shop', fail: 'nginx' }], sh), null);
+  });
+
+  it('DB_HOST=localhost — connection refused (localhost внутри контейнера — он сам)', () => {
+    const setup = structuredClone(SETUP_STACK);
+    setup.files['/home/shop/shop/config/settings.py'] = setup.files['/home/shop/shop/config/settings.py'].replace('"db")', '"localhost")');
+    const sh = shell(setup);
+    run(sh, 'docker compose up -d --build');
+    const migrate = run(sh, 'docker compose run --rm web python manage.py migrate');
+    assert.equal(migrate.code, 1);
+    assert.match(migrate.err, /django\.db\.utils\.OperationalError: connection failed: connection to server at "127\.0\.0\.1", port 5432 failed: Connection refused\n/);
+  });
+});

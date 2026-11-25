@@ -289,6 +289,7 @@ DOCKER_RULES = {
     'volume': ({'name'}, {'exists', 'mounted_in', 'path'}),
     'image': ({'ref'}, {'exists', 'max_size_mb', 'user_not_root'}),
     'network': ({'name'}, {'exists', 'containers'}),
+    'compose': ({'service'}, {'project', 'status'}),
 }
 DOCKER_STATUSES = {'running', 'exited', 'created', 'exists', 'absent'}
 DOCKER_SETUP_KEYS = {'images', 'volumes', 'containers'}
@@ -441,7 +442,8 @@ def validate_docker_rule(rule, number, path):
             f'правило {number}: docker {kind} — поля {sorted(required)} '
             f'и необязательные {sorted(optional)}',
         )
-    if kind == 'container' and rule.get('status', 'running') not in DOCKER_STATUSES:
+    status = rule.get('status', 'running')
+    if kind in ('container', 'compose') and status not in DOCKER_STATUSES:
         raise ContentError(
             path, f'правило {number}: status — одно из {sorted(DOCKER_STATUSES)}',
         )

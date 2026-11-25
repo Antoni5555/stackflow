@@ -35,8 +35,17 @@ export function createContainer(hostFs, image, options) {
     state.volumes[name] = { name, created: now(), anonymous: true, data: emptyVolumeData(), labels: { 'com.docker.volume.anonymous': '' } };
     mounts.push({ type: 'volume', name, destination: path, anonymous: true });
   }
+  const files = imageFs(image, id);
   for (const mount of mounts.filter((item) => item.type === 'volume')) {
     state.volumes[mount.name] ??= { name: mount.name, created: now(), data: emptyVolumeData(), labels: null };
+    // пустой том на месте папки образа — Docker копирует в него содержимое образа
+    // (статика из collectstatic попадает в том static и видна nginx)
+    const volume = state.volumes[mount.name];
+    if (!Object.keys(volume.data.children ?? {}).length) {
+      let node = { children: files.children };
+      for (const name of mount.destination.split('/').filter(Boolean)) node = node?.children?.[name];
+      if (node?.type === 'dir' && Object.keys(node.children ?? {}).length) volume.data = structuredClone(node);
+    }
   }
   const container = {
     id,
@@ -52,7 +61,10 @@ export function createContainer(hostFs, image, options) {
     env,
     ports: options.ports,
     mounts,
-    networks: network ? { [network.name]: { ip: network.driver === 'bridge' ? freeIp(state, network) : '' } } : {},
+    networks: network ? { [network.name]: { ip: network.driver === 'bridge' ? freeIp(state, network) : '', ...(options.aliases ? { aliases: options.aliases } : {}) } } : {},
+    labels: options.labels ?? {},
+    health: options.health ?? null,
+    restartCount: 0,
     wantedNetwork: options.network ?? 'bridge',
     workdir: options.workdir ?? config.WorkingDir ?? '',
     user: options.user ?? config.User ?? '',
@@ -62,7 +74,7 @@ export function createContainer(hostFs, image, options) {
     restart: options.restart ?? 'no',
     logs: [],
     procs: [],
-    fs: imageFs(image, id),
+    fs: files,
   };
   if (!info) container.program = null;
   state.containers.push(container);
@@ -164,6 +176,9 @@ export function runInContainer(hostFs, container, words, options = {}) {
       ...(result.out ? [{ text: result.out, err: false }] : []),
       ...(result.err ? [{ text: result.err, err: true }] : []),
     ];
+    // kill 1 внутри контейнера — главный процесс завершён: контейнер остановится (restart — поднимет)
+    const main = shell.fs.root.system?.procs.some((proc) => proc.pid === 1);
+    if (!main && container.procs.some((proc) => proc.pid === 1)) container.mainKilled = true;
     return { chunks, code: result.code, action: result.action, pending: result.pending };
   } finally {
     sync();
@@ -265,6 +280,7 @@ export function startContainer(hostFs, container) {
     if (result.exit !== undefined) return finish(hostFs, container, result.exit);
     container.procs = result.procs;
     container.listen = result.listen;
+    container.readyAt = now();      // compose up без ожидания здоровья сдвигает (база ещё стартует)
     syncProxies(hostFs);
     return { running: true };
   }
@@ -346,3 +362,31 @@ export function containerOfProc(hostFs, proc) {
 }
 
 export { FsError };
+
+/** Главный процесс убит изнутри (kill 1): контейнер завершается, restart-политика поднимает его. */
+export function afterMainKilled(hostFs, container) {
+  if (!container.mainKilled) return;
+  delete container.mainKilled;
+  // gunicorn на SIGTERM завершается штатно (код 0), остальное — 143
+  const code = container.app?.kind === 'gunicorn' ? 0 : 143;
+  if (container.app) stopApp(container);
+  finish(hostFs, container, code);
+  const policy = container.restart.split(':')[0];
+  if (policy === 'always' || policy === 'unless-stopped' || (policy === 'on-failure' && code !== 0)) {
+    container.restartCount = (container.restartCount ?? 0) + 1;
+    startContainer(hostFs, container);
+  }
+}
+
+/** Здоровье по healthcheck: healthy | unhealthy | starting (null — проверки нет). */
+export function healthStatus(hostFs, container) {
+  if (!container.health || container.status !== 'running') return null;
+  const [kind, ...rest] = container.health.test;
+  if (kind === 'NONE') return null;
+  const words = kind === 'CMD-SHELL' ? ['sh', '-c', rest.join(' ')] : kind === 'CMD' ? rest : ['sh', '-c', [kind, ...rest].join(' ')];
+  const done = runInContainer(hostFs, container, words);
+  if (done.code === 0) return 'healthy';
+  const seconds = (text) => Number.parseFloat(text ?? '30') * (/ms$/.test(text ?? '') ? 0.001 : /m$/.test(text ?? '') ? 60 : 1);
+  const budget = seconds(container.health.interval) * Number(container.health.retries ?? 3) * 1000;
+  return now() - container.startedAt < budget ? 'starting' : 'unhealthy';
+}

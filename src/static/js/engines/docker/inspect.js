@@ -2,6 +2,7 @@
 
 import { catalogImage, hexHash } from './catalog.js';
 import { isoNano } from './format.js';
+import { healthStatus } from './containers.js';
 
 const ports = (list) => Object.fromEntries((list ?? []).map((spec) => [spec, {}]));
 
@@ -56,11 +57,12 @@ export function inspectContainer(hostFs, state, c) {
       Error: '',
       StartedAt: c.startedAt ? isoNano(c.startedAt) : '0001-01-01T00:00:00Z',
       FinishedAt: c.finishedAt ? isoNano(c.finishedAt) : '0001-01-01T00:00:00Z',
+      ...(c.health ? { Health: { Status: healthStatus(hostFs, c) ?? 'starting', FailingStreak: 0, Log: [] } } : {}),
     },
     Image: `sha256:${c.imageId}`,
     LogPath: `/var/lib/docker/containers/${c.id}/${c.id}-json.log`,
     Name: `/${c.name}`,
-    RestartCount: 0,
+    RestartCount: c.restartCount ?? 0,
     Driver: 'overlayfs',
     Platform: 'linux',
     HostConfig: {
@@ -71,6 +73,7 @@ export function inspectContainer(hostFs, state, c) {
       PortBindings: bindings,
       RestartPolicy: { Name: c.restart.split(':')[0], MaximumRetryCount: Number(c.restart.split(':')[1] ?? 0) },
       AutoRemove: c.autoRemove,
+      LogConfig: { Type: 'json-file', Config: c.logConfig ?? {} },
     },
     Mounts: c.mounts.map((m) => (m.type === 'bind'
       ? { Type: 'bind', Source: m.source, Destination: m.destination, Mode: m.readOnly ? 'ro' : '', RW: !m.readOnly, Propagation: 'rprivate' }
@@ -93,7 +96,7 @@ export function inspectContainer(hostFs, state, c) {
       Volumes: config.Volumes?.length ? ports(config.Volumes) : null,
       WorkingDir: c.workdir,
       Entrypoint: c.entrypoint.length ? c.entrypoint : null,
-      Labels: config.Labels ?? {},
+      Labels: { ...(config.Labels ?? {}), ...(c.labels ?? {}) },
       ...(config.StopSignal ? { StopSignal: config.StopSignal } : {}),
     },
     NetworkSettings: {

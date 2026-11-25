@@ -17,7 +17,7 @@ import { addCatalogImage, dockerState, findImage, randomName } from './state.js'
 import { failedDockerRule } from './rules.js';
 import { python } from './python.js';
 import { psql } from './psql.js';
-import { connectHook, networkCommands } from './networks.js';
+import { connectHook, networkCommands, proxyFrom } from './networks.js';
 
 COMMANDS.docker = docker;
 
@@ -68,7 +68,9 @@ requestHooks.push((fs, proc, request) => {
   }
   if (container.app) return appAnswer(fs, container, request);
   const program = container.procs[0]?.comm;
-  if (program === 'nginx') return nginxAnswer(fs, container, request);
+  const net = dockerState(fs).networks[Object.keys(container.networks)[0]];
+  const client = net?.subnet ? `${net.subnet}.0.1` : '172.17.0.1';
+  if (program === 'nginx') return nginxAnswer(fs, container, { ...request, port, client, hostPort: request.port }, proxyFrom(fs, container));
   if (program === 'registry') return registryAnswer(fs, container, request);
   if (program === 'postgres') return { error: [52, 'Empty reply from server'] };
   return { error: [1, 'Received HTTP/0.9 when not allowed'] };

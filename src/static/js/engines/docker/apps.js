@@ -8,6 +8,7 @@ import { FsError, normalize } from '../linux/fs.js';
 import { appResponse } from '../linux/network.js';
 import { utcParts } from './format.js';
 import { withContainerFs } from './state.js';
+import { dbConnect, dbParams, migrated } from './db.js';
 
 const stamp = (ms) => {
   const p = utcParts(ms);
@@ -96,7 +97,7 @@ export function startApp(hostFs, container, words) {
       return {
         listen: [port],
         bind: { [port]: host },
-        app: { kind, file },
+        app: { kind, file, reload: words.includes('--reload'), loaded: now(), worker: 7 },
         procs: [
           { pid: 1, user: container.user || 'root', comm: 'gunicorn', cmd: `/usr/local/bin/python3.12 ${words.join(' ')}` },
           ...Array.from({ length: opts.workers }, (_, n) => ({ pid: 7 + n, user: container.user || 'root', comm: 'gunicorn', cmd: `/usr/local/bin/python3.12 ${words.join(' ')}` })),
@@ -159,6 +160,77 @@ export function stopApp(container) {
   return 0;
 }
 
+/** gunicorn --reload: файл модуля изменился (bind mount) — воркер перезапускается. */
+function reloadIfChanged(hostFs, container) {
+  const app = container.app;
+  if (!app?.reload || !app.file) return;
+  const mtime = withContainerFs(hostFs, container, (fs) => fs.as('root', () => {
+    try {
+      return fs.lookup(app.file).mtime;
+    } catch (e) {
+      return null;
+    }
+  }));
+  if (mtime && mtime > (app.loaded ?? 0)) {
+    const t = stamp(now());
+    const old = app.worker ?? 7;
+    app.worker = old + 2;
+    for (const line of [`${t} [${old}] [INFO] Worker reloading: ${app.file} modified`, `${t} [${old}] [INFO] Worker exiting (pid: ${old})`,
+      `${t} [${app.worker}] [INFO] Booting worker with pid: ${app.worker}`]) container.logs.push({ t: now(), err: true, text: line });
+    app.loaded = mtime;
+  }
+}
+
+const SERVER_ERROR = '\n<!doctype html>\n<html lang="en">\n<head>\n  <title>Server Error (500)</title>\n</head>\n<body>\n  <h1>Server Error (500)</h1><p></p>\n</body>\n</html>\n';
+
+/**
+ * Django-приложение: страница из views.py (HttpResponse(f"…")). Если view работает с базой —
+ * подключение по настройкам (DATABASES из окружения) и таблицы после migrate; иначе 500.
+ * null — своей страницы нет (ответ как у учебного Django сервера).
+ */
+function djangoAnswer(hostFs, container, request) {
+  const path = request.path.split('?')[0];
+  if (path.startsWith('/admin') || path.startsWith('/static/')) return null;
+  const files = withContainerFs(hostFs, container, (fs) => fs.as('root', () => {
+    const found = {};
+    const root = container.workdir || '/app';
+    try {
+      for (const [file, node] of fs.walk(root)) {
+        if (node.type === 'file' && file.endsWith('.py') && !file.includes('/site-packages/')) found[file] = fs.readFile(file);
+      }
+    } catch (e) {
+      // нет папки проекта
+    }
+    return found;
+  }));
+  const view = Object.values(files).find((code) => /HttpResponse\(\s*f?["']/.test(code));
+  if (!view) return null;
+  const literal = /HttpResponse\(\s*f?(["'])((?:\\.|(?!\1).)*)\1/.exec(view);
+  const usesDb = /\.objects\b|connection\.cursor|from django\.db/.test(view);
+  const headers = (type, length) => [['Server', 'gunicorn'], ['Date', new Date(now()).toUTCString()], ['Connection', 'close'],
+    ['Content-Type', type], ['Content-Length', String(length)], ['X-Frame-Options', 'DENY'], ['X-Content-Type-Options', 'nosniff'],
+    ['Referrer-Policy', 'same-origin'], ['Cross-Origin-Opener-Policy', 'same-origin']];
+  if (usesDb) {
+    const settings = Object.entries(files).find(([file, code]) => file.endsWith('settings.py') && /DATABASES/.test(code))?.[1] ?? '';
+    const env = Object.fromEntries(container.env.map((item) => [item.slice(0, item.indexOf('=')), item.slice(item.indexOf('=') + 1)]));
+    const connection = /sqlite3/.test(settings) ? { sqlite: true } : dbConnect(hostFs, container, dbParams(settings, env));
+    const problem = connection.error ? `django.db.utils.OperationalError: ${connection.error}`
+      : !connection.sqlite && !migrated(connection) ? 'django.db.utils.ProgrammingError: relation "auth_user" does not exist\nLINE 1: SELECT COUNT(*) AS "__count" FROM "auth_user"\n                                             ^' : null;
+    if (problem) {
+      const t = stamp(now());
+      container.logs.push({ t: now(), err: true, text: `Internal Server Error: ${path}` });
+      for (const line of ['Traceback (most recent call last):', '  File "/usr/local/lib/python3.12/site-packages/django/db/backends/utils.py", line 105, in _execute',
+        '    return self.cursor.execute(sql, params)', ...problem.split('\n')]) container.logs.push({ t: now(), err: true, text: line });
+      void t;
+      return { code: 500, headers: headers('text/html; charset=utf-8', SERVER_ERROR.length), body: SERVER_ERROR };
+    }
+  }
+  // {…count()…} — пользователей нет (createsuperuser в тренажёре не делаем): 0
+  const body = literal[2].replace(/\\n/g, '\n').replace(/\{([^}]*)\}/g, (_, expr) => (/count\(/.test(expr) ? '0' : ''));
+  const bytes = new TextEncoder().encode(body).length;
+  return { code: 200, headers: headers('text/html; charset=utf-8', bytes), body };
+}
+
 /** HTTP-ответ своего приложения. */
 export function appAnswer(hostFs, container, request) {
   const app = container.app ?? {};
@@ -170,8 +242,10 @@ export function appAnswer(hostFs, container, request) {
     }
   }) : '';
   let answer;
+  reloadIfChanged(hostFs, container);
   if (app.django || /get_wsgi_application|get_asgi_application/.test(text)) {
-    answer = appResponse({ comm: app.kind === 'gunicorn' ? 'gunicorn' : 'python', cmd: app.kind === 'runserver' ? 'runserver' : 'gunicorn' }, request.path);
+    answer = djangoAnswer(hostFs, container, request)
+      ?? appResponse({ comm: app.kind === 'gunicorn' ? 'gunicorn' : 'python', cmd: app.kind === 'runserver' ? 'runserver' : 'gunicorn' }, request.path);
   } else {
     // простой WSGI: return [b"…"] или ["…".encode()]
     const literal = /return\s*\[\s*b?(["'])((?:\\.|(?!\1).)*)\1/.exec(text)?.[2] ?? '';

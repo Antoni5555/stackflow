@@ -6,6 +6,7 @@ import { now } from '../linux/clock.js';
 import { FsError, normalize } from '../linux/fs.js';
 import { catalogImage, hexHash, imageId, knownRepo, normalizeRef } from './catalog.js';
 import {
+  afterMainKilled, healthStatus,
   commandLine, containerShell, createContainer, isShell, removeContainer, runInContainer,
   startContainer, stopContainer,
 } from './containers.js';
@@ -14,6 +15,7 @@ import { inspectContainer, inspectImage, renderTemplate } from './inspect.js';
 import { networkCommand, volumeCommand } from './networks.js';
 import { BuildError, baseHistory, buildImage } from './build.js';
 import { login, logout, pullFromRegistry, push } from './registry.js';
+import { compose } from './compose.js';
 import {
   addCatalogImage, dockerState, findContainer, findImage, randomName, shortId,
 } from './state.js';
@@ -530,8 +532,12 @@ let currentState = null;
 const findImageById = (container) => currentState?.images[container.imageId] ?? catalogImageRecord(container);
 const catalogImageRecord = (container) => ({ config: catalogImage(container.base)?.config ?? {} });
 
-export function statusText(container) {
-  if (container.status === 'running') return `Up ${humanDuration(now() - container.startedAt)}`;
+export function statusText(container, fs = null) {
+  if (container.status === 'running') {
+    const health = fs && container.health ? healthStatus(fs, container) : null;
+    const note = health ? ` (${health === 'starting' ? 'health: starting' : health})` : '';
+    return `Up ${humanDuration(now() - container.startedAt)}${note}`;
+  }
   if (container.status === 'exited') return `Exited (${container.exitCode}) ${humanDuration(now() - container.finishedAt)} ago`;
   return 'Created';
 }
@@ -563,7 +569,7 @@ function ps({ fs, args }) {
   const rows = list.map((c) => {
     const command = commandLine(c);
     const shown = parsed.opts.notrunc || command.length <= 20 ? command : `${command.slice(0, 19)}…`;
-    return [parsed.opts.notrunc ? c.id : shortId(c.id), c.image, `"${shown}"`, `${humanDuration(now() - c.created)} ago`, statusText(c), portsText(c), c.name];
+    return [parsed.opts.notrunc ? c.id : shortId(c.id), c.image, `"${shown}"`, `${humanDuration(now() - c.created)} ago`, statusText(c, fs), portsText(c), c.name];
   });
   return result([out(table(['CONTAINER ID', 'IMAGE', 'COMMAND', 'CREATED', 'STATUS', 'PORTS', 'NAMES'], rows))]);
 }
@@ -706,6 +712,7 @@ function exec(ctx) {
     return result([]);
   }
   const done = runInContainer(fs, container, words, { env, workdir, tty: Boolean(parsed.opts.tty), interactive });
+  afterMainKilled(fs, container);
   return { ...result(done.chunks, done.code, done.action), pending: done.pending };
 }
 
@@ -915,8 +922,19 @@ function port({ fs, args }) {
   return result(lines.length ? [out(`${lines.join('\n')}\n`)] : []);
 }
 
+/** docker compose …: exec передаётся обычному docker exec (с -it по умолчанию). */
+function composeCommand(ctx) {
+  const done = compose(ctx);
+  if (done.delegate) {
+    const inner = exec({ ...ctx, args: done.delegate.slice(1) });
+    return { ...inner, chunks: [...done.chunks, ...(inner.chunks ?? [])] };
+  }
+  return result(done.chunks, done.code);
+}
+
 const SUBCOMMANDS = {
   port,
+  compose: composeCommand,
   run, create, ps, start, stop, restart, rm, logs, exec, inspect, pull, images, rmi, tag, build, history,
   push: (ctx) => push(ctx), login: (ctx) => login(ctx), logout: (ctx) => logout(ctx),
   version: () => version(),
@@ -930,7 +948,7 @@ const GROUPS = {
   builder: { build },
 };
 
-const LATER = new Set(['compose', 'system', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'diff', 'events', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
+const LATER = new Set(['system', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'diff', 'events', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
 
 export const docker = {
   help: HELP,
@@ -961,7 +979,7 @@ export const docker = {
       if (LATER.has(name)) return { err: `docker ${name}: в учебном Docker пока нет — появится в следующих шагах курса\n`, code: 1 };
       return { err: `docker: unknown command: docker ${name}\n\nRun 'docker --help' for more information\n`, code: 1 };
     }
-    if (rest[0] === '--help' || (rest.includes('--help') && !['run', 'exec', 'create'].includes(label))) {
+    if (rest[0] === '--help' || (rest.includes('--help') && !['run', 'exec', 'create', 'compose'].includes(label))) {
       return { out: `${HELP}\n` };
     }
     const done = handler({ ...ctx, args: rest });

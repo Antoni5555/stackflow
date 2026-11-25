@@ -271,7 +271,7 @@ const CATALOG = new Map(IMAGES.map((image) => [image.ref, image]));
 // latest — та же версия, что и основной тег (учебному реестру хватает одной)
 for (const [alias, ref] of [['nginx:latest', 'nginx:1.27'], ['postgres:latest', 'postgres:16'],
   ['python:latest', 'python:3.12'], ['redis:latest', 'redis:7'], ['alpine:latest', 'alpine:3.20'],
-  ['ubuntu:latest', 'ubuntu:24.04'], ['nginx:alpine', 'nginx:1.27-alpine'], ['python:3.12-alpine', null]]) {
+  ['ubuntu:latest', 'ubuntu:24.04'], ['alpine:3', 'alpine:3.20'], ['nginx:alpine', 'nginx:1.27-alpine'], ['python:3.12-alpine', null]]) {
   if (ref) CATALOG.set(alias, CATALOG.get(ref));
 }
 

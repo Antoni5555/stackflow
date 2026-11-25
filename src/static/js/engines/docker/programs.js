@@ -7,6 +7,8 @@ import { catalogImage } from './catalog.js';
 import { packNode, shortId, withContainerFs } from './state.js';
 import { utcParts } from './format.js';
 import { initDataCluster } from './psql.js';
+import { resolve } from './dns.js';
+import { dockerState } from './state.js';
 import { startRegistry } from './registry.js';
 
 const PG_DATA = '/var/lib/postgresql/data';
@@ -207,6 +209,14 @@ function startNginx(hostFs, container, log) {
   log.line(`${entry}: Launching /docker-entrypoint.d/30-tune-worker-processes.sh`);
   log.line(`${entry}: Configuration complete; ready for start up`);
   const t = () => nginxTime(log.time);
+  // proxy_pass к имени, которого нет в сети (web ещё не создан или другая сеть) — nginx не стартует
+  const state = dockerState(hostFs);
+  const missing = nginxMissingUpstream(hostFs, container, (host) => resolve(state, container, host));
+  if (missing) {
+    log.line(`${t()} [emerg] 1#1: host not found in upstream "${missing.upstream}" in ${missing.file}:${missing.line}`, true);
+    log.line(`nginx: [emerg] host not found in upstream "${missing.upstream}" in ${missing.file}:${missing.line}`, true);
+    return { exit: 1 };
+  }
   const alpine = catalogImage(container.base)?.os === 'alpine';
   log.line(`${t()} [notice] 1#1: using the "epoll" event method`, true);
   log.line(`${t()} [notice] 1#1: nginx/1.27.5`, true);
@@ -306,38 +316,124 @@ function nginxPage(code, title) {
   return `<html>\r\n<head><title>${code} ${title}</title></head>\r\n<body>\r\n<center><h1>${code} ${title}</h1></center>\r\n<hr><center>${NGINX_SERVER}</center>\r\n</body>\r\n</html>\r\n`;
 }
 
-/** Ответ nginx из контейнера: файлы из root (по умолчанию /usr/share/nginx/html). */
-export function nginxAnswer(hostFs, container, request) {
-  const root = withContainerFs(hostFs, container, (fs) => {
+/** Конфиги nginx контейнера (/etc/nginx/conf.d/*.conf) → [{listen, locations, root, index}]. */
+export function nginxConfigs(hostFs, container) {
+  return withContainerFs(hostFs, container, (fs) => fs.as('root', () => {
+    const servers = [];
+    let names = [];
     try {
-      const conf = fs.readFile('/etc/nginx/conf.d/default.conf');
-      return /root\s+([^;]+);/.exec(conf)?.[1].trim() ?? '/usr/share/nginx/html';
+      names = fs.list('/etc/nginx/conf.d').map(([name]) => name).filter((name) => name.endsWith('.conf')).sort();
     } catch (e) {
-      return '/usr/share/nginx/html';
+      return servers;
     }
-  });
-  let path = normalize(request.path.split('?')[0]);
-  if (request.path.endsWith('/')) path = normalize(`${path}/index.html`);
+    for (const name of names) {
+      let text = '';
+      try {
+        text = fs.readFile(`/etc/nginx/conf.d/${name}`);
+      } catch (e) {
+        continue;
+      }
+      text = text.replace(/#[^\n]*/g, '');
+      for (const block of text.split(/\bserver\s*\{/).slice(1)) {
+        const server = { file: `/etc/nginx/conf.d/${name}`, text, listen: [], locations: [], root: '/usr/share/nginx/html', index: ['index.html', 'index.htm'] };
+        for (const m of block.matchAll(/^\s*listen\s+([^;]+);/gm)) {
+          const port = /(\d+)/.exec(m[1].replace(/^\[[^\]]*\]:/, ''))?.[1];
+          if (port) server.listen.push(Number(port));
+        }
+        const outer = block.replace(/location\s+[^{]*\{[^}]*\}/g, '');
+        server.root = /^\s*root\s+([^;]+);/m.exec(outer)?.[1].trim() ?? server.root;
+        for (const m of block.matchAll(/location\s+(=\s*)?([^\s{]+)\s*\{([^}]*)\}/g)) {
+          const body = m[3];
+          server.locations.push({
+            exact: Boolean(m[1]),
+            path: m[2],
+            alias: /alias\s+([^;]+);/.exec(body)?.[1].trim(),
+            root: /root\s+([^;]+);/.exec(body)?.[1].trim(),
+            proxy: /proxy_pass\s+([^;]+);/.exec(body)?.[1].trim(),
+            index: /index\s+([^;]+);/.exec(body)?.[1].trim().split(/\s+/),
+          });
+        }
+        servers.push(server);
+      }
+    }
+    return servers;
+  }));
+}
+
+/** Имена апстримов proxy_pass, которые nginx не нашёл при старте ([emerg] host not found). */
+export function nginxMissingUpstream(hostFs, container, resolveName) {
+  for (const server of nginxConfigs(hostFs, container)) {
+    for (const location of server.locations.filter((item) => item.proxy)) {
+      const target = location.proxy.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+      const host = target.replace(/:\d+$/, '');
+      if (!resolveName(host)) {
+        const line = server.text.split('\n').findIndex((item) => item.includes(location.proxy)) + 1;
+        return { upstream: target.includes(':') ? target : `${target}:80`, file: server.file, line };
+      }
+    }
+  }
+  return null;
+}
+
+const NGINX_TYPES = { '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json', '.html': 'text/html', '.htm': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png', '.txt': 'text/plain' };
+
+/** Ответ nginx из контейнера: файлы (root/alias) или proxy_pass к соседнему контейнеру. */
+export function nginxAnswer(hostFs, container, request, proxy = null) {
+  const servers = nginxConfigs(hostFs, container);
+  const server = servers.find((item) => item.listen.includes(Number(request.port))) ?? servers[0]
+    ?? { locations: [], root: '/usr/share/nginx/html', index: ['index.html'] };
+  const reqPath = normalize(request.path.split('?')[0]) + (request.path.split('?')[0].endsWith('/') && request.path !== '/' ? '/' : '');
+  const location = server.locations.find((item) => item.exact && item.path === reqPath)
+    ?? server.locations.filter((item) => !item.exact && reqPath.startsWith(item.path)).sort((a, b) => b.path.length - a.path.length)[0];
+  const p = utcParts(now());
+  const accessLog = (code, bytes) => container.logs.push({ t: now(), err: false, text: `${request.client ?? '172.17.0.1'} - - [${p.day}/${p.monthName}/${p.year}:${p.time} +0000] "${request.method} ${request.path} HTTP/1.1" ${code} ${request.method === 'HEAD' ? 0 : bytes} "-" "curl/8.5.0" "-"` });
+  const page = (code, title) => {
+    const body = nginxPage(code, title);
+    const length = new TextEncoder().encode(body).length;
+    accessLog(code, length);
+    return { code, headers: [['Server', NGINX_SERVER], ['Date', new Date(now()).toUTCString()], ['Content-Type', 'text/html'], ['Content-Length', String(length)], ['Connection', 'keep-alive']], body };
+  };
+  if (location?.proxy && proxy) {
+    const answer = proxy(location.proxy, request);
+    if (answer.error) {
+      const target = location.proxy.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      container.logs.push({ t: now(), err: true, text: `${nginxTime(now())} [error] 29#29: *1 connect() failed (111: Connection refused) while connecting to upstream, client: ${request.client ?? '172.17.0.1'}, server: , request: "${request.method} ${request.path} HTTP/1.1", upstream: "http://${target}${request.path}", host: "localhost:${request.hostPort ?? request.port}"` });
+      return page(502, 'Bad Gateway');
+    }
+    const headers = answer.headers.filter(([name]) => !['Server', 'Date', 'Connection'].includes(name));
+    accessLog(answer.code, new TextEncoder().encode(answer.body).length);
+    return { code: answer.code, headers: [['Server', NGINX_SERVER], ['Date', new Date(now()).toUTCString()], ...headers, ['Connection', 'keep-alive']], body: answer.body };
+  }
+  // файл: alias заменяет путь location, root — дописывается спереди
+  let path;
+  if (location?.alias) path = normalize(location.alias + reqPath.slice(location.path.length));
+  else path = normalize(`${location?.root ?? server.root}/${reqPath}`);
   const file = withContainerFs(hostFs, container, (fs) => fs.as('nginx', () => {
     try {
-      return { body: fs.readFile(normalize(`${root}/${path}`)) };
+      let target = path;
+      if (reqPath.endsWith('/')) {
+        const index = (location?.index ?? server.index).map((name) => normalize(name, path)).find((candidate) => fs.as('root', () => fs.exists(candidate)));
+        target = index ?? normalize((location?.index ?? server.index)[0], path);
+      }
+      const node = fs.lookup(target);
+      if (node.type === 'dir') return { code: 301 };
+      return { body: fs.readFile(target), node, target };
     } catch (e) {
       if (e instanceof FsError) return { code: e.code === 'EACCES' ? 403 : 404 };
       throw e;
     }
   }));
-  const code = file.body !== undefined ? 200 : file.code;
-  const body = file.body ?? nginxPage(code, code === 403 ? 'Forbidden' : 'Not Found');
-  const type = !file.body ? 'text/html' : path.endsWith('.css') ? 'text/css' : path.endsWith('.js') ? 'application/javascript'
-    : path.endsWith('.json') ? 'application/json' : /\.html?$/.test(path) ? 'text/html' : 'application/octet-stream';
-  const ip = request.client ?? '172.17.0.1';
-  const p = utcParts(now());
-  container.logs.push({ t: now(), err: false, text: `${ip} - - [${p.day}/${p.monthName}/${p.year}:${p.time} +0000] "${request.method} ${request.path} HTTP/1.1" ${code} ${request.method === 'HEAD' ? 0 : new TextEncoder().encode(body).length} "-" "curl/8.5.0" "-"` });
+  if (file.body === undefined) return page(file.code === 403 ? 403 : 404, file.code === 403 ? 'Forbidden' : 'Not Found');
+  const ext = /\.[a-z0-9]+$/.exec(file.target)?.[0] ?? '';
+  const length = file.node.size ?? new TextEncoder().encode(file.body).length;
+  const mtime = Math.floor((file.node.mtime ?? now()) / 1000);
+  accessLog(200, length);
   return {
-    code,
-    headers: [['Server', NGINX_SERVER], ['Date', new Date(now()).toUTCString()], ['Content-Type', type],
-      ['Content-Length', String(new TextEncoder().encode(body).length)], ['Connection', 'keep-alive']],
-    body,
+    code: 200,
+    headers: [['Server', NGINX_SERVER], ['Date', new Date(now()).toUTCString()], ['Content-Type', NGINX_TYPES[ext] ?? 'application/octet-stream'],
+      ['Content-Length', String(length)], ['Last-Modified', new Date(mtime * 1000).toUTCString()], ['Connection', 'keep-alive'],
+      ['ETag', `"${mtime.toString(16)}-${length.toString(16)}"`], ['Accept-Ranges', 'bytes']],
+    body: file.body,
   };
 }
 

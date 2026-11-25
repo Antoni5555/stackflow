@@ -194,7 +194,7 @@ function buildSteps(hostFs, sh, opts, out) {
   const state = dockerState(hostFs);
   state.buildCache ??= {};
   const dockerfilePath = normalize(opts.file ?? 'Dockerfile', opts.file ? sh.cwd : opts.dir);
-  const dockerfileName = opts.file ?? 'Dockerfile';
+  const dockerfileName = opts.fileName ?? opts.file ?? 'Dockerfile';
   let text;
   try {
     text = hostFs.readFile(dockerfilePath);

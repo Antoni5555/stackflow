@@ -4,6 +4,7 @@
 //   {docker: volume, name: pgdata, exists: true, mounted_in: db}
 //   {docker: image, ref: shop:1.0, exists: true, max_size_mb: 200, user_not_root: true}
 //   {docker: network, name: shop, containers: [web, db]}
+//   {docker: compose, service: web, project: shop, status: running}  (project — по умолчанию любой)
 
 import { normalizeRef } from './catalog.js';
 import { dockerState, findContainer, findImage } from './state.js';
@@ -51,6 +52,14 @@ export function failedDockerRule(rule, shell) {
       if (rule.max_size_mb !== undefined && image.disk > rule.max_size_mb * 1000 * 1000) return true;
       if (rule.user_not_root && ['', 'root', '0'].includes(image.config.User ?? '')) return true;
       return false;
+    }
+    case 'compose': {
+      const found = state.containers.find((c) => c.labels?.['com.docker.compose.service'] === rule.service
+        && !c.labels['com.docker.compose.oneoff'] && (!rule.project || c.labels['com.docker.compose.project'] === rule.project));
+      const status = rule.status ?? 'running';
+      if (status === 'absent') return Boolean(found);
+      if (status === 'exists') return !found;
+      return found?.status !== status;
     }
     case 'network': {
       const network = state.networks[rule.name];
