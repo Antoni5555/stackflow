@@ -1,0 +1,15 @@
+title: "pgAdmin не запустился"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "Сервис с profiles не стартует при обычном up; профиль включают --profile."
+statement: |
+  В `compose.yaml` добавили сервис `pgadmin` с `profiles: ["tools"]`. После `docker compose up -d` его нет в `docker compose ps`. Как запустить?
+options:
+  - "`docker compose up -d pgadmin --no-profile`"
+  - "`docker compose --profile tools up -d`"
+  - "Удалить строку `profiles` — иначе никак"
+  - "`docker compose restart`"
+answer: [1]
+explanation: |
+  Сервисы с профилем запускаются только при включённом профиле: `--profile tools` (или `COMPOSE_PROFILES=tools`). Так инструменты разработчика не стартуют на сервере и не мешают обычному `up`. Явное `docker compose up -d pgadmin` тоже сработает — указанный по имени сервис включает свой профиль.

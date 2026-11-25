@@ -1,0 +1,15 @@
+title: "--reload на сервере"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "compose.override.yaml подхватывается автоматически; на сервере файлы указывают явно через -f."
+statement: |
+  В репозитории магазина лежат `compose.yaml` и `compose.override.yaml` (`--reload` и монтирование кода). На сервер скопировали весь репозиторий и запустили `docker compose up -d`. Что работает на сервере?
+options:
+  - "Только настройки `compose.yaml` — override читается лишь на компьютере разработчика"
+  - "Слияние обоих файлов: в бою Gunicorn с `--reload` и код с диска сервера вместо кода из образа"
+  - "Только `compose.override.yaml`"
+  - "Compose откажется запускаться из-за двух файлов"
+answer: [1]
+explanation: |
+  Compose не знает, где он запущен: без `-f` он всегда сливает `compose.yaml` и `compose.override.yaml`. На сервере запускают явно: `docker compose -f compose.yaml -f compose.prod.yaml up -d` — тогда override не читается. Или не кладут override на сервер вовсе.

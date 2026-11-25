@@ -1,0 +1,57 @@
+title: "Ограничьте журналы сервисов"
+type: fix
+difficulty: 2
+pitfall: "У каждого сервиса — logging с driver json-file и options max-size и max-file в кавычках."
+statement: |
+  Добавьте сервисам `web` и `nginx` ограничение журналов — последним ключом сервиса:
+  ```yaml
+      logging:
+        driver: json-file
+        options:
+          max-size: "10m"
+          max-file: "3"
+  ```
+files:
+  compose.yaml: |
+    services:
+      web:
+        build: .
+        restart: unless-stopped
+      nginx:
+        image: nginx:1.27-alpine
+        ports:
+          - "80:80"
+        restart: unless-stopped
+check:
+  type: rules
+  rules:
+    - must_match: '^  web:\n    build: \.\n    restart: unless-stopped\n    logging:\n      driver: json-file\n      options:\n        max-size: "10m"\n        max-file: "3"$'
+      fail: "У web после restart — logging: driver: json-file, options: max-size: \"10m\", max-file: \"3\"."
+    - must_match: '^      - "80:80"\n    restart: unless-stopped\n    logging:\n      driver: json-file\n      options:\n        max-size: "10m"\n        max-file: "3"\s*$'
+      fail: "У nginx после restart — тот же блок logging."
+solution:
+  compose.yaml: |
+    services:
+      web:
+        build: .
+        restart: unless-stopped
+        logging:
+          driver: json-file
+          options:
+            max-size: "10m"
+            max-file: "3"
+      nginx:
+        image: nginx:1.27-alpine
+        ports:
+          - "80:80"
+        restart: unless-stopped
+        logging:
+          driver: json-file
+          options:
+            max-size: "10m"
+            max-file: "3"
+hints:
+  - "`logging` — ключ сервиса на одном уровне с `restart`. Значения опций — строки в кавычках."
+  - "Вставьте блок из условия под `restart: unless-stopped` у каждого из двух сервисов."
+explanation: |
+  Теперь журнал каждого сервиса занимает не больше 30 МБ. После правки контейнеры нужно пересоздать (`docker compose up -d`), иначе действуют старые настройки. Чтобы не повторять блок в каждом сервисе, ограничение задают для всего сервера в `/etc/docker/daemon.json`.

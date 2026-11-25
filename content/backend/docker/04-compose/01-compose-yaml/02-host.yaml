@@ -1,0 +1,22 @@
+title: "Адрес базы в compose"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "В compose имя сервиса — имя хоста в сети проекта."
+statement: |
+  ```yaml
+  services:
+    postgres:
+      image: postgres:16
+    web:
+      build: .
+  ```
+  Какой `DB_HOST` указать приложению в сервисе `web`?
+options:
+  - "`localhost`"
+  - "`postgres`"
+  - "`shop-postgres-1`, и только он"
+  - "IP-адрес из `docker inspect`"
+answer: [1]
+explanation: |
+  Compose кладёт сервисы в сеть проекта, где встроенный DNS отвечает на имена сервисов: `postgres` — это контейнер базы. Полное имя контейнера тоже разрешается, но зависит от имени папки проекта. `localhost` — сам контейнер `web`, а IP меняется при пересоздании.

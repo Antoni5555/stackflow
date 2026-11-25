@@ -1,0 +1,15 @@
+title: "Где выполнять миграции"
+type: quiz
+kind: single
+difficulty: 2
+pitfall: "Миграции — разовым шагом при деплое: при сборке нет базы, а в CMD они запустятся в каждом экземпляре."
+statement: |
+  Как правильно выполнять `python manage.py migrate` для магазина в compose?
+options:
+  - "`RUN python manage.py migrate` в Dockerfile"
+  - "`CMD sh -c \"python manage.py migrate && gunicorn …\"` — миграции при каждом старте"
+  - "Разовой командой при деплое: `docker compose run --rm web python manage.py migrate`"
+  - "Вручную через `psql` по файлам миграций"
+answer: [2]
+explanation: |
+  При сборке образа базы нет — `RUN migrate` упадёт или мигрирует не ту базу. В `CMD` миграции запустятся в каждом экземпляре `web` одновременно, а ошибка в миграции не даст сайту стартовать. Разовый контейнер `run --rm` с конфигурацией сервиса делает это один раз и удаляется.

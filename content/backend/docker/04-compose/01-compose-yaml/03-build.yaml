@@ -1,0 +1,15 @@
+title: "Правка кода не видна"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "docker compose up берёт уже собранный образ; после правки кода — up --build."
+statement: |
+  Сервис `web` собирается из Dockerfile (`build: .`). Поправили шаблон, выполнили `docker compose up -d` — сайт показывает старую версию. Что сделать?
+options:
+  - "`docker compose restart web`"
+  - "`docker compose up -d --build`"
+  - "`docker compose down -v`"
+  - "Удалить `compose.yaml` и написать заново"
+answer: [1]
+explanation: |
+  Образ сервиса собирается один раз; `up` и `restart` запускают контейнер из уже собранного образа, где старый код. `--build` пересобирает образ (быстро — благодаря кэшу слоёв) и пересоздаёт контейнер. `down -v` удалил бы тома с данными — к правке кода это не относится.

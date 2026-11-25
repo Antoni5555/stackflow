@@ -1,0 +1,54 @@
+title: "База без тома и пароль в файле"
+type: fix
+difficulty: 2
+pitfall: "Именованный том в сервисе и в разделе volumes; секреты — в env_file; порт — подстановкой с значением по умолчанию."
+statement: |
+  Исправьте `compose.yaml`:
+  - данные базы — в именованном томе `pgdata` (`/var/lib/postgresql/data`), объявленном в разделе `volumes:` верхнего уровня;
+  - настройки базы — из файла `db.env` (`env_file: db.env`) вместо `environment` с паролем;
+  - порт сервера у `web` — `${WEB_PORT:-58000}` вместо жёсткого `58000`.
+files:
+  compose.yaml: |
+    services:
+      db:
+        image: postgres:16
+        environment:
+          POSTGRES_PASSWORD: s3cr3t
+          POSTGRES_DB: shop
+      web:
+        build: .
+        ports:
+          - "58000:8000"
+check:
+  type: rules
+  rules:
+    - must_match: '^  db:\n    image: postgres:16\n    env_file: db\.env\n'
+      fail: "У db после image — env_file: db.env."
+    - must_not_match: 'POSTGRES_PASSWORD'
+      fail: "Пароль не должен оставаться в compose.yaml — он в db.env."
+    - must_match: '^    volumes:\n      - pgdata:/var/lib/postgresql/data$'
+      fail: "У db: volumes: - pgdata:/var/lib/postgresql/data."
+    - must_match: '^volumes:\n  pgdata:\s*$'
+      fail: "Внизу файла объявите том: volumes: и pgdata:."
+    - must_match: '^      - "\$\{WEB_PORT:-58000\}:8000"$'
+      fail: "Порт: - \"${WEB_PORT:-58000}:8000\"."
+solution:
+  compose.yaml: |
+    services:
+      db:
+        image: postgres:16
+        env_file: db.env
+        volumes:
+          - pgdata:/var/lib/postgresql/data
+      web:
+        build: .
+        ports:
+          - "${WEB_PORT:-58000}:8000"
+
+    volumes:
+      pgdata:
+hints:
+  - "Именованный том нужно и подключить в сервисе, и объявить внизу файла. Как задать значение по умолчанию в `${…}`?"
+  - "`env_file: db.env`, `volumes: - pgdata:/var/lib/postgresql/data`, внизу `volumes:` / `pgdata:`, порт `\"${WEB_PORT:-58000}:8000\"`."
+explanation: |
+  Теперь `down` не теряет базу, пароль живёт в `db.env` вне git, а порт можно поменять через `.env`, не трогая файл — и без `.env` подставится 58000.

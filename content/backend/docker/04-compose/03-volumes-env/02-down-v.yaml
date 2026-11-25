@@ -1,0 +1,15 @@
+title: "down или down -v"
+type: quiz
+kind: single
+difficulty: 1
+pitfall: "docker compose down сохраняет именованные тома; down -v удаляет их вместе с данными."
+statement: |
+  На сервере обновили `compose.yaml` магазина и хотят пересоздать контейнеры, не потеряв базу (она в именованном томе `pgdata`). Какую команду выполнить перед `docker compose up -d`?
+options:
+  - "`docker compose down -v`"
+  - "`docker compose down` (или сразу `docker compose up -d` — он сам пересоздаст изменённые сервисы)"
+  - "`docker volume prune`"
+  - "`docker system prune -a --volumes`"
+answer: [1]
+explanation: |
+  `down` удаляет контейнеры и сеть, именованные тома остаются, и новая база подключит прежний `pgdata`. Обычно хватает и `up -d`: compose пересоздаёт только сервисы, чьи настройки изменились. `-v`, `volume prune` и `--volumes` удаляют данные.

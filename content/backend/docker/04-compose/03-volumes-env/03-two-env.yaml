@@ -1,0 +1,15 @@
+title: "Откуда берётся ${WEB_PORT}"
+type: quiz
+kind: single
+difficulty: 3
+pitfall: "${…} в compose.yaml подставляется из окружения и .env рядом с файлом, а не из env_file сервиса."
+statement: |
+  В `compose.yaml` у сервиса `web` написано `ports: ["${WEB_PORT}:8000"]` и `env_file: web.env`, а в `web.env` есть `WEB_PORT=58000`. Файла `.env` нет. `docker compose config` предупреждает `The "WEB_PORT" variable is not set`. Почему?
+options:
+  - "`env_file` нужно указывать раньше `ports`"
+  - "`env_file` передаёт переменные внутрь контейнера, а `${…}` подставляется из окружения терминала и файла `.env` рядом с `compose.yaml`"
+  - "Переменные в compose нельзя использовать в `ports`"
+  - "Нужно писать `$WEB_PORT` без фигурных скобок"
+answer: [1]
+explanation: |
+  Это два разных механизма. Подстановка в сам файл происходит до запуска контейнеров и смотрит только на окружение, где запущен `docker compose`, и на `.env` рядом с файлом (или `--env-file`). `env_file` сервиса влияет лишь на окружение контейнера. Перенесите `WEB_PORT=58000` в `.env` или задайте значение по умолчанию: `${WEB_PORT:-58000}`.

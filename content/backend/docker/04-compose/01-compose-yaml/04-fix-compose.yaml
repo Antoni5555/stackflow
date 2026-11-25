@@ -1,0 +1,52 @@
+title: "Почините compose.yaml"
+type: fix
+difficulty: 2
+pitfall: "ports — список строк в кавычках; environment — словарь; адрес другого сервиса — его имя, а не localhost."
+statement: |
+  `docker compose config` ругается, а приложение после исправления не видит базу. Приведите файл в порядок:
+  - `ports` у `web` — список с одним элементом `"58000:8000"`;
+  - `environment` у `web` — словарь, как у `db`;
+  - `DB_HOST` — имя сервиса базы.
+files:
+  compose.yaml: |
+    services:
+      db:
+        image: postgres:16
+        environment:
+          POSTGRES_PASSWORD: shop
+      web:
+        build: .
+        ports: "58000:8000"
+        environment:
+          - DB_HOST=localhost
+          - DB_PASSWORD=shop
+check:
+  type: rules
+  rules:
+    - must_match: '^    ports:\n      - "58000:8000"$'
+      fail: "ports — список: строка ports:, ниже - \"58000:8000\"."
+    - must_match: '^    environment:\n      DB_HOST: db\n      DB_PASSWORD: shop$'
+      fail: "environment у web — словарь: DB_HOST: db и DB_PASSWORD: shop."
+    - must_not_match: 'localhost'
+      fail: "localhost внутри контейнера web — сам web. База — сервис db."
+    - must_match: '^  db:\n    image: postgres:16\n    environment:\n      POSTGRES_PASSWORD: shop$'
+      fail: "Сервис db не меняйте."
+solution:
+  compose.yaml: |
+    services:
+      db:
+        image: postgres:16
+        environment:
+          POSTGRES_PASSWORD: shop
+      web:
+        build: .
+        ports:
+          - "58000:8000"
+        environment:
+          DB_HOST: db
+          DB_PASSWORD: shop
+hints:
+  - "Что говорит `services.web.ports must be a array`? Как в YAML записывают список?"
+  - "`ports:` и на следующей строке `- \"58000:8000\"`; в `environment` — `DB_HOST: db`."
+explanation: |
+  `ports` — всегда список, даже из одного проброса. Список `- K=v` в `environment` compose тоже понимает, но здесь просили единый стиль словарём. Главное — `DB_HOST: db`: внутри сети проекта база доступна по имени сервиса.

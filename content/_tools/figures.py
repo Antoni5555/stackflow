@@ -4615,6 +4615,137 @@ def publish_fig():
     f.save(out(DK3 / "06-publish" / "img" / "publish.svg"))
 
 
+DK4 = ROOT / "docker" / "04-compose"
+
+
+def compose_fig():
+    f = Figure(880, 320, "compose.yaml описывает сервисы; up -d создаёт сеть и контейнеры проекта")
+    f.box(20, 20, 300, 250, "", "box2")
+    f.text(36, 46, "compose.yaml", "cs")
+    lines = ["services:", "  db:", "    image: postgres:16", "    environment: …", "  web:", "    build: .", "    ports: [\"58000:8000\"]", "    environment:", "      DB_HOST: db"]
+    for i, l in enumerate(lines):
+        f.text(36, 74 + i * 21, l, "cs")
+    f.arrow("M320 145H376"); f.text(348, 136, "up -d", "s", "middle")
+    f.box(380, 20, 480, 210, "", "ok")
+    f.text(396, 46, "проект shop — сеть shop_default", "t")
+    f.box(396, 70, 200, 70, "shop-web-1|сервис web", "box", "cs", rx=8)
+    f.box(640, 70, 200, 70, "shop-db-1|сервис db", "box", "cs", rx=8)
+    f.arrow("M596 105H636"); f.text(618, 96, "db:5432", "s", "middle")
+    f.box(396, 166, 200, 40, "localhost:58000", "acc", "onacc", rx=8)
+    f.arrow("M496 166V144")
+    f.text(640, 184, "5432 наружу не открыт", "s")
+    f.text(20, 300, "Имя сервиса — имя хоста; контейнеры — проект-сервис-1; down удаляет контейнеры и сеть, тома остаются.", "s")
+    f.save(out(DK4 / "01-compose-yaml" / "img" / "compose.svg"))
+
+
+def healthcheck_fig():
+    f = Figure(880, 300, "depends_on без проверки — только порядок; с service_healthy — ждём готовности базы")
+    x0 = 160
+    f.text(20, 30, "depends_on: [db]", "cs")
+    f.text(20, 66, "db", "s"); f.box(x0, 50, 460, 26, "инициализация … ready", "box", "cs", rx=4)
+    f.text(20, 102, "web", "s"); f.box(x0 + 20, 86, 160, 26, "Connection refused", "err", "errt", rx=4)
+    f.text(x0 + 190, 104, "exited 1 — раньше, чем база готова", "errt")
+    f.text(20, 160, "condition: service_healthy", "cs")
+    f.text(20, 196, "db", "s"); f.box(x0, 180, 300, 26, "Waiting: pg_isready каждые 2 с", "box", "cs", rx=4)
+    f.box(x0 + 300, 180, 120, 26, "Healthy", "ok", "cs", rx=4)
+    f.text(20, 232, "web", "s"); f.box(x0 + 420, 216, 200, 26, "Started → база доступна", "ok", "cs", rx=4)
+    f.text(20, 282, "healthcheck только сообщает статус; перезапуск при падении — ключ restart.", "s")
+    f.save(out(DK4 / "02-healthcheck" / "img" / "healthcheck.svg"))
+
+
+def volumes_env_fig():
+    f = Figure(880, 330, "Откуда compose берёт переменные и где хранит данные")
+    f.box(20, 20, 220, 80, "", "box2")
+    f.text(36, 46, ".env (рядом с compose)", "cs")
+    f.text(36, 72, "WEB_PORT=58000  TAG=1.4.2", "s")
+    f.box(20, 120, 220, 80, "", "box2")
+    f.text(36, 146, "db.env (env_file)", "cs")
+    f.text(36, 172, "POSTGRES_PASSWORD=\"s3cr3t\"", "s")
+    f.arrow("M240 60H316"); f.text(278, 52, "${…}", "s", "middle")
+    f.arrow("M240 160H316"); f.text(278, 152, "в контейнер", "s", "middle")
+    f.box(320, 20, 300, 200, "", "box")
+    f.text(336, 46, "compose.yaml → config", "cs")
+    f.text(336, 76, "image: shop-web:1.4.2", "cs")
+    f.text(336, 100, "ports: 58000:8000", "cs")
+    f.text(336, 140, "db: POSTGRES_PASSWORD: s3cr3t", "cs")
+    f.text(336, 164, "(кавычки убраны)", "s")
+    f.text(336, 200, "volumes: pgdata → shop_pgdata", "cs")
+    f.box(650, 20, 210, 90, "", "ok")
+    f.text(666, 46, "docker compose down", "cs")
+    f.text(666, 72, "контейнеры, сеть — удалены", "s")
+    f.text(666, 94, "том shop_pgdata — остался", "s")
+    f.box(650, 130, 210, 90, "", "err")
+    f.text(666, 156, "docker compose down -v", "cs")
+    f.text(666, 182, "том удалён вместе", "errt")
+    f.text(666, 204, "с базой", "errt")
+    f.text(20, 270, ".env рядом с compose — для подстановки ${…} в файл; env_file — переменные внутри контейнера.", "s")
+    f.text(20, 296, "Нет переменной — пустая строка с предупреждением; ${X:-по_умолчанию}, ${X:?ошибка}.", "s")
+    f.save(out(DK4 / "03-volumes-env" / "img" / "volumes-env.svg"))
+
+
+def dev_compose_fig():
+    f = Figure(880, 330, "На ноутбуке compose.yaml + override; на сервере — только compose.yaml")
+    f.box(20, 20, 280, 120, "", "box2")
+    f.text(36, 46, "compose.yaml", "cs")
+    f.text(36, 72, "web: build ., ports 58000:8000", "s")
+    f.text(36, 96, "tools: profiles [tools]", "s")
+    f.box(20, 160, 280, 100, "", "acc")
+    f.text(36, 186, "compose.override.yaml", "onacc")
+    f.text(36, 212, "command: gunicorn --reload", "onacc")
+    f.text(36, 236, "volumes: ./shop:/app/shop", "onacc")
+    f.arrow("M300 60H356"); f.arrow("M300 110H320V215H356"); f.arrow("M300 200H340V120H356")
+    f.box(360, 20, 500, 130, "", "ok")
+    f.text(376, 46, "ноутбук: docker compose up -d", "cs")
+    f.text(376, 74, "правка shop/wsgi.py на диске", "s")
+    f.text(376, 98, "→ Worker reloading: /app/shop/wsgi.py modified", "cs")
+    f.text(376, 122, "→ новая версия без пересборки образа", "s")
+    f.box(360, 170, 500, 90, "", "box")
+    f.text(376, 196, "сервер: docker compose -f compose.yaml up -d", "cs")
+    f.text(376, 222, "код только из образа, команда из Dockerfile, без reload", "s")
+    f.text(20, 300, "tools запускается только с --profile tools; останавливать — с тем же профилем.", "s")
+    f.save(out(DK4 / "04-dev" / "img" / "dev.svg"))
+
+
+def stack_fig():
+    f = Figure(880, 350, "Стек магазина: снаружи только Nginx, статика через общий том, миграции — разовым контейнером")
+    f.box(20, 120, 150, 50, "localhost:58080", "acc", "onacc", rx=8)
+    f.arrow("M170 145H216")
+    f.box(220, 60, 200, 170, "", "ok")
+    f.text(236, 86, "nginx", "t")
+    f.text(236, 112, "/static/ → файлы", "s")
+    f.text(236, 136, "из тома static (ro)", "s")
+    f.text(236, 166, "/ → proxy_pass", "s")
+    f.text(236, 190, "http://web:8000", "cs")
+    f.arrow("M420 185H466")
+    f.box(470, 150, 180, 80, "web|Gunicorn + Django", "box2", "cs")
+    f.arrow("M650 190H696")
+    f.box(700, 150, 160, 80, "db|PostgreSQL", "box2", "cs")
+    f.box(470, 40, 180, 50, "том static", "box", "cs", rx=8)
+    f.line("M560 90V150", "lnd"); f.line("M320 60L470 70", "lnd")
+    f.box(700, 40, 160, 50, "том pgdata", "box", "cs", rx=8)
+    f.line("M780 90V150", "lnd")
+    f.box(470, 260, 390, 40, "compose run --rm web … migrate", "box", "cs", rx=8)
+    f.line("M560 260V230", "lnd")
+    f.text(20, 330, "Порядок: db (healthy) → web → nginx; у всех restart: unless-stopped; web и db без ports.", "s")
+    f.save(out(DK4 / "05-stack" / "img" / "stack.svg"))
+
+
+def maintenance_fig():
+    f = Figure(880, 330, "Что копится и что можно чистить без риска")
+    f.box(20, 20, 400, 200, "", "ok")
+    f.text(36, 46, "безопасно", "t")
+    for i, t in enumerate(["container prune — остановленные контейнеры", "image prune — висящие образы", "builder prune — кэш сборки", "image prune -a — если версии в реестре"]):
+        f.text(36, 78 + i * 34, t, "cs")
+    f.box(460, 20, 400, 200, "", "err")
+    f.text(476, 46, "опасно — данные", "errt")
+    for i, t in enumerate(["volume prune -a", "system prune --volumes", "после compose down том базы", "не подключён — тоже удалится"]):
+        f.text(476, 78 + i * 34, t, "cs" if i < 2 else "s")
+    f.box(20, 240, 840, 60, "", "box2")
+    f.text(36, 266, "журналы json-file растут без ограничения:", "s")
+    f.text(36, 288, "--log-opt max-size=10m --log-opt max-file=3  (compose: logging, сервер: daemon.json)", "cs")
+    f.save(out(DK4 / "06-maintenance" / "img" / "maintenance.svg"))
+
+
 if __name__ == "__main__":
     for build in (traceback_anatomy, names_to_values, string_indices, delivery_elif, while_loop,
                   sets_venn, nested_order, copy_modes, comprehension_anatomy,
@@ -4677,6 +4808,8 @@ if __name__ == "__main__":
                   env_docker_fig, networks_fig, dockerfile_fig,
                   layers_cache_fig, dockerignore_fig,
                   instructions_fig, optimize_fig,
-                  publish_fig):
+                  publish_fig, compose_fig, healthcheck_fig,
+                  volumes_env_fig, dev_compose_fig, stack_fig,
+                  maintenance_fig):
         build()
     print("ok")

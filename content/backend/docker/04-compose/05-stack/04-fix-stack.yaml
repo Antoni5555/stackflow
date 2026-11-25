@@ -1,0 +1,121 @@
+title: "Почините стек"
+type: fix
+difficulty: 3
+pitfall: "Наружу только Nginx; Nginx ходит в Django по имени сервиса; статика — общим томом; restart для боевых сервисов."
+statement: |
+  Стек работает, но устроен опасно и неудобно. Исправьте `compose.yaml`:
+  - у `web` уберите `ports` — к Django ходит только Nginx;
+  - у `db` уберите `ports` — база наружу не нужна;
+  - у `nginx` подключите том статики только для чтения: `static:/static:ro` (у `web` он уже есть);
+  - всем трём сервисам — `restart: unless-stopped` (последней строкой сервиса).
+
+  В `nginx.conf` замените `proxy_pass http://localhost:8000;` на адрес сервиса `web`.
+files:
+  compose.yaml: |
+    services:
+      db:
+        image: postgres:16
+        env_file: shop.env
+        ports:
+          - "5432:5432"
+        volumes:
+          - pgdata:/var/lib/postgresql/data
+      web:
+        build: .
+        env_file: shop.env
+        ports:
+          - "8000:8000"
+        volumes:
+          - static:/app/staticfiles
+      nginx:
+        image: nginx:1.27-alpine
+        ports:
+          - "80:80"
+        volumes:
+          - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+    volumes:
+      pgdata:
+      static:
+  nginx.conf: |
+    server {
+        listen 80;
+
+        location /static/ {
+            alias /static/;
+        }
+
+        location / {
+            proxy_pass http://localhost:8000;
+            proxy_set_header Host $host;
+        }
+    }
+check:
+  type: rules
+  rules:
+    - file: compose.yaml
+      must_not_match: '"(5432|8000):'
+      fail: "У db и web не должно быть ports — наружу открыт только Nginx."
+    - file: compose.yaml
+      must_match: '^      - "80:80"$'
+      fail: "Порт Nginx 80:80 оставьте."
+    - file: compose.yaml
+      must_match: '^      - \./nginx\.conf:/etc/nginx/conf\.d/default\.conf:ro\n      - static:/static:ro$'
+      fail: "У nginx добавьте том статики: - static:/static:ro."
+    - file: compose.yaml
+      must_match: '^    volumes:\n      - pgdata:/var/lib/postgresql/data\n    restart: unless-stopped$'
+      fail: "db: последней строкой restart: unless-stopped."
+    - file: compose.yaml
+      must_match: '^      - static:/app/staticfiles\n    restart: unless-stopped$'
+      fail: "web: последней строкой restart: unless-stopped."
+    - file: compose.yaml
+      must_match: '^      - static:/static:ro\n    restart: unless-stopped$'
+      fail: "nginx: последней строкой restart: unless-stopped."
+    - file: nginx.conf
+      must_match: '^        proxy_pass http://web:8000;$'
+      fail: "В nginx.conf: proxy_pass http://web:8000; — localhost внутри контейнера Nginx — он сам."
+solution:
+  compose.yaml: |
+    services:
+      db:
+        image: postgres:16
+        env_file: shop.env
+        volumes:
+          - pgdata:/var/lib/postgresql/data
+        restart: unless-stopped
+      web:
+        build: .
+        env_file: shop.env
+        volumes:
+          - static:/app/staticfiles
+        restart: unless-stopped
+      nginx:
+        image: nginx:1.27-alpine
+        ports:
+          - "80:80"
+        volumes:
+          - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+          - static:/static:ro
+        restart: unless-stopped
+
+    volumes:
+      pgdata:
+      static:
+  nginx.conf: |
+    server {
+        listen 80;
+
+        location /static/ {
+            alias /static/;
+        }
+
+        location / {
+            proxy_pass http://web:8000;
+            proxy_set_header Host $host;
+        }
+    }
+hints:
+  - "Кому из сервисов нужен порт снаружи? Как Nginx найдёт контейнер с Django в сети проекта?"
+  - "Уберите оба `ports` у `db` и `web`, добавьте `- static:/static:ro` у `nginx`, `restart: unless-stopped` трижды, `proxy_pass http://web:8000;`."
+explanation: |
+  Открытые 5432 и 8000 давали доступ к базе и Gunicorn в обход Nginx — их начали бы сканировать в первый же день. `localhost` в конфиге Nginx указывал на сам контейнер Nginx (было бы `502 Bad Gateway`). Без тома статики Nginx отдавал бы 404 на CSS админки, а без `restart` упавший ночью сервис не поднялся бы до утра.

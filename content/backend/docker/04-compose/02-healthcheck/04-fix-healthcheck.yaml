@@ -1,0 +1,55 @@
+title: "Дождаться базы"
+type: fix
+difficulty: 2
+pitfall: "healthcheck у базы + depends_on с condition: service_healthy у приложения."
+statement: |
+  Добавьте базе проверку здоровья и сделайте так, чтобы `web` запускался только после неё:
+  - у `db`: `healthcheck` с `test: ["CMD-SHELL", "pg_isready -U postgres"]`, `interval: 2s`, `retries: 10`;
+  - у `web`: `depends_on` с `db` и `condition: service_healthy` вместо короткой записи.
+files:
+  compose.yaml: |
+    services:
+      db:
+        image: postgres:16
+        environment:
+          POSTGRES_PASSWORD: shop
+      web:
+        build: .
+        environment:
+          DB_HOST: db
+          DB_PASSWORD: shop
+        depends_on:
+          - db
+check:
+  type: rules
+  rules:
+    - must_match: '^    healthcheck:\n      test: \["CMD-SHELL", "pg_isready -U postgres"\]\n      interval: 2s\n      retries: 10$'
+      fail: "У db: healthcheck с test: [\"CMD-SHELL\", \"pg_isready -U postgres\"], interval: 2s, retries: 10."
+    - must_match: '^    depends_on:\n      db:\n        condition: service_healthy\s*$'
+      fail: "У web: depends_on: db: condition: service_healthy."
+    - must_not_match: '^      - db$'
+      fail: "Короткая запись - db только задаёт порядок — замените её на полную с условием."
+solution:
+  compose.yaml: |
+    services:
+      db:
+        image: postgres:16
+        environment:
+          POSTGRES_PASSWORD: shop
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U postgres"]
+          interval: 2s
+          retries: 10
+      web:
+        build: .
+        environment:
+          DB_HOST: db
+          DB_PASSWORD: shop
+        depends_on:
+          db:
+            condition: service_healthy
+hints:
+  - "`healthcheck` — ключ сервиса `db` на одном уровне с `environment`. Как записать `depends_on` словарём с условием?"
+  - "`depends_on:` → `db:` → `condition: service_healthy`."
+explanation: |
+  Теперь `docker compose up` покажет у базы `Waiting` и `Healthy`, и только после этого запустит `web`. `pg_isready` проверяет именно готовность принимать подключения, а не просто то, что процесс жив.

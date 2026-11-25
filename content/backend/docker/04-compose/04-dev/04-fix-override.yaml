@@ -1,0 +1,42 @@
+title: "Override для разработки"
+type: fix
+difficulty: 2
+pitfall: "В override — только то, что нужно разработке: команда с перезагрузкой и монтирование папки с кодом."
+statement: |
+  Напишите `compose.override.yaml` для сервиса `web`, чтобы правки кода подхватывались без пересборки:
+  - `command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]`;
+  - монтирование `./shop:/app/shop`;
+  - переменная `DJANGO_DEBUG: "True"` в `environment`.
+
+  Ничего, что уже есть в `compose.yaml` (`build`, `ports`), повторять не нужно.
+files:
+  compose.override.yaml: |
+    services:
+      web:
+check:
+  type: rules
+  rules:
+    - must_match: '^services:\n  web:\n'
+      fail: "Файл начинается с services: и web: — тот же сервис, что в compose.yaml."
+    - must_match: '^    command: \["python", "manage\.py", "runserver", "0\.0\.0\.0:8000"\]$'
+      fail: "command: [\"python\", \"manage.py\", \"runserver\", \"0.0.0.0:8000\"] — runserver на всех интерфейсах."
+    - must_match: '^    volumes:\n      - \./shop:/app/shop$'
+      fail: "volumes: - ./shop:/app/shop — папка с кодом поверх кода из образа."
+    - must_match: '^    environment:\n      DJANGO_DEBUG: "True"$'
+      fail: "environment: DJANGO_DEBUG: \"True\" — в кавычках, иначе YAML сделает true булевым."
+    - must_not_match: '^\s+(build|ports):'
+      fail: "build и ports уже есть в compose.yaml — в override их не повторяют (ports сложились бы в дубль)."
+solution:
+  compose.override.yaml: |
+    services:
+      web:
+        command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+        volumes:
+          - ./shop:/app/shop
+        environment:
+          DJANGO_DEBUG: "True"
+hints:
+  - "Override повторяет структуру `services: → web:` и добавляет только свои ключи."
+  - "`command: […]`, `volumes: - ./shop:/app/shop`, `environment: DJANGO_DEBUG: \"True\"`."
+explanation: |
+  Compose сольёт этот файл с `compose.yaml`: `command` заменит команду образа, `volumes` и `environment` добавятся. `runserver` перезагружается при изменении файлов, а bind mount делает правки с диска видимыми в контейнере. `0.0.0.0` — чтобы сервер был доступен через проброс порта (тема 3.01).
