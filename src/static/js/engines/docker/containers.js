@@ -6,6 +6,7 @@ import { FsError, normalize } from '../linux/fs.js';
 import { Shell } from '../linux/shell.js';
 import { catalogImage } from './catalog.js';
 import { programOf, startProgram, stopProgram } from './programs.js';
+import { appKind, inPath, startApp, stopApp } from './apps.js';
 import { forgetVolume } from './psql.js';
 import {
   dockerState, emptyVolumeData, freeIp, imageFs, newId, openContainerFs, shortId, syncProxies,
@@ -89,7 +90,9 @@ export function hasExecutable(hostFs, container, word) {
     return withContainerFs(hostFs, container, (fs) => fs.exists(normalize(word)))
       || (isShell(word) && (info?.commands ?? []).includes(name));
   }
-  return (info?.commands ?? []).includes(name) || name in containerCommands;
+  if ((info?.commands ?? []).includes(name) || name in containerCommands) return true;
+  // собранный образ: программа, которую поставил pip (gunicorn в /usr/local/bin или venv)
+  return withContainerFs(hostFs, container, (fs) => inPath(fs, container.env, name));
 }
 
 /** Команды, которых нет на сервере, но есть в образах (psql, redis-cli…) — регистрирует index.js. */
@@ -126,6 +129,7 @@ export function containerShell(hostFs, container, {
   env = [], workdir = null, nested = false, tty = false, interactive = false,
 } = {}) {
   const { fs, sync } = openContainerFs(hostFs, container);
+  fs.user = container.user && container.user !== '0' ? container.user : 'root';
   fs.root.system = {
     nextPid: 40 + (container.execs ?? 0) * 7, boot: container.startedAt ?? now(), services: {}, journal: [],
     procs: container.procs.map((proc) => ({ ...proc, started: container.startedAt })),
@@ -198,8 +202,46 @@ export function startContainer(hostFs, container) {
     if (net?.subnet && (clash || !info.ip)) info.ip = freeIp(state, net);
   }
   const first = !container.startedAt;
-  const words = mainWords(container);
+  let words = mainWords(container);
   const program = programOf(container);
+  // ENTRYPOINT-скрипт (/app/entrypoint.sh … exec "$@"): выполняется, затем — CMD
+  const script = !program && container.entrypoint.length && words[0]?.includes('/') && !isShell(words[0])
+    && withContainerFs(hostFs, container, (fs) => fs.as('root', () => fs.exists(normalize(words[0]))));
+  if (script) {
+    const scriptPath = normalize(words[0]);
+    const runnable = withContainerFs(hostFs, container, (fs) => fs.as('root', () => (fs.lookup(scriptPath).mode & 0o111) !== 0));
+    if (!runnable) {
+      container.exitCode = 126;
+      return { error: `failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "${scriptPath}": permission denied`, code: 126 };
+    }
+    container.startedAt = now();
+    container.status = 'running';
+    const before = runInContainer(hostFs, container, ['sh', '-c', withContainerFs(hostFs, container, (fs) => fs.as('root', () => fs.readFile(scriptPath)))
+      .split('\n').filter((line) => !/^\s*exec\s+"\$@"/.test(line) && !line.startsWith('#!')).join('\n')]);
+    for (const chunk of before.chunks) {
+      for (const line of chunk.text.replace(/\n$/, '').split('\n')) container.logs.push({ t: now(), err: chunk.err, text: line });
+    }
+    if (before.code) return finish(hostFs, container, before.code);
+    words = container.cmd;
+  }
+  const kind = !program && appKind(words);
+  if (kind) {
+    const executable = kind === 'gunicorn' ? words[0] : words[0];
+    if (!hasExecutable(hostFs, container, executable)) {
+      container.exitCode = 127;
+      if (container.status === 'running') return finish(hostFs, container, 127);
+      return { error: `failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "${executable}": executable file not found in $PATH`, code: 127 };
+    }
+    container.startedAt ??= now();
+    container.startedAt = now();
+    container.status = 'running';
+    container.exitCode = 0;
+    const result = startApp(hostFs, container, words);
+    if (result.exit !== undefined) return finish(hostFs, container, result.exit);
+    Object.assign(container, { procs: result.procs, listen: result.listen, bind: result.bind, app: result.app });
+    syncProxies(hostFs);
+    return { running: true };
+  }
   if (!program && !hasExecutable(hostFs, container, words[0])) {
     container.exitCode = 127;
     return { error: `failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "${words[0]}": executable file not found in $PATH`, code: 127 };
@@ -233,7 +275,7 @@ export function startContainer(hostFs, container) {
     return { running: true };
   }
   // обычная команда: выполняется, вывод — в логи, контейнер завершается с её кодом
-  const result = runInContainer(hostFs, container, words);
+  const result = runInContainer(hostFs, container, words, { tty: container.tty });
   let time = now();
   for (const chunk of result.chunks) {
     for (const line of chunk.text.replace(/\n$/, '').split('\n')) {
@@ -269,7 +311,9 @@ export function finish(hostFs, container, code) {
 /** Остановить (docker stop): логи остановки, код выхода. */
 export function stopContainer(hostFs, container) {
   if (container.status !== 'running') return;
-  const code = stopProgram(container);
+  const code = container.app ? stopApp(container) : stopProgram(container);
+  delete container.app;
+  delete container.bind;
   finish(hostFs, container, code);
 }
 

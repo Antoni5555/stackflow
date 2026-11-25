@@ -688,8 +688,9 @@ export class Shell {
       return { out: '', err: `${this.errPrefix()}${path}: Permission denied\n`, code: 126 };
     }
     // Программа симулятора в файле (venv/bin/pip, venv/bin/python) — запуск этой команды
-    if (node.program && COMMANDS[node.program]) {
-      const result = COMMANDS[node.program].run({
+    const program = node.program && (this.machine?.extra?.[node.program] ?? COMMANDS[node.program]);
+    if (program) {
+      const result = program.run({
         sh: this, fs: this.fs, args, stdin: '', tty, name: path.split('/').pop(), venv: node.venv,
       }) ?? {};
       return { out: result.out ?? '', err: result.err ?? '', code: result.code ?? 0 };

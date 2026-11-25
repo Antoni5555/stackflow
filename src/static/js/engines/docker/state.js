@@ -5,7 +5,7 @@
 import { now } from '../linux/clock.js';
 import { FsError, VirtualFS, basename, dirname, normalize } from '../linux/fs.js';
 import { systemState } from '../linux/system.js';
-import { OS, catalogImage, hexHash, normalizeRef } from './catalog.js';
+import { OS, catalogImage, hexHash, imageId, normalizeRef } from './catalog.js';
 import { parseHumanSize } from './format.js';
 
 export const BRIDGE_SUBNET = '172.17';
@@ -38,7 +38,7 @@ export function newId(state, kind) {
 export function addCatalogImage(state, ref) {
   const image = catalogImage(ref);
   if (!image) return null;
-  const id = hexHash(`image:${image.ref}`);
+  const id = imageId(image);
   const tag = normalizeRef(ref);
   state.images[id] ??= {
     id, tags: [], base: image.ref, created: Date.parse(image.created),
@@ -124,6 +124,14 @@ export const emptyVolumeData = () => packNode(emptyDir());
 
 /** ФС нового контейнера: скелет дистрибутива образа + файлы образа. */
 export function imageFs(image, id) {
+  // собранный образ: его ФС уже готова, меняется только имя хоста
+  if (image.fs) {
+    const own = new VirtualFS();
+    own.root = unpackNode(image.fs);
+    own.user = 'root';
+    own.writeFile('/etc/hostname', `${shortId(id)}\n`);
+    return packNode(own.root);
+  }
   const info = imageInfo(image);
   const fs = new VirtualFS();
   fs.root = emptyDir();

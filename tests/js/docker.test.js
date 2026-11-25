@@ -594,3 +594,151 @@ describe('сети и тома (шаг 3)', () => {
     assert.equal(run(sh, 'docker volume ls -q').out, '');
   });
 });
+
+describe('docker build, свой образ, реестр (шаг 4)', () => {
+  const WSGI = 'def application(environ, start_response):\n    start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])\n    return ["Магазин работает\\n".encode()]\n';
+  const DOCKERFILE = 'FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nCMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]\n';
+  const project = (extra = {}) => shell({
+    cwd: '/home/shop/shop',
+    docker: { images: ['python:3.12-slim'] },
+    files: {
+      '/home/shop/shop/requirements.txt': 'gunicorn==23.0.0\n',
+      '/home/shop/shop/shop/__init__.py': '',
+      '/home/shop/shop/shop/wsgi.py': WSGI,
+      '/home/shop/shop/Dockerfile': DOCKERFILE,
+      ...extra,
+    },
+  });
+  const steps = (text) => text.split('\n').filter((line) => /^#\d+ (\[|CACHED|DONE)/.test(line)).join('\n');
+
+  it('первая сборка: шаги BuildKit, pip install, образ 193MB / 47.2MB', () => {
+    const sh = project();
+    const built = run(sh, 'docker build -t shop-web:1.0 .');
+    assert.equal(built.code, 0);
+    assert.equal(built.out, '');
+    assert.match(built.err, /^#0 building with "default" instance using docker driver\n\n#1 \[internal\] load build definition from Dockerfile\n#1 transferring dockerfile: 175B done\n#1 DONE 0\.0s\n\n#2 \[internal\] load metadata for docker\.io\/library\/python:3\.12-slim\n/);
+    assert.match(built.err, /#5 \[1\/5\] FROM docker\.io\/library\/python:3\.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b\n/);
+    assert.match(built.err, /#8 \[4\/5\] RUN pip install --no-cache-dir -r requirements\.txt\n#8 \d\.\d{3} Collecting gunicorn==23\.0\.0 \(from -r requirements\.txt \(line 1\)\)\n/);
+    assert.match(built.err, /Successfully installed packaging-26\.4 gunicorn-23\.0\.0\n#8 \d\.\d{3} WARNING: Running pip as the 'root' user/);
+    assert.match(built.err, /#10 naming to docker\.io\/library\/shop-web:1\.0 done\n/);
+    assert.match(run(sh, 'docker images shop-web').out, /^IMAGE {10}ID {13}DISK USAGE {3}CONTENT SIZE {3}EXTRA\nshop-web:1\.0 {3}[0-9a-f]{12} {8}193MB {9}47\.2MB {8}\n$/);
+  });
+
+  it('кэш: повтор — всё CACHED; правка кода — пересобирается только COPY . .', () => {
+    const sh = project();
+    run(sh, 'docker build -t shop-web:1.0 .');
+    assert.equal(steps(run(sh, 'docker build -t shop-web:1.0 .').err).match(/CACHED/g).length, 4);
+    run(sh, 'echo "# правка" >> shop/wsgi.py');
+    const again = steps(run(sh, 'docker build -t shop-web:1.1 .').err);
+    assert.match(again, /#8 \[4\/5\] RUN pip install --no-cache-dir -r requirements\.txt\n#8 CACHED\n#9 \[5\/5\] COPY \. \.\n#9 DONE 0\.1s/);
+    // COPY . . до pip install — правка кода переустанавливает пакеты
+    run(sh, `echo 'FROM python:3.12-slim\nWORKDIR /app\nCOPY . .\nRUN pip install --no-cache-dir -r requirements.txt' > Dockerfile.bad`);
+    run(sh, 'docker build -f Dockerfile.bad -t shop-bad:1.0 .');
+    run(sh, 'echo "# ещё правка" >> shop/wsgi.py');
+    assert.match(run(sh, 'docker build -f Dockerfile.bad -t shop-bad:1.1 .').err, /#8 \[4\/4\] RUN pip install[^\n]*\n#8 \d\.\d{3} Collecting gunicorn/);
+    assert.match(run(sh, 'docker build --no-cache -t shop-web:1.2 .').err, /#6 \[2\/5\] WORKDIR \/app\n#6 DONE/);
+  });
+
+  it('свой образ: CMD gunicorn, curl на порт, логи, history', () => {
+    const sh = project();
+    run(sh, 'docker build -t shop-web:1.0 .');
+    assert.match(run(sh, 'docker run -d --name shop-web -p 58000:8000 shop-web:1.0').out, /^[0-9a-f]{64}\n$/);
+    assert.equal(run(sh, 'curl -s localhost:58000').out, 'Магазин работает\n');
+    assert.match(run(sh, 'docker logs shop-web').err, /^\[\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \+0000\] \[1\] \[INFO\] Starting gunicorn 23\.0\.0\n.*\[1\] \[INFO\] Listening at: http:\/\/0\.0\.0\.0:8000 \(1\)\n.*\[INFO\] Using worker: sync\n.*\[7\] \[INFO\] Booting worker with pid: 7\n$/);
+    const history = run(sh, 'docker history shop-web:1.0').out.split('\n');
+    assert.equal(history[0], 'IMAGE          CREATED                  CREATED BY                                      SIZE      COMMENT');
+    assert.match(history[1], /^[0-9a-f]{12} {3}Less than a second ago   CMD \["gunicorn" "--bind" "0\.0\.0\.0:8000" "sho… {3}0B {8}buildkit\.dockerfile\.v0$/);
+    assert.match(history[2], /COPY \. \. # buildkit {29}24\.6kB {4}/);
+    assert.match(history[3], /RUN \/bin\/sh -c pip install --no-cache-dir -r… {3}11\.7MB {4}/);
+    assert.match(history[4], /COPY requirements\.txt \. # buildkit {14}12\.3kB {4}/);
+    assert.match(history[5], /WORKDIR \/app {36}8\.19kB {4}/);
+    assert.match(run(sh, 'docker ps').out, /"gunicorn --bind 0\.0…"/);
+  });
+
+  it('127.0.0.1 в gunicorn — снаружи обрыв; нет модуля — Worker failed to boot', () => {
+    const sh = project({ '/home/shop/shop/Dockerfile': DOCKERFILE.replace('0.0.0.0:8000', '127.0.0.1:8000') });
+    run(sh, 'docker build -t local .');
+    run(sh, 'docker run -d --name web -p 58000:8000 local');
+    assert.equal(run(sh, 'curl -s localhost:58000').err, 'curl: (56) Recv failure: Connection reset by peer\n');
+    const broken = project({ '/home/shop/shop/Dockerfile': DOCKERFILE.replace('shop.wsgi', 'store.wsgi') });
+    run(broken, 'docker build -t broken .');
+    run(broken, 'docker run -d --name web broken');
+    assert.match(run(broken, 'docker logs web').err, /ModuleNotFoundError: No module named 'store'\n[\s\S]*Reason: Worker failed to boot\.\n$/);
+    assert.match(run(broken, 'docker ps -a').out, /Exited \(3\)/);
+  });
+
+  it('.dockerignore: .env и venv не попадают в образ', () => {
+    const sh = project({ '/home/shop/shop/.env': 'POSTGRES_PASSWORD=s3cr3t\n', '/home/shop/shop/venv/bin/python': 'x', '/home/shop/shop/.dockerignore': '.git\n.env\nvenv/\n__pycache__/\n*.pyc\n' });
+    assert.match(run(sh, 'docker build -t shop-web:slim .').err, /#3 \[internal\] load \.dockerignore\n#3 transferring context: 35B done/);
+    assert.equal(run(sh, 'docker run --rm shop-web:slim ls -a /app').out, '.\n..\n.dockerignore\nDockerfile\nrequirements.txt\nshop\n');
+    assert.equal(run(sh, 'docker run --rm shop-web:slim cat /app/.env').err, 'cat: /app/.env: No such file or directory\n');
+  });
+
+  it('многоэтапная сборка, ARG/ENV, USER, ENTRYPOINT-скрипт', () => {
+    const sh = project({
+      '/home/shop/shop/entrypoint.sh': { content: '#!/bin/sh\necho "миграции применены"\nexec "$@"\n', mode: '755' },
+      '/home/shop/shop/Dockerfile': `FROM python:3.12-slim AS build
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+FROM python:3.12-slim
+RUN useradd --create-home app
+COPY --from=build /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+WORKDIR /app
+COPY --chown=app . .
+ARG APP_VERSION=dev
+ENV APP_VERSION=\${APP_VERSION}
+USER app
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+`,
+    });
+    const built = run(sh, 'docker build --build-arg APP_VERSION=1.4.2 -t shop-web:multi .');
+    assert.equal(built.code, 0, built.err);
+    assert.match(built.err, /#\d+ \[build 1\/4\] FROM/);
+    assert.match(built.err, /#\d+ \[stage-1 3\/5\] COPY --from=build \/opt\/venv \/opt\/venv/);
+    run(sh, 'docker run -d --name web -p 58000:8000 shop-web:multi');
+    assert.equal(run(sh, 'curl -s localhost:58000').out, 'Магазин работает\n');
+    assert.match(run(sh, 'docker logs web').out, /^миграции применены\n$/);
+    assert.equal(run(sh, 'docker exec web whoami').out, 'app\n');
+    assert.match(run(sh, 'docker exec web env').out, /^APP_VERSION=1\.4\.2$/m);
+    assert.equal(firstFailedRule([{ docker: 'image', ref: 'shop-web:multi', user_not_root: true, max_size_mb: 250, fail: 'x' }], sh), null);
+  });
+
+  it('ошибки сборки: нет файла для COPY, упавший RUN, нет контекста', () => {
+    const sh = project({ '/home/shop/shop/Dockerfile': 'FROM python:3.12-slim\nWORKDIR /app\nCOPY config.ini .\n' });
+    const missing = run(sh, 'docker build -t bad .');
+    assert.equal(missing.code, 1);
+    assert.match(missing.err, /------\n > \[3\/3\] COPY config\.ini \.:\n------\nDockerfile:3\n--------------------\n {3}1 \| {5}FROM python:3\.12-slim\n {3}2 \| {5}WORKDIR \/app\n {3}3 \| >>> COPY config\.ini \.\n--------------------\nERROR: failed to build: failed to solve: failed to compute cache key: failed to calculate checksum of ref [0-9a-f]+::[0-9a-f]+: "\/config\.ini": not found\n$/);
+    run(sh, `echo 'FROM python:3.12-slim\nRUN nosuch' > Dockerfile`);
+    const failed = run(sh, 'docker build -t bad .');
+    assert.match(failed.err, /#6 \[2\/2\] RUN nosuch\n#6 \d\.\d{3} \/bin\/sh: 1: nosuch: not found\n#6 ERROR: process "\/bin\/sh -c nosuch" did not complete successfully: exit code: 127\n------\n > \[2\/2\] RUN nosuch:\n\d\.\d{3} \/bin\/sh: 1: nosuch: not found\n------\n/);
+    assert.match(failed.err, /ERROR: failed to build: failed to solve: process "\/bin\/sh -c nosuch" did not complete successfully: exit code: 127\n$/);
+    assert.equal(run(sh, 'docker build -t x').err, "ERROR: docker: 'docker buildx build' requires 1 argument\n\nUsage:  docker buildx build [OPTIONS] PATH | URL | -\n\nRun 'docker buildx build --help' for more information\n");
+  });
+
+  it('свой реестр registry:2: tag, push, API, pull; внешние реестры — login', () => {
+    const sh = project();
+    run(sh, 'docker build -t shop-web:1.4.2 .');
+    run(sh, 'docker run -d --name registry -p 55000:5000 -v registry-data:/var/lib/registry registry:2');
+    run(sh, 'docker tag shop-web:1.4.2 localhost:55000/shop/web:1.4.2');
+    run(sh, 'docker tag shop-web:1.4.2 localhost:55000/shop/web:latest');
+    assert.equal(run(sh, 'docker images localhost:55000/shop/web').out.split('\n').length, 4);
+    assert.match(run(sh, 'docker push localhost:55000/shop/web:1.4.2').out, /^The push refers to repository \[localhost:55000\/shop\/web\]\n([0-9a-f]{12}: Pushed\n)+1\.4\.2: digest: sha256:[0-9a-f]{64} size: 856\n$/);
+    assert.match(run(sh, 'docker push localhost:55000/shop/web:latest').out, /([0-9a-f]{12}: Layer already exists\n)+latest: digest/);
+    assert.equal(run(sh, 'curl -s localhost:55000/v2/_catalog').out, '{"repositories":["shop/web"]}\n');
+    assert.equal(run(sh, 'curl -s localhost:55000/v2/shop/web/tags/list').out, '{"name":"shop/web","tags":["latest","1.4.2"]}\n');
+    run(sh, 'docker rmi localhost:55000/shop/web:1.4.2 localhost:55000/shop/web:latest');
+    assert.match(run(sh, 'docker pull localhost:55000/shop/web:1.4.2').out, /^1\.4\.2: Pulling from shop\/web\nDigest: sha256:[0-9a-f]{64}\nStatus: Downloaded newer image for localhost:55000\/shop\/web:1\.4\.2\nlocalhost:55000\/shop\/web:1\.4\.2\n$/);
+    assert.equal(run(sh, 'docker pull localhost:55000/shop/web:9.9.9').err, 'Error response from daemon: failed to resolve reference "localhost:55000/shop/web:9.9.9": localhost:55000/shop/web:9.9.9: not found\n');
+    assert.equal(run(sh, 'docker push shop-web:1.4.2').err, 'denied: requested access to the resource is denied\n');
+    run(sh, 'docker tag shop-web:1.4.2 ghcr.io/shop/web:1.4.2');
+    assert.match(run(sh, 'docker push ghcr.io/shop/web:1.4.2').err, /^unauthorized/);
+    assert.equal(run(sh, 'echo token | docker login ghcr.io -u shop --password-stdin').out, 'Login Succeeded\n');
+    assert.equal(run(sh, 'docker push ghcr.io/shop/web:1.4.2').code, 0);
+    assert.match(run(sh, 'cat ~/.docker/config.json').out, /"ghcr\.io": \{\n\t\t\t"auth": "c2hvcDp0b2tlbg=="/);
+  });
+});

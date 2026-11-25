@@ -10,6 +10,9 @@ import { ruleHooks } from '../linux/checker.js';
 import { docker } from './cli.js';
 import { containerCommands, containerOfProc, startContainer, createContainer } from './containers.js';
 import { nginxAnswer } from './programs.js';
+import { appAnswer } from './apps.js';
+import { TOOLS } from './tools.js';
+import { registryAnswer } from './registry.js';
 import { addCatalogImage, dockerState, findImage, randomName } from './state.js';
 import { failedDockerRule } from './rules.js';
 import { python } from './python.js';
@@ -29,6 +32,7 @@ Object.assign(containerCommands, {
   python3: python,
   psql,
   ...networkCommands(),
+  ...TOOLS,
   sleep: {
     help: 'sleep N — подождать N секунд (в тренажёре не ждёт).',
     run: ({ args }) => (args.length ? {} : { err: "sleep: missing operand\nTry 'sleep --help' for more information.\n", code: 1 }),
@@ -58,9 +62,14 @@ requestHooks.push((fs, proc, request) => {
   const container = containerOfProc(fs, proc);
   if (!container) return null;
   const port = Number(proc.containerPort ?? request.port);
-  if (!(container.listen ?? []).includes(port)) return { error: [56, 'Recv failure: Connection reset by peer'] };
+  // через опубликованный порт: внутри никто не слушает (или слушает только 127.0.0.1) — обрыв
+  if (!(container.listen ?? []).includes(port) || container.bind?.[port] === '127.0.0.1') {
+    return { error: [56, 'Recv failure: Connection reset by peer'] };
+  }
+  if (container.app) return appAnswer(fs, container, request);
   const program = container.procs[0]?.comm;
   if (program === 'nginx') return nginxAnswer(fs, container, request);
+  if (program === 'registry') return registryAnswer(fs, container, request);
   if (program === 'postgres') return { error: [52, 'Empty reply from server'] };
   return { error: [1, 'Received HTTP/0.9 when not allowed'] };
 });

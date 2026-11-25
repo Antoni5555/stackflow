@@ -6,6 +6,8 @@ import { now } from '../linux/clock.js';
 import { humanSize, localIso, table } from './format.js';
 import { forgetVolume } from './psql.js';
 import { nginxAnswer } from './programs.js';
+import { appAnswer } from './apps.js';
+import { registryAnswer } from './registry.js';
 import { dockerState, findContainer, newId, shortId } from './state.js';
 import { hexHash } from './catalog.js';
 
@@ -44,12 +46,15 @@ export function resolve(state, self, host) {
 }
 
 /** HTTP к процессу контейнера (не через опубликованный порт): ответ или ошибка curl. */
-export function containerAnswer(hostFs, container, port, request, host) {
-  if (container.status !== 'running' || !(container.listen ?? []).includes(Number(port))) {
-    return { error: [7, `Failed to connect to ${host} port ${port} after 0 ms: Couldn't connect to server`] };
-  }
+export function containerAnswer(hostFs, container, port, request, host, { self = false } = {}) {
+  const refused = { error: [7, `Failed to connect to ${host} port ${port} after 0 ms: Couldn't connect to server`] };
+  if (container.status !== 'running' || !(container.listen ?? []).includes(Number(port))) return refused;
+  // приложение слушает 127.0.0.1 — снаружи контейнера до него не достучаться
+  if (!self && container.bind?.[port] === '127.0.0.1') return refused;
+  if (container.app) return appAnswer(hostFs, container, request);
   const program = container.procs[0]?.comm;
   if (program === 'nginx') return nginxAnswer(hostFs, container, { ...request, client: request.client });
+  if (program === 'registry') return registryAnswer(hostFs, container, request);
   if (program === 'postgres') return { error: [52, 'Empty reply from server'] };
   return { error: [1, 'Received HTTP/0.9 when not allowed'] };
 }
@@ -63,7 +68,7 @@ export function connectHook(ctx, request) {
   const found = resolve(state, self, request.host);
   if (!found) return self ? { unresolved: true } : null;
   const client = self ? Object.values(self.networks)[0]?.ip : '172.17.0.1';
-  return { ip: found.ip, answer: () => containerAnswer(hostFs, found.container, request.port, { ...request, client }, request.host) };
+  return { ip: found.ip, answer: () => containerAnswer(hostFs, found.container, request.port, { ...request, client }, request.host, { self: Boolean(found.self) }) };
 }
 
 /** Команды внутри контейнера, которым нужна сеть. */

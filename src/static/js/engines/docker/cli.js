@@ -4,7 +4,7 @@
 
 import { now } from '../linux/clock.js';
 import { FsError, normalize } from '../linux/fs.js';
-import { catalogImage, hexHash, knownRepo, normalizeRef } from './catalog.js';
+import { catalogImage, hexHash, imageId, knownRepo, normalizeRef } from './catalog.js';
 import {
   commandLine, containerShell, createContainer, isShell, removeContainer, runInContainer,
   startContainer, stopContainer,
@@ -12,6 +12,8 @@ import {
 import { humanDuration, humanSize, isoNano, table } from './format.js';
 import { inspectContainer, inspectImage, renderTemplate } from './inspect.js';
 import { networkCommand, volumeCommand } from './networks.js';
+import { BuildError, baseHistory, buildImage } from './build.js';
+import { login, logout, pullFromRegistry, push } from './registry.js';
 import {
   addCatalogImage, dockerState, findContainer, findImage, randomName, shortId,
 } from './state.js';
@@ -126,12 +128,16 @@ function parseFlags(name, args, spec, { stopAtPositional = false } = {}) {
 
 // --- docker pull ---
 
-function pullLines(state, ref, { quietTag = false } = {}) {
+function pullLines(fs, ref, { quietTag = false } = {}) {
+  const state = dockerState(fs);
   const full = normalizeRef(ref);
   const [repo, tag] = [full.slice(0, full.lastIndexOf(':')), full.slice(full.lastIndexOf(':') + 1)];
   const path = repo.includes('/') ? repo : `library/${repo}`;
   const lines = [];
   if (!quietTag && !/:[^/]+$/.test(ref)) lines.push('Using default tag: latest');
+  // свой реестр (localhost:55000/…), ghcr.io или уже отправленное в Docker Hub
+  const fromRegistry = pullFromRegistry(fs, ref);
+  if (fromRegistry) return fromRegistry.error ? { lines, error: fromRegistry.error } : { lines: [...lines, ...fromRegistry.lines], path: fromRegistry.path };
   const image = catalogImage(ref);
   if (!image) {
     const error = knownRepo(ref)
@@ -139,7 +145,7 @@ function pullLines(state, ref, { quietTag = false } = {}) {
       : `pull access denied for ${repo}, repository does not exist or may require 'docker login'`;
     return { lines, error };
   }
-  const digest = `sha256:${hexHash(`digest:${image.ref}`)}`;
+  const digest = `sha256:${imageId(image)}`;
   const present = findImage(state, full);
   lines.push(`${tag}: Pulling from ${path}`);
   if (!present) {
@@ -160,7 +166,7 @@ function pull({ fs, args }) {
   if (parsed.error) return parsed.error;
   if (parsed.args.length !== 1) return usageError('pull', parsed.args.length);
   const state = dockerState(fs);
-  const pulled = pullLines(state, parsed.args[0]);
+  const pulled = pullLines(fs, parsed.args[0]);
   if (pulled.error) {
     return result([...(pulled.lines.length ? [out(`${pulled.lines.join('\n')}\n`)] : []), err(`Error response from daemon: ${pulled.error}\n`)], 1);
   }
@@ -180,7 +186,8 @@ function images({ fs, args }) {
   let rows = Object.values(state.images).flatMap((image) => (image.tags.length ? image.tags : ['<none>:<none>'])
     .map((tag) => ({ tag, image })));
   if (filter) {
-    const repoOnly = !filter.includes(':');
+    // localhost:55000/shop/web — двоеточие в адресе реестра, а не тег
+    const repoOnly = !filter.slice(filter.lastIndexOf('/') + 1).includes(':');
     const wanted = repoOnly ? filter : normalizeRef(filter);
     rows = rows.filter(({ tag }) => (repoOnly ? tag.slice(0, tag.lastIndexOf(':')) === wanted : tag === wanted));
   }
@@ -392,7 +399,7 @@ function prepare(ctx, name) {
   let image = findImage(state, imageRef);
   if (!image) {
     chunks.push(err(`Unable to find image '${normalizeRef(imageRef)}' locally\n`));
-    const pulled = pullLines(state, imageRef, { quietTag: true });
+    const pulled = pullLines(fs, imageRef, { quietTag: true });
     if (pulled.error) {
       return { done: result([...chunks, err(`docker: Error response from daemon: ${pulled.error}\n\nRun 'docker ${name} --help' for more information\n`)], 125) };
     }
@@ -798,18 +805,106 @@ export const HELP = `docker — контейнеры (учебный Docker Engi
   docker exec [-it] КОНТЕЙНЕР КОМАНДА         команда внутри: docker exec -it web bash
   docker inspect [-f '{{.State.Status}}'] ИМЯ  подробности в JSON`;
 
+// --- build, history ---
+
+const BUILD_USAGE = "ERROR: docker: 'docker buildx build' requires 1 argument\n\nUsage:  docker buildx build [OPTIONS] PATH | URL | -\n\nRun 'docker buildx build --help' for more information\n";
+
+/** Строки Dockerfile вокруг ошибки — как печатает BuildKit. */
+function dockerfileExcerpt(text, name, line) {
+  const lines = text.split('\n');
+  const from = Math.max(1, line - 2);
+  const to = Math.min(lines.length, line + 2);
+  const rows = [];
+  for (let n = from; n <= to; n += 1) {
+    if (n === lines.length && !lines[n - 1]) continue;
+    rows.push(` ${String(n).padStart(3)} | ${n === line ? '>>> ' : '    '}${lines[n - 1]}`);
+  }
+  return `${name}:${line}\n--------------------\n${rows.join('\n')}\n--------------------\n`;
+}
+
+function build(ctx) {
+  const { fs, sh } = ctx;
+  const parsed = parseFlags('build', ctx.args, {
+    bool: { '--no-cache': 'noCache', '-q': 'quiet', '--quiet': 'quiet', '--pull': 'pull', '--load': 'load', '--rm': 'rm' },
+    value: { '-t': 'tag', '--tag': 'tag', '-f': 'file', '--file': 'file', '--build-arg': 'buildArg', '--target': 'target', '--progress': 'progress', '--platform': 'platform', '--network': 'network' },
+  });
+  if (parsed.error) return parsed.error;
+  if (parsed.args.length !== 1) return result([err(BUILD_USAGE)], 1);
+  const dir = sh.resolve(parsed.args[0]);
+  let node = null;
+  try {
+    node = fs.lookup(dir);
+  } catch (e) {
+    if (!(e instanceof FsError)) throw e;
+  }
+  if (!node || node.type !== 'dir') return result([err(`ERROR: failed to build: unable to prepare context: path "${parsed.args[0]}" not found\n`)], 1);
+  const buildArgs = {};
+  for (const item of parsed.opts.buildArg ?? []) {
+    const eq = item.indexOf('=');
+    if (eq === -1) {
+      if (sh.env[item] !== undefined) buildArgs[item] = sh.env[item];
+    } else buildArgs[item.slice(0, eq)] = item.slice(eq + 1);
+  }
+  const tags = parsed.opts.tag ?? [];
+  for (const tag of tags) {
+    if (!/^[a-z0-9]+([._/:-][a-z0-9]+)*(:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?$/.test(tag)) {
+      return result([err(`ERROR: failed to build: invalid tag "${tag}": invalid reference format\n`)], 1);
+    }
+  }
+  const file = parsed.opts.file?.at(-1);
+  try {
+    const done = buildImage(fs, sh, { dir, file, tags, noCache: Boolean(parsed.opts.noCache), buildArgs, target: parsed.opts.target?.at(-1) });
+    if (parsed.opts.quiet) return result([out(`sha256:${done.image.id}\n`)]);
+    return result([err(`${done.log.join('\n')}\n`)]);
+  } catch (e) {
+    if (!(e instanceof BuildError)) throw e;
+    const log = [...(e.before ?? []), ...e.log].length ? `${[...(e.before ?? []), ...e.log].join('\n')}\n` : '';
+    const name = file ?? 'Dockerfile';
+    let text = '';
+    try {
+      text = fs.readFile(file ? sh.resolve(file) : `${dir}/Dockerfile`);
+    } catch (error) {
+      // нет Dockerfile — без выдержки
+    }
+    const step = e.log[0]?.replace(/^#\d+ /, '') ?? '';
+    const tail = e.line && text ? `------\n > ${step}:\n${e.log.slice(1, -1).map((line) => line.replace(/^#\d+ /, '')).join('\n')}${e.log.length > 2 ? '\n' : ''}------\n${dockerfileExcerpt(text, name, e.line)}` : '';
+    const prefix = e.message.startsWith('process ') || e.message.startsWith('failed to compute') ? 'failed to solve: ' : 'failed to solve: ';
+    return result([err(`${log}${e.log.length ? '' : ''}${tail}ERROR: failed to build: ${prefix}${e.message}\n`)], 1);
+  }
+}
+
+function history({ fs, args }) {
+  const parsed = parseFlags('history', args, { bool: { '--no-trunc': 'notrunc', '-q': 'quiet', '-H': 'human' }, value: { '--format': 'format' } });
+  if (parsed.error) return parsed.error;
+  if (parsed.args.length !== 1) return result([err("docker: 'docker history' requires 1 argument\n\nUsage:  docker history [OPTIONS] IMAGE\n\nRun 'docker history --help' for more information\n")], 1);
+  const state = dockerState(fs);
+  const image = findImage(state, parsed.args[0]);
+  if (!image) return result([err(`Error response from daemon: No such image: ${normalizeRef(parsed.args[0])}\n`)], 1);
+  const layers = [...(image.layers ?? baseHistory(catalogImage(image.base), image))].reverse();
+  const rows = layers.map((layer, k) => {
+    const by = parsed.opts.notrunc || layer.createdBy.length <= 45 ? layer.createdBy : `${layer.createdBy.slice(0, 44)}…`;
+    const comment = layer.createdBy.startsWith('# debian.sh') ? 'debuerreotype 0.16' : 'buildkit.dockerfile.v0';
+    return [k === 0 ? shortId(image.id) : '<missing>', `${humanDuration(now() - layer.created)} ago`, by, humanSize(layer.size), comment];
+  });
+  if (parsed.opts.quiet) return result([out(`${shortId(image.id)}\n${rows.slice(1).map(() => '<missing>').join('\n')}\n`)]);
+  return result([out(table(['IMAGE', 'CREATED', 'CREATED BY', 'SIZE', 'COMMENT'], rows))]);
+}
+
 const SUBCOMMANDS = {
-  run, create, ps, start, stop, restart, rm, logs, exec, inspect, pull, images, rmi, tag,
+  run, create, ps, start, stop, restart, rm, logs, exec, inspect, pull, images, rmi, tag, build, history,
+  push: (ctx) => push(ctx), login: (ctx) => login(ctx), logout: (ctx) => logout(ctx),
   version: () => version(),
 };
 
 // docker container …, docker image … — то же самое
 const GROUPS = {
   container: { ls: ps, list: ps, ps, run, create, start, stop, restart, rm, remove: rm, logs, exec, inspect },
-  image: { ls: images, list: images, pull, rm: rmi, remove: rmi, tag, inspect },
+  image: { ls: images, list: images, pull, rm: rmi, remove: rmi, tag, inspect, build, history },
+  buildx: { build },
+  builder: { build },
 };
 
-const LATER = new Set(['build', 'compose', 'system', 'login', 'logout', 'push', 'builder', 'buildx', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'port', 'diff', 'events', 'history', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
+const LATER = new Set(['compose', 'system', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'port', 'diff', 'events', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
 
 export const docker = {
   help: HELP,

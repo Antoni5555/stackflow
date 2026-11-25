@@ -112,7 +112,7 @@ export function inspectImage(image) {
   return {
     Id: `sha256:${image.id}`,
     RepoTags: image.tags,
-    RepoDigests: repos.map((repo) => `${repo}@sha256:${hexHash(`digest:${image.base ?? image.id}`)}`),
+    RepoDigests: repos.map((repo) => `${repo}@sha256:${image.id}`),
     Created: new Date(image.created).toISOString().replace('.000Z', 'Z'),
     Config: {
       ...(config.User ? { User: config.User } : {}),

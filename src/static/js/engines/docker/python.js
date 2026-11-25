@@ -1,3 +1,5 @@
+import { makeVenv, pip } from './tools.js';
+
 // python внутри образов python:3.12: --version и простые однострочники
 // python -c "print(2490 * 2)". Настоящего Python в учебном Docker нет (для кода — тренажёр
 // Python), поэтому -c понимает только print() с числами, строками и арифметикой.
@@ -78,10 +80,33 @@ function printArg(text) {
   return repr(evaluate(text));
 }
 
+/** manage.py: в образе — только то, что не нужно базе (collectstatic, check). */
+function manage(sh, args) {
+  if (!sh.fs.exists(sh.resolve(args[0]))) {
+    return { err: `python: can't open file '${sh.resolve(args[0])}': [Errno 2] No such file or directory\n`, code: 2 };
+  }
+  if (!sh.fs.root.pipInstalled?.django) {
+    return { err: 'Traceback (most recent call last):\n  File "/app/manage.py", line 11, in main\n    from django.core.management import execute_from_command_line\nModuleNotFoundError: No module named \'django\'\n', code: 1 };
+  }
+  if (args[1] === 'collectstatic') {
+    sh.fs.as('root', () => sh.fs.mkdirAs(sh.resolve('staticfiles/admin'), sh.fs.user));
+    return { out: `\n127 static files copied to '${sh.resolve('staticfiles')}'.\n` };
+  }
+  if (args[1] === 'check') return { out: 'System check identified no issues (0 silenced).\n' };
+  return { err: `в учебном Docker manage.py ${args[1] ?? ''} не запускается: нужна база — это разбирается в теме compose\n`, code: 1 };
+}
+
 export const python = {
   help: 'python — Python 3.12 в контейнере: python --version, python -c "print(2 * 3)".',
-  run({ args }) {
+  run({ sh, args }) {
     if (args[0] === '--version' || args[0] === '-V') return { out: VERSION };
+    // python -m venv ПАПКА — виртуальное окружение (в Dockerfile при многоэтапной сборке)
+    if (args[0] === '-m' && args[1] === 'venv' && args[2]) {
+      makeVenv(sh, args.at(-1));
+      return {};
+    }
+    if (args[0] === '-m' && args[1] === 'pip') return pip.run({ sh, args: args.slice(2) });
+    if (args[0] === 'manage.py' || args[0]?.endsWith('/manage.py')) return manage(sh, args);
     if (args[0] !== '-c') {
       if (!args.length) return {};     // без терминала: читает пустой ввод и выходит
       return { err: LIMIT, code: 1 };

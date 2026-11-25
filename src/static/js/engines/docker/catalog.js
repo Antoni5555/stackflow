@@ -1,6 +1,9 @@
 // Каталог учебного реестра (Docker Hub без сети): образы, их настройки и что внутри.
 // Размеры — как у настоящих образов в Docker 29 (containerd: DISK USAGE и CONTENT SIZE).
 
+/** ID образа (в containerd — digest списка манифестов): настоящий, если известен. */
+export const imageId = (image) => image.id ?? hexHash(`image:${image.ref}`);
+
 /** Детерминированный «хэш» в hex: одинаковый образ — одинаковый ID в любом браузере. */
 export function hexHash(text, length = 64) {
   let out = '';
@@ -26,7 +29,7 @@ const BASE = [
   'env', 'sh', 'export', 'unset', 'source', '.', 'true', 'false', 'test', '[', 'hostname',
   'tar', 'gzip', 'gunzip', 'clear', 'history', 'help', 'sleep',
 ];
-const DEBIAN = [...BASE, 'bash', 'which'];
+const DEBIAN = [...BASE, 'bash', 'which', 'apt-get', 'apt', 'useradd'];
 const ALPINE = [...BASE, 'which', 'ps', 'pgrep', 'pkill', 'top', 'ping'];
 
 const OS = {
@@ -186,7 +189,7 @@ const NGINX_ENV = (debian) => [
  */
 const IMAGES = [
   {
-    ref: 'postgres:16', disk: '642MB', content: '166MB', layers: 14, created: '2026-10-21T00:38:09Z',
+    ref: 'postgres:16', id: '9e2cf6287f25c3151f4c9421ccce2b17f3e60061c111a29165e0d2cdd9ff0a97', disk: '642MB', content: '166MB', layers: 14, created: '2026-10-21T00:38:09Z',
     os: 'trixie', program: 'postgres', commands: [...DEBIAN, 'ps', 'psql', 'pg_isready'],
     config: {
       Entrypoint: ['docker-entrypoint.sh'], Cmd: ['postgres'],
@@ -207,7 +210,7 @@ const IMAGES = [
     files: { ...NGINX_FILES, '/docker-entrypoint.d': null, '/docker-entrypoint.sh': '#!/bin/sh\n' },
   },
   {
-    ref: 'nginx:1.27-alpine', disk: '74.5MB', content: '21.9MB', layers: 8, created: '2025-04-16T14:50:31Z',
+    ref: 'nginx:1.27-alpine', id: '65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10', disk: '74.5MB', content: '21.9MB', layers: 8, created: '2025-04-16T14:50:31Z',
     os: 'alpine', program: 'nginx', commands: [...ALPINE, 'curl'],
     config: {
       Entrypoint: ['/docker-entrypoint.sh'], Cmd: ['nginx', '-g', 'daemon off;'], Env: NGINX_ENV(false),
@@ -217,13 +220,13 @@ const IMAGES = [
     files: { ...NGINX_FILES, '/docker-entrypoint.d': null, '/docker-entrypoint.sh': '#!/bin/sh\n' },
   },
   {
-    ref: 'python:3.12', disk: '1.62GB', content: '430MB', layers: 7, created: '2026-11-05T09:40:41Z',
-    os: 'trixie', program: 'python', commands: [...DEBIAN, 'ps', 'curl', 'python', 'python3', 'pip'],
+    ref: 'python:3.12', id: '5411fa1b302c43f510324381162b5f5d0d93b9ee2af538f09d944f0d290ee3cb', disk: '1.62GB', content: '430MB', layers: 7, created: '2026-11-05T09:40:41Z',
+    os: 'trixie', program: 'python', commands: [...DEBIAN, 'ps', 'curl', 'python', 'python3', 'pip', 'pip3'],
     config: { Cmd: ['python3'], Env: PY_ENV },
   },
   {
-    ref: 'python:3.12-slim', disk: '179MB', content: '45.5MB', layers: 4, created: '2026-11-05T08:00:30Z',
-    os: 'trixie', program: 'python', commands: [...DEBIAN, 'python', 'python3', 'pip'],
+    ref: 'python:3.12-slim', id: '5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b', disk: '179MB', content: '45.5MB', layers: 4, created: '2026-11-05T08:00:30Z',
+    os: 'trixie', program: 'python', commands: [...DEBIAN, 'python', 'python3', 'pip', 'pip3'],
     config: { Cmd: ['python3'], Env: PY_ENV },
   },
   {
@@ -235,9 +238,18 @@ const IMAGES = [
     },
   },
   {
-    ref: 'alpine:3.20', disk: '12.2MB', content: '3.71MB', layers: 1, created: '2025-02-14T03:00:00Z',
+    ref: 'alpine:3.20', id: 'd9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc', disk: '12.2MB', content: '3.71MB', layers: 1, created: '2025-02-14T03:00:00Z',
     os: 'alpine3.20', program: 'shell', commands: ALPINE,
     config: { Cmd: ['/bin/sh'], Env: [PATH] },
+  },
+  {
+    ref: 'registry:2', disk: '25.4MB', content: '9.37MB', layers: 5, created: '2025-09-30T10:20:00Z',
+    os: 'alpine', program: 'registry', commands: ALPINE,
+    config: {
+      Entrypoint: ['/entrypoint.sh'], Cmd: ['/etc/docker/registry/config.yml'], Env: [PATH, 'OTEL_TRACES_EXPORTER=none'],
+      ExposedPorts: ['5000/tcp'], Volumes: ['/var/lib/registry'],
+    },
+    files: { '/etc/docker/registry/config.yml': 'version: 0.1\nlog:\n  fields:\n    service: registry\nstorage:\n  cache:\n    blobdescriptor: inmemory\n  filesystem:\n    rootdirectory: /var/lib/registry\nhttp:\n  addr: :5000\n', '/entrypoint.sh': '#!/bin/sh\n' },
   },
   {
     ref: 'ubuntu:24.04', disk: '117MB', content: '29.7MB', layers: 1, created: '2026-10-01T06:12:00Z',

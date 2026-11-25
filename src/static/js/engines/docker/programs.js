@@ -7,6 +7,7 @@ import { catalogImage } from './catalog.js';
 import { packNode, shortId, withContainerFs } from './state.js';
 import { utcParts } from './format.js';
 import { initDataCluster } from './psql.js';
+import { startRegistry } from './registry.js';
 
 const PG_DATA = '/var/lib/postgresql/data';
 
@@ -268,6 +269,7 @@ const PROGRAMS = {
   postgres: { start: startPostgres, stop: stopPostgres, command: 'postgres' },
   nginx: { start: startNginx, stop: stopNginx, command: 'nginx' },
   redis: { start: startRedis, stop: stopRedis, command: 'redis-server' },
+  registry: { start: (hostFs, container, log) => startRegistry(hostFs, container, log), stop: () => 0, command: '/etc/docker/registry/config.yml' },
 };
 
 /** Главная программа контейнера: из образа, если команду не переопределили (или это она же). */
