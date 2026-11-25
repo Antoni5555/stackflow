@@ -1,0 +1,56 @@
+title: "Ограничение журнала в compose"
+type: exercise
+difficulty: 2
+pitfall: "В compose ограничение журнала — ключ logging у сервиса: driver json-file, options max-size и max-file в кавычках."
+statement: |
+  Добавьте сервису `web` в `compose.yaml` ограничение журнала: драйвер `json-file`, не больше трёх файлов по 10 МБ. Запустите проект со сборкой и последней командой проверьте настройку контейнера:
+  ```
+  docker inspect -f '{{json .HostConfig.LogConfig}}' shop-web-1
+  ```
+setup:
+  cwd: /home/shop/shop
+  files:
+    /home/shop/shop/requirements.txt: "gunicorn==23.0.0\n"
+    /home/shop/shop/shop/__init__.py: ""
+    /home/shop/shop/shop/wsgi.py: |
+      def application(environ, start_response):
+          start_response("200 OK", [("Content-Type", "text/plain; charset=utf-8")])
+          return ["Магазин работает\n".encode()]
+    /home/shop/shop/Dockerfile: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY . .
+      CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
+    /home/shop/shop/compose.yaml: |
+      services:
+        web:
+          build: .
+          ports:
+            - "58000:8000"
+  docker:
+    images: [python:3.12-slim]
+check:
+  type: state
+  expect:
+    - path: /home/shop/shop/compose.yaml
+      contains: '^    logging:'
+      fail: "У web нужен ключ logging: с отступом в четыре пробела — на уровне ports."
+    - docker: compose
+      service: web
+      status: running
+      fail: "Сервис web не работает — docker compose up -d --build."
+    - output_matches: '"max-size":"10m"'
+      fail: "В LogConfig shop-web-1 нет \"max-size\":\"10m\". Проект пересоздан после правки (up -d)?"
+    - output_matches: '"max-file":"3"'
+      fail: "В LogConfig shop-web-1 нет \"max-file\":\"3\"."
+solution: |
+  echo -e '    logging:\n      driver: json-file\n      options:\n        max-size: "10m"\n        max-file: "3"' >> compose.yaml
+  docker compose up -d --build
+  docker inspect -f '{{json .HostConfig.LogConfig}}' shop-web-1
+hints:
+  - "`logging:` — ключ сервиса, как `ports`; внутри `driver:` и `options:` со словарём настроек. Значения — строки в кавычках."
+  - "`logging:` → `driver: json-file` → `options:` → `max-size: \"10m\"`, `max-file: \"3\"`."
+explanation: |
+  Compose передал настройки при создании контейнера — так же, как `--log-opt` в `docker run`. Кавычки нужны: `options` в compose — словарь строк, а `3` без кавычек YAML прочитает как число. Чтобы не повторять `logging` у каждого сервиса, на сервере задают общее ограничение в `/etc/docker/daemon.json`.

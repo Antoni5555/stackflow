@@ -2,7 +2,7 @@ title: "Какая команда удалит базу"
 type: quiz
 kind: multiple
 difficulty: 2
-pitfall: "Тома удаляют volume prune -a и system prune --volumes; после compose down том базы не подключён."
+pitfall: "Именованные тома удаляет volume prune -a; system prune --volumes с Docker 23 — только анонимные; после compose down том базы не подключён."
 statement: |
   Магазин остановлен `docker compose down`, база — в именованном томе `shop_pgdata`. Какие команды удалят базу?
 options:
@@ -11,6 +11,6 @@ options:
   - "`docker volume prune -a -f`"
   - "`docker system prune -a --volumes -f`"
   - "`docker builder prune -f`"
-answer: [2, 3]
+answer: [2]
 explanation: |
-  После `down` контейнера базы нет, и том `shop_pgdata` ни к чему не подключён. `volume prune -a` удаляет все такие тома, включая именованные, а `system prune --volumes` — тоже. Остальные команды тома не трогают: удаляют контейнеры, образы и кэш сборки.
+  После `down` контейнера базы нет, и том `shop_pgdata` ни к чему не подключён. `volume prune -a` удаляет все такие тома, включая именованные. `system prune -a --volumes` в Docker 23+ удаляет только анонимные тома — именованный `shop_pgdata` останется (в Docker до 23 удалился бы и он). Остальные команды тома не трогают: удаляют контейнеры, образы и кэш сборки.

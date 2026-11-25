@@ -1,0 +1,40 @@
+- title: Что удалит system prune --volumes
+  text: |
+    Не удаляя ничего, узнайте, что удалит `docker system prune --volumes` на этом Docker: запустите команду без `-f` и прочитайте вопрос. Тронет ли она именованный том базы `shop_pgdata`, если контейнера базы сейчас нет?
+  answer: |
+    Ответ. Запустить без `-f` и на вопрос ответить `N` (или Enter):
+    ```bash
+    docker system prune --volumes
+    ```
+    Результат:
+    ```
+    WARNING! This will remove:
+      - all stopped containers
+      - all networks not used by at least one container
+      - all anonymous volumes not used by at least one container
+      - all dangling images
+      - unused build cache
+
+    Are you sure you want to continue? [y/N] N
+    ```
+    Docker 23+ удаляет только **анонимные** тома — `shop_pgdata` не тронет. Именованные неподключённые тома удаляет `docker volume prune -a`. На старом Docker (до 23) вопрос звучит иначе — «all volumes not used by at least one container», и база удалилась бы. Читайте вопрос, прежде чем отвечать `y`.
+- title: Кэш сборки
+  text: |
+    После нескольких сборок образа магазина посмотрите, сколько места занимает кэш сборки, и удалите его без вопроса.
+  answer: |
+    Ответ:
+    ```bash
+    docker system df
+    docker builder prune -f
+    ```
+    Результат (строки слоёв кэша и вторая сводка сокращены):
+    ```
+    TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+    Images          1         0         193MB     193MB (100%)
+    Containers      0         0         0B        0B
+    Local Volumes   0         0         0B        0B
+    Build Cache     4         0         11.77MB   11.77MB
+    …
+    Total:	11.77MB
+    ```
+    Удалены слои кэша: `WORKDIR`, оба `COPY` и самый большой — `pip install`. Образ `shop-web:1.0` остался, но следующая сборка выполнит все шаги заново. На сервере сборок обычно нет — там кэш копится, только если образ собирают прямо на нём.

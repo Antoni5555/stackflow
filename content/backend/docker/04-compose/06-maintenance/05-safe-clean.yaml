@@ -1,0 +1,58 @@
+title: "Освободить место, не задев базу"
+type: exercise
+difficulty: 2
+pitfall: "Безопасная очистка: container prune и image prune; тома не трогать — в неподключённом томе может быть база."
+statement: |
+  На сервере кончается место. Работает только Redis (`cache`); магазин остановлен `docker compose down`, его база — в томе `shop_pgdata`. Освободите место безопасно:
+  1. посмотрите, что занимает место: `docker system df`;
+  2. удалите остановленные контейнеры;
+  3. удалите все образы, из которых не создан ни один контейнер (они есть в реестре);
+  4. тома не трогайте.
+
+  Команды очистки — без вопроса «Are you sure?». Последней командой снова выведите `docker system df`.
+setup:
+  cwd: /home/shop
+  docker:
+    images: [postgres:16, nginx:1.27, redis:7, alpine:3.20]
+    volumes: [shop_pgdata]
+    containers:
+      - name: cache
+        image: redis:7
+        running: true
+      - name: old-job
+        image: alpine:3.20
+        command: ["true"]
+        running: false
+check:
+  type: state
+  expect:
+    - docker: container
+      name: old-job
+      status: absent
+      fail: "Остановленный контейнер old-job остался — docker container prune -f."
+    - docker: image
+      ref: nginx:1.27
+      exists: false
+      fail: "Образ nginx:1.27 без контейнеров остался — docker image prune -a -f (без -a удаляются только висящие)."
+    - docker: container
+      name: cache
+      status: running
+      fail: "Работающий Redis (cache) трогать было нельзя."
+    - docker: image
+      ref: redis:7
+      fail: "Образ redis:7 нужен работающему контейнеру — его удалять нельзя."
+    - docker: volume
+      name: shop_pgdata
+      fail: "Том shop_pgdata удалён — это была база магазина. Тома чистят только вручную, после бэкапа."
+    - output_matches: '^Images\s+1\s+1\s'
+      fail: "Последней командой выведите docker system df — должен остаться один образ, и он используется."
+solution: |
+  docker system df
+  docker container prune -f
+  docker image prune -a -f
+  docker system df
+hints:
+  - "Нужны две команды `prune`: для контейнеров и для образов. Какой флаг у `image prune` удаляет не только висящие образы? Вопрос отключает `-f`."
+  - "`docker container prune -f`, затем `docker image prune -a -f`."
+explanation: |
+  Остановленный `old-job` удалён, а за ним и его образ `alpine:3.20` стал ненужным — поэтому контейнеры чистят первыми. `image prune -a` убрал `postgres:16`, `nginx:1.27` и `alpine:3.20`: они скачаются снова при следующем `up`. Том `shop_pgdata` цел — `volume prune -a` удалил бы его вместе с базой, ведь после `down` он ни к чему не подключён.

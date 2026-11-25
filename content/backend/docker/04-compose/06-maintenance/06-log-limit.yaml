@@ -1,0 +1,34 @@
+title: "Журнал с ограничением"
+type: exercise
+difficulty: 2
+pitfall: "json-file по умолчанию растёт без ограничения; --log-opt max-size и max-file задают предел для нового контейнера."
+statement: |
+  Запустите в фоне контейнер `worker` из `alpine:3.20` с командой `sleep 3600` так, чтобы его журнал занимал не больше трёх файлов по 10 МБ.
+
+  Последней командой выведите настройку журнала:
+  ```
+  docker inspect -f '{{json .HostConfig.LogConfig}}' worker
+  ```
+setup:
+  cwd: /home/shop
+  docker:
+    images: [alpine:3.20]
+check:
+  type: state
+  expect:
+    - docker: container
+      name: worker
+      status: running
+      fail: "Контейнер worker не работает — запустите его с -d."
+    - output_matches: '"max-size":"10m"'
+      fail: "В LogConfig нет \"max-size\":\"10m\" — флаг --log-opt max-size=10m при запуске."
+    - output_matches: '"max-file":"3"'
+      fail: "В LogConfig нет \"max-file\":\"3\" — флаг --log-opt max-file=3 при запуске."
+solution: |
+  docker run -d --name worker --log-opt max-size=10m --log-opt max-file=3 alpine:3.20 sleep 3600
+  docker inspect -f '{{json .HostConfig.LogConfig}}' worker
+hints:
+  - "Настройки драйвера журнала передают флагом `--log-opt ключ=значение`, по одному флагу на настройку."
+  - "`docker run -d --name worker --log-opt max-size=10m --log-opt max-file=3 alpine:3.20 sleep 3600`."
+explanation: |
+  Docker будет писать журнал в файл до 10 МБ, затем начнёт новый и хранить не больше трёх — 30 МБ на контейнер. Изменить настройку у работающего контейнера нельзя: только пересоздать. Без флагов `Config` пустой, и файл `…-json.log` растёт, пока не кончится диск.

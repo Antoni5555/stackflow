@@ -34,8 +34,8 @@
 <text x="36" y="180" text-anchor="start" class="fig-cs">image prune -a — если версии в реестре</text>
 <rect x="460" y="20" width="400" height="200" rx="12" class="fig-err"/>
 <text x="476" y="46" text-anchor="start" class="fig-errt">опасно — данные</text>
-<text x="476" y="78" text-anchor="start" class="fig-cs">volume prune -a</text>
-<text x="476" y="112" text-anchor="start" class="fig-cs">system prune --volumes</text>
+<text x="476" y="78" text-anchor="start" class="fig-cs">volume prune -a — и именованные</text>
+<text x="476" y="112" text-anchor="start" class="fig-cs">(system prune --volumes — до Docker 23)</text>
 <text x="476" y="146" text-anchor="start" class="fig-s">после compose down том базы</text>
 <text x="476" y="180" text-anchor="start" class="fig-s">не подключён — тоже удалится</text>
 <rect x="20" y="240" width="840" height="60" rx="12" class="fig-box2"/>

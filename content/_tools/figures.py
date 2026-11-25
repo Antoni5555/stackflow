@@ -4738,7 +4738,7 @@ def maintenance_fig():
         f.text(36, 78 + i * 34, t, "cs")
     f.box(460, 20, 400, 200, "", "err")
     f.text(476, 46, "опасно — данные", "errt")
-    for i, t in enumerate(["volume prune -a", "system prune --volumes", "после compose down том базы", "не подключён — тоже удалится"]):
+    for i, t in enumerate(["volume prune -a — и именованные", "(system prune --volumes — до Docker 23)", "после compose down том базы", "не подключён — тоже удалится"]):
         f.text(476, 78 + i * 34, t, "cs" if i < 2 else "s")
     f.box(20, 240, 840, 60, "", "box2")
     f.text(36, 266, "журналы json-file растут без ограничения:", "s")
