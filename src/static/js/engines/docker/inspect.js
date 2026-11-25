@@ -115,7 +115,7 @@ export function inspectImage(image) {
     RepoDigests: repos.map((repo) => `${repo}@sha256:${image.id}`),
     Created: new Date(image.created).toISOString().replace('.000Z', 'Z'),
     Config: {
-      ...(config.User ? { User: config.User } : {}),
+      User: config.User ?? '',
       ...(config.ExposedPorts?.length ? { ExposedPorts: ports(config.ExposedPorts) } : {}),
       Env: config.Env,
       ...(config.Entrypoint ? { Entrypoint: config.Entrypoint } : {}),

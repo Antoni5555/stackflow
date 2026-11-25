@@ -144,7 +144,10 @@ export const pip = {
       const root = prefix(sh);
       for (const item of toInstall) {
         record(sh, `${root}/${SITE}/${item.name.replace(/-/g, '_').toLowerCase()}/__init__.py`, item.info.size);
-        for (const bin of item.info.bin ?? []) record(sh, `${root}/bin/${bin}`, 230);
+        for (const bin of item.info.bin ?? []) {
+          record(sh, `${root}/bin/${bin}`, 230);
+          sh.fs.as('root', () => Object.assign(sh.fs.lookup(`${root}/bin/${bin}`), { program: bin }));
+        }
         installed[item.key] = item.version;
         sh.machine?.build?.sizes.push(item.info.size);
       }
@@ -262,4 +265,23 @@ export function makeVenv(sh, dir) {
   sh.machine?.build?.sizes.push(18_600_000);
 }
 
-export const TOOLS = { pip, pip3: pip, 'apt-get': aptGet, apt: aptGet, useradd };
+/** gunicorn как команда (gunicorn --version); сервером его запускает CMD (apps.js). */
+export const gunicorn = {
+  help: 'gunicorn --bind 0.0.0.0:8000 shop.wsgi — WSGI-сервер (запускается как CMD контейнера).',
+  run({ args }) {
+    if (args.includes('--version') || args.includes('-v')) return { out: 'gunicorn (version 23.0.0)\n' };
+    return { err: '(в тренажёре gunicorn запускается только как CMD контейнера: docker run … или CMD в Dockerfile)\n', code: 1 };
+  },
+};
+
+/** printenv [ИМЯ] — переменные окружения (coreutils). */
+export const printenv = {
+  help: 'printenv [ИМЯ] — переменные окружения.',
+  run({ sh, args }) {
+    if (!args.length) return { out: Object.entries(sh.env).map(([k, v]) => `${k}=${v}\n`).join('') };
+    const missing = args.filter((name) => sh.env[name] === undefined);
+    return { out: args.filter((name) => sh.env[name] !== undefined).map((name) => `${sh.env[name]}\n`).join(''), code: missing.length ? 1 : 0 };
+  },
+};
+
+export const TOOLS = { pip, pip3: pip, 'apt-get': aptGet, apt: aptGet, useradd, gunicorn, printenv };

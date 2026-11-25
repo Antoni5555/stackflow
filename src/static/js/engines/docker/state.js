@@ -149,6 +149,12 @@ export function imageFs(image, id) {
   };
   write('/etc/os-release', OS[info?.os] ?? OS.trixie);
   write('/etc/hostname', `${shortId(id)}\n`);
+  // оболочки по полному пути: CMD в shell-форме — /bin/sh -c "…"
+  for (const [path, name] of [['/bin/sh', 'sh'], ['/bin/bash', 'bash'], ['/usr/bin/bash', 'bash']]) {
+    if (!(info?.commands ?? ['sh']).includes(name)) continue;
+    const node = fs.writeFile(path, '');
+    Object.assign(node, { mode: 0o755, program: 'bash', size: name === 'sh' ? 125688 : 1265648, binary: true });
+  }
   for (const [path, text] of Object.entries(info?.files ?? {})) {
     if (text === null) fs.mkdirAs(path, 'root');
     else write(path, text);

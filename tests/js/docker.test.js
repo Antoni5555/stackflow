@@ -741,4 +741,21 @@ CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]
     assert.equal(run(sh, 'docker push ghcr.io/shop/web:1.4.2').code, 0);
     assert.match(run(sh, 'cat ~/.docker/config.json').out, /"ghcr\.io": \{\n\t\t\t"auth": "c2hvcDp0b2tlbg=="/);
   });
+
+  it('CMD в shell-форме работает (stop — 137), printenv, gunicorn --version, history --format, docker port', () => {
+    const sh = project({ '/home/shop/shop/Dockerfile': DOCKERFILE.replace('CMD ["gunicorn", "--bind", "0.0.0.0:8000", "shop.wsgi"]', 'CMD gunicorn --bind 0.0.0.0:8000 shop.wsgi') });
+    run(sh, 'docker build -t shop-web:sh .');
+    run(sh, 'docker run -d --name web -p 58000:8000 shop-web:sh');
+    assert.equal(run(sh, 'curl -s localhost:58000').out, 'Магазин работает\n');
+    assert.match(run(sh, 'docker ps').out, /"\/bin\/sh -c 'gunicor…"/);
+    run(sh, 'docker stop web');
+    assert.match(run(sh, 'docker ps -a').out, /Exited \(137\)/);
+    assert.equal(run(sh, 'docker run --rm shop-web:sh printenv PYTHON_VERSION').out, '3.12.16\n');
+    assert.equal(run(sh, 'docker run --rm shop-web:sh gunicorn --version').out, 'gunicorn (version 23.0.0)\n');
+    assert.equal(run(sh, "docker inspect -f '[{{.Config.User}}]' shop-web:sh").out, '[]\n');
+    assert.match(run(sh, "docker history --format '{{.Size}}\t{{.CreatedBy}}' shop-web:sh").out, /^0B\tCMD \["\/bin\/sh" "-c" "gunicorn --bind 0\.0\.0\.0:8000 shop\.wsgi"\]\n24\.6kB\tCOPY \. \. # buildkit\n/);
+    run(sh, 'docker run -d --name web2 -p 58001:8000 shop-web:sh');
+    assert.equal(run(sh, 'docker port web2').out, '8000/tcp -> 0.0.0.0:58001\n8000/tcp -> [::]:58001\n');
+    assert.equal(run(sh, 'docker exec web2 gunicorn --version').out, 'gunicorn (version 23.0.0)\n');
+  });
 });

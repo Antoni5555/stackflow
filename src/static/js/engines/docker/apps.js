@@ -17,6 +17,7 @@ const stamp = (ms) => {
 /** Что за приложение запускают слова команды: gunicorn | runserver | null. */
 export function appKind(words) {
   const name = words[0]?.split('/').pop();
+  if (words.includes('--version') || words.includes('-v') || words.includes('--help') || words.includes('-h')) return null;
   if (name === 'gunicorn' || (/^python3?$/.test(name ?? '') && words[1] === '-m' && words[2] === 'gunicorn')) return 'gunicorn';
   if (words.some((word) => word.endsWith('manage.py')) && words.includes('runserver')) return 'runserver';
   return null;
@@ -148,6 +149,8 @@ export function startApp(hostFs, container, words) {
 export function stopApp(container) {
   const t = stamp(now());
   const log = (text) => container.logs.push({ t: now(), err: true, text });
+  // главный процесс — sh: SIGTERM до gunicorn не доходит, через 10 с Docker убивает (SIGKILL)
+  if (container.shellForm) return 137;
   if (container.app?.kind === 'gunicorn') {
     log(`${t} [1] [INFO] Handling signal: term`);
     log(`${t} [7] [INFO] Worker exiting (pid: 7)`);

@@ -27,7 +27,7 @@ const BASE = [
   'head', 'tail', 'wc', 'grep', 'sort', 'uniq', 'cut', 'sed', 'tee', 'find', 'du', 'df',
   'chmod', 'chown', 'chgrp', 'whoami', 'id', 'groups', 'kill', 'date', 'dirname', 'basename',
   'env', 'sh', 'export', 'unset', 'source', '.', 'true', 'false', 'test', '[', 'hostname',
-  'tar', 'gzip', 'gunzip', 'clear', 'history', 'help', 'sleep',
+  'tar', 'gzip', 'gunzip', 'clear', 'history', 'help', 'sleep', 'printenv',
 ];
 const DEBIAN = [...BASE, 'bash', 'which', 'apt-get', 'apt', 'useradd'];
 const ALPINE = [...BASE, 'which', 'ps', 'pgrep', 'pkill', 'top', 'ping'];

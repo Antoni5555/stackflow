@@ -76,7 +76,8 @@ export function mainWords(container) {
 }
 
 /** Строка COMMAND в docker ps: entrypoint + cmd. */
-export const commandLine = (container) => [...container.entrypoint, ...container.cmd].join(' ');
+export const commandLine = (container) => [...container.entrypoint, ...container.cmd]
+  .map((word) => (/\s/.test(word) ? `'${word}'` : word)).join(' ');   // как docker ps: sh -c 'python …'
 
 const SHELLS = new Set(['bash', 'sh', 'ash', '/bin/bash', '/bin/sh', '/bin/ash', '/usr/bin/bash']);
 export const isShell = (word) => SHELLS.has(word);
@@ -109,6 +110,7 @@ export function containerMachine(container, { nested = false, hostFs = null, int
     ip,
     container: container.id,
     commands,
+    programs: containerCommands,   // программы в файлах (gunicorn из pip, /bin/sh)
     extra: Object.fromEntries(Object.entries(containerCommands).filter(([name]) => (info?.commands ?? []).includes(name))),
     env: true,
     nested,
@@ -223,6 +225,14 @@ export function startContainer(hostFs, container) {
     }
     if (before.code) return finish(hostFs, container, before.code);
     words = container.cmd;
+  }
+  // CMD в shell-форме: /bin/sh -c "gunicorn …" — сервер работает под sh (stop — через 10 с, код 137)
+  if (!program && /^(\/bin\/)?(sh|bash)$/.test(words[0] ?? '') && words[1] === '-c' && words.length === 3) {
+    const inner = words[2].trim().split(/\s+/);
+    if (appKind(inner)) {
+      container.shellForm = true;
+      words = inner;
+    }
   }
   const kind = !program && appKind(words);
   if (kind) {

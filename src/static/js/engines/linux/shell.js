@@ -665,7 +665,9 @@ export class Shell {
       try {
         const node = this.fs.lookup(path);
         const isScript = node.type === 'file' && node.content && !node.binary;
-        if (isScript && (node.mode & 0o111)) return path;
+        // программа учебного Docker в файле (gunicorn, поставленный pip) — тоже запускается
+        const isProgram = node.type === 'file' && node.program && this.machine?.programs?.[node.program];
+        if ((isScript || isProgram) && (node.mode & 0o111)) return path;
       } catch (e) {
         if (!(e instanceof FsError)) throw e;
       }
@@ -688,7 +690,8 @@ export class Shell {
       return { out: '', err: `${this.errPrefix()}${path}: Permission denied\n`, code: 126 };
     }
     // Программа симулятора в файле (venv/bin/pip, venv/bin/python) — запуск этой команды
-    const program = node.program && (this.machine?.extra?.[node.program] ?? COMMANDS[node.program]);
+    const program = node.program
+      && (this.machine?.extra?.[node.program] ?? this.machine?.programs?.[node.program] ?? COMMANDS[node.program]);
     if (program) {
       const result = program.run({
         sh: this, fs: this.fs, args, stdin: '', tty, name: path.split('/').pop(), venv: node.venv,

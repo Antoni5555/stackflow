@@ -687,7 +687,8 @@ function exec(ctx) {
     : (ctx.sh.env[item] !== undefined ? [`${item}=${ctx.sh.env[item]}`] : [])));
   const workdir = parsed.opts.workdir?.at(-1) ?? null;
   const { shell, sync } = containerShell(fs, container, { env, workdir });
-  const available = shell.hasCommand(words[0].split('/').pop()) || (words[0].includes('/') && shell.fs.exists(words[0]));
+  const available = shell.hasCommand(words[0].split('/').pop()) || (words[0].includes('/') && shell.fs.exists(words[0]))
+    || (!words[0].includes('/') && Boolean(shell.findInPath(words[0])));
   sync();
   if (!available) {
     return result([out(`OCI runtime exec failed: exec failed: unable to start container process: exec: "${words[0]}": executable file not found in $PATH\n`)], 127);
@@ -887,10 +888,35 @@ function history({ fs, args }) {
     return [k === 0 ? shortId(image.id) : '<missing>', `${humanDuration(now() - layer.created)} ago`, by, humanSize(layer.size), comment];
   });
   if (parsed.opts.quiet) return result([out(`${shortId(image.id)}\n${rows.slice(1).map(() => '<missing>').join('\n')}\n`)]);
+  const format = parsed.opts.format?.at(-1);
+  if (format) {
+    const items = layers.map((layer, k) => ({
+      ID: k === 0 ? shortId(image.id) : '<missing>', CreatedSince: `${humanDuration(now() - layer.created)} ago`,
+      CreatedAt: new Date(layer.created).toISOString().replace('.000Z', '+00:00'), CreatedBy: layer.createdBy,
+      Size: humanSize(layer.size), Comment: layer.createdBy.startsWith('# debian.sh') ? 'debuerreotype 0.16' : 'buildkit.dockerfile.v0',
+    }));
+    return result([out(`${items.map((item) => renderTemplate(format.replace(/^table /, ''), item)).join('\n')}\n`)]);
+  }
   return result([out(table(['IMAGE', 'CREATED', 'CREATED BY', 'SIZE', 'COMMENT'], rows))]);
 }
 
+/** docker port КОНТЕЙНЕР [ПОРТ] — опубликованные порты. */
+function port({ fs, args }) {
+  const refs = args.filter((arg) => !arg.startsWith('-'));
+  if (!refs.length) return result([err("docker: 'docker port' requires at least 1 argument\n\nUsage:  docker port CONTAINER [PRIVATE_PORT[/PROTO]]\n\nSee 'docker port --help' for more information\n")], 1);
+  const container = findContainer(dockerState(fs), refs[0]);
+  if (!container) return result([err(`Error response from daemon: No such container: ${refs[0]}\n`)], 1);
+  const wanted = refs[1]?.split('/')[0];
+  const ports = container.status === 'running' ? container.ports.filter((item) => !wanted || item.port === wanted) : [];
+  if (wanted && !ports.length) return result([err(`Error: No public port '${refs[1].includes('/') ? refs[1] : `${refs[1]}/tcp`}' published for ${refs[0]}\n`)], 1);
+  const lines = ports.flatMap((item) => (item.hostIp ? [[item.port, `${item.hostIp}:${item.hostPort}`]]
+    : [[item.port, `0.0.0.0:${item.hostPort}`], [item.port, `[::]:${item.hostPort}`]]))
+    .map(([inner, outer]) => (wanted ? outer : `${inner}/tcp -> ${outer}`));
+  return result(lines.length ? [out(`${lines.join('\n')}\n`)] : []);
+}
+
 const SUBCOMMANDS = {
+  port,
   run, create, ps, start, stop, restart, rm, logs, exec, inspect, pull, images, rmi, tag, build, history,
   push: (ctx) => push(ctx), login: (ctx) => login(ctx), logout: (ctx) => logout(ctx),
   version: () => version(),
@@ -904,7 +930,7 @@ const GROUPS = {
   builder: { build },
 };
 
-const LATER = new Set(['compose', 'system', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'port', 'diff', 'events', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
+const LATER = new Set(['compose', 'system', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'diff', 'events', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
 
 export const docker = {
   help: HELP,
