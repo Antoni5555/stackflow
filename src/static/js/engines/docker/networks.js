@@ -5,6 +5,7 @@
 import { now } from '../linux/clock.js';
 import { humanSize, localIso, table } from './format.js';
 import { forgetVolume } from './psql.js';
+import { prune } from './prune.js';
 import { nginxAnswer } from './programs.js';
 import { appAnswer } from './apps.js';
 import { registryAnswer } from './registry.js';
@@ -272,16 +273,8 @@ function networkCommand(ctx, sub, args, { renderTemplate, jsonText }) {
       if (format) return result([...found.map((item) => out(`${renderTemplate(format, item)}\n`)), ...chunks], code);
       return result([out(`${jsonText(found)}\n`), ...chunks], code);
     }
-    case 'prune': {
-      const unused = Object.values(state.networks).filter((net) => !net.builtin
-        && !state.containers.some((c) => net.name in c.networks));
-      if (!flags.includes('-f') && !flags.includes('--force') && !/^y/i.test(ctx.stdin)) {
-        return result([out('WARNING! This will remove all custom networks not used by at least one container.\nAre you sure you want to continue? [y/N] \n'),
-          err('(в тренажёре на вопрос не ответить: добавьте -f или echo y | docker network prune)\n')]);
-      }
-      for (const net of unused) delete state.networks[net.name];
-      return result(unused.length ? [out(`Deleted Networks:\n${unused.map((net) => net.name).join('\n')}\n\n`)] : []);
-    }
+    case 'prune':
+      return prune(ctx, 'network', args, { removeContainer: null, volumeSize });
     default:
       return result([err(`docker: unknown command: docker network ${sub ?? ''}\n\nRun 'docker network --help' for more information\n`.replace(' \n', '\n'))], 1);
   }
@@ -325,12 +318,14 @@ function volumeCommand(ctx, sub, args, { renderTemplate, jsonText }) {
   const flags = args.filter((arg) => arg.startsWith('-') && !arg.startsWith('--format') && !arg.startsWith('--filter'));
   const names = [];
   const filters = [];
+  const labels = [];
   let format = null;
   for (let i = 0; i < args.length; i += 1) {
     if (args[i] === '-f' && sub !== 'rm' && sub !== 'prune') format = args[(i += 1)];
     else if (args[i] === '--format') format = args[(i += 1)];
     else if (args[i] === '--filter') filters.push(args[(i += 1)]);
-    else if (args[i] === '--driver' || args[i] === '-d' || args[i] === '--label') i += 1;
+    else if (args[i] === '--label' || args[i] === '-l') labels.push(args[(i += 1)]);
+    else if (args[i] === '--driver' || args[i] === '-d') i += 1;
     else if (!args[i].startsWith('-')) names.push(args[i]);
   }
   switch (sub) {
@@ -356,7 +351,10 @@ function volumeCommand(ctx, sub, args, { renderTemplate, jsonText }) {
       if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]+$/.test(name)) {
         return result([err(`Error response from daemon: create ${name}: "${name}" includes invalid characters for a local volume name, only "[a-zA-Z0-9][a-zA-Z0-9_.-]" are allowed. If you intended to pass a host directory, use absolute path\n`)], 1);
       }
-      state.volumes[name] ??= { name, created: now(), data: { type: 'dir', owner: 'root', group: 'root', mode: 0o755, mtime: now(), nlink: 1, children: {} }, labels: null };
+      state.volumes[name] ??= {
+        name, created: now(), data: { type: 'dir', owner: 'root', group: 'root', mode: 0o755, mtime: now(), nlink: 1, children: {} },
+        labels: labels.length ? Object.fromEntries(labels.map((item) => [item.split('=')[0], item.split('=').slice(1).join('=')])) : null,
+      };
       return result([out(`${name}\n`)]);
     }
     case 'inspect': {
@@ -401,24 +399,8 @@ function volumeCommand(ctx, sub, args, { renderTemplate, jsonText }) {
       }
       return result(chunks, code);
     }
-    case 'prune': {
-      const all = flags.includes('-a') || flags.includes('--all');
-      const force = flags.includes('-f') || flags.includes('--force');
-      if (!force && !/^y/i.test(ctx.stdin)) {
-        return result([out(`WARNING! This will remove ${all ? 'all local volumes' : 'anonymous local volumes'} not used by at least one container.\nAre you sure you want to continue? [y/N] \n`),
-          err('(в тренажёре на вопрос не ответить: добавьте -f или echo y | docker volume prune)\n')]);
-      }
-      const removed = Object.values(state.volumes).filter((volume) => (all || volume.labels?.['com.docker.volume.anonymous'] !== undefined)
-        && !users(state, volume.name).length);
-      let size = 0;
-      for (const volume of removed) {
-        size += volumeSize(volume);
-        delete state.volumes[volume.name];
-        forgetVolume(volume.name);
-      }
-      const text = removed.length ? `Deleted Volumes:\n${removed.map((v) => v.name).join('\n')}\n\n` : '';
-      return result([out(`${text}Total reclaimed space: ${size ? humanSize(size) : '0B'}\n`)]);
-    }
+    case 'prune':
+      return prune(ctx, 'volume', args, { removeContainer: null, volumeSize });
     default:
       return result([err(`docker: unknown command: docker volume ${sub ?? ''}\n\nRun 'docker volume --help' for more information\n`.replace(' \n', '\n'))], 1);
   }

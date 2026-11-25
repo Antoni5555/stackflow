@@ -12,7 +12,8 @@ import {
 } from './containers.js';
 import { humanDuration, humanSize, isoNano, table } from './format.js';
 import { inspectContainer, inspectImage, renderTemplate } from './inspect.js';
-import { networkCommand, volumeCommand } from './networks.js';
+import { networkCommand, volumeCommand, volumeSize } from './networks.js';
+import { prune, systemDf } from './prune.js';
 import { BuildError, baseHistory, buildImage } from './build.js';
 import { login, logout, pullFromRegistry, push } from './registry.js';
 import { compose } from './compose.js';
@@ -279,7 +280,7 @@ const RUN_FLAGS = {
     '-w': 'workdir', '--workdir': 'workdir', '-u': 'user', '--user': 'user', '--restart': 'restart',
     '--entrypoint': 'entrypoint', '-h': 'hostname', '--hostname': 'hostname', '--memory': 'memory', '-m': 'memory',
     '--label': 'label', '-l': 'label', '--health-cmd': 'healthCmd', '--health-interval': 'healthInterval',
-    '--expose': 'expose', '--cpus': 'cpus',
+    '--expose': 'expose', '--cpus': 'cpus', '--log-opt': 'logOpt', '--log-driver': 'logDriver',
   },
 };
 
@@ -442,7 +443,10 @@ function prepare(ctx, name) {
     interactive: Boolean(opts.interactive),
     autoRemove: Boolean(opts.rm),
     restart: opts.restart?.at(-1) ?? 'no',
+    labels: Object.fromEntries((opts.label ?? []).map((item) => [item.split('=')[0], item.split('=').slice(1).join('=')])),
   });
+  // --log-opt max-size=10m: настройки журнала (inspect .HostConfig.LogConfig)
+  if (opts.logOpt) container.logConfig = Object.fromEntries(opts.logOpt.map((item) => [item.split('=')[0], item.split('=').slice(1).join('=')]));
   container.name ??= randomName(state, container.id);
   return { container, chunks, opts };
 }
@@ -559,6 +563,10 @@ function ps({ fs, args }) {
     if (key === 'name') list = list.filter((c) => c.name.includes(value.replace(/^\^|\$$/g, '')));
     else if (key === 'status') list = list.filter((c) => c.status === value);
     else if (key === 'ancestor') list = list.filter((c) => c.image === value || normalizeRef(c.image) === normalizeRef(value));
+    else if (key === 'label') {
+      const [name, ...rest] = filter.slice(6).split('=');
+      list = list.filter((c) => name in (c.labels ?? {}) && (!rest.length || c.labels[name] === rest.join('=')));
+    }
     else return result([err(`Error response from daemon: invalid filter '${key}'\n`)], 1);
   }
   if (parsed.opts.quiet) return result(list.length ? [out(`${list.map((c) => (parsed.opts.notrunc ? c.id : shortId(c.id))).join('\n')}\n`)] : []);
@@ -932,6 +940,17 @@ function composeCommand(ctx) {
   return result(done.chunks, done.code);
 }
 
+/** docker … prune (container, image, builder, system): engines/docker/prune.js. */
+const pruneOf = (kind) => (ctx) => {
+  const done = prune(ctx, kind, ctx.args, { removeContainer, volumeSize });
+  return result(done.chunks, done.code);
+};
+
+function systemDfCommand(ctx) {
+  const done = systemDf(ctx, ctx.args, { volumeSize });
+  return result(done.chunks, done.code);
+}
+
 const SUBCOMMANDS = {
   port,
   compose: composeCommand,
@@ -942,13 +961,14 @@ const SUBCOMMANDS = {
 
 // docker container …, docker image … — то же самое
 const GROUPS = {
-  container: { ls: ps, list: ps, ps, run, create, start, stop, restart, rm, remove: rm, logs, exec, inspect },
-  image: { ls: images, list: images, pull, rm: rmi, remove: rmi, tag, inspect, build, history },
-  buildx: { build },
-  builder: { build },
+  container: { ls: ps, list: ps, ps, run, create, start, stop, restart, rm, remove: rm, logs, exec, inspect, prune: pruneOf('container') },
+  image: { ls: images, list: images, pull, rm: rmi, remove: rmi, tag, inspect, build, history, prune: pruneOf('image') },
+  buildx: { build, prune: pruneOf('builder'), du: (ctx) => systemDfCommand(ctx) },
+  builder: { build, prune: pruneOf('builder') },
+  system: { df: (ctx) => systemDfCommand(ctx), prune: pruneOf('system') },
 };
 
-const LATER = new Set(['system', 'cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'diff', 'events', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
+const LATER = new Set(['cp', 'top', 'stats', 'kill', 'rename', 'commit', 'save', 'load', 'info', 'search', 'context', 'swarm', 'diff', 'events', 'attach', 'wait', 'pause', 'unpause', 'update', 'export', 'import']);
 
 export const docker = {
   help: HELP,

@@ -588,7 +588,7 @@ describe('сети и тома (шаг 3)', () => {
     assert.match(run(sh, 'docker volume prune').out, /^WARNING! This will remove anonymous local volumes not used by at least one container\.\nAre you sure you want to continue\? \[y\/N\] /);
     assert.equal(run(sh, 'docker volume prune -f').out, 'Total reclaimed space: 0B\n');   // том базы занят
     run(sh, 'docker rm -f db');
-    assert.match(run(sh, 'docker volume prune -f').out, /^Deleted Volumes:\n[0-9a-f]{64}\n\nTotal reclaimed space: \S+MB\n$/);
+    assert.match(run(sh, 'docker volume prune -f').out, /^Deleted Volumes:\n[0-9a-f]{64}\nTotal reclaimed space: \S+MB\n$/);
     assert.equal(run(sh, 'docker volume ls -q').out, 'keep\n');
     assert.match(run(sh, 'echo y | docker volume prune -a').out, /Deleted Volumes:\nkeep\n/);
     assert.equal(run(sh, 'docker volume ls -q').out, '');
@@ -918,5 +918,33 @@ volumes:
     run(stack, 'docker compose run --rm web python manage.py migrate');
     const { pending } = stack.run('docker compose exec -T db psql -U postgres -d shop -c "\\dt django_*"');
     assert.match((await pending).chunks.map((c) => c.text).join(''), /^ {16}List of relations\n[^\n]+\n[^\n]+\n public \| django_admin_log {4}\| table \| postgres\n public \| django_content_type \| table \| postgres\n public \| django_migrations {3}\| table \| postgres\n public \| django_session {6}\| table \| postgres\n\(4 rows\)\n\n$/);
+  });
+
+  it('шаг 6: system df, prune с --filter label=, --label, --log-opt, system prune', () => {
+    const sh = project({ '/home/shop/shop/compose.yaml': COMPOSE });
+    run(sh, 'docker compose up -d');
+    assert.match(run(sh, 'docker system df').out, /^TYPE {12}TOTAL {5}ACTIVE {4}SIZE {6}RECLAIMABLE\nImages {10}\d+ +\d+ +\S+ +\S+ \(\d+%\)\nContainers {6}2 {9}2 {9}8\.192kB {3}0B \(0%\)\nLocal Volumes   1 {9}1 {9}39\.4MB {4}0B \(0%\)\nBuild Cache {5}\d+ +0 +\S+ +\S+\n$/);
+    run(sh, 'docker run --label sf-lesson=1 --name old-job alpine:3 true');
+    run(sh, 'docker run --name other alpine:3 true');
+    assert.match(run(sh, 'docker container prune -f --filter label=sf-lesson=1').out, /^Deleted Containers:\n[0-9a-f]{64}\nTotal reclaimed space: 4\.096kB\n$/);
+    assert.match(run(sh, 'docker ps -a').out, /other/);
+    assert.equal(run(sh, 'docker volume create --label sf-lesson=1 junk').out, 'junk\n');
+    assert.equal(run(sh, 'docker volume prune -f --filter label=sf-lesson=1').out, 'Total reclaimed space: 0B\n');
+    assert.equal(run(sh, 'docker volume ls --filter label=sf-lesson=1').out, 'DRIVER    VOLUME NAME\nlocal     junk\n');
+    assert.equal(run(sh, 'docker volume prune -a -f --filter label=sf-lesson=1').out, 'Deleted Volumes:\njunk\nTotal reclaimed space: 0B\n');
+    run(sh, "echo -e 'FROM alpine:3\\nLABEL sf-lesson=1' > Dockerfile.junk");
+    run(sh, 'docker build -q -f Dockerfile.junk -t junk:1 .');
+    assert.equal(run(sh, 'docker image prune -f --filter label=sf-lesson=1').out, 'Total reclaimed space: 0B\n');
+    assert.match(run(sh, 'docker image prune -a -f --filter label=sf-lesson=1').out, /^Deleted Images:\nuntagged: junk:1\ndeleted: sha256:[0-9a-f]{64}\n(deleted: sha256:[0-9a-f]{64}\n){2}Total reclaimed space: \S+\n$/);
+    run(sh, 'docker run -d --name worker --log-opt max-size=10m --log-opt max-file=3 alpine:3 sleep 30');
+    assert.equal(run(sh, "docker inspect -f '{{json .HostConfig.LogConfig}}' worker").out, '{"Type":"json-file","Config":{"max-size":"10m","max-file":"3"}}\n');
+    assert.match(run(sh, 'docker system prune').out, /^WARNING! This will remove:\n  - all stopped containers\n  - all networks not used by at least one container\n  - all dangling images\n  - unused build cache\n\nAre you sure you want to continue\? \[y\/N\] \n$/);
+    assert.match(run(sh, 'docker container prune').out, /^WARNING! This will remove all stopped containers\.\nAre you sure you want to continue\? \[y\/N\] \n$/);
+    run(sh, 'docker compose down');
+    // system prune --volumes (Docker 23+) — только анонимные тома: shop_pgdata остаётся, volume prune -a его удалит
+    run(sh, 'docker system prune -a --volumes -f');
+    assert.match(run(sh, 'docker volume ls').out, /shop_pgdata/);
+    assert.match(run(sh, 'docker volume prune -a -f').out, /Deleted Volumes:\nshop_pgdata\n/);
+    assert.match(run(sh, 'docker builder prune -f').out, /Total:\t0B\n$/);
   });
 });

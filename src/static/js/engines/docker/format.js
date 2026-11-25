@@ -34,8 +34,11 @@ export function humanDuration(ms) {
   return `${Math.floor(hours / 24 / 365)} years`;
 }
 
-/** go-units HumanSize: десятичные единицы, 3 значащие цифры — «642MB», «74.5MB», «1.62GB». */
-export function humanSize(bytes) {
+/**
+ * go-units HumanSize: десятичные единицы. precision — значащие цифры: 3 у images и history
+ * («642MB», «8.19kB»), 4 у prune и system df («4.096kB», «6.828GB»).
+ */
+export function humanSize(bytes, precision = 3) {
   const units = ['B', 'kB', 'MB', 'GB', 'TB'];
   let value = bytes;
   let unit = 0;
@@ -43,7 +46,7 @@ export function humanSize(bytes) {
     value /= 1000;
     unit += 1;
   }
-  return `${Number(value.toPrecision(3))}${units[unit]}`;
+  return `${Number(value.toPrecision(precision))}${units[unit]}`;
 }
 
 /** «642MB», «1.62GB», «45.5MB» → байты (размеры образов в каталоге и setup). */
