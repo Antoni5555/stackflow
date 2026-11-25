@@ -11,3 +11,8 @@ class StaticStorage(ManifestStaticFilesStorage):
     """
 
     support_js_module_import_aggregation = True
+    # Сколько раз переписывать ссылки: файл получает новый хеш, когда изменился хеш
+    # того, что он импортирует. Цепочке страница → терминал → загрузчик Docker →
+    # модули Docker (7+ уровней) не хватает 5 проходов по умолчанию
+    # («Max post-process passes exceeded»)
+    max_post_process_passes = 20

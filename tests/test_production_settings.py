@@ -53,3 +53,21 @@ def test_check_deploy():
         'execute_from_command_line(["manage.py", "check", "--deploy", '
         '"--fail-level", "WARNING"])',
     )
+
+
+def test_collectstatic_rewrites_js_imports(tmp_path):
+    """collectstatic как в образе: длинные цепочки import в JS (страница → терминал →
+    учебный Docker) переписываются на файлы с хешем, а не падают на числе проходов."""
+    code = (
+        'import django; django.setup(); '
+        'from django.conf import settings; '
+        f'settings.STATIC_ROOT = {str(tmp_path)!r}; '
+        'from django.core.management import call_command; '
+        "call_command('collectstatic', '--noinput', verbosity=0); "
+        'import pathlib; '
+        f'root = pathlib.Path({str(tmp_path)!r}); '
+        "loader = next(root.glob('js/engines/linux/docker-loader.*.js')); "
+        'print(loader.read_text())'
+    )
+    loader = run_production(code)
+    assert 'import("../docker/index.' in loader and '.js")' in loader
