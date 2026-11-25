@@ -1,0 +1,42 @@
+- title: Redis по имени
+  text: |
+    Создайте сеть `shop`, запустите в ней Redis с именем `cache` и проверьте связь по имени из разового контейнера той же сети:
+    ```
+    ping -c 1 cache
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker network create shop
+    docker run -d --name cache --network shop redis:7
+    docker run --rm --network shop alpine:3.20 ping -c 1 cache
+    ```
+    Результат (без ID и строк загрузки):
+    ```
+    PING cache (172.18.0.2): 56 data bytes
+    64 bytes from 172.18.0.2: seq=0 ttl=64 time=0.065 ms
+
+    --- cache ping statistics ---
+    1 packets transmitted, 1 packets received, 0% packet loss
+    round-trip min/avg/max = 0.065/0.065/0.065 ms
+    ```
+    Адрес сети выдаёт Docker — у вас может быть другой; важно, что имя нашлось.
+- title: Без сети имя не найти
+  text: |
+    Повторите проверку из прошлого упражнения, но без `--network`, а затем попробуйте удалить сеть:
+    ```
+    docker network rm shop
+    ```
+  answer: |
+    Ответ:
+    ```bash
+    docker run --rm alpine:3.20 ping -c 1 cache
+    docker network rm shop
+    ```
+    Результат:
+    ```
+    ping: bad address 'cache'
+    Error response from daemon: error while removing network: network shop has active endpoints (name:"cache" id:"87bca19d480f")
+    exit status 1
+    ```
+    В `bridge` по умолчанию имён нет. Сеть с работающим `cache` не удалить — сначала `docker rm -f cache`.

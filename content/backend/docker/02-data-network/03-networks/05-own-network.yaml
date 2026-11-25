@@ -1,0 +1,39 @@
+title: "База доступна по имени"
+type: exercise
+difficulty: 2
+pitfall: "Имена контейнеров работают только в пользовательской сети; работающий контейнер подключают docker network connect."
+statement: |
+  База `shop-db` запущена без `--network` — в сети `bridge` по умолчанию, и по имени её не найти. Сделайте так, чтобы соседние контейнеры находили её как `shop-db`:
+  1. создайте сеть `shop`;
+  2. подключите к ней работающий `shop-db` (не пересоздавая его);
+  3. последней командой проверьте из разового контейнера в этой сети:
+     ```
+     docker run --rm --network shop postgres:16 pg_isready -h shop-db
+     ```
+setup:
+  cwd: /home/shop
+  docker:
+    images: [postgres:16]
+    containers:
+      - name: shop-db
+        image: postgres:16
+        env: {POSTGRES_PASSWORD: shop}
+        running: true
+check:
+  type: state
+  expect:
+    - docker: network
+      name: shop
+      containers: [shop-db]
+      fail: "Сеть shop должна существовать, и shop-db должен быть к ней подключён: docker network connect shop shop-db."
+    - output_matches: 'shop-db:5432 - accepting connections'
+      fail: "Последней командой проверьте базу из контейнера в сети shop: docker run --rm --network shop postgres:16 pg_isready -h shop-db."
+solution: |
+  docker network create shop
+  docker network connect shop shop-db
+  docker run --rm --network shop postgres:16 pg_isready -h shop-db
+hints:
+  - "Сначала `docker network create`, затем команда, которая подключает уже работающий контейнер к сети."
+  - "`docker network create shop`, `docker network connect shop shop-db`."
+explanation: |
+  В пользовательской сети встроенный DNS Docker отвечает на имена контейнеров: `shop-db` превратился в IP базы. Контейнер при этом остался и в `bridge` — `connect` добавляет сеть, а не заменяет. Порт базы наружу публиковать не понадобилось.

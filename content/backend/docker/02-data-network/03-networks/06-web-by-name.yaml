@@ -1,0 +1,35 @@
+title: "Сайт по имени из соседнего контейнера"
+type: exercise
+difficulty: 2
+pitfall: "Контейнеры одной пользовательской сети обращаются друг к другу по имени и внутреннему порту, без -p."
+statement: |
+  Создайте сеть `shop` и запустите в фоне контейнер `web` из `nginx:1.27-alpine` сразу в этой сети, **без публикации портов**. Затем получите его страницу из другого контейнера той же сети по имени:
+  ```
+  docker run --rm --network shop nginx:1.27-alpine curl -s web
+  ```
+setup:
+  cwd: /home/shop
+  docker:
+    images: [nginx:1.27-alpine]
+check:
+  type: state
+  expect:
+    - docker: container
+      name: web
+      status: running
+      fail: "Контейнер web не работает — запустите его с -d."
+    - docker: network
+      name: shop
+      containers: [web]
+      fail: "web должен быть в сети shop: --network shop при запуске."
+    - output_matches: 'Welcome to nginx!'
+      fail: "Последней командой получите страницу из контейнера в сети shop: curl -s web."
+solution: |
+  docker network create shop
+  docker run -d --name web --network shop nginx:1.27-alpine
+  docker run --rm --network shop nginx:1.27-alpine curl -s web
+hints:
+  - "Сеть при запуске задаёт флаг `--network`. Нужен ли `-p`, если обращаемся изнутри сети?"
+  - "`docker network create shop`, `docker run -d --name web --network shop nginx:1.27-alpine`, затем `curl -s web` из второго контейнера."
+explanation: |
+  Второй контейнер нашёл `web` по имени и обратился к порту 80 напрямую — публиковать его не нужно: `-p` нужен только для доступа с сервера. Так Nginx в стеке магазина ходит к Django: `proxy_pass http://web:8000`.
