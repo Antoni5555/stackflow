@@ -318,11 +318,23 @@ function parseVolume(spec, sh) {
   return { mount: { type: 'volume', name: source, destination: normalize(destination), readOnly } };
 }
 
-/** Строки --env-file: ИМЯ=значение, комментарии и пустые пропускаются; ИМЯ без = — из окружения. */
+/**
+ * Строки --env-file, как parseKeyValueFile в docker CLI: пробелы слева убираются, комментарии и
+ * пустые пропускаются, ИМЯ без = — из окружения; пробел в имени — ошибка (значение — как есть).
+ */
 function readEnvFile(sh, path) {
   const text = sh.fs.readFile(sh.resolve(path));
-  return text.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'))
-    .flatMap((line) => (line.includes('=') ? [line] : (sh.env[line] !== undefined ? [`${line}=${sh.env[line]}`] : [])));
+  const env = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.trimStart();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    const name = eq === -1 ? line : line.slice(0, eq);
+    if (/\s/.test(name)) return { error: `--env-file: invalid env file (${path}): variable '${name}' contains whitespaces` };
+    if (eq !== -1) env.push(line);
+    else if (sh.env[name] !== undefined) env.push(`${name}=${sh.env[name]}`);
+  }
+  return { env };
 }
 
 /** Общая часть run и create: проверки, образ (с pull), создание контейнера. */
@@ -350,7 +362,9 @@ function prepare(ctx, name) {
   const env = [];
   for (const file of opts.envFile ?? []) {
     try {
-      env.push(...readEnvFile(sh, file));
+      const parsed = readEnvFile(sh, file);
+      if (parsed.error) return { done: runError(parsed.error, 125, name) };
+      env.push(...parsed.env);
     } catch (e) {
       if (!(e instanceof FsError)) throw e;
       return { done: runError(`open ${file}: ${e.code === 'ENOENT' ? 'no such file or directory' : e.message.toLowerCase()}`, 125, name) };

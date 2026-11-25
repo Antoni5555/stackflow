@@ -212,6 +212,15 @@ describe('docker run и жизненный цикл контейнера', () =>
     assert.equal(run(sh, 'docker run --rm python:3.12-slim').code, 0);
   });
 
+  it('--env-file: пробел в имени — ошибка, кавычки остаются в значении', () => {
+    const sh = shell({ docker: { images: ['alpine:3.20'] }, files: { '/home/shop/.env': 'SPACED = 1\n', '/home/shop/ok.env': '# база\n  POSTGRES_PASSWORD="s3cr3t"\n' } });
+    assert.deepEqual(run(sh, 'docker run --rm --env-file .env alpine:3.20 env'), {
+      out: '', err: "docker: --env-file: invalid env file (.env): variable 'SPACED ' contains whitespaces\n\nRun 'docker run --help' for more information\n", code: 125,
+    });
+    assert.equal(run(sh, 'docker ps -aq').out, '');
+    assert.match(run(sh, 'docker run --rm --env-file ok.env alpine:3.20 env').out, /^POSTGRES_PASSWORD="s3cr3t"$/m);
+  });
+
   it('разбор флагов: нет образа, неизвестный флаг, неверный порт и имя', () => {
     const sh = shell();
     assert.deepEqual(run(sh, 'docker run -it'), {
